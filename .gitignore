@@ -48,5 +48,3 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
-# Claude session notes (not part of the package)
-.claude-notes.md
