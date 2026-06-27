@@ -23,7 +23,8 @@ Imports:
     ks,
     deSolve,
     ReacTran,
-    pracma
+    pracma,
+    ggplot2
 Suggests:
     multiblock,
     dyngen,
