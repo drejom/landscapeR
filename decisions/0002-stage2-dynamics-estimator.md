@@ -1,7 +1,7 @@
 # 0002 — Stage 2 dynamics estimator
 
 **Stage:** 2 (quasi-potential / flow)
-**Status:** proposed
+**Status:** proposed → provisional (pending Stage 0 thresholds)
 **Date:** 2026-06-27
 
 ## Context
@@ -40,26 +40,61 @@ tracks.
 
 ## Evidence
 
-**Not yet available.** Stage 0 known-potential controls have not been run.
+### From reference implementation (ADR 0003)
 
-The log-density inversion approach is the most transparent and easiest to
-audit against Stage 0 ground truth. TRAMWAY has published benchmarks on
-synthetic Langevin data but in Python. Schrödinger bridge methods are
-state-of-the-art but the R ecosystem for them is thin.
+The Rockne-Frankhouser group uses log-density inversion across three published
+papers (AML Cancer Research 2020, CML Leukemia 2024, CML miRNA Science Advances).
+Their implementation (cohmathonc/CML_mRNA_state-transition) is:
+
+1. KDE over SVD coordinates → p(x)
+2. U(x) = −log p(x) at identified critical points (Boltzmann relation)
+3. Constrained polynomial fit (6th degree): simultaneously match U at critical
+   points AND zero gradient at critical points → smooth quasi-potential
+4. Barrier height = U(saddle) − U(well) from the polynomial
+
+This approach works in 1D (first SVD component). Published results in two disease
+contexts support its biological validity.
+
+The Schrödinger bridge / OT flow matching and TRAMWAY options are more
+theoretically general but: (a) no R implementations of comparable maturity,
+(b) no published validation in this biological context, (c) harder to audit
+against Stage 0 ground truth given their complexity.
+
+### From Stage 0: not yet available
+
+Stage 0 double-well recovery benchmarks have not been run. The criteria
+thresholds marked [tbd] below must be filled in before accepting this decision.
 
 ## Decision
 
-**Unresolved.** This is the most consequential open question in the pipeline.
-Do not implement Stage 2 until:
-1. Stage 0 known-potential controls are designed and the recovery criteria above
-   are filled in with specific numbers.
-2. At least the log-density inversion baseline is benchmarked against those controls.
+**Provisional: implement log-density inversion with constrained polynomial
+smoothing as `"log_density_poly"` under the `DynamicsEstimator` contract.**
+
+Rationale: (a) validated in the reference implementation across multiple disease
+contexts, (b) directly interpretable against Stage 0 ground truth, (c) R
+implementable without reticulate. Polynomial degree and KDE bandwidth are
+parameters so Stage 0 can sweep them.
+
+The decision becomes **accepted** when Stage 0 double-well controls confirm
+recovery within the criteria below. If recovery fails, revisit TRAMWAY or
+RKHS gradient approaches — but test the simple thing first.
+
+**Criteria thresholds (fill in before marking accepted):**
+- Well position recovery within [tbd] % of planted positions
+- Barrier height recovery within [tbd] % of planted height
+- False-positive rate (static Gaussian → no critical points) ≤ [tbd]
+- Recovery holds at n ≥ [tbd] samples per state
 
 ## Consequences
 
-- Stage 2 implementation is explicitly blocked on Stage 0 results.
-- The `DynamicsEstimator` contract and `PotentialGroundTruth` class are defined
-  (already scaffolded) so Stage 0 can test the interface before the estimator exists.
+- `LangevinDynamicsEstimator` / `LogDensityPolyEstimator` is the first concrete
+  implementation to write for Stage 2.
+- KDE bandwidth selection must be a parameter (not hard-coded); Silverman's
+  rule as default, cross-validated as alternative.
+- Polynomial degree must be a parameter; 6 as default matching reference impl.
+- Fokker-Planck forward propagation (`SolveFP` equivalent) is a separate
+  capability — not required for critical-point detection, needed later for
+  trajectory prediction and the Golem reward field.
 
 ## Review trigger
 
