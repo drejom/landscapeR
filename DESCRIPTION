@@ -19,8 +19,13 @@ Imports:
     methods,
     S4Vectors,
     digest,
-    utils
+    utils,
+    ks,
+    deSolve,
+    ReacTran,
+    pracma
 Suggests:
+    multiblock,
     dyngen,
     reticulate,
     pomp,
