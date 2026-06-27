@@ -1,0 +1,30 @@
+Package: landscapeR
+Title: Comparative Decomposition and State-Transition Dynamics
+Version: 0.1.0
+Authors@R: person("First", "Last", email = "you@example.com",
+    role = c("aut", "cre"))
+Description: S4-based pipeline combining GSVD/HO-GSVD comparative decomposition
+    with quasi-potential state-transition modelling on multi-layer omic data.
+    Provides a contract/registry architecture for synthetic validation (Stage 0),
+    archetype classification (Stage 0.5), distributional fit assessment (Stage 0.75),
+    decomposition (Stage 1), and dynamics estimation (Stage 2).
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.3.0),
+    MultiAssayExperiment
+Imports:
+    methods,
+    S4Vectors,
+    digest,
+    utils
+Suggests:
+    dyngen,
+    reticulate,
+    pomp,
+    ranger,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+biocViews: Software, DimensionReduction, MultipleComparison, StatisticalMethod

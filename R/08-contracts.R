@@ -1,0 +1,157 @@
+# Stage contracts — VIRTUAL S4 classes plus their generics.
+# An implementation is a concrete subclass + setMethod() for the generic.
+# The pipeline only ever touches the contract; algorithms are plug-ins.
+
+# ---------------------------------------------------------------------------
+# Stage 0 — Synthetic data generation
+# ---------------------------------------------------------------------------
+
+#' @export
+setClass("Generator", representation("VIRTUAL"))
+
+#' Generate synthetic StateTransitionData with embedded ground truth
+#'
+#' @param strategy a \code{Generator} implementation
+#' @param spec list of dataset shape parameters (n_layers, n_features,
+#'   n_samples, SNR, seed, …)
+#' @param ... forwarded to the implementation
+#' @return \code{StateTransitionData} with \code{ground_truth} populated
+#' @export
+setGeneric("generate",
+    function(strategy, spec, ...) standardGeneric("generate"))
+
+# ---------------------------------------------------------------------------
+# Stage 0.5a — Signature extraction
+# ---------------------------------------------------------------------------
+
+#' @export
+setClass("SignatureExtractor", representation("VIRTUAL"))
+
+#' Extract a descriptor vector from a StateTransitionData object
+#'
+#' Captures GSV spectrum shape, angular-distance profile across components,
+#' and state-space path geometry — the inputs to archetype matching.
+#'
+#' @param strategy a \code{SignatureExtractor} implementation
+#' @param data \code{StateTransitionData}
+#' @param ... forwarded to the implementation
+#' @return numeric descriptor vector (or named list of descriptors)
+#' @export
+setGeneric("extract_signature",
+    function(strategy, data, ...) standardGeneric("extract_signature"))
+
+# ---------------------------------------------------------------------------
+# Stage 0.5b — Archetype classification
+# ---------------------------------------------------------------------------
+
+#' @export
+setClass("ArchetypeClassifier", representation("VIRTUAL"))
+
+#' Classify data into a trajectory archetype
+#'
+#' Returns a posterior over archetypes — NOT a hard label. Validate via
+#' simulation-based calibration (SBC) before trusting assignment probabilities.
+#'
+#' @param strategy an \code{ArchetypeClassifier} implementation
+#' @param signature numeric descriptor vector from \code{\link{extract_signature}}
+#' @param ... forwarded to the implementation
+#' @return named numeric vector of archetype posterior probabilities
+#' @export
+setGeneric("classify_archetype",
+    function(strategy, signature, ...) standardGeneric("classify_archetype"))
+
+# ---------------------------------------------------------------------------
+# Stage 0.5c — Per-domain interpretation map
+# ---------------------------------------------------------------------------
+
+#' @export
+setClass("InterpretationMap", representation("VIRTUAL"))
+
+#' Map an archetype to named component roles for a specific domain
+#'
+#' The geometry classification (\code{\link{classify_archetype}}) is universal
+#' and data-driven. This mapping is a domain-specific stated claim — kept in a
+#' per-domain config, not hard-coded logic, so it stays falsifiable.
+#'
+#' @param strategy an \code{InterpretationMap} implementation
+#' @param archetype character archetype name
+#' @param ... forwarded to the implementation
+#' @return named list of component role assignments
+#' @export
+setGeneric("interpret",
+    function(strategy, archetype, ...) standardGeneric("interpret"))
+
+# ---------------------------------------------------------------------------
+# Stage 0.75 — Distributional fit assessment
+# ---------------------------------------------------------------------------
+
+#' @export
+setClass("FitAssessor", representation("VIRTUAL"))
+
+#' Assess where real data sits in each archetype's null distribution
+#'
+#' Returns a position profile across archetypes — NOT a pass/fail gate.
+#' See concept note Stage 0.75 for the double-dipping caveat and the
+#' bootstrap vs. SBC split.
+#'
+#' Return value (in \code{StageResult@value}):
+#' \describe{
+#'   \item{null_position}{named numeric: percentile in each archetype's null}
+#'   \item{assignment_probs}{named numeric: calibrated posterior probabilities}
+#'   \item{uncertainty}{numeric: spread of assignment probabilities}
+#' }
+#'
+#' @param strategy a \code{FitAssessor} implementation
+#' @param data \code{StateTransitionData}
+#' @param archetype character archetype name to assess against
+#' @param ... forwarded to the implementation
+#' @return \code{StageResult}
+#' @export
+setGeneric("assess_fit",
+    function(strategy, data, archetype, ...) standardGeneric("assess_fit"))
+
+# ---------------------------------------------------------------------------
+# Stage 1 — Comparative decomposition
+# ---------------------------------------------------------------------------
+
+#' @export
+setClass("Decomposer", representation("VIRTUAL"))
+
+#' Decompose multi-layer data into shared and layer-exclusive subspaces
+#'
+#' Replaces plain SVD/PCA with GSVD (two layers) or HO-GSVD (N layers).
+#' Generalized singular value ratios partition the space automatically;
+#' confounders land in their own components rather than smearing the disease
+#' axis.
+#'
+#' @param strategy a \code{Decomposer} implementation
+#' @param data \code{StateTransitionData}
+#' @param ... forwarded to the implementation
+#' @return \code{StageResult} whose value is \code{data} annotated with
+#'   shared + exclusive subspaces in \code{metadata()}
+#' @export
+setGeneric("decompose",
+    function(strategy, data, ...) standardGeneric("decompose"))
+
+# ---------------------------------------------------------------------------
+# Stage 2 — Dynamics estimation
+# ---------------------------------------------------------------------------
+
+#' @export
+setClass("DynamicsEstimator", representation("VIRTUAL"))
+
+#' Estimate quasi-potential dynamics on decomposition coordinates
+#'
+#' Fits \eqn{dX/dt = -\nabla U(X;\,\text{layer}) + \text{noise}}.
+#' Critical points = commitment / irreversibility; barrier height = transition
+#' difficulty. Cross-sectional (destructive) sampling is the native data type,
+#' not a workaround.
+#'
+#' @param strategy a \code{DynamicsEstimator} implementation
+#' @param data \code{StateTransitionData} with decomposition in \code{metadata()}
+#' @param ... forwarded to the implementation
+#' @return \code{StageResult} whose value is \code{data} annotated with
+#'   quasi-potential, critical points, and barrier heights in \code{metadata()}
+#' @export
+setGeneric("estimate_dynamics",
+    function(strategy, data, ...) standardGeneric("estimate_dynamics"))
