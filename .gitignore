@@ -39,8 +39,17 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
+# pkgdown site generated output
+docs/index.html
+docs/reference/
+docs/articles/
+docs/news/
+docs/404.html
+docs/sitemap.xml
+docs/pkgdown.yml
+
+# literature PDFs (large binaries — keep locally, not in git)
+docs/literature/*.pdf
 
 # translation temp files
 po/*~

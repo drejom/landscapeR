@@ -150,3 +150,17 @@ Stage 0.5 classifier (Suggests): `ranger`
 - Do not bump `schema_version` without a migration registered for the old version
 - Do not add Rcpp unless profiling identifies a specific bottleneck (deSolve's
   existing C/Fortran backends are sufficient for PDE integration)
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`drejom/landscapeR`); external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context layout — `CONTEXT-MAP.md` at the root points to per-context files under `context/`; shared ADRs live in `decisions/`. See `docs/agents/domain.md`.
