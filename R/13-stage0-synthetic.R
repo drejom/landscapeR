@@ -87,7 +87,14 @@ synthetic_control <- function(n        = 40L,
     })
     names(expts) <- paste0("layer", seq_len(K))
 
-    col_df <- S4Vectors::DataFrame(row.names = sample_ids)
+    # colData: store the planted sample coordinate and a binary group label.
+    # u_shared is the true shared sample direction; its sign defines "high" vs
+    # "low" on the disease axis — the correct colour_by variable for plots.
+    col_df <- S4Vectors::DataFrame(
+        row.names     = sample_ids,
+        u_shared      = u_shared,
+        planted_group = ifelse(u_shared > 0, "high", "low")
+    )
 
     gt <- new("SubspaceGroundTruth",
         shared    = matrix(v_true, ncol = 1L,
