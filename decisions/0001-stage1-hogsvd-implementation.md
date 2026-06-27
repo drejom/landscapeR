@@ -1,8 +1,9 @@
 # 0001 — Stage 1 HO-GSVD implementation
 
 **Stage:** 1 (comparative decomposition)
-**Status:** proposed
+**Status:** provisional-accepted
 **Date:** 2026-06-27
+**Updated:** 2026-06-27
 
 ## Context
 
@@ -20,12 +21,13 @@ a reticulate bridge is permitted only inside a single plug-in.
 
 ## Options considered
 
-| Option | Source | Key property | Concern |
+| Option | Source | Key property | Verdict |
 |---|---|---|---|
-| `multiblock::hogsvd` | CRAN, Liland et al., v0.8.10 (May 2026) | Active maintenance, CRAN-stable, no extra deps | Requires full column rank in all matrices — fails on rank-deficient layers without pre-processing |
-| Kempf rank-deficient HO-GSVD | SIAM J. Matrix Anal. Appl. 2022; MATLAB `kmpape/HO-GSVD` | Explicitly handles rank deficiency; the case cited in the design spec worked example | No R implementation; requires port or reticulate bridge to sklearn-hogsvd (Python) |
-| `derekbeaton/GSVD` | GitHub only, Beaton et al. arXiv 2020 | Constrained/weighted SVD; covers 2-layer case | This is a *different* GSVD (PCA/MCA generalization), not the Alter comparative GSVD; does not extend to N layers with different row dims |
-| Roll our own (2-layer GSVD via `geigen`) | base R + `geigen` package | Transparent, auditable, covers 2-layer case | Only 2 layers; scaling to N requires the HO extension |
+| `multiblock::hogsvd` | CRAN, Liland et al., v0.8.10 (May 2026) | Active maintenance, CRAN-stable | **Rejected** — calls `solve(X'X)` on p×p; crashes on every rank-deficient matrix (all omics data) |
+| `hogsvdR` (barkasn/hogsvdR) | GitHub/CRAN | Uses `MASS::ginv`; rank-deficiency safe | **Rejected** — O(p³) ginv; 290s at p=5,000 (7,000× too slow); fails to build on macOS arm64/R 4.5 |
+| Kempf rank-deficient HO-GSVD | SIAM J. Matrix Anal. Appl. 2022 | Handles rank deficiency explicitly | **No R implementation** — the Kempf approach is what landscapeR's own implementation approximates via pre-reduction |
+| **Pre-reduction + V-averaging** (implemented here) | Native R, this codebase | Pre-reduce each layer to rank-(n-1) via thin SVD; average per-layer disease-axis vectors | **Chosen** — exact noiseless recovery, 0.02–0.10s at full omics scale, multi-layer averaging confirmed |
+| Pre-reduction without averaging | Native R | Pre-reduce but select single best component | **Registered as baseline** — equivalent to best single-layer SVD; use for debugging/comparison |
 
 ## Criteria
 
@@ -45,37 +47,53 @@ override criteria 1–3.
 
 ## Evidence
 
-**Not yet available.** Stage 0 thinness sweep has not been run. This ADR is
-**provisional** pending those results.
+From in-session benchmarks (`decisions/maps/hogsvd-algorithm.md`):
 
-Known from published record:
-- `multiblock::hogsvd` uses the standard full-rank formulation (Liland/Smilde).
-  Whether pre-processing (truncated SVD projection) adequately approximates
-  rank-deficient recovery for our data shapes is unknown.
-- Kempf et al. (SIAM 2022) prove recovery guarantees for rank-deficient matrices
-  and provide the algorithm the design spec explicitly references.
-- No published head-to-head benchmark at the column dimensions relevant here.
+**Correctness:**
+- Noiseless rank-1 case (K=2, n=10, p=20): exact 0° subspace recovery — algorithm is correct
+- `multiblock::hogsvd` crashes immediately: `solve()` on singular `p×p` matrix (confirmed n=20, p=200)
+- `hogsvdR` naive ginv: 290s at p=5,000 (confirmed via timing)
+- Pre-reduction: 0.024s at p=5,000; 0.10s at p=20,000 (7,000× speedup vs naive ginv)
+
+**Multi-layer advantage (V-averaging):**
+| K | SVD best(°) | V-averaged(°) |
+|---|---|---|
+| 2 | 34.72 | 26.71 |
+| 3 | 34.71 | 22.30 |
+| 5 | 34.71 | 17.51 |
+
+**BBP signal threshold:** signal `s` must exceed `(n·p)^(1/4)` to emerge from noise bulk.
+At p=5,000, n=40: threshold ≈ 21. Real omic data (disease R²~0.8 in pseudobulk) is well above.
+
+**Open (Stage 0 must fill):**
+- Weighting scheme: `σ_i²`-weighted vs equal-weight V-averaging — Stage 0 double-well recovery sweep
+- Minimum n for reliable recovery at omics p — Stage 0 thinness sweep
+- BBP threshold as hard gate vs soft warning — Stage 0 calibration
 
 ## Decision
 
-**Provisional: register `multiblock::hogsvd` as `"hogsvd_standard"` now; implement
-or bridge Kempf as `"hogsvd_kempf"` in parallel; decide via Stage 0 thinness sweep.**
+**Implement two strategies behind the `Decomposer` contract:**
 
-Do not hard-wire either. Both live behind the `Decomposer` contract. The thinness
-sweep (varying n × SNR × rank-deficiency level) will show where each one's recovery
-breaks down. Pick the one whose breakdown threshold is safely above the realistic
-data regime. Update this ADR to **accepted** with that evidence.
+1. **`"hogsvd_averaged"`** (default): Pre-reduce each layer to rank-(n-1) via thin SVD,
+   extract per-layer first right singular vector `v_i^(1)`, then form shared disease axis
+   as `V* = Σ_i (σ_i^(1))² · v_i^(1)` normalized. Emits a warning (not error) when
+   `σ_1 < (n·p)^(1/4)` (signal below noise bulk). This is the recommended production strategy.
+
+2. **`"hogsvd_prereduced"`** (baseline): Pre-reduce as above but select a single component by
+   `which.max(mean_sigma)` without cross-layer averaging. Equivalent to best single-layer SVD.
+   Use for debugging and as the low-level building block.
+
+Do NOT register `multiblock::hogsvd` or `hogsvdR` — both are unusable at omics scale.
 
 ## Consequences
 
-- The `Decomposer` contract must expose rank tolerance as a parameter so the
-  thinness sweep can sweep it.
-- `multiblock` added to Imports (or Suggests if we gate it); reticulate + sklearn-hogsvd
-  added to Suggests for the Kempf bridge.
-- Stage 0 thinness sweep design must include rank-deficiency as an explicit axis,
-  not just n × SNR.
+- `multiblock` removed from Imports/Suggests (no longer needed)
+- `MASS` needed for `ginv` in edge cases; already a dependency
+- `Decomposer` contract must accept `K` input layers and a `strategy` parameter
+- `PipelineConfig` default: `decomposer_strategy = "hogsvd_averaged"`
+- Stage 0 thinness sweep must include: n sweep × signal strength × K layers
 
 ## Review trigger
 
-Revisit if: Stage 0 shows `hogsvd_standard` fails recovery below n = 40 on rank-deficient
-layers, or if a native R implementation of Kempf becomes available on CRAN/Bioconductor.
+Revisit if: Stage 0 shows `hogsvd_averaged` fails below n = 20 in the thinness sweep,
+or a native R Kempf implementation appears that provides better theoretical guarantees.
