@@ -221,6 +221,173 @@ control_ladder <- function(ns      = c(20L, 40L),
 }
 
 # ---------------------------------------------------------------------------
+# Stage 0 — Potential control (Stage 2 validation)
+# ---------------------------------------------------------------------------
+
+#' Generate a synthetic potential control via Langevin simulation
+#'
+#' Simulates samples from the double-well potential \eqn{U(x) = (x^2 - 1)^2}
+#' using Euler-Maruyama integration of the overdamped Langevin equation
+#' \eqn{dX_t = -U'(X_t) dt + \sqrt{2\beta^{-1}} dW_t}.
+#' Samples are wrapped as a \code{StateTransitionData} with a
+#' \code{PotentialGroundTruth} recording the known well locations,
+#' barrier position, and barrier height.
+#'
+#' The ground truth for this potential:
+#' - Wells at x = ±1 (minima of U)
+#' - Barrier at x = 0 (maximum of U between wells)
+#' - Barrier height = U(0) - U(1) = 1
+#'
+#' @param n integer number of samples to collect
+#' @param beta numeric inverse temperature (higher = sharper wells, default 2)
+#' @param n_steps integer Euler-Maruyama steps per sample (default 5000)
+#' @param dt numeric step size (default 0.01)
+#' @param seed integer RNG seed
+#' @return \code{StateTransitionData} with \code{PotentialGroundTruth} and
+#'   \code{metadata()$potential_control} carrying generating parameters.
+#'   The single experiment "coords" has one feature row: the simulated x values.
+#'   \code{colData} carries \code{x_coord} and \code{well} ("left"/"right").
+#' @export
+synthetic_potential_control <- function(n       = 100L,
+                                         beta    = 2,
+                                         n_steps = 5000L,
+                                         dt      = 0.01,
+                                         seed    = 42L) {
+    setup_rng(seed)
+
+    U_prime <- function(x) 4 * x * (x^2 - 1)   # dU/dx for U = (x^2-1)^2
+    noise_sd <- sqrt(2 / beta * dt)
+
+    # Burn-in: start from left well, run long chain, then subsample
+    n_burn   <- 2000L
+    n_total  <- n_burn + n * as.integer(n_steps)
+    x        <- -1                               # start at left well
+    xs_all   <- numeric(n_total)
+    for (i in seq_len(n_total)) {
+        x <- x - U_prime(x) * dt + rnorm(1L, sd = noise_sd)
+        xs_all[i] <- x
+    }
+    # Subsample after burn-in with spacing n_steps
+    idx      <- n_burn + seq_len(n) * as.integer(n_steps / n)
+    idx      <- pmin(idx, n_total)
+    x_samp   <- xs_all[idx]
+
+    sample_ids <- paste0("s", seq_len(n))
+    mat        <- matrix(x_samp, nrow = 1L, ncol = n,
+                         dimnames = list("x_coord", sample_ids))
+    expt <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(coords = mat))
+
+    col_df <- S4Vectors::DataFrame(
+        row.names = sample_ids,
+        x_coord   = x_samp,
+        well      = ifelse(x_samp < 0, "left", "right")
+    )
+
+    gt <- new("PotentialGroundTruth",
+        potential = function(x) (x^2 - 1)^2,
+        wells     = matrix(c(-1, 0, 1, 0), ncol = 2L,
+                           dimnames = list(c("left", "right"), c("x", "U"))),
+        barrier   = 1
+    )
+
+    ctrl_params <- list(n = n, beta = beta, n_steps = n_steps,
+                        dt = dt, seed = seed,
+                        true_wells = c(-1, 1), true_barrier = 0,
+                        true_barrier_height = 1)
+
+    std <- StateTransitionData(
+        experiments  = list(coords = expt),
+        colData      = col_df,
+        ground_truth = gt
+    )
+    md <- metadata(std)
+    md$potential_control <- ctrl_params
+    metadata(std) <- md
+
+    std
+}
+
+#' Measure Stage 2 quasi-potential recovery on a synthetic potential control
+#'
+#' Runs Stage 2 directly on the simulated coordinate samples and measures
+#' how accurately the recovered well locations and barrier height match
+#' the known ground truth of the double-well potential \eqn{U(x) = (x^2-1)^2}.
+#'
+#' @param std \code{StateTransitionData} from \code{synthetic_potential_control()}
+#' @param strategy_name character name registered under "DynamicsEstimator"
+#' @return named list: well_error (mean absolute error in well x-positions),
+#'   barrier_error (abs error in barrier x-position), barrier_height_error
+#'   (abs error in barrier height), n_wells_found, n_barriers_found,
+#'   elapsed_sec
+#' @export
+potential_recovery_benchmark <- function(std,
+                                          strategy_name = "kde_logdensity") {
+    if (is.null(std@ground_truth) ||
+        !is(std@ground_truth, "PotentialGroundTruth"))
+        stop("potential_recovery_benchmark() requires a PotentialGroundTruth object")
+
+    ctrl <- metadata(std)$potential_control
+    if (is.null(ctrl))
+        stop("potential_recovery_benchmark() requires metadata()$potential_control")
+
+    # Inject Stage 1 stub: coords are the raw x samples
+    x_samp <- colData(std)$x_coord
+    md <- metadata(std)
+    md$stage1 <- list(
+        V_star  = matrix(1, nrow = 1L),
+        sigma   = 1,
+        coords  = list(x_samp),
+        warnings = character(0)
+    )
+    metadata(std) <- md
+
+    ctor     <- get_strategy("DynamicsEstimator", strategy_name)
+    strategy <- ctor()
+
+    t0  <- proc.time()
+    res <- estimate_dynamics(strategy, std)
+    elapsed <- (proc.time() - t0)[["elapsed"]]
+
+    if (res@status != "success")
+        return(list(well_error = NA_real_, barrier_error = NA_real_,
+                    barrier_height_error = NA_real_,
+                    n_wells_found = 0L, n_barriers_found = 0L,
+                    elapsed_sec = elapsed, reason = res@reason))
+
+    s2 <- metadata(res@value)$stage2
+
+    # Compare recovered vs true
+    true_wells   <- ctrl$true_wells        # c(-1, 1)
+    true_barrier <- ctrl$true_barrier      # 0
+    true_bh      <- ctrl$true_barrier_height  # 1
+
+    # Well error: match each true well to nearest recovered well
+    well_error <- if (length(s2$wells) >= 2L) {
+        mean(vapply(true_wells, function(w)
+            min(abs(s2$wells - w)), numeric(1L)))
+    } else NA_real_
+
+    barrier_error <- if (length(s2$barriers) >= 1L)
+        min(abs(s2$barriers - true_barrier))
+    else NA_real_
+
+    bh_found <- s2$barrier_heights[!is.na(s2$barrier_heights)]
+    barrier_height_error <- if (length(bh_found) >= 1L)
+        min(abs(bh_found - true_bh))
+    else NA_real_
+
+    list(
+        well_error           = well_error,
+        barrier_error        = barrier_error,
+        barrier_height_error = barrier_height_error,
+        n_wells_found        = length(s2$wells),
+        n_barriers_found     = length(s2$barriers),
+        elapsed_sec          = elapsed
+    )
+}
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
