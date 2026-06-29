@@ -57,3 +57,7 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
+
+# raw GEO data and processed .rds files (large binaries — not in git)
+data-raw/geo/
+data-raw/*.rds
