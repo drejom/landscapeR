@@ -96,7 +96,7 @@ heights between conditions are directly comparable.
 ## Decision
 
 **Provisional: implement log-density inversion with constrained polynomial
-smoothing as `"log_density_poly"` under the `DynamicsEstimator` contract.**
+smoothing as `"kde_logdensity"` under the `DynamicsEstimator` contract.**
 
 Rationale:
 - Validated by the reference group across three published papers and two diseases

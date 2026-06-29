@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# pre-push: mirrors the CI check job, scoped to changed files.
+# Skips entirely when the push touches none of the watched paths.
+#
+# Checks (all blocking):
+#   1. R tests pass         — R/  or tests/  changed
+#   2. ADR coverage         — any new register_strategy() call has a backing ADR
+#   3. Registry compliance  — no if/switch dispatchers, no hardcoded config
+#
+# Add [skip-hooks] to any commit message to bypass (emergencies only).
+
+set -euo pipefail
+
+# ── Collect pushed commits ──────────────────────────────────────────────────
+COMMITS=()
+while read -r local_ref local_sha _remote_ref remote_sha; do
+  [[ "$local_sha" == "0000000000000000000000000000000000000000" ]] && continue
+  if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+    base=$(git merge-base HEAD "origin/main" 2>/dev/null || true)
+    [[ -n "$base" ]] && COMMITS+=("$base..$local_sha") || COMMITS+=("$local_sha")
+  else
+    COMMITS+=("$remote_sha..$local_sha")
+  fi
+done
+
+[[ ${#COMMITS[@]} -eq 0 ]] && exit 0
+
+# ── Skip-hooks escape hatch ─────────────────────────────────────────────────
+if git log --format="%s %b" "${COMMITS[@]}" 2>/dev/null | grep -qF "[skip-hooks]"; then
+  echo "[pre-push] [skip-hooks] found — bypassing all checks."
+  exit 0
+fi
+
+# ── Collect changed files ───────────────────────────────────────────────────
+CHANGED=$(git diff --name-only "${COMMITS[@]}" 2>/dev/null | sort -u || true)
+
+needs_check() { echo "$CHANGED" | grep -q "^${1}"; }
+
+RAN=0
+FAILED=0
+
+run_check() {
+  local label="$1"; shift
+  echo "  → $label"
+  if ! "$@"; then
+    echo "  ✗ $label failed"
+    FAILED=1
+  fi
+}
+
+echo "[pre-push] Checking $(echo "$CHANGED" | wc -l | tr -d ' ') changed file(s)..."
+
+# ── 1. R tests ───────────────────────────────────────────────────────────────
+if needs_check "R/" || needs_check "tests/"; then
+  RAN=1
+  echo "[pre-push] R tests"
+  run_check "devtools::test()" Rscript -e "
+    suppressPackageStartupMessages({
+      devtools::load_all('.', quiet = TRUE)
+    })
+    results <- devtools::test(reporter = 'progress')
+    df <- as.data.frame(results)
+    n_fail <- sum(df[['failed']], na.rm = TRUE)
+    n_err  <- sum(df[['error']],  na.rm = TRUE)
+    if (n_fail + n_err > 0) {
+      cat(sprintf('\n%d failure(s), %d error(s)\n', n_fail, n_err))
+      quit(status = 1)
+    }
+  "
+fi
+
+# ── 2. ADR coverage ──────────────────────────────────────────────────────────
+if needs_check "R/" || needs_check "decisions/"; then
+  RAN=1
+  echo "[pre-push] ADR coverage"
+  run_check "ADR coverage" python3 scripts/check-adr-coverage.py
+fi
+
+# ── 3. Registry compliance ───────────────────────────────────────────────────
+if needs_check "R/"; then
+  RAN=1
+  echo "[pre-push] registry compliance"
+  run_check "registry compliance" bash scripts/check-registry-compliance.sh
+fi
+
+[[ $RAN -eq 0 ]] && echo "[pre-push] No watched paths changed — skipping." && exit 0
+[[ $FAILED -ne 0 ]] && echo "[pre-push] Checks failed. Fix the above before pushing." && exit 1
+
+echo "[pre-push] All checks passed."
