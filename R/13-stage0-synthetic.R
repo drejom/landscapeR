@@ -89,7 +89,7 @@ synthetic_control <- function(n        = 40L,
 
     # colData: store the planted sample coordinate and a binary group label.
     # u_shared is the true shared sample direction; its sign defines "high" vs
-    # "low" on the disease axis — the correct colour_by variable for plots.
+    # "low" on the state-transition axis — the correct colour_by variable for plots.
     col_df <- S4Vectors::DataFrame(
         row.names     = sample_ids,
         u_shared      = u_shared,

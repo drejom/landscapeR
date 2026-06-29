@@ -12,6 +12,162 @@
 #   plot_decomposition(std2, colour_by = "group")
 #
 # In vignettes and @examples, assign the returned ggplot and print it.
+#
+# Gallery workflow (typical for real data):
+#
+#   std2 <- decompose(get_strategy("Decomposer","hogsvd_averaged")(), std)@value
+#   plot_components(std2, colour_by = "condition")   # inspect gallery
+#   # decide component 2 is the state-transition axis, pass to Stage 2:
+#   dyn <- estimate_dynamics(get_strategy("DynamicsEstimator","kde_logdensity")(),
+#                             std2, component = 2L)
+
+# ---------------------------------------------------------------------------
+# plot_components(): gallery of k Stage 1 components with separation scores
+# ---------------------------------------------------------------------------
+
+#' Gallery plot: all Stage 1 components coloured by a metadata variable
+#'
+#' Shows the sample coordinate distribution for each of the top \code{n_components}
+#' components as a panel of ridge/violin plots.  Each panel is labelled with an
+#' \strong{η²} (eta-squared) separation score for categorical \code{colour_by}
+#' variables, or \strong{|r|} for continuous ones.  Panels are sorted
+#' highest-score-first so the most informative component is top-left.
+#'
+#' Use this immediately after Stage 1 to decide which component feeds into
+#' Stage 2.  The paper-reported state-transition axis is not always component 1:
+#' in Rockne2020 it is PC2 (age dominates PC1).
+#'
+#' @param std \code{StateTransitionData} with \code{metadata()$stage1} present
+#' @param colour_by character — colData column name to separate samples by.
+#'   Can be categorical (η² reported) or continuous (|r| reported).
+#' @param n_components integer number of components to show (default 6)
+#' @param layer integer — which layer's coordinates to use (default 1)
+#' @return a \code{ggplot} object (facet_wrap over components)
+#'
+#' @examples
+#' std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+#' ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+#' std2 <- suppressWarnings(decompose(ctor(), std))@value
+#' plot_components(std2, colour_by = "group")
+#'
+#' @export
+plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L) {
+    stopifnot(is(std, "StateTransitionData"))
+    s1 <- metadata(std)$stage1
+    if (is.null(s1))
+        stop("Stage 1 has not been run on this object. Call decompose() first.")
+
+    # Use coords_k if available; fall back to wrapping coords for old objects
+    if (!is.null(s1$coords_k)) {
+        idx     <- min(as.integer(layer), length(s1$coords_k))
+        cmat    <- s1$coords_k[[idx]]          # n x k
+        k_avail <- ncol(cmat)
+    } else {
+        idx     <- min(as.integer(layer), length(s1$coords))
+        cmat    <- matrix(s1$coords[[idx]], ncol = 1L)
+        k_avail <- 1L
+    }
+
+    k_show   <- min(as.integer(n_components), k_avail)
+    expt_list <- as.list(experiments(std))
+    cd        <- as.data.frame(colData(expt_list[[idx]]))
+    meta_col  <- if (!is.null(colour_by) && colour_by %in% colnames(cd))
+        cd[[colour_by]] else NULL
+
+    # Bimodality coefficient (Freeman & Dale 2013)
+    # BC = (skew^2 + 1) / (excess_kurtosis + 3*(n-1)^2/((n-2)*(n-3)))
+    # BC > 0.555 suggests bimodality; used as primary sort key.
+    .bc <- function(x) {
+        n  <- length(x)
+        if (n < 4L) return(NA_real_)
+        m2 <- mean((x - mean(x))^2)
+        m3 <- mean((x - mean(x))^3)
+        m4 <- mean((x - mean(x))^4)
+        sk <- m3 / m2^1.5
+        ku <- m4 / m2^2 - 3          # excess kurtosis
+        correction <- 3 * (n - 1L)^2 / ((n - 2L) * (n - 3L))
+        (sk^2 + 1) / (ku + correction)
+    }
+
+    # Secondary: separation score from metadata (η² categorical, |r| continuous)
+    .eta2 <- function(x, g) {
+        g <- as.factor(g)
+        if (nlevels(g) < 2L) return(NA_real_)
+        ss_total <- var(x) * (length(x) - 1L)
+        if (ss_total == 0) return(NA_real_)
+        gm <- mean(x)
+        ss_between <- sum(tapply(x, g, function(xi)
+            length(xi) * (mean(xi) - gm)^2))
+        ss_between / ss_total
+    }
+
+    .sep <- function(x, meta) {
+        if (is.null(meta)) return(NA_real_)
+        if (is.numeric(meta)) return(abs(cor(x, meta, use = "complete.obs")))
+        .eta2(x, meta)
+    }
+
+    rows <- lapply(seq_len(k_show), function(j) {
+        coord <- cmat[, j]
+        bc    <- .bc(coord)
+        sep   <- .sep(coord, meta_col)
+        # Panel label: PC index + BC; secondary sep score if available
+        label <- if (!is.na(sep))
+            sprintf("PC%d  BC=%.2f  %s=%.2f", j, bc,
+                    if (is.numeric(meta_col)) "|r|" else "η²", sep)
+        else
+            sprintf("PC%d  BC=%.2f", j, bc)
+        df <- data.frame(
+            coord     = coord,
+            component = label,
+            bc        = bc,
+            stringsAsFactors = FALSE
+        )
+        if (!is.null(meta_col)) df[[colour_by]] <- meta_col
+        df
+    })
+
+    # Sort by bimodality coefficient (primary), sep score (secondary tiebreak)
+    bc_scores  <- vapply(rows, function(d) d$bc[1L],  numeric(1L))
+    rows <- rows[order(bc_scores, decreasing = TRUE)]
+    df   <- do.call(rbind, rows)
+    df$component <- factor(df$component,
+                            levels = unique(df$component))
+
+    sep_label <- if (!is.null(meta_col) && is.numeric(meta_col)) "|r|" else "η²"
+    subtitle <- if (!is.null(colour_by))
+        sprintf("Sorted by bimodality coefficient (BC); %s(%s) overlaid",
+                sep_label, colour_by)
+    else
+        "Sorted by bimodality coefficient (BC > 0.555 = bimodal) — add colour_by to overlay metadata"
+
+    aes_base <- if (!is.null(colour_by) && colour_by %in% colnames(df))
+        ggplot2::aes(x = coord, fill = .data[[colour_by]], colour = .data[[colour_by]])
+    else
+        ggplot2::aes(x = coord)
+
+    p <- ggplot2::ggplot(df, aes_base) +
+        ggplot2::geom_density(alpha = 0.4, linewidth = 0.5) +
+        ggplot2::geom_rug(alpha = 0.4, sides = "b") +
+        ggplot2::geom_vline(xintercept = 0, linetype = "dotted",
+                             colour = "grey60", linewidth = 0.4) +
+        ggplot2::facet_wrap(~ component, scales = "free") +
+        ggplot2::labs(
+            title    = sprintf("Component gallery — layer %d", idx),
+            subtitle = subtitle,
+            x        = "Coordinate",
+            y        = "Density",
+            fill     = colour_by,
+            colour   = colour_by
+        ) +
+        ggplot2::theme_bw(base_size = 10) +
+        ggplot2::theme(legend.position = "bottom")
+
+    if (!is.null(colour_by) && colour_by %in% colnames(df))
+        p <- p + ggplot2::scale_fill_brewer(palette = "Set1", na.value = "grey70") +
+                 ggplot2::scale_colour_brewer(palette = "Set1", na.value = "grey70")
+    p
+}
 
 # ---------------------------------------------------------------------------
 # plot_spectrum(): singular value spectrum per layer + BBP threshold
@@ -24,7 +180,7 @@
 #' threshold \eqn{(n \cdot p)^{1/4}}.  Signal components above the threshold
 #' are detectable; those below are indistinguishable from noise.
 #'
-#' Call this before running Stage 1 to confirm that the disease axis is
+#' Call this before running Stage 1 to confirm that the state-transition axis is
 #' detectable at the current sample size.
 #'
 #' @param std \code{StateTransitionData}
@@ -77,12 +233,12 @@ plot_spectrum <- function(std, n_sv = 20L) {
 }
 
 # ---------------------------------------------------------------------------
-# plot_decomposition(): sample biplot on the Stage 1 disease axis
+# plot_decomposition(): sample biplot on the Stage 1 state-transition axis
 # ---------------------------------------------------------------------------
 
-#' Plot sample coordinates on the recovered disease axis (Stage 1 output)
+#' Plot sample coordinates on the recovered state-transition axis (Stage 1 output)
 #'
-#' Shows each layer's sample coordinates along the shared disease axis
+#' Shows each layer's sample coordinates along the shared state-transition axis
 #' recovered by Stage 1.  When the object carries a \code{SubspaceGroundTruth}
 #' (synthetic data), the angle between the recovered axis and the true axis is
 #' annotated.
@@ -111,19 +267,21 @@ plot_decomposition <- function(std, colour_by = NULL) {
     n_layers <- length(s1$coords)
     layer_nms <- names(experiments(std))
 
-    # Build a long data frame: one row per sample per layer
-    cd <- as.data.frame(colData(std))
+    # Per-experiment colData (correct sample count per layer)
+    expt_list <- as.list(experiments(std))
 
     rows <- lapply(seq_len(n_layers), function(i) {
         coord <- s1$coords[[i]]
+        # Use per-experiment colData so row count matches coord length
+        cd_i <- as.data.frame(colData(expt_list[[i]]))
         df <- data.frame(
             sample = seq_along(coord),
             layer  = layer_nms[i],
             coord  = coord,
             stringsAsFactors = FALSE
         )
-        if (!is.null(colour_by) && colour_by %in% colnames(cd))
-            df[[colour_by]] <- cd[[colour_by]]
+        if (!is.null(colour_by) && colour_by %in% colnames(cd_i))
+            df[[colour_by]] <- cd_i[[colour_by]]
         df
     })
     df <- do.call(rbind, rows)
@@ -153,11 +311,11 @@ plot_decomposition <- function(std, colour_by = NULL) {
         ggplot2::geom_hline(yintercept = 0, linetype = "dotted", colour = "grey60") +
         ggplot2::facet_wrap(~ layer, scales = "free_x") +
         ggplot2::labs(
-            title    = "Sample coordinates on the shared disease axis",
+            title    = "Sample coordinates on the shared state-transition axis",
             subtitle = if (!is.null(angle_label)) angle_label else
                        "Supply synthetic_control() output to annotate ground-truth angle",
             x        = "Sample (rank-ordered by coordinate)",
-            y        = "Disease-axis coordinate",
+            y        = "State-transition coordinate",
             colour   = colour_by
         ) +
         ggplot2::theme_bw(base_size = 11) +
@@ -175,7 +333,7 @@ plot_decomposition <- function(std, colour_by = NULL) {
 
 #' Plot the quasi-potential landscape (Stage 2 output)
 #'
-#' Shows U(x) = -log p(x) along the disease axis, with stable critical points
+#' Shows U(x) = -log p(x) along the state-transition axis, with stable critical points
 #' (wells) marked as triangles and unstable critical points (barriers) as
 #' inverted triangles.  Barrier heights are annotated.
 #'
@@ -198,7 +356,7 @@ plot_potential <- function(std, colour_by = NULL) {
         stop("Stage 2 has not been run on this object. Call estimate_dynamics() first.")
 
     # Expected stage2 structure (set by the DynamicsEstimator contract):
-    #   s2$x         numeric vector — disease-axis grid
+    #   s2$x         numeric vector — state-transition axis grid
     #   s2$U         numeric vector — quasi-potential values on grid
     #   s2$wells     numeric vector — x positions of stable critical points
     #   s2$barriers  numeric vector — x positions of unstable critical points
@@ -210,13 +368,19 @@ plot_potential <- function(std, colour_by = NULL) {
 
     curve_df <- data.frame(x = s2$x, U = s2$U)
 
-    # Critical-point annotations
-    cp_df <- rbind(
-        data.frame(x = s2$wells,    U = approx(s2$x, s2$U, s2$wells)$y,
-                   type = "well",    stringsAsFactors = FALSE),
-        data.frame(x = s2$barriers, U = approx(s2$x, s2$U, s2$barriers)$y,
-                   type = "barrier", stringsAsFactors = FALSE)
-    )
+    # Critical-point annotations (guard against empty wells/barriers)
+    cp_rows <- list()
+    if (length(s2$wells) > 0L)
+        cp_rows[[1]] <- data.frame(x = s2$wells,
+                                    U = approx(s2$x, s2$U, s2$wells)$y,
+                                    type = "well", stringsAsFactors = FALSE)
+    if (length(s2$barriers) > 0L)
+        cp_rows[[2]] <- data.frame(x = s2$barriers,
+                                    U = approx(s2$x, s2$U, s2$barriers)$y,
+                                    type = "barrier", stringsAsFactors = FALSE)
+    cp_df <- if (length(cp_rows)) do.call(rbind, cp_rows) else
+        data.frame(x = numeric(0), U = numeric(0), type = character(0),
+                   stringsAsFactors = FALSE)
 
     # Barrier-height segments
     seg_rows <- list()
@@ -239,14 +403,14 @@ plot_potential <- function(std, colour_by = NULL) {
     }
 
     # Sample rug (first layer coordinates if available from stage1)
-    rug_aes <- NULL
     s1 <- metadata(std)$stage1
     if (!is.null(s1) && length(s1$coords)) {
-        rug_x <- s1$coords[[1L]]
-        cd    <- as.data.frame(colData(std))
+        rug_x  <- s1$coords[[1L]]
+        # Use first-experiment colData to match coord length
+        cd_rug <- as.data.frame(colData(as.list(experiments(std))[[1L]]))
         rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
-        if (!is.null(colour_by) && colour_by %in% colnames(cd))
-            rug_df[[colour_by]] <- cd[[colour_by]]
+        if (!is.null(colour_by) && colour_by %in% colnames(cd_rug))
+            rug_df[[colour_by]] <- cd_rug[[colour_by]]
     } else {
         rug_df <- NULL
     }
@@ -262,7 +426,7 @@ plot_potential <- function(std, colour_by = NULL) {
         ) +
         ggplot2::labs(
             title  = "Quasi-potential landscape  U(x) = −log p(x)",
-            x      = "Disease-axis coordinate",
+            x      = "State-transition coordinate",
             y      = "U(x)",
             shape  = "Critical point"
         ) +

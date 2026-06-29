@@ -3,7 +3,7 @@
 # Strategy: "kde_logdensity"
 #
 # Algorithm (follows Rockne-Frankhouser CML_Potentials.m):
-#   1. Pool Stage 1 disease-axis coordinates across all K layers
+#   1. Pool Stage 1 state-transition axis coordinates across all K layers
 #   2. KDE with plug-in bandwidth (ks::hpi)
 #   3. Evaluate p(x) on a grid; U(x) = -log p(x)
 #   4. Find critical points via zero-crossings of dU/dx (= -d/dx log p)
@@ -34,11 +34,19 @@ setMethod("estimate_dynamics",
 
         # Parameters with defaults
         p         <- modifyList(list(n_grid = 512L, poly_degree = 6L,
-                                     layer = 1L, pool_layers = TRUE),
+                                     layer = 1L, pool_layers = TRUE,
+                                     component = 1L),
                                 strategy@params)
 
-        # Collect disease-axis coordinates
-        coords_list <- s1$coords
+        # Collect state-transition axis coordinates for the chosen component
+        comp <- as.integer(p$component)
+        if (!is.null(s1$coords_k)) {
+            # Multi-component Stage 1 output (v0.2+)
+            coords_list <- lapply(s1$coords_k, function(m) drop(m[, comp]))
+        } else {
+            # Backwards compat: single-component Stage 1 output
+            coords_list <- s1$coords
+        }
         if (isTRUE(p$pool_layers)) {
             x_obs <- unlist(coords_list)
         } else {

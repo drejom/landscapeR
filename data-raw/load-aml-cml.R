@@ -47,13 +47,16 @@ parse_train_meta <- function(nms) {
   )
 }
 
-# Validation: L_{mouseID}_{condition}_{diet}{wt}_{sex}_{?}
+# Validation: T{tp}_{mouseID}_{condition}_{diet}{wt}_{sex}_{?}
+#             L_{mouseID}_{condition}_{diet}{wt}_{sex}_{?}   (leukemic endpoint)
+# Field 1 is the timepoint token (T0-T6 or L); field 2 is mouse ID.
+# For T-prefix samples, condition is field 3; for L_ samples also field 3.
 parse_val_meta <- function(nms) {
   parts <- strsplit(nms, "_")
   data.frame(
     row.names = nms,
     cohort     = "val_2018",
-    timepoint  = NA_character_,
+    timepoint  = sapply(parts, `[`, 1),   # T0, T1, ..., T6, or L
     mouse_id   = sapply(parts, `[`, 2),
     condition  = sapply(parts, function(x) {
       cond <- x[3]; ifelse(cond == "Ctrl", "CTL", cond)
@@ -81,6 +84,17 @@ val_raw <- read.table(
   gzfile(file.path(GEO, "GSE133642_validation_merged_gene_counts__log2cpm_5CPMin2samples.tsv.gz")),
   sep = "\t", header = TRUE, row.names = 1, check.names = FALSE)
 rownames(val_raw) <- strip_version(rownames(val_raw))
+cat(sprintf("  %d genes x %d samples (before WK filter)\n", nrow(val_raw), ncol(val_raw)))
+
+# Drop WK10-WK28 samples: separate arm, different mice (3127/3130/3131/3200/3202),
+# no T0 baseline, library prep confounded with timepoint. GEO depositors flagged
+# batch effects explicitly. Keep L_ (terminal) and T-timepoint samples only.
+wk_mask <- grepl("^WK[0-9]", colnames(val_raw))
+if (any(wk_mask)) {
+  cat(sprintf("  Dropping %d WK-timepoint samples (no baseline, batch-confounded)\n",
+              sum(wk_mask)))
+  val_raw <- val_raw[, !wk_mask, drop = FALSE]
+}
 cat(sprintf("  %d genes x %d samples\n", nrow(val_raw), ncol(val_raw)))
 
 shared_genes <- intersect(rownames(train_raw), rownames(val_raw))
