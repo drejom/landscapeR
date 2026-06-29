@@ -1,0 +1,181 @@
+---
+title: "Development log"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Development log}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 8,
+  fig.height = 5,
+  dpi = 120
+)
+```
+
+> **This is a living document.** It tracks what is working, what is being built,
+> and what is planned. Updated after each development sprint.
+
+---
+
+## Roadmap
+
+### Implemented
+
+| Stage | Name | Status |
+|---|---|---|
+| Architecture | S4 contracts, registry, container, provenance | ✅ Done |
+| 0 | Synthetic controls (two-group SVD, double-well Langevin) | ✅ Done |
+| 1 | Comparative decomposition — `hogsvd_averaged`, `hogsvd_prereduced` | ✅ Done |
+| 1+ | Multi-component output (k = 6), bimodality-sorted gallery | ✅ Done |
+| 1+ | `project_into()` — Rockne2020 projection protocol | ✅ Done |
+| 2 | KDE log-density inversion, constrained polynomial smooth | ✅ Done |
+
+### Planned
+
+| Stage | Name | Notes |
+|---|---|---|
+| 0.5 | Archetype classifier | `ranger`-based; assigns samples to known archetypes |
+| 0.75 | Distributional fit assessment | SBI backend via `reticulate`; replaces ad-hoc BC threshold |
+| 1 | HO-GSVD rank-deficiency handling | Kempf algorithm; critical for diabetes genotype layer |
+| 2 | Minimum barrier height filter | Suppress noise wells in smooth unimodal KDE |
+| 2 | Fokker-Planck time-to-transition | Solve FP equation; predict time to leukemia as in paper |
+| 2 | Survival prediction | Validate against Kaplan-Meier; replicate paper Fig 4 |
+| — | pkgdown site auto-deploy via CI | Render + rsync on push to main |
+| — | CML reference replication | End-to-end on GSE244990; reproduce Leukemia 2024 Fig |
+
+### Biological instantiations
+
+| Dataset | Modality | Status |
+|---|---|---|
+| AML/CML (Cbfb-MYH11, BCR-ABL) | mRNA, miRNA | Data loaded, Stage 1 running |
+| Pogona TSD | mRNA | Planned; sex-determination temperature axis |
+| Islet/diabetes multi-omic | mRNA + ATAC + genotype | Planned; rank-deficient genotype layer |
+
+---
+
+## Stage 0 — Synthetic validation
+
+The pipeline is tested against two synthetic ground truths.
+
+### Two-group control
+
+`synthetic_control()` generates two groups of samples with a planted signal
+on the first component. Used to verify Stage 1 recovers the correct axis.
+
+```{r synthetic-control}
+library(landscapeR)
+
+std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+std1 <- suppressWarnings(decompose(ctor(), std))@value
+
+plot_spectrum(std1)
+```
+
+```{r gallery-synthetic}
+plot_components(std1, colour_by = "group")
+```
+
+### Double-well potential control
+
+`synthetic_potential_control()` draws samples from a known double-well
+U(x) = (x² − 1)² via Langevin simulation. Provides a ground truth for
+Stage 2 validation: wells at ±1, barrier at 0, barrier height = 1.
+
+```{r double-well}
+# synthetic_potential_control returns a 1-layer object (Langevin coordinates).
+# Duplicate the layer so hogsvd_averaged (requires >= 2 layers) can run.
+std_dw  <- synthetic_potential_control(n = 120L, seed = 42L)
+se_dw   <- experiments(std_dw)[[1L]]
+std_dw2l <- StateTransitionData(
+  experiments = list(coords_a = se_dw, coords_b = se_dw),
+  colData     = colData(std_dw)
+)
+
+ctor    <- get_strategy("Decomposer", "hogsvd_averaged")
+std_dw1 <- suppressWarnings(decompose(ctor(), std_dw2l))@value
+
+dctor   <- get_strategy("DynamicsEstimator", "kde_logdensity")
+std_dw2 <- estimate_dynamics(dctor(), std_dw1)@value
+plot_potential(std_dw2)
+```
+
+Recovery benchmark:
+
+```{r benchmark}
+# benchmark uses the original single-layer ground-truth object directly
+bm <- potential_recovery_benchmark(std_dw)
+knitr::kable(data.frame(
+  metric = names(bm),
+  value  = round(unlist(bm), 3)
+), col.names = c("Metric", "Value"))
+```
+
+---
+
+## Stage 1 — AML mRNA (primary 2018 cohort)
+
+The 2018 cohort is the paper's primary experiment: clean randomised batches,
+101 samples (T0–T6 + leukemic endpoint L). The 2016 cohort is batch-confounded
+and treated as a supplementary stress-test, projected into the 2018 state-space.
+
+```{r aml-stage1, eval=FALSE}
+aml  <- readRDS("../data-raw/aml_mrna_std.rds")
+
+# Run Stage 1 on the primary 2018 layer
+ctor  <- get_strategy("Decomposer", "hogsvd_averaged")
+std1  <- decompose(ctor(), aml)@value
+
+# Gallery sorted by bimodality coefficient
+# PC2 expected to be the AML state-transition axis (PC1 = age in paper)
+plot_components(std1, colour_by = "condition")
+```
+
+> **Open question:** Gallery shows PC1 as highest BC (0.87) and η² (0.18) in
+> the 2018 standalone SVD. The paper reports PC2 as the AML axis and PC1 as
+> age. Verifying against paper figures — this section will be updated once
+> confirmed.
+
+---
+
+## Stage 2 — Potential landscape
+
+Stage 2 extracts the quasi-potential from the Stage 1 coordinates.
+The target: recover the double-well landscape reported in Rockne2020,
+with CTL samples in one well and CM/leukemic samples in the other.
+
+```{r potential-aml, eval=FALSE}
+dctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+std2  <- estimate_dynamics(dctor(list(component = 2L)), std1)@value
+plot_potential(std2)
+```
+
+> **Current status:** Stage 2 is implemented and runs. Over-fitting (too many
+> wells/barriers) occurs when run on the wrong component (age axis, PC1).
+> Running on PC2 pending confirmation of PC identity from paper.
+> A minimum barrier height filter is planned for the next sprint.
+
+---
+
+## Architecture notes
+
+The package uses a **contract/registry pattern** — all stage algorithms are
+S4 virtual classes with generics (`decompose`, `estimate_dynamics`). Concrete
+strategies are registered by name and retrieved at runtime:
+
+```{r registry}
+list_strategies("Decomposer")
+list_strategies("DynamicsEstimator")
+```
+
+This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
+`register_strategy()` call with no changes to calling code or tests.
+
+---
+
+*Last updated: 2026-06-29*
