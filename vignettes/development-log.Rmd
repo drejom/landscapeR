@@ -15,6 +15,7 @@ knitr::opts_chunk$set(
   fig.height = 5,
   dpi = 120
 )
+library(landscapeR)
 ```
 
 > **This is a living document.** It tracks what is working, what is being built,
