@@ -32,7 +32,7 @@ library(landscapeR)
 | Architecture | S4 contracts, registry, container, provenance | ✅ Done |
 | 0 | Synthetic controls (two-group SVD, double-well Langevin) | ✅ Done |
 | 1 | Comparative decomposition — `hogsvd_averaged`, `hogsvd_prereduced` | ✅ Done |
-| 1+ | Multi-component output (k = 6), bimodality-sorted gallery | ✅ Done |
+| 1+ | Multi-component output (k = 6), bimodality-sorted component plots | ✅ Done |
 | 1+ | `project_into()` — Rockne2020 projection protocol | ✅ Done |
 | 2 | KDE log-density inversion, constrained polynomial smooth | ✅ Done |
 
@@ -78,7 +78,7 @@ std1 <- suppressWarnings(decompose(ctor(), std))@value
 plot_spectrum(std1)
 ```
 
-```{r gallery-synthetic}
+```{r component plots-synthetic}
 plot_components(std1, colour_by = "group")
 ```
 
@@ -132,12 +132,12 @@ aml  <- readRDS("../data-raw/aml_mrna_std.rds")
 ctor  <- get_strategy("Decomposer", "hogsvd_averaged")
 std1  <- decompose(ctor(), aml)@value
 
-# Gallery sorted by bimodality coefficient
+# Component plots sorted by bimodality coefficient
 # PC2 expected to be the AML state-transition axis (PC1 = age in paper)
 plot_components(std1, colour_by = "condition")
 ```
 
-> **Open question:** Gallery shows PC1 as highest BC (0.87) and η² (0.18) in
+> **Open question:** Component plots shows PC1 as highest BC (0.87) and η² (0.18) in
 > the 2018 standalone SVD. The paper reports PC2 as the AML axis and PC1 as
 > age. Verifying against paper figures — this section will be updated once
 > confirmed.

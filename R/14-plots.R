@@ -13,19 +13,19 @@
 #
 # In vignettes and @examples, assign the returned ggplot and print it.
 #
-# Gallery workflow (typical for real data):
+# Component plots workflow (typical for real data):
 #
 #   std2 <- decompose(get_strategy("Decomposer","hogsvd_averaged")(), std)@value
-#   plot_components(std2, colour_by = "condition")   # inspect gallery
+#   plot_components(std2, colour_by = "condition")   # inspect component plots
 #   # decide component 2 is the state-transition axis, pass to Stage 2:
 #   dyn <- estimate_dynamics(get_strategy("DynamicsEstimator","kde_logdensity")(),
 #                             std2, component = 2L)
 
 # ---------------------------------------------------------------------------
-# plot_components(): gallery of k Stage 1 components with separation scores
+# plot_components(): component plots of k Stage 1 components with separation scores
 # ---------------------------------------------------------------------------
 
-#' Gallery plot: all Stage 1 components coloured by a metadata variable
+#' Component plots plot: all Stage 1 components coloured by a metadata variable
 #'
 #' Shows the sample coordinate distribution for each of the top \code{n_components}
 #' components as a panel of ridge/violin plots.  Each panel is labelled with an
@@ -153,7 +153,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                              colour = "grey60", linewidth = 0.4) +
         ggplot2::facet_wrap(~ component, scales = "free") +
         ggplot2::labs(
-            title    = sprintf("Component gallery — layer %d", idx),
+            title    = sprintf("Component component plots — layer %d", idx),
             subtitle = subtitle,
             x        = "Coordinate",
             y        = "Density",

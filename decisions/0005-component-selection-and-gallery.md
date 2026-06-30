@@ -1,4 +1,4 @@
-# 0005 — Component selection: multi-component Stage 1 output and gallery plot
+# 0005 — Component selection: multi-component Stage 1 output and component plots
 
 **Stage:** 1 / cross-cutting
 **Status:** accepted
@@ -30,7 +30,7 @@ requiring the user to know in advance which component is biologically relevant.
 The correct solution is:
 
 1. Return **k components** from Stage 1 (not just the first)
-2. Provide a **gallery plot** (`plot_components()`) that shows each component's
+2. Provide a **component plots** (`plot_components()`) that shows each component's
    separation by a user-supplied metadata column, ranked by a separation score
 3. Stage 2 takes a `component` parameter (default: auto-selected)
 
@@ -67,7 +67,7 @@ survives projection despite confounding, that strengthens the biological claim.
    as a list of per-layer coordinate vectors can still work; we extend, not replace
 4. **Projection support** — secondary cohorts can be projected into the primary
    state-space to confirm signal survives
-5. **Gallery actionability** — the plot must make the right component obvious to
+5. **Component plots actionability** — the plot must make the right component obvious to
    a biologist, not just show raw numbers
 
 ## Evidence
@@ -98,13 +98,13 @@ loading matrix p×k), and `sigma_k` (k singular values per layer). The existing
 `V_star` and `coords` fields are preserved as aliases pointing to component 1
 for backwards compatibility.**
 
-**`plot_components(std, colour_by, n_components=6)` is added as a gallery plot
+**`plot_components(std, colour_by, n_components=6)` is added as a component plots
 showing, for each component, the per-condition distribution and a separation
 score (η² for categorical, r² for continuous). Components are sorted
 highest-separation-first.**
 
 **`estimate_dynamics()` gains a `component` parameter (integer, default 1).
-When running on real data the user inspects the gallery and passes the relevant
+When running on real data the user inspects the component plots and passes the relevant
 component number explicitly.**
 
 **`project_into(std_primary, std_secondary)` is added as a utility that
@@ -126,7 +126,7 @@ Rockne2020 validation protocol without hard-coding a component index.
   double-well tests already use a single component
 - `project_into()` is a pure function (no side-effects on the primary object);
   it only writes to the secondary object's metadata
-- The gallery plot becomes the expected first step after Stage 1 on any new
+- The component plots becomes the expected first step after Stage 1 on any new
   dataset — this should be documented in the vignette workflow
 
 ## Review trigger
@@ -135,5 +135,5 @@ Rockne2020 validation protocol without hard-coding a component index.
   a new biological system, expose k as a parameter in `PipelineConfig`
 - If auto-selection is requested by users, add it as an opt-in `auto_select_by`
   parameter that records the selection rationale in provenance — but do not
-  make it the default (manual selection after gallery inspection is the
+  make it the default (manual selection after component plots inspection is the
   scientifically honest path)
