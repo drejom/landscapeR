@@ -3,3 +3,7 @@
 ^decisions$
 ^CLAUDE\.md$
 ^\.claude-notes\.md$
+^_pkgdown\.yml$
+^docs$
+^deploy\.sh$
+^vignettes/development-log\.Rmd$
