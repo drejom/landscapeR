@@ -4,8 +4,9 @@
 
 setClass("GroundTruth", representation("VIRTUAL"))
 
+#' Ground truth for Stage 0/1 decomposition recovery tests
 #' @export
-setClass("SubspaceGroundTruth",        # Stage-0/1 decomposition controls
+setClass("SubspaceGroundTruth",
     contains = "GroundTruth",
     representation(
         shared    = "matrix",
@@ -14,8 +15,9 @@ setClass("SubspaceGroundTruth",        # Stage-0/1 decomposition controls
     )
 )
 
+#' Ground truth for Stage 0.5 archetype topology tests
 #' @export
-setClass("TopologyGroundTruth",        # Stage-0.5 archetype dictionary
+setClass("TopologyGroundTruth",
     contains = "GroundTruth",
     representation(
         topology   = "character",
@@ -23,8 +25,9 @@ setClass("TopologyGroundTruth",        # Stage-0.5 archetype dictionary
     )
 )
 
+#' Ground truth for Stage 2 quasi-potential recovery tests
 #' @export
-setClass("PotentialGroundTruth",       # Stage-2 dynamics controls
+setClass("PotentialGroundTruth",
     contains = "GroundTruth",
     representation(
         potential = "function",

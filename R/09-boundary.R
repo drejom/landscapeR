@@ -35,7 +35,7 @@ validate_boundary <- function(data,
 
     if (inherits(migrated, "error"))
         return(stage_failure(sprintf(
-            "[%s] schema mismatch: object is v%s, stage needs v%s — %s",
+            "[%s] schema mismatch: object is v%s, stage needs v%s -- %s",
             stage, current, required_schema, conditionMessage(migrated)
         )))
 

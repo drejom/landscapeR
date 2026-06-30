@@ -91,11 +91,14 @@
 # Strategy: hogsvd_averaged
 # ---------------------------------------------------------------------------
 
+#' @rdname decompose
+#' @export
 setClass("HogsvdAveraged",
     contains  = "Decomposer",
     representation(params = "list")
 )
 
+#' @rdname decompose
 setMethod("decompose", signature("HogsvdAveraged", "StateTransitionData"),
     function(strategy, data, ...) {
         layers <- as.list(experiments(data))
@@ -151,11 +154,14 @@ setMethod("decompose", signature("HogsvdAveraged", "StateTransitionData"),
 # Strategy: hogsvd_prereduced
 # ---------------------------------------------------------------------------
 
+#' @rdname decompose
+#' @export
 setClass("HogsvdPrereduced",
     contains  = "Decomposer",
     representation(params = "list")
 )
 
+#' @rdname decompose
 setMethod("decompose", signature("HogsvdPrereduced", "StateTransitionData"),
     function(strategy, data, ...) {
         layers  <- as.list(experiments(data))

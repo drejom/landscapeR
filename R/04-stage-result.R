@@ -31,12 +31,20 @@ setValidity("StageResult", function(object) {
         TRUE
 })
 
+#' Construct a successful StageResult
+#' @param value Annotated \code{StateTransitionData} returned by the stage.
+#' @param provenance List of provenance records.
+#' @return A \code{StageResult} with \code{status = "success"}.
 #' @export
 stage_success <- function(value, provenance = list()) {
     new("StageResult", status = "success", value = value,
         reason = "", provenance = provenance)
 }
 
+#' Construct a failed StageResult
+#' @param reason Diagnostic string explaining the failure.
+#' @param provenance List of provenance records.
+#' @return A \code{StageResult} with \code{status = "failure"}.
 #' @export
 stage_failure <- function(reason, provenance = list()) {
     new("StageResult", status = "failure", value = NULL,

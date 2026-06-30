@@ -1,7 +1,10 @@
 # Diagnostic plot functions for StateTransitionData
+
+utils::globalVariables(c("coord", "sample_ord", ".data", "x", "U", "type",
+                          "xend", "y", "yend", "sv", "layer"))
 #
 # All functions take a StateTransitionData object and return a ggplot.
-# colour_by is always optional — omit it for unlabelled exploratory plots,
+# colour_by is always optional -- omit it for unlabelled exploratory plots,
 # supply a colData column name to colour points by a sample covariate.
 #
 # Typical interactive use:
@@ -25,12 +28,12 @@
 # plot_components(): component plots of k Stage 1 components with separation scores
 # ---------------------------------------------------------------------------
 
-#' Component plots plot: all Stage 1 components coloured by a metadata variable
+#' Component plots: all Stage 1 components coloured by a metadata variable
 #'
 #' Shows the sample coordinate distribution for each of the top \code{n_components}
 #' components as a panel of ridge/violin plots.  Each panel is labelled with an
-#' \strong{η²} (eta-squared) separation score for categorical \code{colour_by}
-#' variables, or \strong{|r|} for continuous ones.  Panels are sorted
+#' eta-squared separation score for categorical \code{colour_by}
+#' variables, or |r| for continuous ones.  Panels are sorted
 #' highest-score-first so the most informative component is top-left.
 #'
 #' Use this immediately after Stage 1 to decide which component feeds into
@@ -38,10 +41,10 @@
 #' in Rockne2020 it is PC2 (age dominates PC1).
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage1} present
-#' @param colour_by character — colData column name to separate samples by.
-#'   Can be categorical (η² reported) or continuous (|r| reported).
+#' @param colour_by character -- colData column name to separate samples by.
+#'   Can be categorical (eta-squared reported) or continuous (|r| reported).
 #' @param n_components integer number of components to show (default 6)
-#' @param layer integer — which layer's coordinates to use (default 1)
+#' @param layer integer -- which layer's coordinates to use (default 1)
 #' @return a \code{ggplot} object (facet_wrap over components)
 #'
 #' @examples
@@ -89,7 +92,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         (sk^2 + 1) / (ku + correction)
     }
 
-    # Secondary: separation score from metadata (η² categorical, |r| continuous)
+    # Secondary: separation score from metadata (\u03b7\u00b2 categorical, |r| continuous)
     .eta2 <- function(x, g) {
         g <- as.factor(g)
         if (nlevels(g) < 2L) return(NA_real_)
@@ -114,7 +117,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         # Panel label: PC index + BC; secondary sep score if available
         label <- if (!is.na(sep))
             sprintf("PC%d  BC=%.2f  %s=%.2f", j, bc,
-                    if (is.numeric(meta_col)) "|r|" else "η²", sep)
+                    if (is.numeric(meta_col)) "|r|" else "eta^2", sep)
         else
             sprintf("PC%d  BC=%.2f", j, bc)
         df <- data.frame(
@@ -134,12 +137,12 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     df$component <- factor(df$component,
                             levels = unique(df$component))
 
-    sep_label <- if (!is.null(meta_col) && is.numeric(meta_col)) "|r|" else "η²"
+    sep_label <- if (!is.null(meta_col) && is.numeric(meta_col)) "|r|" else "eta^2"
     subtitle <- if (!is.null(colour_by))
         sprintf("Sorted by bimodality coefficient (BC); %s(%s) overlaid",
                 sep_label, colour_by)
     else
-        "Sorted by bimodality coefficient (BC > 0.555 = bimodal) — add colour_by to overlay metadata"
+        "Sorted by bimodality coefficient (BC > 0.555 = bimodal) -- add colour_by to overlay metadata"
 
     aes_base <- if (!is.null(colour_by) && colour_by %in% colnames(df))
         ggplot2::aes(x = coord, fill = .data[[colour_by]], colour = .data[[colour_by]])
@@ -153,7 +156,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                              colour = "grey60", linewidth = 0.4) +
         ggplot2::facet_wrap(~ component, scales = "free") +
         ggplot2::labs(
-            title    = sprintf("Component component plots — layer %d", idx),
+            title    = sprintf("Component component plots -- layer %d", idx),
             subtitle = subtitle,
             x        = "Coordinate",
             y        = "Density",
@@ -294,7 +297,7 @@ plot_decomposition <- function(std, colour_by = NULL) {
         v_hat  <- s1$V_star
         cos_a  <- min(1, abs(sum(v_true * v_hat) /
                              (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
-        angle_label <- sprintf("angle to v_true = %.1f°", acos(cos_a) * 180 / pi)
+        angle_label <- sprintf("angle to v_true = %.1f\u00b0", acos(cos_a) * 180 / pi)
     }
 
     # x-axis: sample index (rank-ordered within each layer for readability)
@@ -356,10 +359,10 @@ plot_potential <- function(std, colour_by = NULL) {
         stop("Stage 2 has not been run on this object. Call estimate_dynamics() first.")
 
     # Expected stage2 structure (set by the DynamicsEstimator contract):
-    #   s2$x         numeric vector — state-transition axis grid
-    #   s2$U         numeric vector — quasi-potential values on grid
-    #   s2$wells     numeric vector — x positions of stable critical points
-    #   s2$barriers  numeric vector — x positions of unstable critical points
+    #   s2$x         numeric vector -- state-transition axis grid
+    #   s2$U         numeric vector -- quasi-potential values on grid
+    #   s2$wells     numeric vector -- x positions of stable critical points
+    #   s2$barriers  numeric vector -- x positions of unstable critical points
     required <- c("x", "U", "wells", "barriers")
     missing_fields <- setdiff(required, names(s2))
     if (length(missing_fields))
@@ -425,7 +428,7 @@ plot_potential <- function(std, colour_by = NULL) {
             labels = c(well = "Stable (well)", barrier = "Unstable (barrier)")
         ) +
         ggplot2::labs(
-            title  = "Quasi-potential landscape  U(x) = −log p(x)",
+            title  = "Quasi-potential landscape  U(x) = -log p(x)",
             x      = "State-transition coordinate",
             y      = "U(x)",
             shape  = "Critical point"

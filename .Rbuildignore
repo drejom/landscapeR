@@ -7,3 +7,14 @@
 ^docs$
 ^deploy\.sh$
 ^vignettes/development-log\.Rmd$
+^\.github$
+^\.playwright-mcp$
+^hooks$
+^install-hooks\.sh$
+^scripts$
+^context$
+^CONTEXT-MAP\.md$
+^UBIQUITOUS_LANGUAGE\.md$
+^data-raw$
+^aml_2018_potential\.png$
+^Rplots\.pdf$

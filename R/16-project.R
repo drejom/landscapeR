@@ -48,7 +48,7 @@ project_into <- function(std_primary, std_secondary,
     if (is.null(s1_p))
         stop("project_into: std_primary has no Stage 1 result. Run decompose() first.")
     if (is.null(s1_p$V_k))
-        stop("project_into: std_primary Stage 1 result has no V_k — ",
+        stop("project_into: std_primary Stage 1 result has no V_k -- ",
              "re-run decompose() with a current version of hogsvd_averaged.")
 
     V_k <- s1_p$V_k      # p x k gene loading matrix from primary

@@ -6,6 +6,7 @@
 # Stage 0 — Synthetic data generation
 # ---------------------------------------------------------------------------
 
+#' Virtual class for Stage 0 synthetic data generators
 #' @export
 setClass("Generator", representation("VIRTUAL"))
 
@@ -24,6 +25,7 @@ setGeneric("generate",
 # Stage 0.5a — Signature extraction
 # ---------------------------------------------------------------------------
 
+#' Virtual class for Stage 0.5a signature extractors
 #' @export
 setClass("SignatureExtractor", representation("VIRTUAL"))
 
@@ -44,6 +46,7 @@ setGeneric("extract_signature",
 # Stage 0.5b — Archetype classification
 # ---------------------------------------------------------------------------
 
+#' Virtual class for Stage 0.5b archetype classifiers
 #' @export
 setClass("ArchetypeClassifier", representation("VIRTUAL"))
 
@@ -64,6 +67,7 @@ setGeneric("classify_archetype",
 # Stage 0.5c — Per-domain interpretation map
 # ---------------------------------------------------------------------------
 
+#' Virtual class for Stage 0.5c per-domain interpretation maps
 #' @export
 setClass("InterpretationMap", representation("VIRTUAL"))
 
@@ -85,6 +89,7 @@ setGeneric("interpret",
 # Stage 0.75 — Distributional fit assessment
 # ---------------------------------------------------------------------------
 
+#' Virtual class for Stage 0.75 distributional fit assessors
 #' @export
 setClass("FitAssessor", representation("VIRTUAL"))
 
@@ -114,6 +119,7 @@ setGeneric("assess_fit",
 # Stage 1 — Comparative decomposition
 # ---------------------------------------------------------------------------
 
+#' Virtual class for Stage 1 comparative decomposition strategies
 #' @export
 setClass("Decomposer", representation("VIRTUAL"))
 
@@ -137,6 +143,7 @@ setGeneric("decompose",
 # Stage 2 — Dynamics estimation
 # ---------------------------------------------------------------------------
 
+#' Virtual class for Stage 2 dynamics estimation strategies
 #' @export
 setClass("DynamicsEstimator", representation("VIRTUAL"))
 

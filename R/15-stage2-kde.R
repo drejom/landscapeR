@@ -19,11 +19,14 @@
 # Strategy class and method
 # ---------------------------------------------------------------------------
 
+#' @rdname estimate_dynamics
+#' @export
 setClass("KdeLogDensityEstimator",
     contains  = "DynamicsEstimator",
     representation(params = "list")
 )
 
+#' @rdname estimate_dynamics
 setMethod("estimate_dynamics",
     signature("KdeLogDensityEstimator", "StateTransitionData"),
     function(strategy, data, ...) {
@@ -57,7 +60,7 @@ setMethod("estimate_dynamics",
 
         if (length(x_obs) < 5L)
             return(stage_failure(
-                "estimate_dynamics: fewer than 5 coordinate values — cannot fit KDE."))
+                "estimate_dynamics: fewer than 5 coordinate values -- cannot fit KDE."))
 
         # KDE with plug-in bandwidth
         h   <- ks::hpi(x_obs)
