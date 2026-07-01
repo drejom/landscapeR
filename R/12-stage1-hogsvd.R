@@ -99,6 +99,10 @@ setClass("HogsvdAveraged",
 #' @rdname decompose
 setMethod("decompose", signature("HogsvdAveraged", "StateTransitionData"),
     function(strategy, data, ...) {
+        bv <- validate_boundary(data, stage = "decompose")
+        if (is(bv, "StageResult")) return(bv)
+        data <- bv
+
         layers <- as.list(experiments(data))
         if (length(layers) < 2L)
             return(stage_failure("hogsvd_averaged requires at least 2 layers"))
@@ -162,6 +166,10 @@ setClass("HogsvdPrereduced",
 #' @rdname decompose
 setMethod("decompose", signature("HogsvdPrereduced", "StateTransitionData"),
     function(strategy, data, ...) {
+        bv <- validate_boundary(data, stage = "decompose")
+        if (is(bv, "StageResult")) return(bv)
+        data <- bv
+
         layers  <- as.list(experiments(data))
         if (length(layers) < 2L)
             return(stage_failure("hogsvd_prereduced requires at least 2 layers"))

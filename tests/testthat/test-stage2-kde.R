@@ -141,6 +141,15 @@ test_that("synthetic_potential_control produces PotentialGroundTruth", {
     expect_equal(ctrl$true_barrier_height, 1)
 })
 
+test_that("estimate_dynamics fails with StageResult when schema_version is invalid (direct call)", {
+    std <- empty_std()
+    std@schema_version <- "99.0.0"
+    ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+    result <- estimate_dynamics(ctor(), std)
+    expect_s4_class(result, "StageResult")
+    expect_equal(result@status, "failure")
+})
+
 test_that("pool_layers=FALSE uses single layer", {
     std_pot <- synthetic_potential_control(n = 100L, seed = 4L)
     x_samp <- colData(std_pot)$x_coord

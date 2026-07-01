@@ -30,6 +30,10 @@ setClass("KdeLogDensityEstimator",
 setMethod("estimate_dynamics",
     signature("KdeLogDensityEstimator", "StateTransitionData"),
     function(strategy, data, ...) {
+        bv <- validate_boundary(data, stage = "estimate_dynamics")
+        if (is(bv, "StageResult")) return(bv)
+        data <- bv
+
         s1 <- metadata(data)$stage1
         if (is.null(s1))
             return(stage_failure(
