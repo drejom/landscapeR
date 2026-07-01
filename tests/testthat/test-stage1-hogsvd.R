@@ -53,6 +53,34 @@ test_that("hogsvd_averaged angle improves with signal (above BBP)", {
     expect_lt(bm_hi$angle_deg, bm_lo$angle_deg)
 })
 
+test_that("decompose (hogsvd_averaged) fails with StageResult when schema_version is invalid", {
+    std <- empty_std()
+    std@schema_version <- "99.0.0"
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    result <- decompose(ctor(), std)
+    expect_s4_class(result, "StageResult")
+    expect_equal(result@status, "failure")
+})
+
+test_that("decompose (hogsvd_prereduced) fails with StageResult when schema_version is invalid", {
+    std <- empty_std()
+    std@schema_version <- "99.0.0"
+    ctor <- get_strategy("Decomposer", "hogsvd_prereduced")
+    result <- decompose(ctor(), std)
+    expect_s4_class(result, "StageResult")
+    expect_equal(result@status, "failure")
+})
+
+test_that("decompose boundary failure fires without run_pipeline (direct call)", {
+    std <- empty_std()
+    std@schema_version <- "99.0.0"
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    result <- decompose(ctor(), std)
+    expect_s4_class(result, "StageResult")
+    expect_equal(result@status, "failure")
+    expect_match(result@reason, "schema mismatch|expected StateTransitionData", perl = FALSE)
+})
+
 test_that("multi-layer averaging: K=3 improves over K=2 at high signal", {
     # Reliable only when signal is clearly above BBP
     bm2 <- suppressWarnings(

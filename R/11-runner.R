@@ -22,9 +22,6 @@ run_pipeline <- function(data, config) {
         params   <- config@params[[impl_name]] %||% list()
         strategy <- ctor(params)
 
-        data <- validate_boundary(data, stage = s$name)
-        if (is(data, "StageResult")) return(data)
-
         result <- s$fn(strategy, data)
 
         if (!is(result, "StageResult"))
