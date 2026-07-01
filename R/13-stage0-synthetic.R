@@ -156,7 +156,7 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
                     signal_above_bbp = NA, warnings = res@reason))
 
     v_true    <- std@ground_truth@shared[, 1L]
-    v_hat     <- metadata(res@value)$stage1$V_star
+    v_hat     <- dr_V_star(metadata(res@value)$stage1)
     cos_angle <- min(1, abs(sum(v_true * v_hat) /
                             (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
     angle_deg <- acos(cos_angle) * 180 / pi
@@ -165,7 +165,7 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
         angle_deg        = angle_deg,
         signal_above_bbp = metadata(std)$control$signal_above_bbp,
         elapsed_sec      = elapsed,
-        warnings         = metadata(res@value)$stage1$warnings
+        warnings         = dr_warnings(metadata(res@value)$stage1)
     )
 }
 
@@ -334,11 +334,15 @@ potential_recovery_benchmark <- function(std,
     # Inject Stage 1 stub: coords are the raw x samples
     x_samp <- colData(std)$x_coord
     md <- metadata(std)
-    md$stage1 <- list(
-        V_star  = matrix(1, nrow = 1L),
-        sigma   = 1,
-        coords  = list(x_samp),
-        warnings = character(0)
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
     )
     metadata(std) <- md
 

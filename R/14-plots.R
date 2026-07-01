@@ -60,16 +60,9 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     if (is.null(s1))
         stop("Stage 1 has not been run on this object. Call decompose() first.")
 
-    # Use coords_k if available; fall back to wrapping coords for old objects
-    if (!is.null(s1$coords_k)) {
-        idx     <- min(as.integer(layer), length(s1$coords_k))
-        cmat    <- s1$coords_k[[idx]]          # n x k
-        k_avail <- ncol(cmat)
-    } else {
-        idx     <- min(as.integer(layer), length(s1$coords))
-        cmat    <- matrix(s1$coords[[idx]], ncol = 1L)
-        k_avail <- 1L
-    }
+    idx     <- min(as.integer(layer), length(dr_coords_k(s1)))
+    cmat    <- dr_coords_k(s1)[[idx]]
+    k_avail <- ncol(cmat)
 
     k_show   <- min(as.integer(n_components), k_avail)
     expt_list <- as.list(experiments(std))
@@ -267,14 +260,14 @@ plot_decomposition <- function(std, colour_by = NULL) {
     if (is.null(s1))
         stop("Stage 1 has not been run on this object. Call decompose() first.")
 
-    n_layers <- length(s1$coords)
+    n_layers <- length(dr_coords(s1))
     layer_nms <- names(experiments(std))
 
     # Per-experiment colData (correct sample count per layer)
     expt_list <- as.list(experiments(std))
 
     rows <- lapply(seq_len(n_layers), function(i) {
-        coord <- s1$coords[[i]]
+        coord <- dr_coords(s1)[[i]]
         # Use per-experiment colData so row count matches coord length
         cd_i <- as.data.frame(colData(expt_list[[i]]))
         df <- data.frame(
@@ -294,7 +287,7 @@ plot_decomposition <- function(std, colour_by = NULL) {
     if (!is.null(std@ground_truth) &&
         is(std@ground_truth, "SubspaceGroundTruth")) {
         v_true <- std@ground_truth@shared[, 1L]
-        v_hat  <- s1$V_star
+        v_hat  <- dr_V_star(s1)
         cos_a  <- min(1, abs(sum(v_true * v_hat) /
                              (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
         angle_label <- sprintf("angle to v_true = %.1f\u00b0", acos(cos_a) * 180 / pi)
@@ -407,8 +400,8 @@ plot_potential <- function(std, colour_by = NULL) {
 
     # Sample rug (first layer coordinates if available from stage1)
     s1 <- metadata(std)$stage1
-    if (!is.null(s1) && length(s1$coords)) {
-        rug_x  <- s1$coords[[1L]]
+    if (!is.null(s1) && length(dr_coords(s1))) {
+        rug_x  <- dr_coords(s1)[[1L]]
         # Use first-experiment colData to match coord length
         cd_rug <- as.data.frame(colData(as.list(experiments(std))[[1L]]))
         rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
