@@ -30,7 +30,7 @@ test_that("hogsvd_averaged returns stage_success with stage1 metadata", {
     expect_s4_class(result, "StageResult")
     expect_equal(result@status, "success")
     expect_false(is.null(metadata(result@value)$stage1))
-    expect_equal(length(metadata(result@value)$stage1$V_star), 50L)
+    expect_equal(length(dr_V_star(metadata(result@value)$stage1)), 50L)
 })
 
 test_that("hogsvd_prereduced returns stage_success", {
@@ -65,4 +65,13 @@ test_that("multi-layer averaging: K=3 improves over K=2 at high signal", {
             "hogsvd_averaged"))
     # K=3 should be at most a few degrees worse (seed variability), never much worse
     expect_lt(bm3$angle_deg, bm2$angle_deg + 5)
+})
+
+test_that("decompose returns DecompositionResult in metadata()$stage1", {
+    std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    result <- suppressWarnings(decompose(ctor(), std))
+    s1 <- metadata(result@value)$stage1
+    expect_s4_class(s1, "DecompositionResult")
+    expect_equal(length(dr_V_star(s1)), 50L)
 })

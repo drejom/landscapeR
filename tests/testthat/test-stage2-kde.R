@@ -7,8 +7,16 @@ test_that("estimate_dynamics returns StageResult with metadata()$stage2", {
     std_pot <- synthetic_potential_control(n = 100L, seed = 1L)
     x_samp <- colData(std_pot)$x_coord
     md <- metadata(std_pot)
-    md$stage1 <- list(V_star = matrix(1, nrow = 1L), sigma = 1,
-                      coords = list(x_samp), warnings = character(0))
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
     metadata(std_pot) <- md
 
     ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
@@ -60,8 +68,16 @@ test_that("plot_potential does not error on stage2 output", {
     std_pot <- synthetic_potential_control(n = 100L, seed = 7L)
     x_samp <- colData(std_pot)$x_coord
     md <- metadata(std_pot)
-    md$stage1 <- list(V_star = matrix(1, nrow = 1L), sigma = 1,
-                      coords = list(x_samp), warnings = character(0))
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
     metadata(std_pot) <- md
 
     ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
@@ -74,8 +90,16 @@ test_that("plot_potential with colour_by does not error", {
     std_pot <- synthetic_potential_control(n = 100L, seed = 8L)
     x_samp <- colData(std_pot)$x_coord
     md <- metadata(std_pot)
-    md$stage1 <- list(V_star = matrix(1, nrow = 1L), sigma = 1,
-                      coords = list(x_samp), warnings = character(0))
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
     metadata(std_pot) <- md
 
     ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
@@ -88,8 +112,16 @@ test_that("stage2 metadata$stage2$x and $U have equal length", {
     std_pot <- synthetic_potential_control(n = 100L, seed = 9L)
     x_samp <- colData(std_pot)$x_coord
     md <- metadata(std_pot)
-    md$stage1 <- list(V_star = matrix(1, nrow = 1L), sigma = 1,
-                      coords = list(x_samp), warnings = character(0))
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
     metadata(std_pot) <- md
 
     ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
@@ -113,8 +145,16 @@ test_that("pool_layers=FALSE uses single layer", {
     std_pot <- synthetic_potential_control(n = 100L, seed = 4L)
     x_samp <- colData(std_pot)$x_coord
     md <- metadata(std_pot)
-    md$stage1 <- list(V_star = matrix(1, nrow = 1L), sigma = 1,
-                      coords = list(x_samp, x_samp), warnings = character(0))
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = c(1, 1),
+        coords   = list(x_samp, x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(c(1, 1), nrow = 2L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L), matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
     metadata(std_pot) <- md
 
     ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")

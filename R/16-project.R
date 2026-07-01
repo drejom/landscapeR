@@ -47,11 +47,8 @@ project_into <- function(std_primary, std_secondary,
     s1_p <- metadata(std_primary)$stage1
     if (is.null(s1_p))
         stop("project_into: std_primary has no Stage 1 result. Run decompose() first.")
-    if (is.null(s1_p$V_k))
-        stop("project_into: std_primary Stage 1 result has no V_k -- ",
-             "re-run decompose() with a current version of hogsvd_averaged.")
 
-    V_k <- s1_p$V_k      # p x k gene loading matrix from primary
+    V_k <- dr_V_k(s1_p)      # p x k gene loading matrix from primary
 
     expt_sec <- as.list(experiments(std_secondary))
     idx_s    <- min(as.integer(layer_secondary), length(expt_sec))
@@ -65,15 +62,15 @@ project_into <- function(std_primary, std_secondary,
 
     # Build a stage1-compatible result
     coords_k <- list(proj)
-    s1_out <- list(
+    s1_out <- DecompositionResult(
         V_star   = V_k[, 1L],
-        sigma    = s1_p$sigma_k[min(as.integer(layer_primary), nrow(s1_p$sigma_k)), ],
+        sigma    = dr_sigma_k(s1_p)[min(as.integer(layer_primary), nrow(dr_sigma_k(s1_p))), ],
         coords   = list(drop(proj[, 1L])),
         warnings = c("Projected coordinates from primary state-space"),
         V_k      = V_k,
         sigma_k  = matrix(NA_real_, nrow = 1L, ncol = k),
         coords_k = coords_k,
-        k        = k
+        k        = as.integer(k)
     )
 
     md <- metadata(std_secondary)

@@ -73,13 +73,11 @@
         coords_k[[i]] <- coords_i
     }
 
-    list(
-        # Backwards-compatible (component 1)
+    DecompositionResult(
         V_star   = V_k[, 1L],
         sigma    = sigma_k[, 1L],
         coords   = lapply(coords_k, function(m) drop(m[, 1L])),
         warnings = warnings,
-        # Multi-component
         V_k      = V_k,
         sigma_k  = sigma_k,
         coords_k = coords_k,
