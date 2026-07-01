@@ -29,8 +29,10 @@ test_that("hogsvd_averaged returns stage_success with stage1 metadata", {
     result <- suppressWarnings(decompose(ctor(), std))
     expect_s4_class(result, "StageResult")
     expect_equal(result@status, "success")
-    expect_false(is.null(metadata(result@value)$stage1))
-    expect_equal(length(metadata(result@value)$stage1$V_star), 50L)
+    s1 <- metadata(result@value)$stage1
+    expect_false(is.null(s1))
+    expect_s4_class(s1, "DecompositionResult")
+    expect_equal(length(dr_V_star(s1)), 50L)
 })
 
 test_that("hogsvd_prereduced returns stage_success", {
@@ -65,4 +67,62 @@ test_that("multi-layer averaging: K=3 improves over K=2 at high signal", {
             "hogsvd_averaged"))
     # K=3 should be at most a few degrees worse (seed variability), never much worse
     expect_lt(bm3$angle_deg, bm2$angle_deg + 5)
+})
+
+# ---------------------------------------------------------------------------
+# shared_axis() contract accessor tests
+# ---------------------------------------------------------------------------
+
+test_that("shared_axis(dr, j=1) returns V_k[,1]", {
+    p <- 10L; k <- 3L; K <- 2L
+    V_k     <- matrix(rnorm(p * k), nrow = p, ncol = k)
+    sigma_k <- matrix(runif(K * k), nrow = K, ncol = k)
+    coords_k <- lapply(seq_len(K), function(i) matrix(rnorm(5L * k), nrow = 5L, ncol = k))
+    dr <- DecompositionResult(
+        V_star   = V_k[, 1L],
+        sigma    = sigma_k[, 1L],
+        coords   = lapply(coords_k, function(m) m[, 1L]),
+        warnings = character(0),
+        V_k      = V_k,
+        sigma_k  = sigma_k,
+        coords_k = coords_k,
+        k        = k
+    )
+    expect_equal(shared_axis(dr, j = 1L), V_k[, 1L])
+})
+
+test_that("shared_axis(dr, j=2) returns V_k[,2]", {
+    p <- 10L; k <- 3L; K <- 2L
+    V_k     <- matrix(rnorm(p * k), nrow = p, ncol = k)
+    sigma_k <- matrix(runif(K * k), nrow = K, ncol = k)
+    coords_k <- lapply(seq_len(K), function(i) matrix(rnorm(5L * k), nrow = 5L, ncol = k))
+    dr <- DecompositionResult(
+        V_star   = V_k[, 1L],
+        sigma    = sigma_k[, 1L],
+        coords   = lapply(coords_k, function(m) m[, 1L]),
+        warnings = character(0),
+        V_k      = V_k,
+        sigma_k  = sigma_k,
+        coords_k = coords_k,
+        k        = k
+    )
+    expect_equal(shared_axis(dr, j = 2L), V_k[, 2L])
+})
+
+test_that("shared_axis() default (j=1) matches dr_V_star()", {
+    p <- 8L; k <- 2L; K <- 2L
+    V_k     <- matrix(rnorm(p * k), nrow = p, ncol = k)
+    sigma_k <- matrix(runif(K * k), nrow = K, ncol = k)
+    coords_k <- lapply(seq_len(K), function(i) matrix(rnorm(4L * k), nrow = 4L, ncol = k))
+    dr <- DecompositionResult(
+        V_star   = V_k[, 1L],
+        sigma    = sigma_k[, 1L],
+        coords   = lapply(coords_k, function(m) m[, 1L]),
+        warnings = character(0),
+        V_k      = V_k,
+        sigma_k  = sigma_k,
+        coords_k = coords_k,
+        k        = k
+    )
+    expect_equal(shared_axis(dr), dr_V_star(dr))
 })

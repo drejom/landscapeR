@@ -49,9 +49,9 @@
     })
 }
 
-# Build the Stage 1 result list from a list of svd objects and the k shared
-# gene axes (p x k matrix V_k).  Backwards-compatible fields for component 1
-# are kept alongside the new multi-component fields.
+# Build the Stage 1 result as a DecompositionResult from a list of svd objects
+# and the k shared gene axes (p x k matrix V_k).  Backwards-compatible fields
+# for component 1 are kept alongside the new multi-component fields.
 .stage1_result <- function(svds, V_k, k = 1L, warnings = character()) {
     K     <- length(svds)
     p     <- nrow(V_k)
@@ -73,13 +73,11 @@
         coords_k[[i]] <- coords_i
     }
 
-    list(
-        # Backwards-compatible (component 1)
+    DecompositionResult(
         V_star   = V_k[, 1L],
         sigma    = sigma_k[, 1L],
         coords   = lapply(coords_k, function(m) drop(m[, 1L])),
         warnings = warnings,
-        # Multi-component
         V_k      = V_k,
         sigma_k  = sigma_k,
         coords_k = coords_k,

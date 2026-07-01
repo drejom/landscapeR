@@ -123,6 +123,26 @@ setGeneric("assess_fit",
 #' @export
 setClass("Decomposer", representation("VIRTUAL"))
 
+#' Extract the primary shared gene axis from a Stage 1 result
+#'
+#' Returns the j-th column of the gene loading matrix from a
+#' \code{DecompositionResult}. Defaults to the first (primary shared) axis.
+#' This is the contract-level semantic accessor — callers should prefer this
+#' over reaching into \code{dr_V_k()} directly.
+#'
+#' @param x a \code{DecompositionResult}
+#' @param j integer column index (default 1L — the primary shared axis)
+#' @return numeric vector of length p (one gene loading per feature)
+#' @export
+setGeneric("shared_axis",
+    function(x, j = 1L) standardGeneric("shared_axis"))
+
+#' @rdname shared_axis
+#' @export
+setMethod("shared_axis", "DecompositionResult", function(x, j = 1L) {
+    dr_V_k(x)[, j, drop = TRUE]
+})
+
 #' Decompose multi-layer data into shared and layer-exclusive subspaces
 #'
 #' Replaces plain SVD/PCA with GSVD (two layers) or HO-GSVD (N layers).

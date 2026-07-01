@@ -43,11 +43,13 @@ setMethod("estimate_dynamics",
 
         # Collect state-transition axis coordinates for the chosen component
         comp <- as.integer(p$component)
-        if (!is.null(s1$coords_k)) {
-            # Multi-component Stage 1 output (v0.2+)
+        if (is(s1, "DecompositionResult")) {
+            coords_list <- lapply(dr_coords_k(s1), function(m) drop(m[, comp]))
+        } else if (!is.null(s1$coords_k)) {
+            # Multi-component plain-list Stage 1 output (legacy v0.2+)
             coords_list <- lapply(s1$coords_k, function(m) drop(m[, comp]))
         } else {
-            # Backwards compat: single-component Stage 1 output
+            # Backwards compat: single-component plain-list Stage 1 output
             coords_list <- s1$coords
         }
         if (isTRUE(p$pool_layers)) {
