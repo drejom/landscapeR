@@ -26,7 +26,6 @@ setGeneric("generate",
 # ---------------------------------------------------------------------------
 
 #' Virtual class for Stage 0.5a signature extractors
-#' @export
 setClass("SignatureExtractor", representation("VIRTUAL"))
 
 #' Extract a descriptor vector from a StateTransitionData object
@@ -38,7 +37,6 @@ setClass("SignatureExtractor", representation("VIRTUAL"))
 #' @param data \code{StateTransitionData}
 #' @param ... forwarded to the implementation
 #' @return numeric descriptor vector (or named list of descriptors)
-#' @export
 setGeneric("extract_signature",
     function(strategy, data, ...) standardGeneric("extract_signature"))
 
@@ -47,7 +45,6 @@ setGeneric("extract_signature",
 # ---------------------------------------------------------------------------
 
 #' Virtual class for Stage 0.5b archetype classifiers
-#' @export
 setClass("ArchetypeClassifier", representation("VIRTUAL"))
 
 #' Classify data into a trajectory archetype
@@ -59,7 +56,6 @@ setClass("ArchetypeClassifier", representation("VIRTUAL"))
 #' @param signature numeric descriptor vector from \code{\link{extract_signature}}
 #' @param ... forwarded to the implementation
 #' @return named numeric vector of archetype posterior probabilities
-#' @export
 setGeneric("classify_archetype",
     function(strategy, signature, ...) standardGeneric("classify_archetype"))
 
@@ -68,7 +64,6 @@ setGeneric("classify_archetype",
 # ---------------------------------------------------------------------------
 
 #' Virtual class for Stage 0.5c per-domain interpretation maps
-#' @export
 setClass("InterpretationMap", representation("VIRTUAL"))
 
 #' Map an archetype to named component roles for a specific domain
@@ -81,7 +76,6 @@ setClass("InterpretationMap", representation("VIRTUAL"))
 #' @param archetype character archetype name
 #' @param ... forwarded to the implementation
 #' @return named list of component role assignments
-#' @export
 setGeneric("interpret",
     function(strategy, archetype, ...) standardGeneric("interpret"))
 
@@ -90,7 +84,6 @@ setGeneric("interpret",
 # ---------------------------------------------------------------------------
 
 #' Virtual class for Stage 0.75 distributional fit assessors
-#' @export
 setClass("FitAssessor", representation("VIRTUAL"))
 
 #' Assess where real data sits in each archetype's null distribution
@@ -111,7 +104,6 @@ setClass("FitAssessor", representation("VIRTUAL"))
 #' @param archetype character archetype name to assess against
 #' @param ... forwarded to the implementation
 #' @return \code{StageResult}
-#' @export
 setGeneric("assess_fit",
     function(strategy, data, archetype, ...) standardGeneric("assess_fit"))
 
