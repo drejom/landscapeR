@@ -96,7 +96,6 @@ test_that("multi-layer averaging: K=3 improves over K=2 at high signal", {
     # K=3 should be at most a few degrees worse (seed variability), never much worse
     expect_lt(bm3$angle_deg, bm2$angle_deg + 5)
 })
-<<<<<<< HEAD
 
 test_that("decompose returns DecompositionResult in metadata()$stage1", {
     std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
