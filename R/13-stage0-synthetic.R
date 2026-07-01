@@ -156,7 +156,7 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
                     signal_above_bbp = NA, warnings = res@reason))
 
     v_true    <- std@ground_truth@shared[, 1L]
-    v_hat     <- dr_V_star(metadata(res@value)$stage1)
+    v_hat     <- shared_axis(metadata(res@value)$stage1)
     cos_angle <- min(1, abs(sum(v_true * v_hat) /
                             (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
     angle_deg <- acos(cos_angle) * 180 / pi
