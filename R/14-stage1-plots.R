@@ -269,6 +269,13 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
     # Per-experiment colData (correct sample count per layer)
     expt_list <- as.list(experiments(std))
 
+    # Effective component index: clip to minimum k across all layers and warn once.
+    k_min    <- min(vapply(dr_coords_k(s1), ncol, integer(1L)))
+    plot_idx <- min(comp_idx, k_min)
+    if (comp_idx > k_min)
+        warning(paste0("component ", comp_idx, " requested but only ",
+                       k_min, " available; plotting component ", k_min))
+
     rows <- lapply(seq_len(n_layers), function(i) {
         cmat    <- dr_coords_k(s1)[[i]]
         k_avail <- ncol(cmat)
@@ -313,11 +320,11 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         ggplot2::geom_hline(yintercept = 0, linetype = "dotted", colour = "grey60") +
         ggplot2::facet_wrap(~ layer, scales = "free_x") +
         ggplot2::labs(
-            title    = sprintf("Sample coordinates on component %d", comp_idx),
+            title    = sprintf("Sample coordinates on component %d", plot_idx),
             subtitle = if (!is.null(angle_label)) angle_label else
                        "Supply synthetic_control() output to annotate ground-truth angle",
             x        = "Sample (rank-ordered by coordinate)",
-            y        = sprintf("Component %d coordinate", comp_idx),
+            y        = sprintf("Component %d coordinate", plot_idx),
             colour   = colour_by
         ) +
         ggplot2::theme_bw(base_size = 11) +
