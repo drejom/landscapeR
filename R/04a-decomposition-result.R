@@ -80,25 +80,57 @@ DecompositionResult <- function(V_star, sigma, coords, warnings = character(),
 
 #' @rdname DecompositionResult
 #' @export
-dr_V_star   <- function(x) { stopifnot(is(x, "DecompositionResult")); x@V_star }
+dr_V_star   <- function(x) {
+    if (!is(x, "DecompositionResult"))
+        stop("dr_V_star() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
+    x@V_star
+}
 #' @rdname DecompositionResult
 #' @export
-dr_sigma    <- function(x) { stopifnot(is(x, "DecompositionResult")); x@sigma }
+dr_sigma    <- function(x) {
+    if (!is(x, "DecompositionResult"))
+        stop("dr_sigma() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
+    x@sigma
+}
 #' @rdname DecompositionResult
 #' @export
-dr_coords   <- function(x) { stopifnot(is(x, "DecompositionResult")); x@coords }
+dr_coords   <- function(x) {
+    if (!is(x, "DecompositionResult"))
+        stop("dr_coords() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
+    x@coords
+}
 #' @rdname DecompositionResult
 #' @export
-dr_warnings <- function(x) { stopifnot(is(x, "DecompositionResult")); x@warnings }
+dr_warnings <- function(x) {
+    if (!is(x, "DecompositionResult"))
+        stop("dr_warnings() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
+    x@warnings
+}
 #' @rdname DecompositionResult
 #' @export
-dr_V_k      <- function(x) { stopifnot(is(x, "DecompositionResult")); x@V_k }
+dr_V_k      <- function(x) {
+    if (!is(x, "DecompositionResult"))
+        stop("dr_V_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
+    x@V_k
+}
 #' @rdname DecompositionResult
 #' @export
-dr_sigma_k  <- function(x) { stopifnot(is(x, "DecompositionResult")); x@sigma_k }
+dr_sigma_k  <- function(x) {
+    if (!is(x, "DecompositionResult"))
+        stop("dr_sigma_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
+    x@sigma_k
+}
 #' @rdname DecompositionResult
 #' @export
-dr_coords_k <- function(x) { stopifnot(is(x, "DecompositionResult")); x@coords_k }
+dr_coords_k <- function(x) {
+    if (!is(x, "DecompositionResult"))
+        stop("dr_coords_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
+    x@coords_k
+}
 #' @rdname DecompositionResult
 #' @export
-dr_k        <- function(x) { stopifnot(is(x, "DecompositionResult")); x@k }
+dr_k        <- function(x) {
+    if (!is(x, "DecompositionResult"))
+        stop("dr_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
+    x@k
+}
