@@ -110,6 +110,54 @@ test_that("decompose returns DecompositionResult in metadata()$stage1", {
 # shared_axis() contract accessor tests
 # ---------------------------------------------------------------------------
 
+test_that("rank-deficient layer produces a warning stored in dr_warnings()", {
+    # hogsvd_prereduced picks k from the best layer; give layer 2 fewer samples
+    # so it has fewer singular values than layer 1.
+    # Layer 1: n=10, p=50 -> thin SVD rank = min(9, 50) = 9
+    # Layer 2: n=4,  p=50 -> thin SVD rank = min(3, 50) = 3
+    # k_components = 6; prereduced picks best layer: k = min(6, 9) = 6
+    # layer 2 has only 3 SVs -> k_eff=3 < k=6 -> rank-deficient warning fires.
+    set.seed(42L)
+    mat1 <- matrix(rnorm(10L * 50L), nrow = 50L, ncol = 10L)  # p x n
+    mat2 <- matrix(rnorm(50L *  4L), nrow = 50L, ncol =  4L)
+    feat_ids <- paste0("g", seq_len(50L))
+    rownames(mat1) <- rownames(mat2) <- feat_ids
+    samp1 <- paste0("s",  seq_len(10L))
+    samp2 <- paste0("s2", seq_len( 4L))
+    colnames(mat1) <- samp1
+    colnames(mat2) <- samp2
+    se1 <- SummarizedExperiment::SummarizedExperiment(assays = list(counts = mat1))
+    se2 <- SummarizedExperiment::SummarizedExperiment(assays = list(counts = mat2))
+    # Provide an explicit sampleMap so MAE can map disjoint sample sets
+    all_samps <- c(samp1, samp2)
+    smap <- S4Vectors::DataFrame(
+        assay   = c(rep("layer1", length(samp1)), rep("layer2", length(samp2))),
+        primary = all_samps,
+        colname = all_samps
+    )
+    col_df <- S4Vectors::DataFrame(row.names = all_samps)
+    mae <- MultiAssayExperiment::MultiAssayExperiment(
+        experiments = MultiAssayExperiment::ExperimentList(layer1 = se1, layer2 = se2),
+        colData     = col_df,
+        sampleMap   = smap
+    )
+    std <- as(mae, "StateTransitionData")
+    ctor   <- get_strategy("Decomposer", "hogsvd_prereduced")
+    result <- suppressWarnings(decompose(ctor(list(k_components = 6L)), std))
+    expect_equal(result@status, "success")
+    s1 <- metadata(result@value)$stage1
+    expect_s4_class(s1, "DecompositionResult")
+    rd_warns <- dr_warnings(s1)
+    expect_true(any(grepl("rank-deficient", rd_warns)),
+        info = paste("Expected rank-deficient warning; got:", paste(rd_warns, collapse = "; ")))
+    # The warning should name the shortfall
+    expect_true(any(grepl("only.*of.*requested components available", rd_warns)))
+})
+
+# ---------------------------------------------------------------------------
+# shared_axis() contract accessor tests
+# ---------------------------------------------------------------------------
+
 test_that("shared_axis(dr, j=1) returns V_k[,1]", {
     p <- 10L; k <- 3L; K <- 2L
     V_k     <- matrix(rnorm(p * k), nrow = p, ncol = k)

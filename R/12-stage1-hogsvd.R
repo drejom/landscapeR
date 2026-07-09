@@ -63,6 +63,13 @@
         s     <- svds[[i]]
         k_eff <- min(k, length(s$d), ncol(s$v))
 
+        if (k_eff < k) {
+            msg <- paste0(
+                "Layer ", i, ": only ", k_eff, " of ", k,
+                " requested components available (rank-deficient)")
+            warnings <- c(warnings, msg)
+        }
+
         coords_i <- matrix(0, nrow = nrow(s$u), ncol = k)
         for (j in seq_len(k_eff)) {
             sigma_k[i, j] <- s$d[j]
@@ -147,7 +154,8 @@ setMethod("decompose", signature("HogsvdAveraged", "StateTransitionData"),
         prov <- record_provenance(data, "decompose", "Decomposer", "hogsvd_averaged",
             params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params))
 
-        if (length(warns)) for (w in warns) warning(w)
+        all_warns <- dr_warnings(res)
+        if (length(all_warns)) for (w in all_warns) warning(w)
         stage_success(data, provenance = list(prov))
     }
 )
@@ -204,7 +212,8 @@ setMethod("decompose", signature("HogsvdPrereduced", "StateTransitionData"),
         prov <- record_provenance(data, "decompose", "Decomposer", "hogsvd_prereduced",
             params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params))
 
-        if (length(warns)) for (w in warns) warning(w)
+        all_warns <- dr_warnings(res)
+        if (length(all_warns)) for (w in all_warns) warning(w)
         stage_success(data, provenance = list(prov))
     }
 )
