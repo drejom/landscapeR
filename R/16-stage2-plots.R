@@ -78,16 +78,27 @@ plot_potential <- function(std, colour_by = NULL) {
     }
 
     # Sample rug (first layer coordinates if available from stage1)
+    # Two-stage fallback: try coords first, then coords_k.
     s1 <- metadata(std)$stage1
-    if (!is.null(s1) && length(dr_coords(s1))) {
-        rug_x  <- dr_coords(s1)[[1L]]
-        # Use first-experiment colData to match coord length
-        cd_rug <- as.data.frame(colData(as.list(experiments(std))[[1L]]))
-        rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
-        if (!is.null(colour_by) && colour_by %in% colnames(cd_rug))
-            rug_df[[colour_by]] <- cd_rug[[colour_by]]
-    } else {
-        rug_df <- NULL
+    rug_df <- NULL
+    if (!is.null(s1)) {
+        if (length(dr_coords(s1))) {
+            rug_x <- dr_coords(s1)[[1L]]
+        } else if (length(dr_coords_k(s1))) {
+            warning("Using coords_k fallback for rug positions")
+            comp  <- if (!is.null(s2$params$component)) as.integer(s2$params$component) else 1L
+            rug_x <- dr_coords_k(s1)[[1L]][, comp, drop = TRUE]
+        } else {
+            warning("No coordinate data available for rug")
+            rug_x <- NULL
+        }
+        if (!is.null(rug_x)) {
+            # Use first-experiment colData to match coord length
+            cd_rug <- as.data.frame(colData(as.list(experiments(std))[[1L]]))
+            rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
+            if (!is.null(colour_by) && colour_by %in% colnames(cd_rug))
+                rug_df[[colour_by]] <- cd_rug[[colour_by]]
+        }
     }
 
     p <- ggplot2::ggplot(curve_df, ggplot2::aes(x = x, y = U)) +
