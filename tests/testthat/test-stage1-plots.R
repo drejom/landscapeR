@@ -28,6 +28,15 @@ test_that("plot_decomposition with component=2 returns a ggplot", {
     expect_s3_class(p, "gg")
 })
 
+test_that("plot_decomposition component=2 annotation uses component-2 axis", {
+    std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    std2 <- suppressWarnings(decompose(ctor(), std))@value
+    p <- plot_decomposition(std2, component = 2L)
+    subtitle <- p$labels$subtitle
+    expect_match(subtitle, "component 2")
+})
+
 test_that("plot_spectrum errors on empty StateTransitionData", {
     # plot_spectrum needs at least one experiment
     expect_error(plot_spectrum(empty_std()), regexp = NULL)
