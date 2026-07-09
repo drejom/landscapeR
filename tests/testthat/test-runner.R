@@ -15,7 +15,7 @@ test_that("run_pipeline returns stage_success on synthetic data", {
 
 test_that("run_pipeline returns failure on schema mismatch before any stage runs", {
     std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
-    std@schema_version <- "0.0.99"   # no migration registered
+    std@schema_version <- "99.99.99"  # synthetic sentinel — never a real version
     cfg <- new("PipelineConfig",
         dataset    = "test",
         strategies = list(Decomposer = "hogsvd_averaged"),
