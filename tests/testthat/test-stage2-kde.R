@@ -173,3 +173,49 @@ test_that("pool_layers=FALSE uses single layer", {
     s2 <- metadata(res@value)$stage2
     expect_equal(s2$n_obs, length(x_samp))
 })
+
+test_that("barrier_heights is a named list of 2-element left/right vectors", {
+    # Double-well with 1 barrier should yield a list of length 1, each element
+    # a named numeric(2) with "left" and "right" heights.
+    std_pot <- synthetic_potential_control(n = 300L, beta = 2, seed = 42L)
+    x_samp <- colData(std_pot)$x_coord
+    md <- metadata(std_pot)
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
+    metadata(std_pot) <- md
+
+    ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+    res  <- estimate_dynamics(ctor(), std_pot)
+    expect_equal(res@status, "success")
+
+    s2 <- metadata(res@value)$stage2
+    bh <- s2$barrier_heights
+
+    # Structure: named list, one element per barrier
+    expect_true(is.list(bh))
+    expect_equal(length(bh), length(s2$barriers))
+    expect_equal(names(bh), paste0("barrier_", seq_along(s2$barriers)))
+
+    # Each element is a named numeric(2) with "left" and "right"
+    for (h in bh) {
+        expect_true(is.numeric(h))
+        expect_equal(length(h), 2L)
+        expect_equal(names(h), c("left", "right"))
+    }
+
+    # For the symmetric double-well at n=300, both sides should be positive
+    # (barrier is above both wells) and approximately equal
+    if (length(bh) >= 1L) {
+        h1 <- bh[[1L]]
+        non_na <- h1[!is.na(h1)]
+        expect_true(all(non_na > 0))
+    }
+})

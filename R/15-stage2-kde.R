@@ -98,11 +98,14 @@ setMethod("estimate_dynamics",
 
         # Barrier heights: U(barrier) - U(adjacent well)  [on smoothed curve]
         U_at <- function(xv) approx(x_grid, U_poly, xv)$y
-        barrier_heights <- vapply(barriers, function(b) {
-            adj_wells <- wells[abs(wells - b) == min(abs(wells - b))]
-            if (!length(adj_wells)) return(NA_real_)
-            U_at(b) - U_at(adj_wells[1L])
-        }, numeric(1L))
+        barrier_heights <- lapply(barriers, function(b) {
+            left_wells  <- wells[wells < b]
+            right_wells <- wells[wells > b]
+            h_left  <- if (length(left_wells))  U_at(b) - U_at(left_wells[length(left_wells)])  else NA_real_
+            h_right <- if (length(right_wells)) U_at(b) - U_at(right_wells[1L])                 else NA_real_
+            c(left = h_left, right = h_right)
+        })
+        names(barrier_heights) <- paste0("barrier_", seq_along(barriers))
 
         s2 <- list(
             x               = x_grid,

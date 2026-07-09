@@ -376,7 +376,7 @@ potential_recovery_benchmark <- function(std,
         min(abs(s2$barriers - true_barrier))
     else NA_real_
 
-    bh_found <- s2$barrier_heights[!is.na(s2$barrier_heights)]
+    bh_found <- unlist(lapply(s2$barrier_heights, function(h) h[!is.na(h)]))
     barrier_height_error <- if (length(bh_found) >= 1L)
         min(abs(bh_found - true_bh))
     else NA_real_
