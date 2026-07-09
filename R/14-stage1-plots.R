@@ -292,11 +292,14 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
     angle_label <- NULL
     if (!is.null(std@ground_truth) &&
         is(std@ground_truth, "SubspaceGroundTruth")) {
-        v_true <- std@ground_truth@shared[, 1L]
-        v_hat  <- dr_V_star(s1)
-        cos_a  <- min(1, abs(sum(v_true * v_hat) /
-                             (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
-        angle_label <- sprintf("angle to v_true = %.1f°", acos(cos_a) * 180 / pi)
+        gt_ncol <- ncol(std@ground_truth@shared)
+        gt_j    <- min(comp_idx, gt_ncol)
+        v_true  <- std@ground_truth@shared[, gt_j, drop = TRUE]
+        v_hat   <- shared_axis(s1, j = comp_idx)
+        cos_a   <- min(1, abs(sum(v_true * v_hat) /
+                              (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
+        angle_label <- sprintf("component %d angle to v_true = %.1f°",
+                               comp_idx, acos(cos_a) * 180 / pi)
     }
 
     # x-axis: sample index (rank-ordered within each layer for readability)
