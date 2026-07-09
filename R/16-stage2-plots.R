@@ -77,10 +77,16 @@ plot_potential <- function(std, colour_by = NULL) {
         }
     }
 
-    # Sample rug (first layer coordinates if available from stage1)
+    # Sample rug (coordinates for the component Stage 2 analysed)
     s1 <- metadata(std)$stage1
-    if (!is.null(s1) && length(dr_coords(s1))) {
-        rug_x  <- dr_coords(s1)[[1L]]
+    if (!is.null(s1) && length(dr_coords_k(s1))) {
+        comp <- s2$params$component %||% 1L
+        if (isTRUE(s2$params$pool_layers)) {
+            rug_x <- unlist(lapply(dr_coords_k(s1), function(m) drop(m[, comp])))
+        } else {
+            layer_idx <- s2$params$layer %||% 1L
+            rug_x <- drop(dr_coords_k(s1)[[layer_idx]][, comp])
+        }
         # Use first-experiment colData to match coord length
         cd_rug <- as.data.frame(colData(as.list(experiments(std))[[1L]]))
         rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
