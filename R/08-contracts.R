@@ -129,12 +129,6 @@ setClass("Decomposer", representation("VIRTUAL"))
 setGeneric("shared_axis",
     function(x, j = 1L) standardGeneric("shared_axis"))
 
-#' @rdname shared_axis
-#' @export
-setMethod("shared_axis", "DecompositionResult", function(x, j = 1L) {
-    dr_V_k(x)[, j, drop = TRUE]
-})
-
 #' Decompose multi-layer data into shared and layer-exclusive subspaces
 #'
 #' Replaces plain SVD/PCA with GSVD (two layers) or HO-GSVD (N layers).

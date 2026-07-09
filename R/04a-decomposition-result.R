@@ -136,3 +136,9 @@ dr_k        <- function(x) {
         stop("dr_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
     x@k
 }
+
+#' @rdname shared_axis
+#' @export
+setMethod("shared_axis", "DecompositionResult", function(x, j = 1L) {
+    dr_V_k(x)[, j, drop = TRUE]
+})
