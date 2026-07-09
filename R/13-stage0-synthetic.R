@@ -268,7 +268,7 @@ synthetic_potential_control <- function(n       = 100L,
         xs_all[i] <- x
     }
     # Subsample after burn-in with spacing n_steps
-    idx      <- n_burn + seq_len(n) * as.integer(n_steps / n)
+    idx      <- n_burn + seq_len(n) * as.integer(n_steps)
     idx      <- pmin(idx, n_total)
     x_samp   <- xs_all[idx]
 
