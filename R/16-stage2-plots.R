@@ -77,23 +77,31 @@ plot_potential <- function(std, colour_by = NULL) {
         }
     }
 
-    # Sample rug (coordinates for the component Stage 2 analysed)
+    # Sample rug — component-aware with fallback (#14 + #16)
     s1 <- metadata(std)$stage1
-    if (!is.null(s1) && length(dr_coords_k(s1))) {
+    rug_df <- NULL
+    if (!is.null(s1)) {
         comp <- s2$params$component %||% 1L
-        if (isTRUE(s2$params$pool_layers)) {
-            rug_x <- unlist(lapply(dr_coords_k(s1), function(m) drop(m[, comp])))
+        if (length(dr_coords_k(s1))) {
+            if (isTRUE(s2$params$pool_layers)) {
+                rug_x <- unlist(lapply(dr_coords_k(s1), function(m) drop(m[, comp])))
+            } else {
+                layer_idx <- s2$params$layer %||% 1L
+                rug_x <- drop(dr_coords_k(s1)[[layer_idx]][, comp])
+            }
+        } else if (length(dr_coords(s1))) {
+            warning("Using coords fallback for rug positions (coords_k empty)")
+            rug_x <- dr_coords(s1)[[1L]]
         } else {
-            layer_idx <- s2$params$layer %||% 1L
-            rug_x <- drop(dr_coords_k(s1)[[layer_idx]][, comp])
+            warning("No coordinate data available for rug")
+            rug_x <- NULL
         }
-        # Use first-experiment colData to match coord length
-        cd_rug <- as.data.frame(colData(as.list(experiments(std))[[1L]]))
-        rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
-        if (!is.null(colour_by) && colour_by %in% colnames(cd_rug))
-            rug_df[[colour_by]] <- cd_rug[[colour_by]]
-    } else {
-        rug_df <- NULL
+        if (!is.null(rug_x)) {
+            cd_rug <- as.data.frame(colData(as.list(experiments(std))[[1L]]))
+            rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
+            if (!is.null(colour_by) && colour_by %in% colnames(cd_rug))
+                rug_df[[colour_by]] <- cd_rug[[colour_by]]
+        }
     }
 
     p <- ggplot2::ggplot(curve_df, ggplot2::aes(x = x, y = U)) +
