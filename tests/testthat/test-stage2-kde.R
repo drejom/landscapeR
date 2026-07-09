@@ -150,6 +150,20 @@ test_that("estimate_dynamics fails with StageResult when schema_version is inval
     expect_equal(result@status, "failure")
 })
 
+test_that("estimate_dynamics fails with typed StageResult for out-of-range component", {
+    # Build a minimal synthetic control and run Stage 1
+    std <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 99L)
+    ctor_d <- get_strategy("Decomposer", "hogsvd_averaged")
+    s1_result <- suppressWarnings(decompose(ctor_d(), std))
+    std_with_s1 <- s1_result@value
+
+    ctor_e <- get_strategy("DynamicsEstimator", "kde_logdensity")
+    result <- estimate_dynamics(ctor_e(params = list(component = 99L)), std_with_s1)
+    expect_s4_class(result, "StageResult")
+    expect_equal(result@status, "failure")
+    expect_match(result@reason, "component 99")
+})
+
 test_that("pool_layers=FALSE uses single layer", {
     std_pot <- synthetic_potential_control(n = 100L, seed = 4L)
     x_samp <- colData(std_pot)$x_coord

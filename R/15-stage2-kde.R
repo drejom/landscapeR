@@ -47,6 +47,12 @@ setMethod("estimate_dynamics",
 
         # Collect state-transition axis coordinates for the chosen component
         comp <- as.integer(p$component)
+        k_avail <- dr_k(s1)
+        if (comp < 1L || comp > k_avail)
+            return(stage_failure(paste0(
+                "estimate_dynamics: component ", comp,
+                " requested but only ", k_avail,
+                " components available (dr_k = ", k_avail, ")")))
         coords_list <- lapply(dr_coords_k(s1), function(m) drop(m[, comp]))
         if (isTRUE(p$pool_layers)) {
             x_obs <- unlist(coords_list)
