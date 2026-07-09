@@ -45,6 +45,8 @@ setValidity("DecompositionResult", function(object) {
         errs <- c(errs, "V_k must have ncol == k")
     if (ncol(object@sigma_k) != k)
         errs <- c(errs, "sigma_k must have ncol == k")
+    if (length(object@sigma) != nrow(object@sigma_k))
+        errs <- c(errs, "sigma length must equal nrow(sigma_k) (number of omic layers)")
     if (length(object@coords_k) != nrow(object@sigma_k))
         errs <- c(errs, "coords_k must have length == nrow(sigma_k)")
     if (length(errs)) errs else TRUE
