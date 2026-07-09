@@ -102,3 +102,9 @@ dr_coords_k <- function(x) { stopifnot(is(x, "DecompositionResult")); x@coords_k
 #' @rdname DecompositionResult
 #' @export
 dr_k        <- function(x) { stopifnot(is(x, "DecompositionResult")); x@k }
+
+#' @rdname shared_axis
+#' @export
+setMethod("shared_axis", "DecompositionResult", function(x, j = 1L) {
+    dr_V_k(x)[, j, drop = TRUE]
+})

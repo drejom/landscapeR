@@ -38,5 +38,25 @@ Suggests:
     knitr,
     rmarkdown,
     pkgdown
+Collate:
+    '00-package.R'
+    '01-schema-version.R'
+    '02-ground-truth.R'
+    '03-container.R'
+    '04-stage-result.R'
+    '05-config.R'
+    '06-provenance.R'
+    '07-registry.R'
+    '08-contracts.R'
+    '04a-decomposition-result.R'
+    '09-boundary.R'
+    '10-rng.R'
+    '11-runner.R'
+    '12-stage1-hogsvd.R'
+    '13-stage0-synthetic.R'
+    '14-stage1-plots.R'
+    '15-stage2-kde.R'
+    '16-stage2-plots.R'
+    '17-project.R'
 Config/testthat/edition: 3
 biocViews: Software, DimensionReduction, MultipleComparison, StatisticalMethod
