@@ -62,6 +62,7 @@ setValidity("DecompositionResult", function(object) {
 #' @param sigma_k  K x k numeric matrix
 #' @param coords_k list of K numeric n x k matrices
 #' @param k        positive integer
+#' @param x        a \code{DecompositionResult} (accessor functions only)
 #' @return validated \code{DecompositionResult}
 #' @export
 DecompositionResult <- function(V_star, sigma, coords, warnings = character(),

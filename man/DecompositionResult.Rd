@@ -55,6 +55,8 @@ dr_k(x)
 \item{coords_k}{list of K numeric n x k matrices}
 
 \item{k}{positive integer}
+
+\item{x}{a \code{DecompositionResult} (accessor functions only)}
 }
 \value{
 validated \code{DecompositionResult}

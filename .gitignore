@@ -61,3 +61,7 @@ rsconnect/
 # raw GEO data and processed .rds files (large binaries — not in git)
 data-raw/geo/
 data-raw/*.rds
+
+# local agent worktrees / scratch state (never pushed)
+.claude/
+.playwright-mcp/

@@ -305,7 +305,7 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         v_hat   <- shared_axis(s1, j = comp_idx)
         cos_a   <- min(1, abs(sum(v_true * v_hat) /
                               (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
-        angle_label <- sprintf("component %d angle to v_true = %.1f°",
+        angle_label <- sprintf("component %d angle to v_true = %.1f\u00b0",
                                comp_idx, acos(cos_a) * 180 / pi)
     }
 

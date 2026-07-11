@@ -9,6 +9,7 @@
 ^vignettes/development-log\.Rmd$
 ^\.github$
 ^\.playwright-mcp$
+^\.claude$
 ^hooks$
 ^install-hooks\.sh$
 ^scripts$
