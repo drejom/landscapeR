@@ -131,7 +131,9 @@ test_that("rank-deficient layer produces a warning stored in dr_warnings()", {
     # Provide an explicit sampleMap so MAE can map disjoint sample sets
     all_samps <- c(samp1, samp2)
     smap <- S4Vectors::DataFrame(
-        assay   = c(rep("layer1", length(samp1)), rep("layer2", length(samp2))),
+        # MultiAssayExperiment requires assay as a factor -- passing character
+        # triggers its own internal as.factor() coercion warning at construction.
+        assay   = factor(c(rep("layer1", length(samp1)), rep("layer2", length(samp2)))),
         primary = all_samps,
         colname = all_samps
     )
