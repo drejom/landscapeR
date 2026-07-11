@@ -258,19 +258,28 @@ synthetic_potential_control <- function(n       = 100L,
     U_prime <- function(x) 4 * x * (x^2 - 1)   # dU/dx for U = (x^2-1)^2
     noise_sd <- sqrt(2 / beta * dt)
 
-    # Burn-in: start from left well, run long chain, then subsample
-    n_burn   <- 2000L
-    n_total  <- n_burn + n * as.integer(n_steps)
-    x        <- -1                               # start at left well
-    xs_all   <- numeric(n_total)
+    # Burn-in: start from left well, run long chain, then subsample.
+    # Streamed rather than materialised in full: only the n_steps-spaced
+    # samples after burn-in are ever read, so we capture directly into a
+    # length-n buffer instead of allocating an O(n * n_steps) vector
+    # (issue #15). Sample k lands on iteration n_burn + k * n_steps, matching
+    # the previous `idx <- n_burn + seq_len(n) * as.integer(n_steps)` stride
+    # exactly. The RNG call pattern (one rnorm(1L, ...) per step) is
+    # unchanged, so the random stream — and therefore x_samp — is identical.
+    n_burn    <- 2000L
+    n_stepsi  <- as.integer(n_steps)
+    n_total   <- n_burn + n * n_stepsi
+    x         <- -1                               # start at left well
+    x_samp    <- numeric(n)
+    sample_i  <- 0L
     for (i in seq_len(n_total)) {
         x <- x - U_prime(x) * dt + rnorm(1L, sd = noise_sd)
-        xs_all[i] <- x
+        if (i > n_burn && (i - n_burn) %% n_stepsi == 0L) {
+            sample_i <- sample_i + 1L
+            x_samp[sample_i] <- x
+            if (sample_i >= n) break
+        }
     }
-    # Subsample after burn-in with spacing n_steps
-    idx      <- n_burn + seq_len(n) * as.integer(n_steps)
-    idx      <- pmin(idx, n_total)
-    x_samp   <- xs_all[idx]
 
     sample_ids <- paste0("s", seq_len(n))
     mat        <- matrix(x_samp, nrow = 1L, ncol = n,
