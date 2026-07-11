@@ -60,15 +60,25 @@ project_into <- function(std_primary, std_secondary,
 
     k <- ncol(V_k)
 
-    # Build a stage1-compatible result
-    coords_k <- list(proj)
+    # Build a stage1-compatible result. The projected object represents a
+    # single "layer" (only layer_secondary was projected -- it was never
+    # decomposed), so sigma_k has exactly one row (nrow = 1L). Everywhere
+    # else in the codebase sigma is derived as sigma_k[, 1L] (see
+    # .stage1_result() in R/12-stage1-hogsvd.R) -- it is not an independent
+    # quantity, it is "this layer's own component-1 singular value". A
+    # projected layer has no such value (it was never decomposed), so sigma
+    # must be NA here too, consistent with sigma_k being NA -- carrying over
+    # the primary layer's sigma would misrepresent it as the secondary
+    # layer's own singular value.
+    coords_k    <- list(proj)
+    sigma_k_out <- matrix(NA_real_, nrow = 1L, ncol = k)
     s1_out <- DecompositionResult(
         V_star   = V_k[, 1L],
-        sigma    = dr_sigma_k(s1_p)[min(as.integer(layer_primary), nrow(dr_sigma_k(s1_p))), ],
+        sigma    = sigma_k_out[, 1L],
         coords   = list(drop(proj[, 1L])),
         warnings = c("Projected coordinates from primary state-space"),
         V_k      = V_k,
-        sigma_k  = matrix(NA_real_, nrow = 1L, ncol = k),
+        sigma_k  = sigma_k_out,
         coords_k = coords_k,
         k        = as.integer(k)
     )
