@@ -104,11 +104,11 @@ setClass("HogsvdAveraged",
 )
 
 #' @rdname decompose
-setMethod("decompose", signature("HogsvdAveraged", "StateTransitionData"),
+setMethod(".decompose_impl", signature("HogsvdAveraged", "StateTransitionData"),
     function(strategy, data, ...) {
-        bv <- validate_boundary(data, stage = "decompose")
-        if (is(bv, "StageResult")) return(bv)
-        data <- bv
+        # `data` has already passed validate_boundary() -- enforced
+        # structurally by the Decomposer-level decompose() method in
+        # R/08-contracts.R. This strategy only implements its own logic.
 
         layers <- as.list(experiments(data))
         if (length(layers) < 2L)
@@ -172,11 +172,11 @@ setClass("HogsvdPrereduced",
 )
 
 #' @rdname decompose
-setMethod("decompose", signature("HogsvdPrereduced", "StateTransitionData"),
+setMethod(".decompose_impl", signature("HogsvdPrereduced", "StateTransitionData"),
     function(strategy, data, ...) {
-        bv <- validate_boundary(data, stage = "decompose")
-        if (is(bv, "StageResult")) return(bv)
-        data <- bv
+        # `data` has already passed validate_boundary() -- enforced
+        # structurally by the Decomposer-level decompose() method in
+        # R/08-contracts.R. This strategy only implements its own logic.
 
         layers  <- as.list(experiments(data))
         if (length(layers) < 2L)

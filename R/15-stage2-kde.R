@@ -27,12 +27,13 @@ setClass("KdeLogDensityEstimator",
 )
 
 #' @rdname estimate_dynamics
-setMethod("estimate_dynamics",
+setMethod(".estimate_dynamics_impl",
     signature("KdeLogDensityEstimator", "StateTransitionData"),
     function(strategy, data, ...) {
-        bv <- validate_boundary(data, stage = "estimate_dynamics")
-        if (is(bv, "StageResult")) return(bv)
-        data <- bv
+        # `data` has already passed validate_boundary() -- enforced
+        # structurally by the DynamicsEstimator-level estimate_dynamics()
+        # method in R/08-contracts.R. This strategy only implements its own
+        # logic.
 
         s1 <- metadata(data)$stage1
         if (is.null(s1))

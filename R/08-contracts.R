@@ -136,6 +136,15 @@ setGeneric("shared_axis",
 #' confounders land in their own components rather than smearing the disease
 #' axis.
 #'
+#' Boundary validation (\code{\link{validate_boundary}}) is enforced
+#' structurally: the method below, dispatched on the VIRTUAL
+#' \code{Decomposer} class itself, runs for every concrete strategy before
+#' any strategy-specific code executes. Concrete strategies never implement
+#' \code{decompose()} directly — they implement the internal
+#' \code{.decompose_impl} generic instead, which only ever receives an
+#' already-validated \code{data}. A new strategy cannot skip validation by
+#' omission because validation is not part of the code path it writes.
+#'
 #' @param strategy a \code{Decomposer} implementation
 #' @param data \code{StateTransitionData}
 #' @param ... forwarded to the implementation
@@ -144,6 +153,35 @@ setGeneric("shared_axis",
 #' @export
 setGeneric("decompose",
     function(strategy, data, ...) standardGeneric("decompose"))
+
+# Structural boundary-validation gate — dispatches on the VIRTUAL
+# "Decomposer" class, so it runs for ANY concrete subclass before the
+# strategy-specific ".decompose_impl" hook is reached. There is no way for a
+# concrete strategy to bypass this: it is not their method to skip.
+#' @rdname decompose
+setMethod("decompose", signature("Decomposer", "StateTransitionData"),
+    function(strategy, data, ...) {
+        bv <- validate_boundary(data, stage = "decompose")
+        if (is(bv, "StageResult")) return(bv)
+        .decompose_impl(strategy, bv, ...)
+    }
+)
+
+#' Strategy-specific decomposition hook (internal)
+#'
+#' Concrete \code{Decomposer} implementations implement this generic, not
+#' \code{decompose()} itself. By the time \code{.decompose_impl} runs,
+#' \code{data} has already passed \code{\link{validate_boundary}} via the
+#' \code{Decomposer}-level \code{decompose()} method in this file — boundary
+#' validation is structural, not something each strategy must remember.
+#'
+#' @param strategy a \code{Decomposer} implementation
+#' @param data \code{StateTransitionData}, already boundary-validated
+#' @param ... forwarded from \code{decompose()}
+#' @return \code{StageResult}
+#' @keywords internal
+setGeneric(".decompose_impl",
+    function(strategy, data, ...) standardGeneric(".decompose_impl"))
 
 # ---------------------------------------------------------------------------
 # Stage 2 — Dynamics estimation
@@ -160,6 +198,14 @@ setClass("DynamicsEstimator", representation("VIRTUAL"))
 #' difficulty. Cross-sectional (destructive) sampling is the native data type,
 #' not a workaround.
 #'
+#' Boundary validation (\code{\link{validate_boundary}}) is enforced
+#' structurally, the same way as for \code{\link{decompose}}: the method
+#' below, dispatched on the VIRTUAL \code{DynamicsEstimator} class itself,
+#' runs before any strategy-specific code. Concrete strategies implement the
+#' internal \code{.estimate_dynamics_impl} generic instead of
+#' \code{estimate_dynamics()} directly, so validation cannot be skipped by
+#' omission.
+#'
 #' @param strategy a \code{DynamicsEstimator} implementation
 #' @param data \code{StateTransitionData} with decomposition in \code{metadata()}
 #' @param ... forwarded to the implementation
@@ -168,3 +214,31 @@ setClass("DynamicsEstimator", representation("VIRTUAL"))
 #' @export
 setGeneric("estimate_dynamics",
     function(strategy, data, ...) standardGeneric("estimate_dynamics"))
+
+# Structural boundary-validation gate — dispatches on the VIRTUAL
+# "DynamicsEstimator" class, so it runs for ANY concrete subclass before the
+# strategy-specific ".estimate_dynamics_impl" hook is reached.
+#' @rdname estimate_dynamics
+setMethod("estimate_dynamics", signature("DynamicsEstimator", "StateTransitionData"),
+    function(strategy, data, ...) {
+        bv <- validate_boundary(data, stage = "estimate_dynamics")
+        if (is(bv, "StageResult")) return(bv)
+        .estimate_dynamics_impl(strategy, bv, ...)
+    }
+)
+
+#' Strategy-specific dynamics-estimation hook (internal)
+#'
+#' Concrete \code{DynamicsEstimator} implementations implement this generic,
+#' not \code{estimate_dynamics()} itself. By the time
+#' \code{.estimate_dynamics_impl} runs, \code{data} has already passed
+#' \code{\link{validate_boundary}} via the \code{DynamicsEstimator}-level
+#' \code{estimate_dynamics()} method in this file.
+#'
+#' @param strategy a \code{DynamicsEstimator} implementation
+#' @param data \code{StateTransitionData}, already boundary-validated
+#' @param ... forwarded from \code{estimate_dynamics()}
+#' @return \code{StageResult}
+#' @keywords internal
+setGeneric(".estimate_dynamics_impl",
+    function(strategy, data, ...) standardGeneric(".estimate_dynamics_impl"))
