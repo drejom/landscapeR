@@ -3,17 +3,20 @@
 \docType{class}
 \name{decompose}
 \alias{decompose}
+\alias{decompose,Decomposer,StateTransitionData-method}
 \alias{HogsvdAveraged-class}
-\alias{decompose,HogsvdAveraged,StateTransitionData-method}
+\alias{.decompose_impl,HogsvdAveraged,StateTransitionData-method}
 \alias{HogsvdPrereduced-class}
-\alias{decompose,HogsvdPrereduced,StateTransitionData-method}
+\alias{.decompose_impl,HogsvdPrereduced,StateTransitionData-method}
 \title{Decompose multi-layer data into shared and layer-exclusive subspaces}
 \usage{
 decompose(strategy, data, ...)
 
-\S4method{decompose}{HogsvdAveraged,StateTransitionData}(strategy, data, ...)
+\S4method{decompose}{Decomposer,StateTransitionData}(strategy, data, ...)
 
-\S4method{decompose}{HogsvdPrereduced,StateTransitionData}(strategy, data, ...)
+\S4method{.decompose_impl}{HogsvdAveraged,StateTransitionData}(strategy, data, ...)
+
+\S4method{.decompose_impl}{HogsvdPrereduced,StateTransitionData}(strategy, data, ...)
 }
 \arguments{
 \item{strategy}{a \code{Decomposer} implementation}
@@ -31,4 +34,14 @@ Replaces plain SVD/PCA with GSVD (two layers) or HO-GSVD (N layers).
 Generalized singular value ratios partition the space automatically;
 confounders land in their own components rather than smearing the disease
 axis.
+}
+\details{
+Boundary validation (\code{\link{validate_boundary}}) is enforced
+structurally: the method below, dispatched on the VIRTUAL
+\code{Decomposer} class itself, runs for every concrete strategy before
+any strategy-specific code executes. Concrete strategies never implement
+\code{decompose()} directly — they implement the internal
+\code{.decompose_impl} generic instead, which only ever receives an
+already-validated \code{data}. A new strategy cannot skip validation by
+omission because validation is not part of the code path it writes.
 }

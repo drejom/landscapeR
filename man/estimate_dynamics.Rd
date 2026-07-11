@@ -3,13 +3,16 @@
 \docType{class}
 \name{estimate_dynamics}
 \alias{estimate_dynamics}
+\alias{estimate_dynamics,DynamicsEstimator,StateTransitionData-method}
 \alias{KdeLogDensityEstimator-class}
-\alias{estimate_dynamics,KdeLogDensityEstimator,StateTransitionData-method}
+\alias{.estimate_dynamics_impl,KdeLogDensityEstimator,StateTransitionData-method}
 \title{Estimate quasi-potential dynamics on decomposition coordinates}
 \usage{
 estimate_dynamics(strategy, data, ...)
 
-\S4method{estimate_dynamics}{KdeLogDensityEstimator,StateTransitionData}(strategy, data, ...)
+\S4method{estimate_dynamics}{DynamicsEstimator,StateTransitionData}(strategy, data, ...)
+
+\S4method{.estimate_dynamics_impl}{KdeLogDensityEstimator,StateTransitionData}(strategy, data, ...)
 }
 \arguments{
 \item{strategy}{a \code{DynamicsEstimator} implementation}
@@ -27,4 +30,13 @@ Fits \eqn{dX/dt = -\nabla U(X;\,\text{layer}) + \text{noise}}.
 Critical points = commitment / irreversibility; barrier height = transition
 difficulty. Cross-sectional (destructive) sampling is the native data type,
 not a workaround.
+}
+\details{
+Boundary validation (\code{\link{validate_boundary}}) is enforced
+structurally, the same way as for \code{\link{decompose}}: the method
+below, dispatched on the VIRTUAL \code{DynamicsEstimator} class itself,
+runs before any strategy-specific code. Concrete strategies implement the
+internal \code{.estimate_dynamics_impl} generic instead of
+\code{estimate_dynamics()} directly, so validation cannot be skipped by
+omission.
 }
