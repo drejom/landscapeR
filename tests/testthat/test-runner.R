@@ -27,6 +27,36 @@ test_that("run_pipeline returns failure on schema mismatch before any stage runs
     expect_match(result@reason, "schema mismatch")
 })
 
+test_that("run_pipeline catches a stage that returns a non-StageResult", {
+    # A pathological Decomposer whose .decompose_impl() forgets to wrap its
+    # output in stage_success()/stage_failure() -- run_pipeline must catch
+    # this itself rather than let a bare list flow downstream as if it were
+    # StateTransitionData.
+    setClass("BrokenDecomposerForTest",
+        contains = "Decomposer",
+        representation(params = "list"))
+    setMethod(".decompose_impl", signature("BrokenDecomposerForTest", "StateTransitionData"),
+        function(strategy, data, ...) list(not = "a StageResult")
+    )
+    register_strategy("Decomposer", "_broken_for_test",
+        function(params) new("BrokenDecomposerForTest", params = params))
+
+    std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
+    cfg <- new("PipelineConfig",
+        dataset    = "test",
+        strategies = list(Decomposer = "_broken_for_test"),
+        params     = list()
+    )
+    result <- run_pipeline(std, cfg)
+
+    expect_s4_class(result, "StageResult")
+    expect_equal(result@status, "failure")
+    expect_match(result@reason, "did not return a StageResult")
+
+    removeMethod(".decompose_impl", signature("BrokenDecomposerForTest", "StateTransitionData"))
+    removeClass("BrokenDecomposerForTest")
+})
+
 test_that("run_pipeline skips stages with no strategy configured", {
     std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
     cfg <- new("PipelineConfig",

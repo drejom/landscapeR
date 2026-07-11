@@ -16,13 +16,18 @@ project_into(
 present — supplies the \eqn{V^*} loadings.}
 
 \item{std_secondary}{\code{StateTransitionData} to project.  Must share the
-same feature space (genes) as the primary.  Only the first layer is used.}
+same feature space (genes) as the primary.}
 
 \item{layer_primary}{integer — which layer of the primary object provides
 the \eqn{V^*} loadings (default 1).}
 
-\item{layer_secondary}{integer — which layer of the secondary object to
-project (default 1).}
+\item{layer_secondary}{integer — which single layer of the secondary
+object to project (default 1). \code{project_into()} always projects
+exactly one layer per call — a projected layer was never itself
+decomposed, so it carries no signal-strength information of its own to
+combine across layers. If the secondary cohort has its own multi-layer
+structure (e.g. its own disease/control split), call \code{project_into()}
+once per layer, varying \code{layer_secondary}.}
 }
 \value{
 \code{std_secondary} with \code{metadata()$stage1} written.

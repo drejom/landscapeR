@@ -8,6 +8,10 @@
 # metadata()$stage1$coords_k (same layout as a normal Stage 1 result), so all
 # downstream functions (plot_components, estimate_dynamics) work unchanged.
 #
+# One call projects exactly one secondary layer. A secondary cohort with its
+# own multi-layer structure (e.g. a validation cohort that itself has a
+# disease/control split) is projected with one project_into() call per layer.
+#
 # Typical use:
 #
 #   std_primary   <- readRDS("data-raw/aml_mrna_std.rds")
@@ -31,11 +35,16 @@
 #' @param std_primary \code{StateTransitionData} with \code{metadata()$stage1}
 #'   present — supplies the \eqn{V^*} loadings.
 #' @param std_secondary \code{StateTransitionData} to project.  Must share the
-#'   same feature space (genes) as the primary.  Only the first layer is used.
+#'   same feature space (genes) as the primary.
 #' @param layer_primary integer — which layer of the primary object provides
 #'   the \eqn{V^*} loadings (default 1).
-#' @param layer_secondary integer — which layer of the secondary object to
-#'   project (default 1).
+#' @param layer_secondary integer — which single layer of the secondary
+#'   object to project (default 1). \code{project_into()} always projects
+#'   exactly one layer per call — a projected layer was never itself
+#'   decomposed, so it carries no signal-strength information of its own to
+#'   combine across layers. If the secondary cohort has its own multi-layer
+#'   structure (e.g. its own disease/control split), call \code{project_into()}
+#'   once per layer, varying \code{layer_secondary}.
 #' @return \code{std_secondary} with \code{metadata()$stage1} written.
 #'
 #' @export
