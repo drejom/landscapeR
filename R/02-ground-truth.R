@@ -15,6 +15,21 @@ setClass("SubspaceGroundTruth",
     )
 )
 
+#' Ground truth for heterogeneous Stage 1 sample-subspace recovery
+#'
+#' The shared and exclusive slots contain sample-score matrices (samples × rank),
+#' while response contains one feature-response matrix (features × rank) per
+#' assay. It is used only by Stage 0 prototype controls.
+#' @export
+setClass("HeterogeneousSubspaceGroundTruth",
+    contains = "GroundTruth",
+    representation(
+        shared    = "matrix",
+        exclusive = "list",
+        response  = "list"
+    )
+)
+
 #' Ground truth for Stage 0.5 archetype topology tests
 #' @export
 setClass("TopologyGroundTruth",

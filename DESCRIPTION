@@ -60,5 +60,6 @@ Collate:
     '15-stage2-kde.R'
     '16-stage2-plots.R'
     '17-project.R'
+    '20-stage1-prototype-smoke.R'
 Config/testthat/edition: 3
 biocViews: Software, DimensionReduction, MultipleComparison, StatisticalMethod
