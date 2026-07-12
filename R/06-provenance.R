@@ -7,7 +7,7 @@
 #' @slot params parameter list used
 #' @slot input_hashes named character vector of \code{digest::digest} hashes
 #' @slot rng_seed integer RNG state captured before stage ran
-#' @slot timestamp POSIXct
+#' @slot timestamp POSIXct legacy compatibility field; always \code{NA} in deterministic provenance
 #' @slot status \code{"success"} or \code{"failure"}
 #'
 #' @export
@@ -32,11 +32,14 @@ setClass("ProvenanceStep",
 #' @param contract character contract class name
 #' @param implementation character implementation name
 #' @param params list of parameters used
+#' @param input_hashes named character vector of pre-stage input hashes
 #' @param status character \code{"success"} or \code{"failure"}
 #' @return StateTransitionData with provenance appended
 #' @export
 record_provenance <- function(data, stage, contract, implementation,
-                               params = list(), status = "success") {
+                               params = list(),
+                               input_hashes = c(data = digest::digest(data)),
+                               status = "success") {
     seed <- if (exists(".Random.seed", envir = globalenv()))
         get(".Random.seed", envir = globalenv())
     else
@@ -48,9 +51,9 @@ record_provenance <- function(data, stage, contract, implementation,
         implementation = implementation,
         pkg_version    = as.character(utils::packageVersion("landscapeR")),
         params         = params,
-        input_hashes   = c(data = digest::digest(data)),
+        input_hashes   = input_hashes,
         rng_seed       = as.integer(seed),
-        timestamp      = Sys.time(),
+        timestamp      = as.POSIXct(NA),
         status         = status
     )
     data@provenance <- c(data@provenance, list(step))

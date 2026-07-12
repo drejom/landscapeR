@@ -269,3 +269,18 @@ test_that("hogsvd_averaged: StageResult@provenance is not a StateTransitionData"
     expect_equal(result@status, "success")
     expect_false(is(result@provenance[[1L]], "StateTransitionData"))
 })
+
+test_that("hogsvd_averaged provenance hashes the pre-stage input deterministically", {
+    std <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 4L)
+    input_hash <- digest::digest(std)
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    result <- suppressWarnings(decompose(ctor(), std))
+
+    step <- result@provenance[[1L]]
+    expect_identical(unname(step@input_hashes[["data"]]), input_hash)
+    expect_true(is.na(step@timestamp))
+
+    same_std <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 4L)
+    same_result <- suppressWarnings(decompose(ctor(), same_std))
+    expect_identical(result@value, same_result@value)
+})

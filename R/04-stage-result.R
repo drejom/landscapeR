@@ -6,7 +6,8 @@
 #' @slot status \code{"success"} or \code{"failure"}
 #' @slot value annotated \code{StateTransitionData} on success; \code{NULL} on failure
 #' @slot reason diagnostic string on failure; \code{""} on success
-#' @slot provenance provenance metadata recorded by this stage
+#' @slot provenance list of \code{ProvenanceStep} records emitted by this stage;
+#'   the same records are appended to \code{value@provenance} on success
 #'
 #' @export
 setClass("StageResult",
@@ -39,7 +40,7 @@ setValidity("StageResult", function(object) {
 
 #' Construct a successful StageResult
 #' @param value Annotated \code{StateTransitionData} returned by the stage.
-#' @param provenance List of provenance records.
+#' @param provenance List of \code{ProvenanceStep} records emitted by this stage.
 #' @return A \code{StageResult} with \code{status = "success"}.
 #' @export
 stage_success <- function(value, provenance = list()) {
@@ -49,7 +50,7 @@ stage_success <- function(value, provenance = list()) {
 
 #' Construct a failed StageResult
 #' @param reason Diagnostic string explaining the failure.
-#' @param provenance List of provenance records.
+#' @param provenance List of \code{ProvenanceStep} records emitted by this stage.
 #' @return A \code{StageResult} with \code{status = "failure"}.
 #' @export
 stage_failure <- function(reason, provenance = list()) {

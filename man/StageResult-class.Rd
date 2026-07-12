@@ -17,6 +17,7 @@ cannot silently emit valid-looking output.
 
 \item{\code{reason}}{diagnostic string on failure; \code{""} on success}
 
-\item{\code{provenance}}{provenance metadata recorded by this stage}
+\item{\code{provenance}}{list of \code{ProvenanceStep} records emitted by this stage;
+the same records are appended to \code{value@provenance} on success}
 }}
 

@@ -110,6 +110,7 @@ setMethod(".decompose_impl", signature("HogsvdAveraged", "StateTransitionData"),
         # structurally by the Decomposer-level decompose() method in
         # R/08-contracts.R. This strategy only implements its own logic.
 
+        input_hashes <- c(data = digest::digest(data))
         layers <- as.list(experiments(data))
         if (length(layers) < 2L)
             return(stage_failure("hogsvd_averaged requires at least 2 layers"))
@@ -152,7 +153,8 @@ setMethod(".decompose_impl", signature("HogsvdAveraged", "StateTransitionData"),
         metadata(data) <- md
 
         data <- record_provenance(data, "decompose", "Decomposer", "hogsvd_averaged",
-            params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params))
+            params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params),
+            input_hashes = input_hashes)
         prov_step <- data@provenance[[length(data@provenance)]]
 
         all_warns <- dr_warnings(res)
@@ -179,6 +181,7 @@ setMethod(".decompose_impl", signature("HogsvdPrereduced", "StateTransitionData"
         # structurally by the Decomposer-level decompose() method in
         # R/08-contracts.R. This strategy only implements its own logic.
 
+        input_hashes <- c(data = digest::digest(data))
         layers  <- as.list(experiments(data))
         if (length(layers) < 2L)
             return(stage_failure("hogsvd_prereduced requires at least 2 layers"))
@@ -211,7 +214,8 @@ setMethod(".decompose_impl", signature("HogsvdPrereduced", "StateTransitionData"
         metadata(data) <- md
 
         data <- record_provenance(data, "decompose", "Decomposer", "hogsvd_prereduced",
-            params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params))
+            params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params),
+            input_hashes = input_hashes)
         prov_step <- data@provenance[[length(data@provenance)]]
 
         all_warns <- dr_warnings(res)

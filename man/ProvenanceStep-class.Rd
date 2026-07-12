@@ -24,7 +24,7 @@ Provenance step recorded by each stage
 
 \item{\code{rng_seed}}{integer RNG state captured before stage ran}
 
-\item{\code{timestamp}}{POSIXct}
+\item{\code{timestamp}}{POSIXct legacy compatibility field; always \code{NA} in deterministic provenance}
 
 \item{\code{status}}{\code{"success"} or \code{"failure"}}
 }}

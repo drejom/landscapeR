@@ -10,6 +10,7 @@ record_provenance(
   contract,
   implementation,
   params = list(),
+  input_hashes = c(data = digest::digest(data)),
   status = "success"
 )
 }
@@ -23,6 +24,8 @@ record_provenance(
 \item{implementation}{character implementation name}
 
 \item{params}{list of parameters used}
+
+\item{input_hashes}{named character vector of pre-stage input hashes}
 
 \item{status}{character \code{"success"} or \code{"failure"}}
 }

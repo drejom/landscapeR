@@ -35,6 +35,7 @@ setMethod(".estimate_dynamics_impl",
         # method in R/08-contracts.R. This strategy only implements its own
         # logic.
 
+        input_hashes <- c(data = digest::digest(data))
         s1 <- metadata(data)$stage1
         if (is.null(s1))
             return(stage_failure(
@@ -132,7 +133,8 @@ setMethod(".estimate_dynamics_impl",
 
         data <- record_provenance(data, "estimate_dynamics", "DynamicsEstimator",
                     "kde_logdensity",
-                    params = c(list(n = length(x_obs)), p))
+                    params = c(list(n = length(x_obs)), p),
+                    input_hashes = input_hashes)
         prov_step <- data@provenance[[length(data@provenance)]]
 
         stage_success(data, provenance = list(prov_step))

@@ -9,7 +9,7 @@ stage_failure(reason, provenance = list())
 \arguments{
 \item{reason}{Diagnostic string explaining the failure.}
 
-\item{provenance}{List of provenance records.}
+\item{provenance}{List of \code{ProvenanceStep} records emitted by this stage.}
 }
 \value{
 A \code{StageResult} with \code{status = "failure"}.

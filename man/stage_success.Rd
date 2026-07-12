@@ -9,7 +9,7 @@ stage_success(value, provenance = list())
 \arguments{
 \item{value}{Annotated \code{StateTransitionData} returned by the stage.}
 
-\item{provenance}{List of provenance records.}
+\item{provenance}{List of \code{ProvenanceStep} records emitted by this stage.}
 }
 \value{
 A \code{StageResult} with \code{status = "success"}.

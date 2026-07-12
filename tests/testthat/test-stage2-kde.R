@@ -312,3 +312,26 @@ test_that("kde_logdensity: StageResult@provenance is not a StateTransitionData",
     expect_equal(res@status, "success")
     expect_false(is(res@provenance[[1L]], "StateTransitionData"))
 })
+
+test_that("kde_logdensity provenance hashes the pre-stage input", {
+    std_pot <- synthetic_potential_control(n = 100L, seed = 5L)
+    x_samp <- colData(std_pot)$x_coord
+    md <- metadata(std_pot)
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
+    metadata(std_pot) <- md
+    input_hash <- digest::digest(std_pot)
+
+    res <- estimate_dynamics(get_strategy("DynamicsEstimator", "kde_logdensity")(), std_pot)
+    step <- res@provenance[[1L]]
+    expect_identical(unname(step@input_hashes[["data"]]), input_hash)
+    expect_true(is.na(step@timestamp))
+})
