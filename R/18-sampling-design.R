@@ -89,13 +89,6 @@ setValidity("SamplingDesign", function(object) {
 })
 
 # ---------------------------------------------------------------------------
-# SamplingDesignOrNULL union  (not used in the slot — the slot is typed
-# "SamplingDesign" — but useful for validity and method dispatch)
-# ---------------------------------------------------------------------------
-
-setClassUnion("SamplingDesignOrNULL", c("SamplingDesign", "NULL"))
-
-# ---------------------------------------------------------------------------
 # Public constructors
 # ---------------------------------------------------------------------------
 
@@ -158,6 +151,39 @@ longitudinal <- function(subject_id, time, time_unit = character(0L)) {
 }
 
 # ---------------------------------------------------------------------------
+# Data-dependent validation
+# ---------------------------------------------------------------------------
+
+.validate_sampling_design_data <- function(data) {
+    design <- data@sampling_design
+    if (!identical(design@kind, "longitudinal")) return(TRUE)
+
+    cd <- as.data.frame(colData(data))
+    sid_col  <- design@subject_id_col
+    time_col <- design@time_col
+    if (!sid_col %in% colnames(cd))
+        return(sprintf("subject_id_col '%s' not found in colData", sid_col))
+    if (!time_col %in% colnames(cd))
+        return(sprintf("time_col '%s' not found in colData", time_col))
+
+    sid_vals <- cd[[sid_col]]
+    if (any(is.na(sid_vals))) return("subject_id_col contains NA values")
+    time_vals <- cd[[time_col]]
+    if (any(is.na(time_vals))) return("time_col contains NA values")
+    if (!is.numeric(time_vals) &&
+        !inherits(time_vals, c("Date", "POSIXct", "POSIXlt")) &&
+        !is.ordered(time_vals))
+        return("time_col must be numeric, Date/POSIXct, or ordered")
+    if (any(duplicated(data.frame(subject = sid_vals, time = time_vals))))
+        return("duplicate subject/time observations are not supported")
+    has_repeats <- any(tapply(time_vals, sid_vals, function(tv)
+        length(unique(tv))) > 1L)
+    if (!has_repeats)
+        return("longitudinal design requires at least one subject with distinct repeated time points")
+    TRUE
+}
+
+# ---------------------------------------------------------------------------
 # declare_sampling_design()
 # ---------------------------------------------------------------------------
 
@@ -184,41 +210,10 @@ declare_sampling_design <- function(data, design) {
         stop("declare_sampling_design(): 'unspecified' is a migration-only kind; ",
              "use cross_sectional() or longitudinal()")
 
-    if (identical(design@kind, "longitudinal")) {
-        cd <- as.data.frame(colData(data))
-        sid_col  <- design@subject_id_col
-        time_col <- design@time_col
-
-        if (!sid_col %in% colnames(cd))
-            stop(sprintf(
-                "declare_sampling_design(): subject_id_col '%s' not found in colData",
-                sid_col))
-        if (!time_col %in% colnames(cd))
-            stop(sprintf(
-                "declare_sampling_design(): time_col '%s' not found in colData",
-                time_col))
-
-        sid_vals <- cd[[sid_col]]
-        if (any(is.na(sid_vals)))
-            stop("declare_sampling_design(): subject_id_col contains NA values")
-
-        time_vals <- cd[[time_col]]
-        if (any(is.na(time_vals)))
-            stop("declare_sampling_design(): time_col contains NA values")
-        if (!is.numeric(time_vals) && !inherits(time_vals, c("Date", "POSIXct", "POSIXlt")) &&
-            !is.ordered(time_vals))
-            stop("declare_sampling_design(): time_col must be numeric, Date/POSIXct, or ordered")
-        if (any(duplicated(data.frame(subject = sid_vals, time = time_vals))))
-            stop("declare_sampling_design(): duplicate subject/time observations are not supported")
-
-        # At least one subject must have distinct repeated time points
-        has_repeats <- any(tapply(time_vals, sid_vals, function(tv) length(unique(tv))) > 1L)
-        if (!has_repeats)
-            stop("declare_sampling_design(): longitudinal design requires at least ",
-                 "one subject with distinct repeated time points")
-    }
-
     data@sampling_design <- design
+    data_valid <- .validate_sampling_design_data(data)
+    if (!isTRUE(data_valid))
+        stop("declare_sampling_design(): ", data_valid)
     validObject(data)
     data
 }

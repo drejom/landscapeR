@@ -16,6 +16,7 @@ test_that("project_into() sets a length-1 sigma for the projected secondary coho
     expect_length(dr_sigma(s1), 1L)
     expect_equal(dr_sigma(s1), dr_sigma_k(s1)[, 1L])
     expect_equal(nrow(dr_sigma_k(s1)), length(dr_sigma(s1)))
+    expect_equal(result@sampling_design@kind, "cross_sectional")
 })
 
 test_that("project_into() output passes DecompositionResult validity", {

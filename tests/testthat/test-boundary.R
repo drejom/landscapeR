@@ -28,6 +28,23 @@ test_that("validate_boundary converts malformed sampling design to typed failure
     expect_match(result@reason, "invalid StateTransitionData")
 })
 
+test_that("validate_boundary catches stale longitudinal column references", {
+    d <- synthetic_control(n = 4L, p = 5L, K = 2L, signal = 10, seed = 3L)
+    cd <- colData(d)
+    cd$mouse_id <- c("m1", "m1", "m2", "m2")
+    cd$day <- c(0, 1, 0, 1)
+    colData(d) <- cd
+    d <- declare_sampling_design(d, longitudinal("mouse_id", "day"))
+    cd <- colData(d)
+    cd$day <- NULL
+    colData(d) <- cd
+
+    result <- validate_boundary(d, stage = "test")
+    expect_s4_class(result, "StageResult")
+    expect_equal(result@status, "failure")
+    expect_match(result@reason, "time_col 'day' not found")
+})
+
 # ---------------------------------------------------------------------------
 # Structural guarantee: boundary validation cannot be bypassed by a new
 # Decomposer strategy that only implements .decompose_impl(). The public

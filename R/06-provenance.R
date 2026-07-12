@@ -44,6 +44,8 @@ record_provenance <- function(data, stage, contract, implementation,
         get(".Random.seed", envir = globalenv())
     else
         integer(0)
+    if (is(data, "StateTransitionData"))
+        params$sampling_design <- .sampling_design_provenance(data@sampling_design)
 
     step <- new("ProvenanceStep",
         stage          = stage,

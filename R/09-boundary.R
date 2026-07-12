@@ -32,6 +32,11 @@ validate_boundary <- function(data,
                 "[%s] invalid StateTransitionData: %s",
                 stage, conditionMessage(validation)
             )))
+        sampling_valid <- .validate_sampling_design_data(data)
+        if (!isTRUE(sampling_valid))
+            return(stage_failure(sprintf(
+                "[%s] invalid sampling design: %s", stage, sampling_valid
+            )))
         return(data)
     }
 

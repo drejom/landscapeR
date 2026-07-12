@@ -153,10 +153,7 @@ setMethod(".decompose_impl", signature("HogsvdAveraged", "StateTransitionData"),
         metadata(data) <- md
 
         data <- record_provenance(data, "decompose", "Decomposer", "hogsvd_averaged",
-            params = c(list(
-                n = n, p = p, K = length(layers), k = k,
-                sampling_design = .sampling_design_provenance(data@sampling_design)
-            ), strategy@params),
+            params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params),
             input_hashes = input_hashes)
         prov_step <- data@provenance[[length(data@provenance)]]
 
@@ -217,10 +214,7 @@ setMethod(".decompose_impl", signature("HogsvdPrereduced", "StateTransitionData"
         metadata(data) <- md
 
         data <- record_provenance(data, "decompose", "Decomposer", "hogsvd_prereduced",
-            params = c(list(
-                n = n, p = p, K = length(layers), k = k,
-                sampling_design = .sampling_design_provenance(data@sampling_design)
-            ), strategy@params),
+            params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params),
             input_hashes = input_hashes)
         prov_step <- data@provenance[[length(data@provenance)]]
 
