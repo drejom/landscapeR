@@ -211,7 +211,8 @@ write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benc
     utils::write.csv(results, results_path, row.names = FALSE)
     saveRDS(list(r_version = R.version.string,
                  package_version = as.character(utils::packageVersion("landscapeR")),
-                 commit = tryCatch(system2("git", c("rev-parse", "HEAD"), stdout = TRUE), error = function(e) NA_character_)), env_path)
+                 commit = suppressWarnings(tryCatch(system2("git", c("rev-parse", "HEAD"),
+                     stdout = TRUE, stderr = FALSE), error = function(e) NA_character_))), env_path)
     paths <- c(manifest = manifest_path, seeds = seeds_path, results = results_path, environment = env_path)
     hashes <- data.frame(file = basename(paths), sha256 = vapply(paths, digest::digest, character(1L), file = TRUE, algo = "sha256"), stringsAsFactors = FALSE)
     hash_path <- file.path(artifact_dir, "hashes.csv")

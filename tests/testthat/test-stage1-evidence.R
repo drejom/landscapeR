@@ -63,7 +63,8 @@ test_that("full evidence artifact verifier rejects undeclared and altered payloa
     holdout <- assess_stage1_holdout(selection$selected_candidate, holdout_rows)
     root <- tempfile("stage1-evidence-root-")
     artifact <- landscapeR:::.stage1_write_full_artifact(root, manifest,
-        rbind(calibration, stage1_evidence_fixture("holdout")), selection, holdout, workers = 1L)
+        rbind(calibration, stage1_evidence_fixture("holdout")), selection, holdout,
+        workers = 1L, source_commit = paste(rep("a", 40L), collapse = ""))
     expect_true(verify_stage1_evidence_artifact(artifact))
     expect_identical(read_stage1_evidence_artifact(artifact)$selection$selected_candidate,
                      "C1_symmetric_consensus")
