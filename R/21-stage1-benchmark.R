@@ -14,10 +14,15 @@
 }
 
 .generator_digest <- function() {
+    # All helpers whose body can affect generated controls, candidate outputs,
+    # gates, or metrics must be included here so that any modification to any
+    # of them changes the digest and invalidates previously stored artifacts.
     functions <- c(".stage1_heterogeneous_control", ".centered_orthonormal",
                    ".prototype_complete_layers", ".prototype_preprocess",
+                   ".prototype_responses",
                    ".prototype_consensus", ".prototype_block_svd",
-                   ".prototype_project", ".prototype_metrics", "stage1_candidate_smoke")
+                   ".prototype_project", ".prototype_metrics", "stage1_candidate_smoke",
+                   ".projector", ".frobenius", "setup_rng")
     digest::digest(lapply(functions, function(name) body(get(name, envir = asNamespace("landscapeR")))),
                    algo = "sha256")
 }

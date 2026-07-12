@@ -329,15 +329,24 @@ stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
                    iterations = fit$iterations, stringsAsFactors = FALSE)
     })
 
+    .typed_rejection <- function(expr_thunk) {
+        # Verify the rejection is a typed stage1_prototype_error, not merely
+        # any error.  Using tryCatch lets us inspect the condition class
+        # directly rather than relying on try-error (which discards type info).
+        result <- tryCatch(expr_thunk(),
+            stage1_prototype_error = function(e) TRUE,
+            error = function(e) FALSE)
+        isTRUE(result)
+    }
     missing_id_rejected <- vapply(fits, function(fit) {
         malformed <- holdout
         malformed[[1L]] <- malformed[[1L]][, -1L, drop = FALSE]
-        inherits(try(.prototype_project(malformed, fit), silent = TRUE), "try-error")
+        .typed_rejection(function() .prototype_project(malformed, fit))
     }, logical(1L))
     extra_id_rejected <- vapply(fits, function(fit) {
         malformed <- holdout
         malformed[[1L]] <- cbind(malformed[[1L]], extra = 0)
-        inherits(try(.prototype_project(malformed, fit), silent = TRUE), "try-error")
+        .typed_rejection(function() .prototype_project(malformed, fit))
     }, logical(1L))
 
     canonical <- .stage1_heterogeneous_control(
