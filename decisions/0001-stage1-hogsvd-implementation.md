@@ -97,3 +97,26 @@ Do NOT register `multiblock::hogsvd` or `hogsvdR` — both are unusable at omics
 
 Revisit if: Stage 0 shows `hogsvd_averaged` fails below n = 20 in the thinness sweep,
 or a native R Kempf implementation appears that provides better theoretical guarantees.
+
+## 2026-07-12 amendment — heterogeneous feature spaces
+
+ADR 0009 establishes that genuine multi-omic layers may have different feature
+spaces and that shared structure is therefore defined in matched sample space.
+The current shared-gene-loading V-averaging implementation cannot satisfy that
+contract; it remains a legacy equal-feature special case pending replacement.
+
+The next algorithm decision must compare two registered candidates on a
+predeclared Stage 0 ladder:
+
+1. an aligned **symmetric** sample-score consensus that thin-SVDs each layer,
+   aligns sample-space components without privileging an omic layer, and
+   retains per-layer feature loadings and response profiles; and
+2. a block-scaled concatenated-SVD baseline.
+
+Equal post-preprocessing layer influence is the initial consensus baseline.
+Reliability-weighted variants are predeclared Stage 0 comparison candidates;
+raw feature count, sequencing depth, or singular value must not silently set a
+layer's influence. A selected baseline remains registered as a regression
+comparator. Future
+`Decomposer` strategies require their own ADR and a predeclared comparison to
+the accepted strategy on the same Stage 0 harness before admission.

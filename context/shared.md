@@ -37,12 +37,15 @@ A typed wrapper around a stage's return value, carrying success/failure status, 
 _Avoid_: result, output, return value
 
 **provenance**:
-The machine-readable record of how an artifact was produced — which strategy, which parameters, which input schema version, which RNG seed. Stored in `StateTransitionData` metadata as a list of `ProvenanceStep` objects. First-class: every stage must record it.
+The deterministic machine-readable recipe for how an artifact was produced — strategy, parameters, pre-stage input digest, schema version, and RNG seed. Stored in `StateTransitionData@provenance` as `ProvenanceStep` objects. First-class: every stage records it, and equal input/configuration/seed yields equal provenance.
 _Avoid_: audit trail, lineage, history
 
 **ProvenanceStep**:
-A single entry in the provenance record, created by `record_provenance()` and attached to `StageResult`. Contains stage name, strategy key, parameter snapshot, and timestamp.
+A single deterministic entry in the provenance record, created by `record_provenance()`, persisted on `StateTransitionData`, and emitted by `StageResult`. Contains stage name, strategy key, parameter snapshot, and pre-stage input digest; it does not contain volatile execution time.
 _Avoid_: log entry, record
+
+**execution telemetry**:
+Volatile observations about a particular execution, such as elapsed wall-clock time, host, or start time. Useful for profiling and benchmark artifacts, but never stored in the deterministic returned `StateTransitionData` provenance chain.
 
 **boundary validation**:
 The check run at every stage entry via `validate_boundary()` that verifies the incoming `StateTransitionData` satisfies the stage's typed preconditions. Returns a typed failure — never throws a raw exception.

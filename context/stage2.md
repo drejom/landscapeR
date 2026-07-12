@@ -5,16 +5,25 @@ Stage 2 takes the disease-axis coordinates from Stage 1 and fits a quasi-potenti
 ## Language
 
 **quasi-potential**:
-The scalar energy function U(x) = −log p(x) derived by log-density inversion of the empirical distribution of state-space coordinates. Local minima are stable states; local maxima are unstable transition boundaries. Not a physical potential — has no physical units.
+The scalar energy function U(x) = −log p(x) derived by log-density inversion of the empirical distribution of state-space coordinates. Local minima are stable states; local maxima are unstable transition boundaries. Not a physical potential — has no physical units. Its scientific interpretation is constrained by the declared sampling design and estimator.
 _Avoid_: potential energy, energy landscape, attractor landscape, effective potential (use only when specifically referring to the ODE-derived theoretical potential from Frankhouser2024)
+
+**sampling design**:
+The declared observation structure used to constrain Stage 2 claims. **Cross-sectional** data support a distributional quasi-potential estimate only. **Longitudinal** data include subject identity and ordered time points, enabling a distinct time-aware strategy to test directional behaviour or estimate temporal quantities.
 
 **log-density inversion**:
 The Stage 2 estimation approach: estimate p(x) by KDE on the state-space coordinates, then compute U(x) = −log p(x). The primary estimation strategy.
 _Avoid_: KDE-based potential, negative log-density
 
+**cross-layer concordance**:
+The predeclared criterion under which target-axis coordinates from multiple omic layers may be pooled for one Stage 2 estimate. Each layer is assessed first; disagreement yields layer-specific results or a no-joint-transition result, not silent pooling.
+
 **KDE**:
-Kernel density estimation — the non-parametric method used to estimate p(x) from the distribution of state-space coordinates. Bandwidth selection is a configurable parameter, not a hardcoded value.
+Kernel density estimation — the non-parametric method used to estimate p(x) from the distribution of state-space coordinates. The bandwidth-selection rule is fixed by Stage 0; its data-adaptive application to a cohort is permitted, but real-data outcomes or apparent topology must not select the rule.
 _Avoid_: kernel smoothing (too generic)
+
+**validated Stage 2 configuration**:
+The estimator family, bandwidth-selection rule, polynomial-smoothing rule, topology/false-positive rule, and minimum-sample requirement accepted from Stage 0 evidence. It is frozen before real-data analysis; AML or other real data may not tune it for a preferred-looking landscape.
 
 **polynomial smoothing**:
 Fitting a polynomial whose derivative has zeros at the estimated critical point locations, applied to smooth the KDE-derived quasi-potential. Polynomial degree is configurable; not hardcoded.
@@ -23,6 +32,9 @@ _Avoid_: polynomial fit, spline smoothing
 **critical point**:
 A location x* where ∇U(x*) = 0. Either stable (a well) or unstable (a barrier peak). Found by automated zero-finding of the KDE derivative — never by visual inspection or hardcoded coordinates.
 _Avoid_: fixed point (reserve for ODE contexts), equilibrium (ambiguous)
+
+**biological-unit bootstrap**:
+A resampling procedure that samples complete paired biological observations (all required omic layers together), reruns the applicable Stage 1 and Stage 2 steps, and reports selection, topology, well-location, and barrier-height stability. It never resamples individual layer coordinates as independent observations.
 
 **stable critical point**:
 A local minimum of the quasi-potential — a disease phenotype the system tends to occupy. Corresponds to a well.
@@ -37,8 +49,14 @@ The difference in quasi-potential value between an unstable critical point and t
 _Avoid_: activation energy (implies physical units), transition cost
 
 **well**:
-A stable region around a stable critical point — the basin of attraction of a disease state. The depth and width of a well reflect how stable that disease state is.
+A stable region around a stable critical point — the basin of a biological state. The depth and width of a well reflect how stable that state is.
 _Avoid_: basin, attractor basin
+
+**no-transition result**:
+A valid Stage 2 conclusion that the selected target biological axis has a single well or no supported barrier. It means the data do not support a state-transition topology on that axis; it is not an estimation failure and must not be smoothed into a multi-well claim.
+
+**claim status**:
+A machine-readable statement of the evidence scope for a Stage 2 result: confirmatory, exploratory, ineligible for the current estimator, or a no-transition result. It is derived from declared sampling design, applicability, discovery/confirmation, concordance, and stability gates rather than a vignette disclaimer. Ineligible and no-transition results are successful scientific outcomes, distinct from typed computational or input failures.
 
 **double-well potential**:
 A quasi-potential with exactly two wells (two stable critical points) separated by one unstable critical point. Characterises two-state biological systems (e.g. AML: healthy → leukemic).

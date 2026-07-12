@@ -1,7 +1,7 @@
 # 0002 — Stage 2 dynamics estimator
 
 **Stage:** 2 (quasi-potential / flow)
-**Status:** accepted
+**Status:** provisional-accepted
 **Date:** 2026-06-27
 
 ## Context
@@ -27,19 +27,29 @@ longitudinal tracks required.
 
 ## Criteria
 
-1. **Known-potential recovery** — double-well Stage 0 control must recover well
-   positions within 0.15 coordinate units and barrier height within 2× the true
-   value (KDE returns β·U, not U; at β=2 the recovered barrier height is ~2.0
-   vs true 1.0).  Sweep: n ∈ {100, 200, 500}, β=2, seed=42.
-2. **No-hallucination** — static-Gaussian negative control must yield zero detected
-   critical points at the planned false-positive threshold ≤ 0.05.
-3. **Cross-sectional native** — no longitudinal tracks required.
-4. **Interpretable outputs** — critical point locations and barrier heights in
-   units that map to Stage 1 coordinate system.
-5. **Pure R** — no MATLAB, no reticulate bridge required.
+The following are **provisional targets**, not accepted thresholds. Final
+acceptance criteria must be predeclared before the full Stage 0 ladder and
+estimated from its independent replicate distribution.
 
-*Thresholds marked [tbd] must be filled from Stage 0 results before status moves
-to fully accepted.*
+1. **Known-potential recovery** — estimator-level double-well controls must
+   measure well-location and barrier-height recovery over a predeclared
+   multi-seed replicate set and sample-size grid. The initial targets (well
+   location error ≤ 0.15 coordinate units; correctly scaled barrier-height
+   recovery) require confirmation or revision from that ladder.
+2. **End-to-end recovery** — synthetic multi-omic controls must run through
+   Stage 1 and Stage 2, including a stronger shared confounder that makes the
+   planted target biological axis non-dominant.
+3. **No-hallucination** — predeclared unimodal, no-target-axis, and discordant
+   multi-omic negative controls must meet a predeclared false-positive limit.
+4. **Cross-sectional native** — the current estimator supports distributional
+   quasi-potential claims only; directional or timing claims require a separate
+   longitudinal strategy.
+5. **Interpretable outputs** — critical point locations and barrier heights are
+   reported in the selected target-biological-axis coordinate system.
+6. **Pure R** — no MATLAB or reticulate bridge is required.
+
+*Stage 2 cannot move to fully accepted until final numeric thresholds, replicate
+pass rates, and negative-control limits are filled from the Stage 0 ladder.*
 
 ## Evidence
 
@@ -72,7 +82,11 @@ No Rcpp required for a correct implementation. `deSolve`'s existing C/Fortran
 backends handle PDE performance. Rcpp is available as a profiling-driven escape
 hatch for the Langevin inner loop only.
 
-### From Stage 0: double-well recovery (2026-06-27)
+### Exploratory single-seed double-well observation (2026-06-27)
+
+This is an illustrative estimator-level observation, not an acceptance
+benchmark: it uses one seed, bypasses Stage 1, and predates the predeclared
+replicate and negative-control policy.
 
 `synthetic_potential_control()` + `potential_recovery_benchmark()` on
 U(x) = (x²−1)², β=2, seed=42:
@@ -83,15 +97,16 @@ U(x) = (x²−1)², β=2, seed=42:
 | 200 | 0.066           | 0.263           | 1.065                      | 2           | 1              |
 | 500 | 0.036           | 0.124           | 2.052                      | 2           | 1              |
 
-**Summary**: Well positions converge to < 0.15 error at n ≥ 200; barrier x-position
-error < 0.30 at n ≥ 100.  Barrier height in KDE space ≈ β·U_true = 2·1 = 2.0
+**Preliminary observation only**: Well positions appear to improve with sample
+size, and the KDE-space barrier height is consistent with β·U_true = 2·1 = 2.0
 (the KDE log-density is β times the physical potential, consistent with the
-Boltzmann relation p ∝ exp(−β·U)).  Both wells and the central barrier are
-reliably detected at all tested sample sizes.
+Boltzmann relation p ∝ exp(−β·U)). These values do not establish reliability or
+an acceptance threshold until replicated across the predeclared Stage 0 ladder.
 
-**Implication for real data**: report well positions and barrier heights as
-dimensionless quasi-potential units.  The β-scaling is absorbed; relative barrier
-heights between conditions are directly comparable.
+**Implication for real data**: if the full ladder accepts the estimator, report
+well positions and barrier heights as dimensionless quasi-potential units. The
+β-scaling is absorbed; relative barrier heights between conditions may then be
+compared only within the validated claim scope.
 
 ## Decision
 
@@ -134,6 +149,9 @@ critical path for Stage 2:
 ## Review trigger
 
 Revisit estimator choice if any of the following:
-- Well position error > 0.15 at n ≥ 200 on new synthetic controls
-- Barrier detection false-positive rate > 0.05 on Gaussian negative controls
-- Real data requires spatially-varying diffusion (then consider TRAMWAY)
+- The predeclared Stage 0 replicate ladder fails its finalized recovery or
+  false-positive criteria.
+- The end-to-end control fails to recover a planted non-dominant target
+  biological axis and its quasi-potential.
+- Real data requires spatially-varying diffusion, longitudinal dynamics, or a
+  branching/multi-axis geometry (then consider a separately validated strategy).

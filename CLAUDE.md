@@ -78,15 +78,16 @@ tests/testthat/
 
 | Stage | Name | Status |
 |---|---|---|
-| 0 | Synthetic control ladder | **Not started** — next priority |
-| 0.5 | Signature library + archetype classifier | Not started |
-| 0.75 | Distributional fit assessment | Not started |
-| 1 | Comparative decomposition (GSVD / HO-GSVD) | Contracts only — no implementation |
-| 2 | Dynamics (quasi-potential) | Contracts only — no implementation |
+| 0 | Synthetic control ladder | Implemented: subspace and double-well controls, recovery benchmarks, and an initial Stage 1 sweep. Acceptance-threshold and rank-deficiency sweeps remain. |
+| 0.5 | Signature library + archetype classifier | Deferred: unexported contract stubs only; no implementation. |
+| 0.75 | Distributional fit assessment | Deferred: unexported contract stub only; no implementation. |
+| 1 | Comparative decomposition (GSVD / HO-GSVD) | Implemented: multi-component `hogsvd_averaged` default and `hogsvd_prereduced` baseline, component gallery, and secondary-cohort projection. |
+| 2 | Dynamics (quasi-potential) | Implemented provisionally: KDE log-density estimator and plots. Stage 0 recovery benchmarks must set ADR 0002 acceptance thresholds. |
 
-**Start with Stage 0.** It is load-bearing: Stage 2 has no real-data ground truth,
-so Stage 0 known-potential controls are the only honest validation. ADR 0002 has
-`[tbd]` thresholds that Stage 0 must fill before Stage 2 implementation begins.
+**Complete Stage 0 validation next.** It is load-bearing: Stage 2 has no real-data
+ground truth, so Stage 0 known-potential controls are the only honest validation.
+ADR 0002 still has `[tbd]` acceptance thresholds that Stage 0 recovery benchmarks
+must fill before the Stage 2 estimator can become fully accepted.
 
 ## ADR workflow — mandatory for algorithm choices
 

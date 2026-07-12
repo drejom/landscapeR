@@ -8,6 +8,15 @@ Stage 1 takes K omic layers as input and produces a shared state-space whose axe
 A single type of molecular measurement contributing one data matrix to Stage 1 — e.g. mRNA, miRNA, methylation, proteomics, genotype. Each layer is one matrix: rows = samples (shared across layers), columns = features (layer-specific).
 _Avoid_: modality, assay, data type (too generic in this context)
 
+**feature-space heterogeneity**:
+The invariant that each omic layer may have its own feature set and feature count (e.g. genes, pathology measurements, or variants). Stage 1 must represent shared structure in the matched sample space and retain layer-specific feature loadings; it must not require equal feature dimensions across layers.
+
+**complete paired cohort**:
+The intersection of biological observations with valid measurements in every omic layer required for Stage 1 fitting. Missing omic blocks are neither interpolated nor zero-filled. Excluded observations and their missingness patterns are recorded; technical-replicate resolution occurs in assay-specific preprocessing, outside landscapeR. After dedicated missingness validation, an incomplete observation may be a visibly projection-only descriptive point, but never enters target selection, bootstrap resampling, density fitting, or Stage 2 inference.
+
+**analysis-ready omic matrix**:
+An assay-specific, quality-controlled matrix supplied to landscapeR after normalization, transformation, technical-replicate resolution, and encoding appropriate to that omic layer. Those upstream decisions remain outside landscapeR but their provenance is retained; Stage 1 applies only its declared generic centering/scaling policy.
+
 **comparative decomposition**:
 The Stage 1 operation: decomposing K omic layers simultaneously so that shared axes reflect contrast between biological conditions, not just variance within a single layer.
 _Avoid_: joint PCA, multi-omic PCA
@@ -21,24 +30,45 @@ Higher-order GSVD of K≥2 matrices. Produces one shared V* (gene loadings commo
 _Avoid_: multi-block PCA (a different method), tensor decomposition (incorrect framing), HOSVD (a different factorisation)
 
 **shared subspace**:
-The subspace spanned by the columns of V* — the axes that are common across all K omic layers. Contains the disease axis and other shared sources of variation.
+The subspace spanned by the columns of V* — the axes that are common across all K omic layers. It contains candidate target biological axes and other shared sources of variation.
 _Avoid_: common space, joint embedding
 
+**target biological axis**:
+The selected column of V* (and corresponding row of each UᵢΣᵢ) whose coordinate is associated with a predeclared biological variable or contrast. It is selected from a reproducible, predeclared proposal ranking or manually fixed by the analyst; the final choice and rationale are recorded in provenance.
+_Avoid_: PC1/PC2 (too generic — the target biological axis may not be the dominant component)
+
 **disease axis**:
-The specific column of V* (and corresponding row of each UᵢΣᵢ) whose coordinate separates healthy from disease state variables and correlates with disease burden markers. Identified by inspecting correlation with clinical covariates.
-_Avoid_: leukemia axis (disease-specific), PC1/PC2 (too generic — the disease axis may not always be PC1)
+A disease-specific target biological axis whose coordinate separates healthy from disease state variables or correlates with disease burden markers.
+
+**component-selection proposal**:
+A reproducible ranking of Stage 1 components against predeclared biological metadata. It recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion.
+
+**axis orientation anchor**:
+An optional predeclared biological metadata rule that gives a selected target biological axis a semantic direction (for example, increasing developmental day or toward treated samples). Technical alignment to the discovery-cohort reference is automatic; directional biological claims require this anchor and must not use downstream Stage 2 topology to set it.
+
+**metadata roles**:
+A declaration that separates one target biological variable, named nuisance variables, and diagnostic metadata. Eligible undeclared `colData` fields, including QC metrics, are screened automatically as diagnostics; identifiers are ignored by default. Strong diagnostic or nuisance association creates a visible confounding alert and calls for sensitivity analysis, never silent selection, orientation, residualisation, or correction. Missing values in required target/nuisance/orientation fields exclude that biological observation from the analysis cohort and are recorded; diagnostic screens report available-case counts without imputing metadata.
+
+**target-axis run**:
+One reproducible pipeline run with exactly one target biological axis. Distinct biological questions use distinct named runs, each with its own selection rule, orientation anchor, nuisance declaration, stability assessment, and provenance; a run must not search across targets for the most persuasive landscape. Studies with multiple runs predeclare one primary confirmatory analysis; the rest are exploratory unless a multiplicity plan says otherwise.
+
+**layer-response profile**:
+The per-omic-layer direction, magnitude, concordance, and uncertainty on a selected target biological axis. It preserves asymmetric biology—such as anti-correlated miRNA and mRNA responses—and supplies the evidence for or against pooling layers in Stage 2. If an incomplete observation is projected descriptively, its source omic layer is predeclared from this profile, never chosen automatically from availability.
 
 **layer-specific variation**:
-Variation captured in UᵢΣᵢ but not in V* — unique to one omic layer, absent from others. Represents omic-layer-specific signal (e.g. miRNA-specific regulation not reflected in mRNA).
+Variation captured in UᵢΣᵢ but not in the shared sample-space coordinate — unique to one omic layer, absent from others. Represents omic-layer-specific signal (e.g. miRNA-specific regulation not reflected in mRNA).
 _Avoid_: residual, noise (it may be meaningful biology)
 
 **eigengene**:
-The loading of a gene on the disease axis (a scalar value from the relevant column of V*). Quantifies that gene's directional contribution to the state-transition. Positive or negative sign indicates direction relative to disease progression.
-_Avoid_: gene weight, PC loading, feature importance (prefer eigengene when the loading has biological interpretation on the disease axis)
+The loading of a gene on a selected target biological axis (a scalar value from the relevant column of V*). Quantifies that gene's directional contribution to the chosen biological contrast. Its sign is interpreted relative to the axis orientation recorded for that analysis.
+_Avoid_: gene weight, PC loading, feature importance (prefer eigengene when the loading has biological interpretation)
 
 **projection**:
-Mapping new samples into an existing Stage 1 state-space using training loadings without refitting: `X_new · V*_training · Σ_training⁻¹`. Used for validation cohorts and treatment groups.
+Mapping new samples into an existing Stage 1 state-space using discovery-cohort loadings without refitting: `X_new · V*_training · Σ_training⁻¹`. Used for confirmation cohorts and treatment groups after the target biological axis and analysis choices have been frozen.
 _Avoid_: embedding, transfer, out-of-sample prediction
+
+**discovery/confirmation boundary**:
+The separation between a primary cohort used to select a target biological axis and a secondary cohort projected into the frozen state-space to assess replication. Claims without an independent confirmation cohort are exploratory, not confirmatory.
 
 **rank-deficient layer**:
 An omic layer whose matrix has fewer linearly independent rows or columns than expected (rank < min(rows, cols)). Requires a rank-deficiency-aware HO-GSVD implementation (Kempf variant). The diabetes genotype layer is expected to be rank-deficient.
