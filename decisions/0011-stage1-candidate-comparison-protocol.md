@@ -1,7 +1,7 @@
 # 0011 — Stage 1 heterogeneous-feature candidate comparison protocol
 
 **Stage:** 0 / 1
-**Status:** proposed
+**Status:** accepted
 **Date:** 2026-07-12
 
 ## Context
@@ -55,9 +55,9 @@ implementing either as the production heterogeneous-feature Stage 1 strategy.
 The protocol fixes preprocessing, rank, candidate mechanics, synthetic truth,
 parameter grid, 40 paired calibration/holdout seeds, gates, metrics, selection
 thresholds, and immutable artifacts. C2 remains the mandatory regression
-comparator even if C1 wins. This ADR remains proposed until a human approves
-the protocol unchanged; no candidate or Issue #24 implementation follows from
-it yet.
+comparator even if C1 wins. The protocol was approved unchanged on 2026-07-12. Candidate prototype code
+may now implement its smoke tier, but no production candidate or Issue #24
+contract rewrite follows from this ADR alone.
 
 ## Consequences
 

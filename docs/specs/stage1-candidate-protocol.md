@@ -2,7 +2,7 @@
 
 **Protocol ID:** `stage1-heterogeneous-v1`
 
-**Status:** proposed — approve unchanged before prototype code or aggregate results
+**Status:** accepted — frozen before prototype code or aggregate results
 **Governs:** ADR 0001 amendment, ADR 0009, Issue #24
 
 ## Purpose and boundary
