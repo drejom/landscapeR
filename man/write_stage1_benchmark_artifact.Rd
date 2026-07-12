@@ -7,7 +7,10 @@
 write_stage1_benchmark_artifact(
   artifact_dir,
   manifest = stage1_benchmark_manifest(),
-  seed = 1001L
+  seed = 1001L,
+  stratum = list(n = 20L, K = 2L, shared_signal = 24, exclusive_signal = 12,
+    confounder_signal = 12, noise_sd = 1, missing_block_rate = 0, sample_order =
+    "permuted", feature_order = "permuted", projection_case = "exact_ids")
 )
 }
 \arguments{
@@ -16,6 +19,8 @@ write_stage1_benchmark_artifact(
 \item{manifest}{benchmark manifest.}
 
 \item{seed}{seed to execute.}
+
+\item{stratum}{one explicit frozen-grid stratum.}
 }
 \value{
 named character vector of written artifact paths.

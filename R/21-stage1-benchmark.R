@@ -42,14 +42,34 @@ validate_stage1_benchmark_manifest <- function(manifest) {
     required <- c("artifact_version", "protocol_id", "generator", "candidates", "rank", "grid", "seeds")
     if (!is.list(manifest) || !all(required %in% names(manifest)))
         .stage1_benchmark_abort("benchmark manifest is missing required fields")
-    if (!identical(manifest$protocol_id, "stage1-heterogeneous-v1") ||
+    if (!identical(manifest$artifact_version, "1") || !identical(manifest$rank, 2L) ||
+        !identical(manifest$protocol_id, "stage1-heterogeneous-v1") ||
         !identical(manifest$generator, "heterogeneous_shared_subspace_v1"))
-        .stage1_benchmark_abort("benchmark manifest protocol/generator identity is invalid")
+        .stage1_benchmark_abort("benchmark manifest identity, version, or rank is invalid")
     if (!identical(manifest$candidates, c("C1_symmetric_consensus", "C2_block_scaled_svd")))
         .stage1_benchmark_abort("benchmark manifest candidates differ from frozen protocol")
     if (!is.data.frame(manifest$seeds) || !identical(manifest$seeds$seed, 1001:1040) ||
         !identical(manifest$seeds$split, rep(c("calibration", "holdout"), each = 20L)))
         .stage1_benchmark_abort("benchmark manifest seed/split assignment is invalid")
+    frozen_grid <- stage1_benchmark_manifest()$grid
+    if (!identical(manifest$grid, frozen_grid))
+        .stage1_benchmark_abort("benchmark manifest grid differs from frozen protocol")
+    invisible(TRUE)
+}
+
+.validate_stage1_benchmark_stratum <- function(stratum, manifest) {
+    required <- c("n", "K", "shared_signal", "exclusive_signal", "confounder_signal",
+                  "noise_sd", "missing_block_rate", "sample_order", "feature_order", "projection_case")
+    if (!is.list(stratum) || !identical(sort(names(stratum)), sort(required)))
+        .stage1_benchmark_abort("stratum must contain exactly the frozen grid fields")
+    g <- manifest$grid
+    valid <- stratum$n %in% g$n && stratum$K %in% g$K &&
+        stratum$shared_signal %in% g$shared_signal && stratum$exclusive_signal %in% g$exclusive_signal &&
+        stratum$confounder_signal %in% g$confounder_signal && stratum$noise_sd %in% g$noise_sd &&
+        stratum$missing_block_rate %in% g$missing_block_rate &&
+        stratum$sample_order %in% g$sample_order && stratum$feature_order %in% g$feature_order &&
+        stratum$projection_case %in% g$projection_case
+    if (!isTRUE(valid)) .stage1_benchmark_abort("stratum contains values outside the frozen grid")
     invisible(TRUE)
 }
 
@@ -77,10 +97,7 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     seed <- as.integer(seed)
     if (!seed %in% manifest$seeds$seed)
         .stage1_benchmark_abort("seed is not declared in the benchmark manifest")
-    required <- c("n", "K", "shared_signal", "exclusive_signal", "confounder_signal",
-                  "noise_sd", "missing_block_rate", "sample_order", "feature_order", "projection_case")
-    if (!is.list(stratum) || !all(required %in% names(stratum)))
-        .stage1_benchmark_abort("stratum is missing frozen grid fields")
+    .validate_stage1_benchmark_stratum(stratum, manifest)
     if (!identical(as.numeric(stratum$missing_block_rate), 0))
         .stage1_benchmark_abort("missing-block strata require the deferred complete-case generator")
     p <- if (identical(as.integer(stratum$K), 2L)) c(80L, 400L) else c(80L, 400L, 1200L)
@@ -96,11 +113,16 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     out$split <- split
     out$protocol_id <- manifest$protocol_id
     out$generator <- manifest$generator
-    out$gate_passed <- all(smoke$gates$sample_map_aligned,
-                           smoke$gates$heterogeneous_features,
-                           all(smoke$gates$missing_projection_id_rejected),
-                           all(smoke$gates$extra_projection_id_rejected),
-                           all(smoke$gates$permutation_invariant))
+    out$protocol_digest <- digest::digest(manifest$protocol_id, algo = "sha256")
+    out$generator_digest <- digest::digest(manifest$generator, algo = "sha256")
+    out$stratum_digest <- digest::digest(stratum, algo = "sha256")
+    out$stratum <- vapply(seq_len(nrow(out)), function(i) paste(capture.output(dput(stratum)), collapse = ""), character(1L))
+    out$exclusions <- paste(smoke$gates$complete_case_exclusions, collapse = ";")
+    base_gate <- all(smoke$gates$sample_map_aligned, smoke$gates$heterogeneous_features,
+                     all(smoke$gates$extra_projection_id_rejected), all(smoke$gates$permutation_invariant))
+    is_missing_projection <- identical(stratum$projection_case, "missing_id")
+    out$gate_passed <- base_gate && if (is_missing_projection) FALSE else all(smoke$gates$missing_projection_id_rejected)
+    out$failure_reason <- if (is_missing_projection) "projection feature ID missing (expected typed failure)" else NA_character_
     out
 }
 
@@ -109,14 +131,21 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
 #' @param artifact_dir new destination directory.
 #' @param manifest benchmark manifest.
 #' @param seed seed to execute.
+#' @param stratum one explicit frozen-grid stratum.
 #' @return named character vector of written artifact paths.
 #' @export
-write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benchmark_manifest(), seed = 1001L) {
+write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benchmark_manifest(), seed = 1001L,
+                                            stratum = list(n = 20L, K = 2L,
+                                                shared_signal = 24, exclusive_signal = 12,
+                                                confounder_signal = 12, noise_sd = 1,
+                                                missing_block_rate = 0,
+                                                sample_order = "permuted", feature_order = "permuted",
+                                                projection_case = "exact_ids")) {
     validate_stage1_benchmark_manifest(manifest)
     if (dir.exists(artifact_dir) && length(list.files(artifact_dir, all.files = TRUE, no.. = TRUE)))
         .stage1_benchmark_abort("benchmark artifact directory must be new or empty")
     dir.create(artifact_dir, recursive = TRUE, showWarnings = FALSE)
-    results <- run_stage1_benchmark_replicate(manifest, seed)
+    results <- run_stage1_benchmark_replicate(manifest, seed, stratum)
     manifest_path <- file.path(artifact_dir, "manifest.rds")
     seeds_path <- file.path(artifact_dir, "seed-manifest.csv")
     results_path <- file.path(artifact_dir, "results.csv")
