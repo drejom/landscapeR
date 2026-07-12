@@ -25,10 +25,16 @@ setClass("StageResult",
 )
 
 setValidity("StageResult", function(object) {
+    errs <- character()
     if (!object@status %in% c("success", "failure"))
-        "status must be 'success' or 'failure'"
-    else
-        TRUE
+        errs <- c(errs, "status must be 'success' or 'failure'")
+    bad <- !vapply(object@provenance, is, logical(1L), "ProvenanceStep")
+    if (any(bad))
+        errs <- c(errs,
+            paste0("provenance slot must contain only ProvenanceStep objects; ",
+                   "element(s) ", paste(which(bad), collapse = ", "),
+                   " are not ProvenanceStep"))
+    if (length(errs)) errs else TRUE
 })
 
 #' Construct a successful StageResult

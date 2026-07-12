@@ -130,11 +130,12 @@ setMethod(".estimate_dynamics_impl",
         md$stage2 <- s2
         metadata(data) <- md
 
-        prov <- record_provenance(data, "estimate_dynamics", "DynamicsEstimator",
+        data <- record_provenance(data, "estimate_dynamics", "DynamicsEstimator",
                     "kde_logdensity",
                     params = c(list(n = length(x_obs)), p))
+        prov_step <- data@provenance[[length(data@provenance)]]
 
-        stage_success(data, provenance = list(prov))
+        stage_success(data, provenance = list(prov_step))
     }
 )
 

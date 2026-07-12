@@ -233,3 +233,82 @@ test_that("barrier_heights is a named list of 2-element left/right vectors", {
         expect_true(all(non_na > 0))
     }
 })
+
+# ---------------------------------------------------------------------------
+# Issue #23: Provenance persistence
+# ---------------------------------------------------------------------------
+
+test_that("kde_logdensity: exactly one ProvenanceStep in StageResult@provenance", {
+    std_pot <- synthetic_potential_control(n = 100L, seed = 1L)
+    x_samp <- colData(std_pot)$x_coord
+    md <- metadata(std_pot)
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
+    metadata(std_pot) <- md
+
+    ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+    res  <- estimate_dynamics(ctor(), std_pot)
+
+    expect_equal(res@status, "success")
+    expect_length(res@provenance, 1L)
+    expect_true(is(res@provenance[[1L]], "ProvenanceStep"))
+})
+
+test_that("kde_logdensity: ProvenanceStep is also persisted in returned StateTransitionData@provenance", {
+    std_pot <- synthetic_potential_control(n = 100L, seed = 1L)
+    x_samp <- colData(std_pot)$x_coord
+    md <- metadata(std_pot)
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
+    metadata(std_pot) <- md
+
+    ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+    res  <- estimate_dynamics(ctor(), std_pot)
+
+    expect_equal(res@status, "success")
+    prov <- res@value@provenance
+    expect_length(prov, 1L)
+    expect_true(is(prov[[1L]], "ProvenanceStep"))
+    expect_equal(prov[[1L]]@stage, "estimate_dynamics")
+    expect_equal(prov[[1L]]@implementation, "kde_logdensity")
+    expect_equal(prov[[1L]]@status, "success")
+})
+
+test_that("kde_logdensity: StageResult@provenance is not a StateTransitionData", {
+    std_pot <- synthetic_potential_control(n = 100L, seed = 1L)
+    x_samp <- colData(std_pot)$x_coord
+    md <- metadata(std_pot)
+    md$stage1 <- DecompositionResult(
+        V_star   = rep(1, 1L),
+        sigma    = 1,
+        coords   = list(x_samp),
+        warnings = character(0),
+        V_k      = matrix(1, nrow = 1L, ncol = 1L),
+        sigma_k  = matrix(1, nrow = 1L, ncol = 1L),
+        coords_k = list(matrix(x_samp, ncol = 1L)),
+        k        = 1L
+    )
+    metadata(std_pot) <- md
+
+    ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+    res  <- estimate_dynamics(ctor(), std_pot)
+
+    expect_equal(res@status, "success")
+    expect_false(is(res@provenance[[1L]], "StateTransitionData"))
+})

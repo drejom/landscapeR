@@ -213,3 +213,59 @@ test_that("shared_axis() default (j=1) matches dr_V_star()", {
     )
     expect_equal(shared_axis(dr), dr_V_star(dr))
 })
+
+# ---------------------------------------------------------------------------
+# Issue #23: Provenance persistence
+# ---------------------------------------------------------------------------
+
+test_that("hogsvd_averaged: exactly one ProvenanceStep in StageResult@provenance", {
+    std  <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 2L)
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    result <- suppressWarnings(decompose(ctor(), std))
+    expect_equal(result@status, "success")
+    expect_length(result@provenance, 1L)
+    expect_true(is(result@provenance[[1L]], "ProvenanceStep"))
+})
+
+test_that("hogsvd_averaged: ProvenanceStep is also persisted in returned StateTransitionData@provenance", {
+    std  <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 2L)
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    result <- suppressWarnings(decompose(ctor(), std))
+    expect_equal(result@status, "success")
+    prov <- result@value@provenance
+    expect_length(prov, 1L)
+    expect_true(is(prov[[1L]], "ProvenanceStep"))
+    expect_equal(prov[[1L]]@stage, "decompose")
+    expect_equal(prov[[1L]]@implementation, "hogsvd_averaged")
+    expect_equal(prov[[1L]]@status, "success")
+})
+
+test_that("hogsvd_prereduced: exactly one ProvenanceStep in StageResult@provenance", {
+    std  <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 3L)
+    ctor <- get_strategy("Decomposer", "hogsvd_prereduced")
+    result <- suppressWarnings(decompose(ctor(), std))
+    expect_equal(result@status, "success")
+    expect_length(result@provenance, 1L)
+    expect_true(is(result@provenance[[1L]], "ProvenanceStep"))
+})
+
+test_that("hogsvd_prereduced: ProvenanceStep is also persisted in returned StateTransitionData@provenance", {
+    std  <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 3L)
+    ctor <- get_strategy("Decomposer", "hogsvd_prereduced")
+    result <- suppressWarnings(decompose(ctor(), std))
+    expect_equal(result@status, "success")
+    prov <- result@value@provenance
+    expect_length(prov, 1L)
+    expect_true(is(prov[[1L]], "ProvenanceStep"))
+    expect_equal(prov[[1L]]@stage, "decompose")
+    expect_equal(prov[[1L]]@implementation, "hogsvd_prereduced")
+    expect_equal(prov[[1L]]@status, "success")
+})
+
+test_that("hogsvd_averaged: StageResult@provenance is not a StateTransitionData", {
+    std  <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 2L)
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    result <- suppressWarnings(decompose(ctor(), std))
+    expect_equal(result@status, "success")
+    expect_false(is(result@provenance[[1L]], "StateTransitionData"))
+})

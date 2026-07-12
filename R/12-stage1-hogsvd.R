@@ -151,12 +151,13 @@ setMethod(".decompose_impl", signature("HogsvdAveraged", "StateTransitionData"),
         md$stage1 <- res
         metadata(data) <- md
 
-        prov <- record_provenance(data, "decompose", "Decomposer", "hogsvd_averaged",
+        data <- record_provenance(data, "decompose", "Decomposer", "hogsvd_averaged",
             params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params))
+        prov_step <- data@provenance[[length(data@provenance)]]
 
         all_warns <- dr_warnings(res)
         if (length(all_warns)) for (w in all_warns) warning(w)
-        stage_success(data, provenance = list(prov))
+        stage_success(data, provenance = list(prov_step))
     }
 )
 
@@ -209,12 +210,13 @@ setMethod(".decompose_impl", signature("HogsvdPrereduced", "StateTransitionData"
         md$stage1 <- res
         metadata(data) <- md
 
-        prov <- record_provenance(data, "decompose", "Decomposer", "hogsvd_prereduced",
+        data <- record_provenance(data, "decompose", "Decomposer", "hogsvd_prereduced",
             params = c(list(n = n, p = p, K = length(layers), k = k), strategy@params))
+        prov_step <- data@provenance[[length(data@provenance)]]
 
         all_warns <- dr_warnings(res)
         if (length(all_warns)) for (w in all_warns) warning(w)
-        stage_success(data, provenance = list(prov))
+        stage_success(data, provenance = list(prov_step))
     }
 )
 

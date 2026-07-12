@@ -130,3 +130,42 @@ test_that("run_pipeline recovers wells and barrier on a known double-well potent
     expect_gte(length(bh_found), 1L)
     expect_true(all(is.finite(bh_found)))
 })
+
+# ---------------------------------------------------------------------------
+# Issue #23: Provenance accumulation through run_pipeline()
+# ---------------------------------------------------------------------------
+
+test_that("run_pipeline: both stages persist ProvenanceStep records in value@provenance", {
+    std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
+    cfg <- new("PipelineConfig",
+        dataset    = "test",
+        strategies = list(Decomposer        = "hogsvd_averaged",
+                          DynamicsEstimator = "kde_logdensity"),
+        params     = list()
+    )
+    result <- suppressWarnings(run_pipeline(std, cfg))
+    expect_equal(result@status, "success")
+
+    prov <- result@value@provenance
+    expect_length(prov, 2L)
+    expect_true(all(vapply(prov, is, logical(1L), "ProvenanceStep")))
+    stages_recorded <- vapply(prov, function(p) p@stage, character(1L))
+    expect_true("decompose"          %in% stages_recorded)
+    expect_true("estimate_dynamics"  %in% stages_recorded)
+})
+
+test_that("run_pipeline single stage: exactly one ProvenanceStep persisted", {
+    std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
+    cfg <- new("PipelineConfig",
+        dataset    = "test",
+        strategies = list(Decomposer = "hogsvd_averaged"),
+        params     = list()
+    )
+    result <- suppressWarnings(run_pipeline(std, cfg))
+    expect_equal(result@status, "success")
+
+    prov <- result@value@provenance
+    expect_length(prov, 1L)
+    expect_true(is(prov[[1L]], "ProvenanceStep"))
+    expect_equal(prov[[1L]]@stage, "decompose")
+})
