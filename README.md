@@ -52,7 +52,7 @@ plot_potential(std2)
 
 ## Status
 
-Active development — see the [pkgdown site](https://lab.omeally.com/landscapeR)
+Active development — see the [pkgdown site](https://drejom.github.io/landscapeR/)
 for the current development log and roadmap.
 
 ## Reference
