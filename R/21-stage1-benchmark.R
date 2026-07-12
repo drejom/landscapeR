@@ -98,12 +98,11 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     if (!seed %in% manifest$seeds$seed)
         .stage1_benchmark_abort("seed is not declared in the benchmark manifest")
     .validate_stage1_benchmark_stratum(stratum, manifest)
-    if (!identical(as.numeric(stratum$missing_block_rate), 0))
-        .stage1_benchmark_abort("missing-block strata require the deferred complete-case generator")
     p <- if (identical(as.integer(stratum$K), 2L)) c(80L, 400L) else c(80L, 400L, 1200L)
     control <- .stage1_heterogeneous_control(seed = seed, n = stratum$n, p = p,
         signal = c(shared = unname(stratum$shared_signal), exclusive = unname(stratum$exclusive_signal),
                    confounder = unname(stratum$confounder_signal)), noise_sd = unname(stratum$noise_sd),
+        missing_block_rate = unname(stratum$missing_block_rate),
         sample_permuted = identical(stratum$sample_order, "permuted"),
         feature_permuted = identical(stratum$feature_order, "permuted"))
     smoke <- stage1_candidate_smoke(seed, control = control)
@@ -116,7 +115,7 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     out$protocol_digest <- digest::digest(manifest$protocol_id, algo = "sha256")
     out$generator_digest <- digest::digest(manifest$generator, algo = "sha256")
     out$stratum_digest <- digest::digest(stratum, algo = "sha256")
-    out$stratum <- vapply(seq_len(nrow(out)), function(i) paste(capture.output(dput(stratum)), collapse = ""), character(1L))
+    out$stratum <- vapply(seq_len(nrow(out)), function(i) paste(utils::capture.output(dput(stratum)), collapse = ""), character(1L))
     out$exclusions <- paste(smoke$gates$complete_case_exclusions, collapse = ";")
     base_gate <- all(smoke$gates$sample_map_aligned, smoke$gates$heterogeneous_features,
                      all(smoke$gates$extra_projection_id_rejected), all(smoke$gates$permutation_invariant))

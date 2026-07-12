@@ -8,6 +8,9 @@ stage1_candidate_smoke(seed = 1001L, control = NULL)
 }
 \arguments{
 \item{seed}{the frozen smoke seed, \code{1001}.}
+
+\item{control}{internal pre-generated control used by the benchmark runner;
+\code{NULL} generates the fixed smoke control.}
 }
 \value{
 a list containing the control, a one-row-per-candidate metric table,

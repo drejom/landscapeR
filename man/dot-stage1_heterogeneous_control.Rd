@@ -10,6 +10,7 @@
   p = c(80L, 400L),
   signal = c(shared = 24, exclusive = 12, confounder = 12),
   noise_sd = 1,
+  missing_block_rate = 0,
   sample_permuted = TRUE,
   feature_permuted = TRUE
 )

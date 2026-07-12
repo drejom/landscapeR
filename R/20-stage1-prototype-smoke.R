@@ -39,13 +39,14 @@
 .stage1_heterogeneous_control <- function(seed = 1001L, n = 20L,
                                           p = c(80L, 400L),
                                           signal = c(shared = 24, exclusive = 12, confounder = 12),
-                                          noise_sd = 1, sample_permuted = TRUE,
-                                          feature_permuted = TRUE) {
+                                          noise_sd = 1, missing_block_rate = 0,
+                                          sample_permuted = TRUE, feature_permuted = TRUE) {
     setup_rng(seed)
     n <- as.integer(n)
     p <- as.integer(p)
     rank <- 2L
     if (length(p) < 2L || any(p < rank + 1L) || n < 3L ||
+        missing_block_rate < 0 || missing_block_rate >= 1 ||
         !all(c("shared", "exclusive", "confounder") %in% names(signal)))
         .stage1_proto_abort("invalid heterogeneous control dimensions or signal")
 
@@ -60,6 +61,13 @@
     u_confounder <- remaining(cbind(u_shared, u_exclusive[[1L]]))
 
     sample_ids <- paste0("d", seq_len(n))
+    rownames(u_shared) <- sample_ids
+    for (i in seq_along(u_exclusive)) rownames(u_exclusive[[i]]) <- sample_ids
+    rownames(u_confounder) <- sample_ids
+    missing_by_layer <- lapply(seq_along(p), function(i) {
+        n_missing <- floor(n * missing_block_rate)
+        if (n_missing) sample(sample_ids, n_missing) else character()
+    })
     experiments_out <- vector("list", length(p))
     response <- vector("list", length(p))
     exclusive_response <- vector("list", length(p))
@@ -86,6 +94,7 @@
         x <- x[sample_order, feature_order, drop = FALSE]
         rownames(x) <- sample_ids[sample_order]
         colnames(x) <- features[feature_order]
+        x <- x[!rownames(x) %in% missing_by_layer[[i]], , drop = FALSE]
         experiments_out[[i]] <- SummarizedExperiment::SummarizedExperiment(
             assays = list(signal = t(x)))
     }
@@ -98,7 +107,8 @@
         response = response,
         exclusive_response = exclusive_response,
         confounder_response = confounder_response,
-        missing_block_mechanism = list(kind = "none", rate = 0, affected_samples = character())
+        missing_block_mechanism = list(kind = if (missing_block_rate) "assay_block_missing" else "none",
+            rate = missing_block_rate, affected_samples = missing_by_layer)
     )
     std <- StateTransitionData(
         experiments = experiments_out,
@@ -109,7 +119,8 @@
     md <- metadata(std)
     md$stage1_prototype_control <- list(
         protocol_id = "stage1-heterogeneous-v1", generator = "heterogeneous_shared_subspace_v1",
-        seed = as.integer(seed), n = n, rank = rank, p = p, signal = signal, noise_sd = noise_sd
+        seed = as.integer(seed), n = n, rank = rank, p = p, signal = signal,
+        noise_sd = noise_sd, missing_block_rate = missing_block_rate
     )
     metadata(std) <- md
     std
@@ -118,7 +129,7 @@
 .stage1_heterogeneous_smoke_control <- function(seed = 1001L, permute = TRUE) {
     .stage1_heterogeneous_control(seed = seed, n = 20L, p = c(80L, 400L),
         signal = c(shared = 24, exclusive = 12, confounder = 12), noise_sd = 1,
-        sample_permuted = permute, feature_permuted = permute)
+        missing_block_rate = 0, sample_permuted = permute, feature_permuted = permute)
 }
 
 .prototype_complete_layers <- function(std) {
@@ -213,6 +224,16 @@
     qr.Q(qr(Reduce(`+`, projected)))[, seq_len(ncol(fitted$scores)), drop = FALSE]
 }
 
+.prototype_truth_for_samples <- function(truth, sample_ids) {
+    new("HeterogeneousSubspaceGroundTruth",
+        shared = truth@shared[sample_ids, , drop = FALSE],
+        exclusive = lapply(truth@exclusive, function(x) x[sample_ids, , drop = FALSE]),
+        confounder = truth@confounder[sample_ids, , drop = FALSE],
+        response = truth@response, exclusive_response = truth@exclusive_response,
+        confounder_response = truth@confounder_response,
+        missing_block_mechanism = truth@missing_block_mechanism)
+}
+
 .prototype_metrics <- function(fit, truth, holdout, holdout_truth) {
     r <- ncol(truth@shared)
     p_hat <- .projector(fit$scores)
@@ -239,6 +260,8 @@
 #' a candidate-selection or biological claim.
 #'
 #' @param seed the frozen smoke seed, `1001`.
+#' @param control internal pre-generated control used by the benchmark runner;
+#'   `NULL` generates the fixed smoke control.
 #' @return a list containing the control, a one-row-per-candidate metric table,
 #'   and contract-gate results.
 #' @export
@@ -248,7 +271,7 @@ stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
     std <- if (is.null(control)) .stage1_heterogeneous_smoke_control(seed) else control
     extracted <- .prototype_complete_layers(std)
     prepared <- .prototype_preprocess(extracted$matrices)
-    truth <- std@ground_truth
+    truth <- .prototype_truth_for_samples(std@ground_truth, extracted$sample_ids)
 
     # Independent holdout scores retain discovery responses but are not used to
     # fit either candidate. The exact-ID control is followed by the required
@@ -310,7 +333,8 @@ stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
     ctrl <- metadata(std)$stage1_prototype_control
     canonical <- .stage1_heterogeneous_control(
         seed = ctrl$seed, n = ctrl$n, p = ctrl$p, signal = ctrl$signal,
-        noise_sd = ctrl$noise_sd, sample_permuted = FALSE, feature_permuted = FALSE)
+        noise_sd = ctrl$noise_sd, missing_block_rate = ctrl$missing_block_rate,
+        sample_permuted = FALSE, feature_permuted = FALSE)
     canonical_prepared <- .prototype_preprocess(.prototype_complete_layers(canonical)$matrices)
     canonical_fits <- lapply(fitters, function(fitter) fitter(canonical_prepared, rank = r))
     permutation_invariant <- mapply(function(permuted, canonical_fit)
@@ -330,7 +354,7 @@ stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
         results = do.call(rbind, rows),
         fits = retained_fits,
         gates = list(
-            sample_map_aligned = identical(extracted$sample_ids, rownames(colData(std))),
+            sample_map_aligned = all(extracted$sample_ids %in% rownames(colData(std))),
             heterogeneous_features = !identical(ncol(extracted$matrices[[1L]]), ncol(extracted$matrices[[2L]])),
             complete_case_exclusions = extracted$exclusions,
             missing_projection_id_rejected = missing_id_rejected,
