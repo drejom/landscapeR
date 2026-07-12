@@ -8,6 +8,7 @@ StateTransitionData(
   experiments = list(),
   colData = S4Vectors::DataFrame(),
   ground_truth = NULL,
+  sampling_design = new("SamplingDesign"),
   ...
 )
 }
@@ -17,6 +18,9 @@ StateTransitionData(
 \item{colData}{DataFrame of sample-level metadata}
 
 \item{ground_truth}{a \code{GroundTruth} object, or \code{NULL}}
+
+\item{sampling_design}{a \code{SamplingDesign} declaration; defaults to
+migration-only \code{"unspecified"} until explicitly declared}
 
 \item{...}{additional arguments forwarded to \code{MultiAssayExperiment()}}
 }

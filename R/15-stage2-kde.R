@@ -131,9 +131,10 @@ setMethod(".estimate_dynamics_impl",
         md$stage2 <- s2
         metadata(data) <- md
 
+        design_prov <- .sampling_design_provenance(data@sampling_design)
         data <- record_provenance(data, "estimate_dynamics", "DynamicsEstimator",
                     "kde_logdensity",
-                    params = c(list(n = length(x_obs)), p),
+                    params = c(list(n = length(x_obs), sampling_design = design_prov), p),
                     input_hashes = input_hashes)
         prov_step <- data@provenance[[length(data@provenance)]]
 
@@ -185,6 +186,17 @@ setMethod(".estimate_dynamics_impl",
     poly_vals <- as.vector(outer(xs, 0:degree, `^`) %*% coef)
     poly_vals
 }
+
+# ---------------------------------------------------------------------------
+# Sampling-design capability
+# ---------------------------------------------------------------------------
+
+#' @rdname estimate_dynamics
+#' @export
+setMethod("supported_sampling_designs",
+    signature("KdeLogDensityEstimator"),
+    function(strategy) "cross_sectional"
+)
 
 # ---------------------------------------------------------------------------
 # Registration

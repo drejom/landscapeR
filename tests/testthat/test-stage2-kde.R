@@ -334,4 +334,36 @@ test_that("kde_logdensity provenance hashes the pre-stage input", {
     step <- res@provenance[[1L]]
     expect_identical(unname(step@input_hashes[["data"]]), input_hash)
     expect_true(is.na(step@timestamp))
+    expect_equal(step@params$sampling_design$kind, "cross_sectional")
+})
+
+# ---------------------------------------------------------------------------
+# Issue #26: Sampling-design capability gate
+# ---------------------------------------------------------------------------
+
+test_that("kde_logdensity advertises cross-sectional support only", {
+    strategy <- get_strategy("DynamicsEstimator", "kde_logdensity")()
+    expect_identical(supported_sampling_designs(strategy), "cross_sectional")
+})
+
+test_that("kde_logdensity rejects unspecified and longitudinal designs", {
+    strategy <- get_strategy("DynamicsEstimator", "kde_logdensity")()
+
+    unspecified <- potential_with_stage1()
+    unspecified@sampling_design <- new("SamplingDesign")
+    res_unspecified <- estimate_dynamics(strategy, unspecified)
+    expect_equal(res_unspecified@status, "failure")
+    expect_match(res_unspecified@reason, "unspecified")
+
+    longitudinal_data <- potential_with_stage1()
+    cd <- colData(longitudinal_data)
+    cd$mouse_id <- rep(c("m1", "m2"), each = nrow(cd) / 2L)
+    cd$day <- rep(seq_len(nrow(cd) / 2L), 2L)
+    colData(longitudinal_data) <- cd
+    longitudinal_data <- declare_sampling_design(
+        longitudinal_data, longitudinal("mouse_id", "day", "days")
+    )
+    res_longitudinal <- estimate_dynamics(strategy, longitudinal_data)
+    expect_equal(res_longitudinal@status, "failure")
+    expect_match(res_longitudinal@reason, "longitudinal")
 })

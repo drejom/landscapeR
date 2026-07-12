@@ -215,7 +215,7 @@ setClass("DynamicsEstimator", representation("VIRTUAL"))
 setGeneric("estimate_dynamics",
     function(strategy, data, ...) standardGeneric("estimate_dynamics"))
 
-# Structural boundary-validation gate — dispatches on the VIRTUAL
+# Structural boundary-validation + capability gate — dispatches on the VIRTUAL
 # "DynamicsEstimator" class, so it runs for ANY concrete subclass before the
 # strategy-specific ".estimate_dynamics_impl" hook is reached.
 #' @rdname estimate_dynamics
@@ -223,6 +223,27 @@ setMethod("estimate_dynamics", signature("DynamicsEstimator", "StateTransitionDa
     function(strategy, data, ...) {
         bv <- validate_boundary(data, stage = "estimate_dynamics")
         if (is(bv, "StageResult")) return(bv)
+
+        # Sampling-design capability gate (ADR 0006 / Issue #26).
+        # supported_sampling_designs() is defined per strategy; any strategy
+        # that does not implement it inherits no supported kinds and fails.
+        design_kind <- bv@sampling_design@kind
+        supported   <- tryCatch(
+            supported_sampling_designs(strategy),
+            error = function(e) character(0L)
+        )
+        if (!design_kind %in% supported)
+            return(stage_failure(sprintf(
+                paste0(
+                    "[estimate_dynamics] sampling design '%s' is not supported by %s. ",
+                    "Supported: %s. ",
+                    "Declare a compatible design with declare_sampling_design()."
+                ),
+                design_kind,
+                class(strategy),
+                if (length(supported)) paste(supported, collapse = ", ") else "none"
+            )))
+
         .estimate_dynamics_impl(strategy, bv, ...)
     }
 )

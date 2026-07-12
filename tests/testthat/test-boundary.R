@@ -19,6 +19,15 @@ test_that("validate_boundary fails when no migration path exists", {
     expect_equal(result@status, "failure")
 })
 
+test_that("validate_boundary converts malformed sampling design to typed failure", {
+    d <- empty_std()
+    d@sampling_design@kind <- "not-a-design"
+    result <- validate_boundary(d, stage = "test")
+    expect_s4_class(result, "StageResult")
+    expect_equal(result@status, "failure")
+    expect_match(result@reason, "invalid StateTransitionData")
+})
+
 # ---------------------------------------------------------------------------
 # Structural guarantee: boundary validation cannot be bypassed by a new
 # Decomposer strategy that only implements .decompose_impl(). The public

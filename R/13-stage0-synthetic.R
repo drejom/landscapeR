@@ -113,9 +113,10 @@ synthetic_control <- function(n        = 40L,
     )
 
     std <- StateTransitionData(
-        experiments  = expts,
-        colData      = col_df,
-        ground_truth = gt
+        experiments     = expts,
+        colData         = col_df,
+        ground_truth    = gt,
+        sampling_design = cross_sectional()
     )
     md <- metadata(std)
     md$control <- ctrl_params
@@ -306,9 +307,10 @@ synthetic_potential_control <- function(n       = 100L,
                         true_barrier_height = 1)
 
     std <- StateTransitionData(
-        experiments  = list(coords = expt),
-        colData      = col_df,
-        ground_truth = gt
+        experiments     = list(coords = expt),
+        colData         = col_df,
+        ground_truth    = gt,
+        sampling_design = cross_sectional()
     )
     md <- metadata(std)
     md$potential_control <- ctrl_params

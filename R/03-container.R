@@ -1,27 +1,33 @@
 #' Inter-stage container
 #'
-#' Subclasses \code{MultiAssayExperiment}. The three added slots carry
-#' schema versioning, ordered provenance, and (for synthetic data) the
-#' answer key. Everything else lives in the MAE slots or in
-#' \code{S4Vectors::metadata()} as private scratch.
+#' Subclasses \code{MultiAssayExperiment}. The four added slots carry
+#' schema versioning, ordered provenance, sampling-design declaration, and
+#' (for synthetic data) the answer key. Everything else lives in the MAE
+#' slots or in \code{S4Vectors::metadata()} as private scratch.
 #'
-#' @slot schema_version semver string, e.g. \code{"0.1.0"}
+#' @slot schema_version semver string, e.g. \code{"0.2.0"}
 #' @slot provenance ordered list of \code{ProvenanceStep} objects
 #' @slot ground_truth \code{GroundTruth} subclass or \code{NULL}
+#' @slot sampling_design \code{SamplingDesign} declaration attached by the
+#'   user via \code{\link{declare_sampling_design}}.  The
+#'   \code{kind = "unspecified"} default is set by the migration and causes
+#'   Stage 2 to reject the object until the user makes an explicit declaration.
 #'
 #' @export
 setClass(
     "StateTransitionData",
     contains = "MultiAssayExperiment",
     representation = representation(
-        schema_version = "character",
-        provenance     = "list",
-        ground_truth   = "GroundTruthOrNULL"
+        schema_version  = "character",
+        provenance      = "list",
+        ground_truth    = "GroundTruthOrNULL",
+        sampling_design = "SamplingDesign"
     ),
     prototype = prototype(
-        schema_version = "0.1.0",   # literal to avoid forward-reference to SCHEMA_VERSION
-        provenance     = list(),
-        ground_truth   = NULL
+        schema_version  = "0.2.0",   # literal to avoid forward-reference to SCHEMA_VERSION
+        provenance      = list(),
+        ground_truth    = NULL,
+        sampling_design = new("SamplingDesign")   # kind = "unspecified" by default
     )
 )
 
@@ -31,15 +37,20 @@ setValidity("StateTransitionData", function(object) {
         errs <- c(errs, "schema_version must be semver MAJOR.MINOR.PATCH")
     if (!is.list(object@provenance))
         errs <- c(errs, "provenance must be a list")
+    sampling_valid <- validObject(object@sampling_design, test = TRUE)
+    if (!isTRUE(sampling_valid))
+        errs <- c(errs, paste0("invalid sampling_design: ", sampling_valid))
     if (length(errs)) errs else TRUE
 })
 
 # Coerce from MAE — used by the StateTransitionData() constructor below.
 setAs("MultiAssayExperiment", "StateTransitionData", function(from) {
     new("StateTransitionData", from,
-        schema_version = SCHEMA_VERSION,
-        provenance     = list(),
-        ground_truth   = NULL)
+        schema_version  = SCHEMA_VERSION,
+        provenance      = list(),
+        ground_truth    = NULL,
+        sampling_design = new("SamplingDesign")   # kind = "unspecified"
+    )
 })
 
 #' Construct a StateTransitionData object
@@ -50,12 +61,15 @@ setAs("MultiAssayExperiment", "StateTransitionData", function(from) {
 #' @param experiments list or ExperimentList (passed to MAE)
 #' @param colData DataFrame of sample-level metadata
 #' @param ground_truth a \code{GroundTruth} object, or \code{NULL}
+#' @param sampling_design a \code{SamplingDesign} declaration; defaults to
+#'   migration-only \code{"unspecified"} until explicitly declared
 #' @param ... additional arguments forwarded to \code{MultiAssayExperiment()}
 #' @return a validated \code{StateTransitionData} object
 #' @export
 StateTransitionData <- function(experiments = list(),
                                  colData     = S4Vectors::DataFrame(),
                                  ground_truth = NULL,
+                                 sampling_design = new("SamplingDesign"),
                                  ...) {
     mae <- MultiAssayExperiment(
         experiments = experiments,
@@ -63,7 +77,8 @@ StateTransitionData <- function(experiments = list(),
         ...
     )
     obj <- as(mae, "StateTransitionData")
-    if (!is.null(ground_truth)) obj@ground_truth <- ground_truth
+    if (!is.null(ground_truth))    obj@ground_truth    <- ground_truth
+    if (!is.null(sampling_design)) obj@sampling_design <- sampling_design
     validObject(obj)
     obj
 }
@@ -106,3 +121,13 @@ migrate <- function(object, target = SCHEMA_VERSION) {
         ))
     get(key, envir = .migrations)(object)
 }
+
+# ---------------------------------------------------------------------------
+# Built-in migration: 0.1.0 -> 0.2.0
+# Adds the sampling_design slot with kind = "unspecified".
+# ---------------------------------------------------------------------------
+register_migration("0.1.0", "0.2.0", function(obj) {
+    obj@schema_version  <- "0.2.0"
+    obj@sampling_design <- new("SamplingDesign")   # kind = "unspecified"
+    obj
+})

@@ -1,6 +1,6 @@
 Package: landscapeR
 Title: Comparative Decomposition and State-Transition Dynamics
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: person("Denis", "O'Meally", email = "denis@omeally.com",
     role = c("aut", "cre"))
 Description: S4-based pipeline combining GSVD/HO-GSVD comparative decomposition
@@ -42,6 +42,7 @@ Collate:
     '00-package.R'
     '01-schema-version.R'
     '02-ground-truth.R'
+    '18-sampling-design.R'
     '03-container.R'
     '04-stage-result.R'
     '05-config.R'

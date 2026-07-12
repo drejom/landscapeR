@@ -5,18 +5,23 @@
 \alias{StateTransitionData-class}
 \title{Inter-stage container}
 \description{
-Subclasses \code{MultiAssayExperiment}. The three added slots carry
-schema versioning, ordered provenance, and (for synthetic data) the
-answer key. Everything else lives in the MAE slots or in
-\code{S4Vectors::metadata()} as private scratch.
+Subclasses \code{MultiAssayExperiment}. The four added slots carry
+schema versioning, ordered provenance, sampling-design declaration, and
+(for synthetic data) the answer key. Everything else lives in the MAE
+slots or in \code{S4Vectors::metadata()} as private scratch.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{schema_version}}{semver string, e.g. \code{"0.1.0"}}
+\item{\code{schema_version}}{semver string, e.g. \code{"0.2.0"}}
 
 \item{\code{provenance}}{ordered list of \code{ProvenanceStep} objects}
 
 \item{\code{ground_truth}}{\code{GroundTruth} subclass or \code{NULL}}
+
+\item{\code{sampling_design}}{\code{SamplingDesign} declaration attached by the
+user via \code{\link{declare_sampling_design}}.  The
+\code{kind = "unspecified"} default is set by the migration and causes
+Stage 2 to reject the object until the user makes an explicit declaration.}
 }}
 

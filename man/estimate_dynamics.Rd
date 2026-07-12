@@ -6,6 +6,7 @@
 \alias{estimate_dynamics,DynamicsEstimator,StateTransitionData-method}
 \alias{KdeLogDensityEstimator-class}
 \alias{.estimate_dynamics_impl,KdeLogDensityEstimator,StateTransitionData-method}
+\alias{supported_sampling_designs,KdeLogDensityEstimator-method}
 \title{Estimate quasi-potential dynamics on decomposition coordinates}
 \usage{
 estimate_dynamics(strategy, data, ...)
@@ -13,6 +14,8 @@ estimate_dynamics(strategy, data, ...)
 \S4method{estimate_dynamics}{DynamicsEstimator,StateTransitionData}(strategy, data, ...)
 
 \S4method{.estimate_dynamics_impl}{KdeLogDensityEstimator,StateTransitionData}(strategy, data, ...)
+
+\S4method{supported_sampling_designs}{KdeLogDensityEstimator}(strategy)
 }
 \arguments{
 \item{strategy}{a \code{DynamicsEstimator} implementation}

@@ -283,4 +283,5 @@ test_that("hogsvd_averaged provenance hashes the pre-stage input deterministical
     same_std <- synthetic_control(n = 15L, p = 50L, K = 2L, signal = 40, seed = 4L)
     same_result <- suppressWarnings(decompose(ctor(), same_std))
     expect_identical(result@value, same_result@value)
+    expect_equal(step@params$sampling_design$kind, "cross_sectional")
 })

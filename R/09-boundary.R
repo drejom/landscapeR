@@ -25,8 +25,15 @@ validate_boundary <- function(data,
 
     current <- data@schema_version
 
-    if (identical(current, required_schema))
+    if (identical(current, required_schema)) {
+        validation <- tryCatch(validObject(data), error = function(e) e)
+        if (inherits(validation, "error"))
+            return(stage_failure(sprintf(
+                "[%s] invalid StateTransitionData: %s",
+                stage, conditionMessage(validation)
+            )))
         return(data)
+    }
 
     migrated <- tryCatch(
         migrate(data, target = required_schema),
