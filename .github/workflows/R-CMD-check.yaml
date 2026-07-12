@@ -6,6 +6,9 @@ on:
 
 name: R-CMD-check
 
+permissions:
+  contents: read
+
 jobs:
   R-CMD-check:
     runs-on: ubuntu-latest
@@ -44,3 +47,44 @@ jobs:
 
       - name: Registry compliance
         run: bash scripts/check-registry-compliance.sh
+
+  pkgdown:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [R-CMD-check, lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.5"
+          use-public-rspm: true
+
+      - name: Install Bioconductor
+        run: |
+          Rscript -e 'install.packages("BiocManager"); BiocManager::install(version = "3.22", ask = FALSE)'
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::pkgdown
+
+      - name: Build pkgdown site
+        run: Rscript -e 'pkgdown::build_site()'
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

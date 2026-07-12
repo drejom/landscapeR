@@ -95,7 +95,8 @@ std_dw  <- synthetic_potential_control(n = 120L, seed = 42L)
 se_dw   <- experiments(std_dw)[[1L]]
 std_dw2l <- StateTransitionData(
   experiments = list(coords_a = se_dw, coords_b = se_dw),
-  colData     = colData(std_dw)
+  colData     = colData(std_dw),
+  sampling_design = cross_sectional()
 )
 
 ctor    <- get_strategy("Decomposer", "hogsvd_averaged")

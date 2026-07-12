@@ -63,5 +63,6 @@ data-raw/geo/
 data-raw/*.rds
 
 # local agent worktrees / scratch state (never pushed)
+.pi-subagents/
 .claude/
 .playwright-mcp/

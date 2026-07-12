@@ -1,4 +1,4 @@
-url: https://lab.omeally.com/landscapeR
+url: https://drejom.github.io/landscapeR/
 
 template:
   bootstrap: 5
@@ -15,6 +15,7 @@ navbar:
   components:
     github:
       icon: fab fa-github
+      aria-label: GitHub repository
       href: https://github.com/drejom/landscapeR
 
 articles:
@@ -22,61 +23,3 @@ articles:
     navbar: Development log
     contents:
       - development-log
-
-reference:
-  - title: Container
-    desc: Core data structure
-    contents:
-      - StateTransitionData
-      - StateTransitionData-class
-      - validate_boundary
-      - migrate
-  - title: Stage 0 — Synthetic controls
-    contents:
-      - synthetic_control
-      - control_ladder
-      - synthetic_potential_control
-      - potential_recovery_benchmark
-  - title: Stage 1 — Decomposition
-    contents:
-      - decompose
-  - title: Stage 2 — Dynamics
-    contents:
-      - estimate_dynamics
-  - title: Projection
-    contents:
-      - project_into
-  - title: Plots
-    contents:
-      - plot_spectrum
-      - plot_decomposition
-      - plot_components
-      - plot_potential
-  - title: Registry
-    contents:
-      - register_strategy
-      - get_strategy
-      - list_strategies
-  - title: Provenance
-    contents:
-      - record_provenance
-      - ProvenanceStep-class
-  - title: Pipeline runner
-    contents:
-      - run_pipeline
-      - setup_rng
-      - PipelineConfig-class
-      - StageResult-class
-  - title: Planned / stub contracts
-    desc: >
-      Contract generics for stages not yet implemented.
-      These are exported so registered strategies can be tested independently.
-    contents:
-      - assess_fit
-      - classify_archetype
-      - extract_signature
-      - generate
-      - interpret
-      - recovery_benchmark
-      - register_migration
-      - landscapeR-package
