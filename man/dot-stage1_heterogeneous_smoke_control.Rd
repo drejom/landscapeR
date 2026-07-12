@@ -4,7 +4,7 @@
 \alias{.stage1_heterogeneous_smoke_control}
 \title{Generate the frozen Stage 1 heterogeneous-feature smoke control}
 \usage{
-.stage1_heterogeneous_smoke_control(seed = 1001L)
+.stage1_heterogeneous_smoke_control(seed = 1001L, permute = TRUE)
 }
 \arguments{
 \item{seed}{fixed smoke seed; defaults to 1001.}

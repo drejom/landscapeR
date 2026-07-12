@@ -5,8 +5,9 @@
 \alias{HeterogeneousSubspaceGroundTruth-class}
 \title{Ground truth for heterogeneous Stage 1 sample-subspace recovery}
 \description{
-The shared and exclusive slots contain sample-score matrices (samples × rank).
-The response slots hold one feature-response matrix (features × rank) per
-assay for the shared, exclusive, and confounder terms. It is used only by
-Stage 0 prototype controls.
+The shared, exclusive, and confounder slots contain sample-score matrices
+(samples × rank). The response slots hold one feature-response matrix
+(features × rank) per assay for the shared, exclusive, and confounder terms.
+\code{missing_block_mechanism} records the generator's missing-block policy. It is
+used only by Stage 0 prototype controls.
 }

@@ -36,7 +36,7 @@
 #' @param seed fixed smoke seed; defaults to 1001.
 #' @return `StateTransitionData` with `HeterogeneousSubspaceGroundTruth`.
 #' @keywords internal
-.stage1_heterogeneous_smoke_control <- function(seed = 1001L) {
+.stage1_heterogeneous_smoke_control <- function(seed = 1001L, permute = TRUE) {
     setup_rng(seed)
     n <- 20L
     rank <- 2L
@@ -70,6 +70,10 @@
              matrix(rnorm(n * p[[i]], sd = noise_sd), n, p[[i]])
         sample_order <- sample.int(n)
         feature_order <- sample.int(p[[i]])
+        if (!isTRUE(permute)) {
+            sample_order <- seq_len(n)
+            feature_order <- seq_len(p[[i]])
+        }
         response[[i]] <- signal[["shared"]] * b_shared[feature_order, , drop = FALSE]
         exclusive_response[[i]] <- signal[["exclusive"]] * b_exclusive[feature_order, , drop = FALSE]
         confounder_response[[i]] <- signal[["confounder"]] * b_confounder[feature_order, , drop = FALSE]
@@ -87,9 +91,11 @@
     truth <- new("HeterogeneousSubspaceGroundTruth",
         shared = u_shared,
         exclusive = u_exclusive,
+        confounder = u_confounder,
         response = response,
         exclusive_response = exclusive_response,
-        confounder_response = confounder_response
+        confounder_response = confounder_response,
+        missing_block_mechanism = list(kind = "none", rate = 0, affected_samples = character())
     )
     std <- StateTransitionData(
         experiments = experiments_out,
@@ -116,8 +122,8 @@
 
     by_assay <- lapply(assay_names, function(name) {
         rows <- sm[sm$assay == name, , drop = FALSE]
-        if (anyDuplicated(rows$primary))
-            .stage1_proto_abort(sprintf("sampleMap has duplicate primary IDs for assay '%s'", name))
+        if (anyDuplicated(rows$primary) || anyDuplicated(rows$colname))
+            .stage1_proto_abort(sprintf("sampleMap must be one-to-one for assay '%s'", name))
         rows
     })
     common <- Reduce(intersect, lapply(by_assay, `[[`, "primary"))
@@ -188,8 +194,8 @@
 .prototype_project <- function(holdout, fitted) {
     projected <- Map(function(x, response, prep) {
         expected <- names(prep$means)
-        if (anyDuplicated(colnames(x)) || any(!expected %in% colnames(x)))
-            .stage1_proto_abort("projection feature IDs must be unique and include every discovery feature")
+        if (anyDuplicated(colnames(x)) || !setequal(expected, colnames(x)))
+            .stage1_proto_abort("projection feature IDs must be unique and match discovery features exactly")
         x <- x[, expected, drop = FALSE]
         y <- sweep(x, 2L, prep$means, "-") / prep$block_scale
         b <- response / prep$block_scale
@@ -259,34 +265,65 @@ stage1_candidate_smoke <- function(seed = 1001L) {
 
     fitters <- list(C1_symmetric_consensus = .prototype_consensus,
                     C2_block_scaled_svd = .prototype_block_svd)
-    rows <- lapply(names(fitters), function(name) {
+    fits <- lapply(names(fitters), function(name) {
+        gc(reset = TRUE)
         t0 <- proc.time()[["elapsed"]]
         fit <- fitters[[name]](prepared, rank = r)
         elapsed <- proc.time()[["elapsed"]] - t0
+        peak_vcells_bytes <- as.numeric(gc()["Vcells", "max used"]) * 8
         fit$prepared <- prepared
+        fit$elapsed_sec <- elapsed
+        fit$peak_vcells_bytes <- peak_vcells_bytes
+        fit
+    })
+    names(fits) <- names(fitters)
+    rows <- lapply(names(fits), function(name) {
+        fit <- fits[[name]]
         values <- .prototype_metrics(fit, truth, holdout, u_holdout)
-        data.frame(candidate = name, t(values), elapsed_sec = elapsed,
+        data.frame(candidate = name, t(values), elapsed_sec = fit$elapsed_sec,
+                   peak_vcells_bytes = fit$peak_vcells_bytes,
+                   typed_failure_rate = 0,
                    input_bytes = sum(vapply(extracted$matrices, utils::object.size, numeric(1L))),
                    iterations = fit$iterations, stringsAsFactors = FALSE)
     })
 
-    missing_id_rejected <- vapply(names(fitters), function(name) {
-        fit <- fitters[[name]](prepared, rank = r)
-        fit$prepared <- prepared
+    missing_id_rejected <- vapply(fits, function(fit) {
         malformed <- holdout
         malformed[[1L]] <- malformed[[1L]][, -1L, drop = FALSE]
         inherits(try(.prototype_project(malformed, fit), silent = TRUE), "try-error")
     }, logical(1L))
+    extra_id_rejected <- vapply(fits, function(fit) {
+        malformed <- holdout
+        malformed[[1L]] <- cbind(malformed[[1L]], extra = 0)
+        inherits(try(.prototype_project(malformed, fit), silent = TRUE), "try-error")
+    }, logical(1L))
 
+    canonical <- .stage1_heterogeneous_smoke_control(seed, permute = FALSE)
+    canonical_prepared <- .prototype_preprocess(.prototype_complete_layers(canonical)$matrices)
+    canonical_fits <- lapply(fitters, function(fitter) fitter(canonical_prepared, rank = r))
+    permutation_invariant <- mapply(function(permuted, canonical_fit)
+        .frobenius(.projector(permuted$scores) - .projector(canonical_fit$scores)) < 1e-8,
+        fits, canonical_fits)
+
+    retained_fits <- lapply(fits, function(fit) list(
+        scores = fit$scores, response = fit$response,
+        means = lapply(fit$prepared, `[[`, "means"),
+        block_scales = vapply(fit$prepared, `[[`, numeric(1L), "block_scale"),
+        feature_ids = lapply(fit$prepared, function(x) names(x$means)),
+        sample_ids = extracted$sample_ids, exclusions = extracted$exclusions
+    ))
     list(
         protocol_id = "stage1-heterogeneous-v1",
         control = std,
         results = do.call(rbind, rows),
+        fits = retained_fits,
         gates = list(
             sample_map_aligned = identical(extracted$sample_ids, rownames(colData(std))),
             heterogeneous_features = !identical(ncol(extracted$matrices[[1L]]), ncol(extracted$matrices[[2L]])),
             complete_case_exclusions = extracted$exclusions,
             missing_projection_id_rejected = missing_id_rejected,
+            extra_projection_id_rejected = extra_id_rejected,
+            permutation_invariant = permutation_invariant,
             production_strategy_registered = any(c("C1_symmetric_consensus", "C2_block_scaled_svd") %in%
                                                   list_strategies("Decomposer"))
         )

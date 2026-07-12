@@ -13,13 +13,20 @@ test_that("stage1_candidate_smoke runs the frozen heterogeneous smoke stratum", 
     expect_true(smoke$gates$heterogeneous_features)
     expect_length(smoke$gates$complete_case_exclusions, 0L)
     expect_true(all(smoke$gates$missing_projection_id_rejected))
+    expect_true(all(smoke$gates$extra_projection_id_rejected))
+    expect_true(all(smoke$gates$permutation_invariant))
+    expect_true(all(is.finite(smoke$results$peak_vcells_bytes)))
+    expect_equal(smoke$results$typed_failure_rate, c(0, 0))
+    expect_length(smoke$fits, 2L)
+    expect_true(all(c("means", "block_scales", "feature_ids", "exclusions") %in%
+                    names(smoke$fits[[1L]])))
     expect_false(smoke$gates$production_strategy_registered)
 })
 
 test_that("stage1_candidate_smoke is deterministic apart from elapsed timing", {
     first <- stage1_candidate_smoke()
     second <- stage1_candidate_smoke()
-    compare <- setdiff(names(first$results), "elapsed_sec")
+    compare <- setdiff(names(first$results), c("elapsed_sec", "peak_vcells_bytes"))
     expect_equal(first$results[, compare], second$results[, compare])
 })
 
