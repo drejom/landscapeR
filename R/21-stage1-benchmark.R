@@ -19,6 +19,9 @@ stage1_benchmark_manifest <- function() {
         generator = "heterogeneous_shared_subspace_v1",
         candidates = c("C1_symmetric_consensus", "C2_block_scaled_svd"),
         rank = 2L,
+        feature_counts = list(`2` = c(80L, 400L), `3` = c(80L, 400L, 1200L)),
+        environment = list(r_version = R.version.string,
+                           package_version = as.character(utils::packageVersion("landscapeR"))),
         grid = list(
             n = c(20L, 60L), K = c(2L, 3L),
             shared_signal = c(12, 24), exclusive_signal = c(0, 12),
@@ -39,7 +42,7 @@ stage1_benchmark_manifest <- function() {
 #' @return invisibly `TRUE`, or throws a typed error.
 #' @export
 validate_stage1_benchmark_manifest <- function(manifest) {
-    required <- c("artifact_version", "protocol_id", "generator", "candidates", "rank", "grid", "seeds")
+    required <- c("artifact_version", "protocol_id", "generator", "candidates", "rank", "feature_counts", "environment", "grid", "seeds")
     if (!is.list(manifest) || !all(required %in% names(manifest)))
         .stage1_benchmark_abort("benchmark manifest is missing required fields")
     if (!identical(manifest$artifact_version, "1") || !identical(manifest$rank, 2L) ||
@@ -51,8 +54,8 @@ validate_stage1_benchmark_manifest <- function(manifest) {
     if (!is.data.frame(manifest$seeds) || !identical(manifest$seeds$seed, 1001:1040) ||
         !identical(manifest$seeds$split, rep(c("calibration", "holdout"), each = 20L)))
         .stage1_benchmark_abort("benchmark manifest seed/split assignment is invalid")
-    frozen_grid <- stage1_benchmark_manifest()$grid
-    if (!identical(manifest$grid, frozen_grid))
+    frozen <- stage1_benchmark_manifest()
+    if (!identical(manifest$grid, frozen$grid) || !identical(manifest$feature_counts, frozen$feature_counts))
         .stage1_benchmark_abort("benchmark manifest grid differs from frozen protocol")
     invisible(TRUE)
 }
@@ -98,7 +101,7 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     if (!seed %in% manifest$seeds$seed)
         .stage1_benchmark_abort("seed is not declared in the benchmark manifest")
     .validate_stage1_benchmark_stratum(stratum, manifest)
-    p <- if (identical(as.integer(stratum$K), 2L)) c(80L, 400L) else c(80L, 400L, 1200L)
+    p <- manifest$feature_counts[[as.character(as.integer(stratum$K))]]
     control <- .stage1_heterogeneous_control(seed = seed, n = stratum$n, p = p,
         signal = c(shared = unname(stratum$shared_signal), exclusive = unname(stratum$exclusive_signal),
                    confounder = unname(stratum$confounder_signal)), noise_sd = unname(stratum$noise_sd),
@@ -112,8 +115,12 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     out$split <- split
     out$protocol_id <- manifest$protocol_id
     out$generator <- manifest$generator
-    out$protocol_digest <- digest::digest(manifest$protocol_id, algo = "sha256")
-    out$generator_digest <- digest::digest(manifest$generator, algo = "sha256")
+    out$protocol_digest <- digest::digest(manifest, algo = "sha256")
+    out$generator_digest <- digest::digest(list(
+        generator = manifest$generator,
+        control_generator = body(.stage1_heterogeneous_control),
+        candidate_evaluator = body(stage1_candidate_smoke)
+    ), algo = "sha256")
     out$stratum_digest <- digest::digest(stratum, algo = "sha256")
     out$stratum <- vapply(seq_len(nrow(out)), function(i) paste(utils::capture.output(dput(stratum)), collapse = ""), character(1L))
     out$exclusions <- paste(smoke$gates$complete_case_exclusions, collapse = ";")

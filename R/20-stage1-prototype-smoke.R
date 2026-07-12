@@ -64,9 +64,17 @@
     rownames(u_shared) <- sample_ids
     for (i in seq_along(u_exclusive)) rownames(u_exclusive[[i]]) <- sample_ids
     rownames(u_confounder) <- sample_ids
+    # Preserve the frozen protocol's minimum complete paired cohort while
+    # allowing independently selected missing blocks outside that cohort.
+    n_complete_min <- max(12L, ceiling(n * (1 - missing_block_rate)))
+    if (n_complete_min > n) .stage1_proto_abort("missing-block design cannot retain 12 complete samples")
+    protected_complete <- sample(sample_ids, n_complete_min)
+    missing_candidates <- setdiff(sample_ids, protected_complete)
     missing_by_layer <- lapply(seq_along(p), function(i) {
         n_missing <- floor(n * missing_block_rate)
-        if (n_missing) sample(sample_ids, n_missing) else character()
+        if (n_missing > length(missing_candidates))
+            .stage1_proto_abort("missing-block design exceeds available non-complete samples")
+        if (n_missing) sample(missing_candidates, n_missing) else character()
     })
     experiments_out <- vector("list", length(p))
     response <- vector("list", length(p))
@@ -108,7 +116,8 @@
         exclusive_response = exclusive_response,
         confounder_response = confounder_response,
         missing_block_mechanism = list(kind = if (missing_block_rate) "assay_block_missing" else "none",
-            rate = missing_block_rate, affected_samples = missing_by_layer)
+            rate = missing_block_rate, affected_samples = missing_by_layer,
+            protected_complete_samples = protected_complete)
     )
     std <- StateTransitionData(
         experiments = experiments_out,
@@ -147,8 +156,8 @@
         rows
     })
     common <- Reduce(intersect, lapply(by_assay, `[[`, "primary"))
-    if (length(common) < 3L)
-        .stage1_proto_abort("fewer than three complete paired observations")
+    if (length(common) < 12L)
+        .stage1_proto_abort("fewer than 12 complete paired observations")
     common <- rownames(colData(std))[rownames(colData(std)) %in% common]
 
     expts <- as.list(experiments(std))
