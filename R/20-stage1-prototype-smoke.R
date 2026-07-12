@@ -36,13 +36,18 @@
 #' @param seed fixed smoke seed; defaults to 1001.
 #' @return `StateTransitionData` with `HeterogeneousSubspaceGroundTruth`.
 #' @keywords internal
-.stage1_heterogeneous_smoke_control <- function(seed = 1001L, permute = TRUE) {
+.stage1_heterogeneous_control <- function(seed = 1001L, n = 20L,
+                                          p = c(80L, 400L),
+                                          signal = c(shared = 24, exclusive = 12, confounder = 12),
+                                          noise_sd = 1, sample_permuted = TRUE,
+                                          feature_permuted = TRUE) {
     setup_rng(seed)
-    n <- 20L
+    n <- as.integer(n)
+    p <- as.integer(p)
     rank <- 2L
-    p <- c(80L, 400L)
-    signal <- c(shared = 24, exclusive = 12, confounder = 12)
-    noise_sd <- 1
+    if (length(p) < 2L || any(p < rank + 1L) || n < 3L ||
+        !all(c("shared", "exclusive", "confounder") %in% names(signal)))
+        .stage1_proto_abort("invalid heterogeneous control dimensions or signal")
 
     u_shared <- .centered_orthonormal(n, rank)
     remaining <- function(reference) {
@@ -70,10 +75,8 @@
              matrix(rnorm(n * p[[i]], sd = noise_sd), n, p[[i]])
         sample_order <- sample.int(n)
         feature_order <- sample.int(p[[i]])
-        if (!isTRUE(permute)) {
-            sample_order <- seq_len(n)
-            feature_order <- seq_len(p[[i]])
-        }
+        if (!isTRUE(sample_permuted)) sample_order <- seq_len(n)
+        if (!isTRUE(feature_permuted)) feature_order <- seq_len(p[[i]])
         response[[i]] <- signal[["shared"]] * b_shared[feature_order, , drop = FALSE]
         exclusive_response[[i]] <- signal[["exclusive"]] * b_exclusive[feature_order, , drop = FALSE]
         confounder_response[[i]] <- signal[["confounder"]] * b_confounder[feature_order, , drop = FALSE]
@@ -106,10 +109,16 @@
     md <- metadata(std)
     md$stage1_prototype_control <- list(
         protocol_id = "stage1-heterogeneous-v1", generator = "heterogeneous_shared_subspace_v1",
-        seed = as.integer(seed), rank = rank, p = p, signal = signal, noise_sd = noise_sd
+        seed = as.integer(seed), n = n, rank = rank, p = p, signal = signal, noise_sd = noise_sd
     )
     metadata(std) <- md
     std
+}
+
+.stage1_heterogeneous_smoke_control <- function(seed = 1001L, permute = TRUE) {
+    .stage1_heterogeneous_control(seed = seed, n = 20L, p = c(80L, 400L),
+        signal = c(shared = 24, exclusive = 12, confounder = 12), noise_sd = 1,
+        sample_permuted = permute, feature_permuted = permute)
 }
 
 .prototype_complete_layers <- function(std) {
@@ -233,10 +242,10 @@
 #' @return a list containing the control, a one-row-per-candidate metric table,
 #'   and contract-gate results.
 #' @export
-stage1_candidate_smoke <- function(seed = 1001L) {
-    if (!identical(as.integer(seed), 1001L))
+stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
+    if (is.null(control) && !identical(as.integer(seed), 1001L))
         .stage1_proto_abort("stage1-heterogeneous-v1 smoke tier requires seed 1001")
-    std <- .stage1_heterogeneous_smoke_control(seed)
+    std <- if (is.null(control)) .stage1_heterogeneous_smoke_control(seed) else control
     extracted <- .prototype_complete_layers(std)
     prepared <- .prototype_preprocess(extracted$matrices)
     truth <- std@ground_truth
@@ -244,7 +253,7 @@ stage1_candidate_smoke <- function(seed = 1001L) {
     # Independent holdout scores retain discovery responses but are not used to
     # fit either candidate. The exact-ID control is followed by the required
     # missing-feature negative projection gate.
-    setup_rng(2001L)
+    setup_rng(as.integer(seed) + 1000L)
     n_holdout <- 60L
     r <- ncol(truth@shared)
     u_holdout <- .centered_orthonormal(n_holdout, r)
@@ -298,7 +307,10 @@ stage1_candidate_smoke <- function(seed = 1001L) {
         inherits(try(.prototype_project(malformed, fit), silent = TRUE), "try-error")
     }, logical(1L))
 
-    canonical <- .stage1_heterogeneous_smoke_control(seed, permute = FALSE)
+    ctrl <- metadata(std)$stage1_prototype_control
+    canonical <- .stage1_heterogeneous_control(
+        seed = ctrl$seed, n = ctrl$n, p = ctrl$p, signal = ctrl$signal,
+        noise_sd = ctrl$noise_sd, sample_permuted = FALSE, feature_permuted = FALSE)
     canonical_prepared <- .prototype_preprocess(.prototype_complete_layers(canonical)$matrices)
     canonical_fits <- lapply(fitters, function(fitter) fitter(canonical_prepared, rank = r))
     permutation_invariant <- mapply(function(permuted, canonical_fit)

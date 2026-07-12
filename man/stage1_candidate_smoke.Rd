@@ -4,7 +4,7 @@
 \alias{stage1_candidate_smoke}
 \title{Run the frozen Stage 1 heterogeneous-feature smoke harness}
 \usage{
-stage1_candidate_smoke(seed = 1001L)
+stage1_candidate_smoke(seed = 1001L, control = NULL)
 }
 \arguments{
 \item{seed}{the frozen smoke seed, \code{1001}.}

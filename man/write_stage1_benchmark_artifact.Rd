@@ -15,7 +15,7 @@ write_stage1_benchmark_artifact(
 
 \item{manifest}{benchmark manifest.}
 
-\item{seed}{seed to execute (smoke-only at present).}
+\item{seed}{seed to execute.}
 }
 \value{
 named character vector of written artifact paths.

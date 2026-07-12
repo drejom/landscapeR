@@ -61,15 +61,35 @@ validate_stage1_benchmark_manifest <- function(manifest) {
 #' different simulation.
 #'
 #' @param manifest validated benchmark manifest.
-#' @param seed one manifest seed; only 1001 is the smoke stratum.
+#' @param seed one manifest seed.
+#' @param stratum one explicit list from the frozen grid. The default is the
+#'   smoke stratum; callers may run any currently supported non-missing stratum.
 #' @return one row per candidate with split, metrics, gate state, and timing.
 #' @export
-run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(), seed = 1001L) {
+run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(), seed = 1001L,
+                                            stratum = list(n = 20L, K = 2L,
+                                                shared_signal = 24, exclusive_signal = 12,
+                                                confounder_signal = 12, noise_sd = 1,
+                                                missing_block_rate = 0,
+                                                sample_order = "permuted", feature_order = "permuted",
+                                                projection_case = "exact_ids")) {
     validate_stage1_benchmark_manifest(manifest)
     seed <- as.integer(seed)
-    if (!identical(seed, 1001L))
-        .stage1_benchmark_abort("only frozen smoke seed 1001 is implemented; full-tier execution is not enabled")
-    smoke <- stage1_candidate_smoke(seed)
+    if (!seed %in% manifest$seeds$seed)
+        .stage1_benchmark_abort("seed is not declared in the benchmark manifest")
+    required <- c("n", "K", "shared_signal", "exclusive_signal", "confounder_signal",
+                  "noise_sd", "missing_block_rate", "sample_order", "feature_order", "projection_case")
+    if (!is.list(stratum) || !all(required %in% names(stratum)))
+        .stage1_benchmark_abort("stratum is missing frozen grid fields")
+    if (!identical(as.numeric(stratum$missing_block_rate), 0))
+        .stage1_benchmark_abort("missing-block strata require the deferred complete-case generator")
+    p <- if (identical(as.integer(stratum$K), 2L)) c(80L, 400L) else c(80L, 400L, 1200L)
+    control <- .stage1_heterogeneous_control(seed = seed, n = stratum$n, p = p,
+        signal = c(shared = unname(stratum$shared_signal), exclusive = unname(stratum$exclusive_signal),
+                   confounder = unname(stratum$confounder_signal)), noise_sd = unname(stratum$noise_sd),
+        sample_permuted = identical(stratum$sample_order, "permuted"),
+        feature_permuted = identical(stratum$feature_order, "permuted"))
+    smoke <- stage1_candidate_smoke(seed, control = control)
     split <- manifest$seeds$split[match(seed, manifest$seeds$seed)]
     out <- smoke$results
     out$seed <- seed
@@ -88,7 +108,7 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
 #'
 #' @param artifact_dir new destination directory.
 #' @param manifest benchmark manifest.
-#' @param seed seed to execute (smoke-only at present).
+#' @param seed seed to execute.
 #' @return named character vector of written artifact paths.
 #' @export
 write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benchmark_manifest(), seed = 1001L) {

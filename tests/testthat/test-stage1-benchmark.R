@@ -12,7 +12,14 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
     second <- run_stage1_benchmark_replicate(manifest)
     compare <- setdiff(names(first), c("elapsed_sec", "peak_vcells_bytes"))
     expect_equal(first[, compare], second[, compare])
-    expect_error(run_stage1_benchmark_replicate(manifest, 1002L), class = "stage1_benchmark_error")
+    other_seed <- run_stage1_benchmark_replicate(manifest, 1002L)
+    expect_equal(other_seed$seed, c(1002L, 1002L))
+    expect_error(run_stage1_benchmark_replicate(
+        manifest, stratum = modifyList(list(n = 20L, K = 2L, shared_signal = 24,
+        exclusive_signal = 12, confounder_signal = 12, noise_sd = 1,
+        missing_block_rate = 0, sample_order = "permuted", feature_order = "permuted",
+        projection_case = "exact_ids"), list(missing_block_rate = .20))),
+        class = "stage1_benchmark_error")
 
     path <- tempfile("stage1-artifact-")
     write_stage1_benchmark_artifact(path, manifest)
