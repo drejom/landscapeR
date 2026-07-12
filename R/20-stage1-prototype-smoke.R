@@ -42,14 +42,20 @@
                                           noise_sd = 1, missing_block_rate = 0,
                                           sample_permuted = TRUE, feature_permuted = TRUE) {
     setup_rng(seed)
-    n <- as.integer(n)
+    n_complete <- as.integer(n)
     p <- as.integer(p)
     rank <- 2L
-    if (length(p) < 2L || any(p < rank + 1L) || n < 3L ||
+    if (length(p) < 2L || any(p < rank + 1L) || n_complete < 12L ||
         missing_block_rate < 0 || missing_block_rate >= 1 ||
         !all(c("shared", "exclusive", "confounder") %in% names(signal)))
         .stage1_proto_abort("invalid heterogeneous control dimensions or signal")
 
+    # `n` is the declared complete paired cohort. Missing-block observations
+    # are additional observations, so missingness never silently changes the
+    # protocol's n stratum.
+    n_incomplete <- if (missing_block_rate > 0)
+        ceiling(n_complete * missing_block_rate / (1 - missing_block_rate)) * length(p) else 0L
+    n <- n_complete + n_incomplete
     u_shared <- .centered_orthonormal(n, rank)
     remaining <- function(reference) {
         z <- matrix(rnorm(n * rank), n, rank)
@@ -66,16 +72,28 @@
     rownames(u_confounder) <- sample_ids
     # Preserve the frozen protocol's minimum complete paired cohort while
     # allowing independently selected missing blocks outside that cohort.
-    n_complete_min <- 12L
-    if (n_complete_min > n) .stage1_proto_abort("missing-block design cannot retain 12 complete samples")
-    protected_complete <- sample(sample_ids, n_complete_min)
+    protected_complete <- sample(sample_ids, n_complete)
     missing_candidates <- setdiff(sample_ids, protected_complete)
-    missing_by_layer <- lapply(seq_along(p), function(i) {
-        n_missing <- floor(n * missing_block_rate)
-        if (n_missing > length(missing_candidates))
-            .stage1_proto_abort("missing-block design exceeds available non-complete samples")
-        if (n_missing) sample(missing_candidates, n_missing) else character()
-    })
+    n_missing <- floor(n * missing_block_rate)
+    if (n_missing > length(missing_candidates))
+        .stage1_proto_abort("missing-block design exceeds available non-complete samples")
+    # Cover every additional observation at least once, then fill each assay's
+    # declared missing count without duplicates. Thus `n` stays the realised
+    # complete paired cohort rather than an upper bound.
+    missing_by_layer <- replicate(length(p), character(), simplify = FALSE)
+    if (n_missing) {
+        for (id in sample(missing_candidates)) {
+            available <- which(vapply(missing_by_layer, length, integer(1L)) < n_missing)
+            target <- available[[which.min(vapply(available, function(i)
+                length(missing_by_layer[[i]]), integer(1L)))]]
+            missing_by_layer[[target]] <- c(missing_by_layer[[target]], id)
+        }
+        missing_by_layer <- lapply(missing_by_layer, function(ids) {
+            if (length(ids) < n_missing)
+                c(ids, sample(setdiff(missing_candidates, ids), n_missing - length(ids)))
+            else ids
+        })
+    }
     experiments_out <- vector("list", length(p))
     response <- vector("list", length(p))
     exclusive_response <- vector("list", length(p))
@@ -128,8 +146,9 @@
     md <- metadata(std)
     md$stage1_prototype_control <- list(
         protocol_id = "stage1-heterogeneous-v1", generator = "heterogeneous_shared_subspace_v1",
-        seed = as.integer(seed), n = n, rank = rank, p = p, signal = signal,
-        noise_sd = noise_sd, missing_block_rate = missing_block_rate
+        seed = as.integer(seed), n = n_complete, total_n = n, all_sample_ids = sample_ids,
+        rank = rank, p = p, signal = signal, noise_sd = noise_sd,
+        missing_block_rate = missing_block_rate
     )
     metadata(std) <- md
     std
@@ -170,8 +189,9 @@
         x[cols, , drop = FALSE]
     }, by_assay, expts)
     names(matrices) <- assay_names
+    all_ids <- metadata(std)$stage1_prototype_control$all_sample_ids %||% rownames(colData(std))
     list(matrices = matrices, sample_ids = common,
-         exclusions = setdiff(rownames(colData(std)), common))
+         exclusions = setdiff(all_ids, common))
 }
 
 .prototype_preprocess <- function(matrices) {

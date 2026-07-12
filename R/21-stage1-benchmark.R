@@ -97,10 +97,8 @@ validate_stage1_benchmark_manifest <- function(manifest) {
 
 #' Run one deterministic benchmark replicate
 #'
-#' This initial runner intentionally supports the frozen smoke stratum only.
-#' It provides the validated artifact seam for the later parameterised full
-#' generator; requesting another stratum fails rather than silently running a
-#' different simulation.
+#' Runs one explicitly requested frozen-grid stratum. It does not execute a
+#' sweep or select a candidate.
 #'
 #' @param manifest validated benchmark manifest.
 #' @param seed one manifest seed.
@@ -172,9 +170,12 @@ write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benc
                                                 sample_order = "permuted", feature_order = "permuted",
                                                 projection_case = "exact_ids")) {
     validate_stage1_benchmark_manifest(manifest)
+    if (file.exists(artifact_dir) && !dir.exists(artifact_dir))
+        .stage1_benchmark_abort("benchmark artifact path exists but is not a directory")
     if (dir.exists(artifact_dir) && length(list.files(artifact_dir, all.files = TRUE, no.. = TRUE)))
         .stage1_benchmark_abort("benchmark artifact directory must be new or empty")
-    dir.create(artifact_dir, recursive = TRUE, showWarnings = FALSE)
+    if (!dir.exists(artifact_dir) && !dir.create(artifact_dir, recursive = TRUE, showWarnings = FALSE))
+        .stage1_benchmark_abort("could not create benchmark artifact directory")
     results <- run_stage1_benchmark_replicate(manifest, seed, stratum)
     manifest_path <- file.path(artifact_dir, "manifest.rds")
     seeds_path <- file.path(artifact_dir, "seed-manifest.csv")
@@ -198,7 +199,11 @@ write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benc
 #' @return `TRUE` when every recorded hash matches.
 #' @export
 verify_stage1_benchmark_artifact <- function(artifact_dir) {
-    hashes <- utils::read.csv(file.path(artifact_dir, "hashes.csv"), stringsAsFactors = FALSE)
+    hash_path <- file.path(artifact_dir, "hashes.csv")
+    if (!dir.exists(artifact_dir) || !file.exists(hash_path))
+        .stage1_benchmark_abort("benchmark artifact hash manifest does not exist")
+    hashes <- tryCatch(utils::read.csv(hash_path, stringsAsFactors = FALSE),
+                       error = function(e) .stage1_benchmark_abort("benchmark artifact hash manifest is invalid"))
     all(vapply(seq_len(nrow(hashes)), function(i)
         identical(digest::digest(file.path(artifact_dir, hashes$file[[i]]), file = TRUE, algo = "sha256"), hashes$sha256[[i]]), logical(1L)))
 }

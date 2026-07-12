@@ -24,8 +24,6 @@ smoke stratum; callers may run any currently supported non-missing stratum.}
 one row per candidate with split, metrics, gate state, and timing.
 }
 \description{
-This initial runner intentionally supports the frozen smoke stratum only.
-It provides the validated artifact seam for the later parameterised full
-generator; requesting another stratum fails rather than silently running a
-different simulation.
+Runs one explicitly requested frozen-grid stratum. It does not execute a
+sweep or select a candidate.
 }

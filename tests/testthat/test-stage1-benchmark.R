@@ -130,7 +130,7 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
     expect_true(all(three_layer_missing$gate_passed))
     control <- landscapeR:::.stage1_heterogeneous_control(
         seed = 1001L, n = 20L, p = c(80L, 400L, 1200L), missing_block_rate = .20)
-    expect_gte(nrow(landscapeR:::.prototype_complete_layers(control)$matrices[[1L]]), 12L)
+    expect_equal(nrow(landscapeR:::.prototype_complete_layers(control)$matrices[[1L]]), 20L)
     expect_equal(manifest$feature_counts[["3"]], c(80L, 400L, 1200L))
     missing_id <- run_stage1_benchmark_replicate(manifest, stratum = modifyList(
         list(n = 20L, K = 2L, shared_signal = 24, exclusive_signal = 12,
@@ -152,4 +152,9 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
     expect_true(all(c("stratum", "exclusions", "failure_reason", "protocol_digest", "generator_digest") %in% names(saved)))
     expect_true(verify_stage1_benchmark_artifact(path))
     expect_error(write_stage1_benchmark_artifact(path, manifest), class = "stage1_benchmark_error")
+    file_path <- tempfile("stage1-artifact-file-")
+    file.create(file_path)
+    expect_error(write_stage1_benchmark_artifact(file_path, manifest), class = "stage1_benchmark_error")
+    expect_error(verify_stage1_benchmark_artifact(tempfile("missing-artifact-")),
+                 class = "stage1_benchmark_error")
 })
