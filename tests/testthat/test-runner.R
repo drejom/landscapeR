@@ -5,7 +5,7 @@ test_that("run_pipeline returns stage_success on synthetic data", {
         strategies = list(Decomposer = "hogsvd_averaged",
                           DynamicsEstimator = "kde_logdensity"),
         params     = list(),
-        analysis   = analysis_specification(id = "test-run", target_field = "planted_group")
+        analysis   = analysis_specification(id = "test-run", manual_component = 1L)
     )
     result <- suppressWarnings(run_pipeline(std, cfg))
     expect_s4_class(result, "StageResult")
@@ -21,7 +21,7 @@ test_that("run_pipeline returns failure on schema mismatch before any stage runs
         dataset    = "test",
         strategies = list(Decomposer = "hogsvd_averaged"),
         params     = list(),
-        analysis   = analysis_specification(id = "test-run", target_field = "planted_group")
+        analysis   = analysis_specification(id = "test-run", manual_component = 1L)
     )
     result <- run_pipeline(std, cfg)
     expect_s4_class(result, "StageResult")
@@ -48,7 +48,7 @@ test_that("run_pipeline catches a stage that returns a non-StageResult", {
         dataset    = "test",
         strategies = list(Decomposer = "_broken_for_test"),
         params     = list(),
-        analysis   = analysis_specification(id = "test-run", target_field = "planted_group")
+        analysis   = analysis_specification(id = "test-run", manual_component = 1L)
     )
     result <- run_pipeline(std, cfg)
 
@@ -66,7 +66,7 @@ test_that("run_pipeline skips stages with no strategy configured", {
         dataset    = "test",
         strategies = list(Decomposer = "hogsvd_averaged"),
         params     = list(),
-        analysis   = analysis_specification(id = "test-run", target_field = "planted_group")
+        analysis   = analysis_specification(id = "test-run", manual_component = 1L)
     )
     result <- suppressWarnings(run_pipeline(std, cfg))
     expect_equal(result@status, "success")
@@ -81,7 +81,7 @@ test_that("run_pipeline dispatches to hogsvd_prereduced when configured", {
         dataset    = "test",
         strategies = list(Decomposer = "hogsvd_prereduced"),
         params     = list(),
-        analysis   = analysis_specification(id = "test-run", target_field = "planted_group")
+        analysis   = analysis_specification(id = "test-run", manual_component = 1L)
     )
     result <- suppressWarnings(run_pipeline(std, cfg))
     expect_s4_class(result, "StageResult")
@@ -148,7 +148,7 @@ test_that("run_pipeline: both stages persist ProvenanceStep records in value@pro
         strategies = list(Decomposer        = "hogsvd_averaged",
                           DynamicsEstimator = "kde_logdensity"),
         params     = list(),
-        analysis   = analysis_specification(id = "test-run", target_field = "planted_group")
+        analysis   = analysis_specification(id = "test-run", manual_component = 1L)
     )
     result <- suppressWarnings(run_pipeline(std, cfg))
     expect_equal(result@status, "success")
@@ -167,7 +167,7 @@ test_that("run_pipeline single stage: exactly one ProvenanceStep persisted", {
         dataset    = "test",
         strategies = list(Decomposer = "hogsvd_averaged"),
         params     = list(),
-        analysis   = analysis_specification(id = "test-run", target_field = "planted_group")
+        analysis   = analysis_specification(id = "test-run", manual_component = 1L)
     )
     result <- suppressWarnings(run_pipeline(std, cfg))
     expect_equal(result@status, "success")

@@ -26,6 +26,10 @@ test_that("analysis_specification validates metadata-role collisions and intent"
         "positive"
     )
     expect_error(
+        analysis_specification(id = "fractional", manual_component = 1.5),
+        "single integer"
+    )
+    expect_error(
         analysis_specification(
             id = "bad-intent", manual_component = 1L, claim_intent = "confirmed"
         ),
@@ -64,4 +68,37 @@ test_that("run_pipeline records analysis specification provenance", {
     step <- result@value@provenance[[1L]]
     expect_equal(step@params$analysis_specification$id, "run")
     expect_equal(step@params$analysis_specification$digest, canonical_digest(analysis))
+})
+
+test_that("run_pipeline applies manual component to Stage 2", {
+    std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
+    cfg <- new("PipelineConfig",
+        dataset = "test",
+        strategies = list(Decomposer = "hogsvd_averaged", DynamicsEstimator = "kde_logdensity"),
+        params = list(),
+        analysis = analysis_specification(id = "component-two", manual_component = 2L)
+    )
+    result <- suppressWarnings(run_pipeline(std, cfg))
+    expect_equal(result@status, "success")
+    expect_equal(metadata(result@value)$stage2$params$component, 2L)
+})
+
+test_that("run_pipeline rejects invalid metadata and proposal-only Stage 2 intent", {
+    std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
+    missing_field <- new("PipelineConfig",
+        dataset = "test", strategies = list(Decomposer = "hogsvd_averaged"), params = list(),
+        analysis = analysis_specification(id = "missing", target_field = "absent")
+    )
+    missing_result <- run_pipeline(std, missing_field)
+    expect_equal(missing_result@status, "failure")
+    expect_match(missing_result@reason, "not found")
+
+    proposal_only <- new("PipelineConfig",
+        dataset = "test", strategies = list(Decomposer = "hogsvd_averaged", DynamicsEstimator = "kde_logdensity"),
+        params = list(),
+        analysis = analysis_specification(id = "proposal", target_field = "planted_group")
+    )
+    proposal_result <- suppressWarnings(run_pipeline(std, proposal_only))
+    expect_equal(proposal_result@status, "failure")
+    expect_match(proposal_result@reason, "proposal only")
 })

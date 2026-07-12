@@ -186,10 +186,10 @@ analysis_specification <- function(
     } else character(0L)
 
     mc <- if (!is.null(manual_component)) {
-        mc_int <- suppressWarnings(as.integer(manual_component))
-        if (length(mc_int) != 1L || is.na(mc_int))
+        if (!is.numeric(manual_component) || length(manual_component) != 1L ||
+            is.na(manual_component) || manual_component != as.integer(manual_component))
             stop("analysis_specification(): manual_component must be a single integer")
-        mc_int
+        as.integer(manual_component)
     } else integer(0L)
 
     nf <- as.character(nuisance_fields)
@@ -215,8 +215,23 @@ analysis_specification <- function(
 }
 
 # ---------------------------------------------------------------------------
-# Canonical deterministic digest
+# Canonical payload, digest, and provenance
 # ---------------------------------------------------------------------------
+
+.analysis_spec_payload <- function(spec) {
+    list(
+        version            = spec@version,
+        id                 = spec@id,
+        target_field       = if (length(spec@target_field))
+                                 spec@target_field else NA_character_,
+        manual_component   = if (length(spec@manual_component))
+                                 spec@manual_component else NA_integer_,
+        nuisance_fields    = spec@nuisance_fields,
+        orientation_anchor = if (length(spec@orientation_anchor))
+                                 spec@orientation_anchor else NA_character_,
+        claim_intent       = spec@claim_intent
+    )
+}
 
 #' Compute a canonical deterministic digest for an AnalysisSpecification
 #'
@@ -230,21 +245,7 @@ analysis_specification <- function(
 canonical_digest <- function(spec) {
     if (!is(spec, "AnalysisSpecification"))
         stop("canonical_digest(): spec must be an AnalysisSpecification object")
-    digest::digest(
-        list(
-            version            = spec@version,
-            id                 = spec@id,
-            target_field       = if (length(spec@target_field))
-                                     spec@target_field else NA_character_,
-            manual_component   = if (length(spec@manual_component))
-                                     spec@manual_component else NA_integer_,
-            nuisance_fields    = spec@nuisance_fields,
-            orientation_anchor = if (length(spec@orientation_anchor))
-                                     spec@orientation_anchor else NA_character_,
-            claim_intent       = spec@claim_intent
-        ),
-        algo = "sha256"
-    )
+    digest::digest(.analysis_spec_payload(spec), algo = "sha256")
 }
 
 # ---------------------------------------------------------------------------
@@ -257,17 +258,30 @@ canonical_digest <- function(spec) {
 #' @return named list suitable for inclusion in a provenance record
 #' @keywords internal
 .analysis_spec_provenance <- function(spec) {
-    list(
-        version            = spec@version,
-        id                 = spec@id,
-        target_field       = if (length(spec@target_field))
-                                 spec@target_field else NA_character_,
-        manual_component   = if (length(spec@manual_component))
-                                 spec@manual_component else NA_integer_,
-        nuisance_fields    = spec@nuisance_fields,
-        orientation_anchor = if (length(spec@orientation_anchor))
-                                 spec@orientation_anchor else NA_character_,
-        claim_intent       = spec@claim_intent,
-        digest             = canonical_digest(spec)
-    )
+    c(.analysis_spec_payload(spec), digest = canonical_digest(spec))
+}
+
+.validate_analysis_specification_data <- function(spec, data, require_component = FALSE) {
+    cd <- as.data.frame(colData(data))
+    fields <- c(spec@target_field, spec@nuisance_fields, spec@orientation_anchor)
+    missing <- setdiff(fields, colnames(cd))
+    if (length(missing))
+        return(sprintf("declared metadata field(s) not found in colData: %s",
+                       paste(missing, collapse = ", ")))
+
+    if (length(spec@orientation_anchor)) {
+        anchor <- cd[[spec@orientation_anchor]]
+        if (!is.numeric(anchor) || any(!is.finite(anchor)) || stats::var(anchor) == 0)
+            return("orientation_anchor must be finite numeric metadata with non-zero variance")
+    }
+
+    if (isTRUE(require_component)) {
+        if (!length(spec@manual_component))
+            return("target_field is a proposal only; Stage 2 requires manual_component")
+        s1 <- metadata(data)$stage1
+        if (is.null(s1) || spec@manual_component > dr_k(s1))
+            return(sprintf("manual_component %s is not available from Stage 1",
+                           spec@manual_component))
+    }
+    TRUE
 }

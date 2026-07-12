@@ -18,9 +18,20 @@ run_pipeline <- function(data, config) {
         impl_name <- config@strategies[[s$contract]]
         if (is.null(impl_name)) next
 
+        analysis_valid <- .validate_analysis_specification_data(
+            config@analysis,
+            data,
+            require_component = identical(s$contract, "DynamicsEstimator")
+        )
+        if (!isTRUE(analysis_valid))
+            return(stage_failure(sprintf("[%s] invalid analysis specification: %s",
+                                         s$name, analysis_valid)))
+
         ctor     <- get_strategy(s$contract, impl_name)
         params   <- config@params[[impl_name]] %||% list()
         params$analysis_specification <- .analysis_spec_provenance(config@analysis)
+        if (identical(s$contract, "DynamicsEstimator"))
+            params$component <- config@analysis@manual_component
         strategy <- ctor(params)
 
         result <- s$fn(strategy, data)

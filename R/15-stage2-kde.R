@@ -113,7 +113,8 @@ setMethod(".estimate_dynamics_impl",
             h_right <- if (length(right_wells)) U_at(b) - U_at(right_wells[1L])                 else NA_real_
             c(left = h_left, right = h_right)
         })
-        names(barrier_heights) <- paste0("barrier_", seq_along(barriers))
+        if (length(barriers))
+            names(barrier_heights) <- paste0("barrier_", seq_along(barriers))
 
         s2 <- list(
             x               = x_grid,
