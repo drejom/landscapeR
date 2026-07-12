@@ -66,7 +66,7 @@
     rownames(u_confounder) <- sample_ids
     # Preserve the frozen protocol's minimum complete paired cohort while
     # allowing independently selected missing blocks outside that cohort.
-    n_complete_min <- max(12L, ceiling(n * (1 - missing_block_rate)))
+    n_complete_min <- 12L
     if (n_complete_min > n) .stage1_proto_abort("missing-block design cannot retain 12 complete samples")
     protected_complete <- sample(sample_ids, n_complete_min)
     missing_candidates <- setdiff(sample_ids, protected_complete)
@@ -281,6 +281,7 @@ stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
     extracted <- .prototype_complete_layers(std)
     prepared <- .prototype_preprocess(extracted$matrices)
     truth <- .prototype_truth_for_samples(std@ground_truth, extracted$sample_ids)
+    ctrl <- metadata(std)$stage1_prototype_control
 
     # Independent holdout scores retain discovery responses but are not used to
     # fit either candidate. The exact-ID control is followed by the required
@@ -298,7 +299,7 @@ stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
         x <- u_holdout %*% t(response) +
              u_exclusive %*% t(exclusive_response) +
              u_holdout_confounder %*% t(confounder_response) +
-             matrix(rnorm(n_holdout * length(prep$means)), n_holdout, length(prep$means))
+             matrix(rnorm(n_holdout * length(prep$means), sd = ctrl$noise_sd), n_holdout, length(prep$means))
         colnames(x) <- names(prep$means)
         x
     }, truth@response, truth@exclusive_response, truth@confounder_response,
@@ -339,7 +340,6 @@ stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
         inherits(try(.prototype_project(malformed, fit), silent = TRUE), "try-error")
     }, logical(1L))
 
-    ctrl <- metadata(std)$stage1_prototype_control
     canonical <- .stage1_heterogeneous_control(
         seed = ctrl$seed, n = ctrl$n, p = ctrl$p, signal = ctrl$signal,
         noise_sd = ctrl$noise_sd, missing_block_rate = ctrl$missing_block_rate,

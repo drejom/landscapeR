@@ -33,6 +33,13 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
         seed = 1001L, n = 20L, p = c(80L, 400L, 1200L), missing_block_rate = .20)
     expect_gte(nrow(landscapeR:::.prototype_complete_layers(control)$matrices[[1L]]), 12L)
     expect_equal(manifest$feature_counts[["3"]], c(80L, 400L, 1200L))
+    missing_id <- run_stage1_benchmark_replicate(manifest, stratum = modifyList(
+        list(n = 20L, K = 2L, shared_signal = 24, exclusive_signal = 12,
+             confounder_signal = 12, noise_sd = 1, missing_block_rate = 0,
+             sample_order = "permuted", feature_order = "permuted",
+             projection_case = "exact_ids"), list(projection_case = "missing_id")))
+    expect_true(all(missing_id$typed_failure_rate == 1L))
+    expect_true(all(is.na(missing_id$projection_error)))
 
     expect_error(run_stage1_benchmark_replicate(manifest,
         stratum = modifyList(list(n = 20L, K = 2L, shared_signal = 24,

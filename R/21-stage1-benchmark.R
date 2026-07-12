@@ -8,6 +8,20 @@
                    class = c("stage1_benchmark_error", "error", "condition")))
 }
 
+.protocol_digest <- function(manifest) {
+    digest::digest(manifest[c("artifact_version", "protocol_id", "generator", "candidates",
+                              "rank", "feature_counts", "grid", "seeds")], algo = "sha256")
+}
+
+.generator_digest <- function() {
+    functions <- c(".stage1_heterogeneous_control", ".centered_orthonormal",
+                   ".prototype_complete_layers", ".prototype_preprocess",
+                   ".prototype_consensus", ".prototype_block_svd",
+                   ".prototype_project", ".prototype_metrics", "stage1_candidate_smoke")
+    digest::digest(lapply(functions, function(name) body(get(name, envir = asNamespace("landscapeR")))),
+                   algo = "sha256")
+}
+
 #' Construct the frozen Stage 1 heterogeneous benchmark manifest
 #'
 #' @return a canonical list for protocol `stage1-heterogeneous-v1`.
@@ -115,20 +129,25 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     out$split <- split
     out$protocol_id <- manifest$protocol_id
     out$generator <- manifest$generator
-    out$protocol_digest <- digest::digest(manifest, algo = "sha256")
-    out$generator_digest <- digest::digest(list(
-        generator = manifest$generator,
-        control_generator = body(.stage1_heterogeneous_control),
-        candidate_evaluator = body(stage1_candidate_smoke)
-    ), algo = "sha256")
+    out$protocol_digest <- .protocol_digest(manifest)
+    out$generator_digest <- .generator_digest()
     out$stratum_digest <- digest::digest(stratum, algo = "sha256")
     out$stratum <- vapply(seq_len(nrow(out)), function(i) paste(utils::capture.output(dput(stratum)), collapse = ""), character(1L))
     out$exclusions <- paste(smoke$gates$complete_case_exclusions, collapse = ";")
     base_gate <- all(smoke$gates$sample_map_aligned, smoke$gates$heterogeneous_features,
                      all(smoke$gates$extra_projection_id_rejected), all(smoke$gates$permutation_invariant))
     is_missing_projection <- identical(stratum$projection_case, "missing_id")
-    out$gate_passed <- base_gate && if (is_missing_projection) FALSE else all(smoke$gates$missing_projection_id_rejected)
-    out$failure_reason <- if (is_missing_projection) "projection feature ID missing (expected typed failure)" else NA_character_
+    if (is_missing_projection) {
+        typed <- all(smoke$gates$missing_projection_id_rejected)
+        out$gate_passed <- FALSE
+        out$typed_failure_rate <- as.integer(typed)
+        out[, c("shared_recovery_error", "response_recovery_error", "exclusive_leakage", "projection_error")] <- NA_real_
+        out$failure_reason <- if (typed) "projection feature ID missing (expected typed failure)" else
+            "missing-ID negative control did not produce a typed failure"
+    } else {
+        out$gate_passed <- base_gate && all(smoke$gates$missing_projection_id_rejected)
+        out$failure_reason <- NA_character_
+    }
     out
 }
 
