@@ -1,4 +1,5 @@
 url: https://drejom.github.io/landscapeR/
+destination: _site
 
 template:
   bootstrap: 5
