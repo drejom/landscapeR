@@ -27,7 +27,7 @@
 
 #' Generate the frozen Stage 1 heterogeneous-feature smoke control
 #'
-#' Generates the one seed/stratum fixed by protocol `stage1-heterogeneous-v1`:
+#' Generates the one seed/stratum fixed by protocol `stage1-heterogeneous-v2`:
 #' two layers with 80 and 400 disjoint features, independent assay sample and
 #' feature permutations, and shared/exclusive/confounder signal 24/12/12.
 #' Its assays are deliberately connected through a MultiAssayExperiment sample
@@ -145,7 +145,7 @@
     )
     md <- metadata(std)
     md$stage1_prototype_control <- list(
-        protocol_id = "stage1-heterogeneous-v1", generator = "heterogeneous_shared_subspace_v1",
+        protocol_id = "stage1-heterogeneous-v2", generator = "heterogeneous_shared_subspace_v1",
         seed = as.integer(seed), n = n_complete, total_n = n, all_sample_ids = sample_ids,
         rank = rank, p = p, signal = signal, noise_sd = noise_sd,
         missing_block_rate = missing_block_rate
@@ -284,7 +284,7 @@
 #' Run the frozen Stage 1 heterogeneous-feature smoke harness
 #'
 #' Runs only the single deterministic smoke stratum from
-#' `stage1-heterogeneous-v1`. C1 and C2 are local prototype functions: neither
+#' `stage1-heterogeneous-v2`. C1 and C2 are local prototype functions: neither
 #' is registered as a production `Decomposer`, and this function does not make
 #' a candidate-selection or biological claim.
 #'
@@ -296,7 +296,7 @@
 #' @export
 stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
     if (is.null(control) && !identical(as.integer(seed), 1001L))
-        .stage1_proto_abort("stage1-heterogeneous-v1 smoke tier requires seed 1001")
+        .stage1_proto_abort("stage1-heterogeneous-v2 smoke tier requires seed 1001")
     std <- if (is.null(control)) .stage1_heterogeneous_smoke_control(seed) else control
     extracted <- .prototype_complete_layers(std)
     prepared <- .prototype_preprocess(extracted$matrices)
@@ -387,7 +387,7 @@ stage1_candidate_smoke <- function(seed = 1001L, control = NULL) {
         sample_ids = extracted$sample_ids, exclusions = extracted$exclusions
     ))
     list(
-        protocol_id = "stage1-heterogeneous-v1",
+        protocol_id = "stage1-heterogeneous-v2",
         control = std,
         results = do.call(rbind, rows),
         fits = retained_fits,

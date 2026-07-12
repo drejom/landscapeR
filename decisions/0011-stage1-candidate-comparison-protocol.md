@@ -55,8 +55,10 @@ implementing either as the production heterogeneous-feature Stage 1 strategy.
 The protocol fixes preprocessing, rank, candidate mechanics, synthetic truth,
 parameter grid, 40 paired calibration/holdout seeds, gates, metrics, selection
 thresholds, and immutable artifacts. C2 remains the mandatory regression
-comparator even if C1 wins. The protocol was approved unchanged on 2026-07-12. Candidate prototype code
-may now implement its smoke tier, but no production candidate or Issue #24
+comparator even if C1 wins. ADR 0012 superseded the unexecuted v1 executable
+protocol with v2 before aggregate results, solely to freeze deterministic
+aggregation, reporting, and expected-negative semantics. Candidate prototype
+code may now implement its smoke tier, but no production candidate or Issue #24
 contract rewrite follows from this ADR alone.
 
 ## Consequences

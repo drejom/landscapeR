@@ -10,7 +10,8 @@
 
 .protocol_digest <- function(manifest) {
     digest::digest(manifest[c("artifact_version", "protocol_id", "generator", "candidates",
-                              "rank", "feature_counts", "grid", "seeds")], algo = "sha256")
+                              "rank", "feature_counts", "grid", "seeds",
+                              "selection_rules", "reporting_rules")], algo = "sha256")
 }
 
 .generator_digest <- function() {
@@ -29,12 +30,12 @@
 
 #' Construct the frozen Stage 1 heterogeneous benchmark manifest
 #'
-#' @return a canonical list for protocol `stage1-heterogeneous-v1`.
+#' @return a canonical list for protocol `stage1-heterogeneous-v2`.
 #' @export
 stage1_benchmark_manifest <- function() {
     list(
-        artifact_version = "1",
-        protocol_id = "stage1-heterogeneous-v1",
+        artifact_version = "2",
+        protocol_id = "stage1-heterogeneous-v2",
         generator = "heterogeneous_shared_subspace_v1",
         candidates = c("C1_symmetric_consensus", "C2_block_scaled_svd"),
         rank = 2L,
@@ -52,7 +53,24 @@ stage1_benchmark_manifest <- function() {
         ),
         seeds = data.frame(seed = 1001:1040,
                            split = rep(c("calibration", "holdout"), each = 20L),
-                           stringsAsFactors = FALSE)
+                           stringsAsFactors = FALSE),
+        selection_rules = list(
+            bootstrap_resamples = 10000L,
+            bootstrap_seed = 11001L,
+            bootstrap = "paired seeds resampled within stratum",
+            statistic = "equal-stratum-weighted mean C1 minus C2 shared-recovery error",
+            ci = "two-sided 95% percentile",
+            shared_recovery_advantage = -0.03,
+            maximum_leakage_or_projection_disadvantage = 0.02,
+            maximum_elapsed_ratio = 1.5
+        ),
+        reporting_rules = list(
+            bootstrap_resamples = 10000L,
+            bootstrap_seed_start = 11002L,
+            bootstrap = "seeds resampled within canonical stratum",
+            statistic = "median",
+            ci = "two-sided 95% percentile"
+        )
     )
 }
 
@@ -61,11 +79,11 @@ stage1_benchmark_manifest <- function() {
 #' @return invisibly `TRUE`, or throws a typed error.
 #' @export
 validate_stage1_benchmark_manifest <- function(manifest) {
-    required <- c("artifact_version", "protocol_id", "generator", "candidates", "rank", "feature_counts", "environment", "grid", "seeds")
+    required <- c("artifact_version", "protocol_id", "generator", "candidates", "rank", "feature_counts", "environment", "grid", "seeds", "selection_rules", "reporting_rules")
     if (!is.list(manifest) || !all(required %in% names(manifest)))
         .stage1_benchmark_abort("benchmark manifest is missing required fields")
-    if (!identical(manifest$artifact_version, "1") || !identical(manifest$rank, 2L) ||
-        !identical(manifest$protocol_id, "stage1-heterogeneous-v1") ||
+    if (!identical(manifest$artifact_version, "2") || !identical(manifest$rank, 2L) ||
+        !identical(manifest$protocol_id, "stage1-heterogeneous-v2") ||
         !identical(manifest$generator, "heterogeneous_shared_subspace_v1"))
         .stage1_benchmark_abort("benchmark manifest identity, version, or rank is invalid")
     if (!identical(manifest$candidates, c("C1_symmetric_consensus", "C2_block_scaled_svd")))
@@ -74,8 +92,10 @@ validate_stage1_benchmark_manifest <- function(manifest) {
         !identical(manifest$seeds$split, rep(c("calibration", "holdout"), each = 20L)))
         .stage1_benchmark_abort("benchmark manifest seed/split assignment is invalid")
     frozen <- stage1_benchmark_manifest()
-    if (!identical(manifest$grid, frozen$grid) || !identical(manifest$feature_counts, frozen$feature_counts))
-        .stage1_benchmark_abort("benchmark manifest grid differs from frozen protocol")
+    if (!identical(manifest$grid, frozen$grid) || !identical(manifest$feature_counts, frozen$feature_counts) ||
+        !identical(manifest$selection_rules, frozen$selection_rules) ||
+        !identical(manifest$reporting_rules, frozen$reporting_rules))
+        .stage1_benchmark_abort("benchmark manifest differs from frozen protocol")
     invisible(TRUE)
 }
 
@@ -136,18 +156,23 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     out$generator_digest <- .generator_digest()
     out$stratum_digest <- digest::digest(stratum, algo = "sha256")
     out$stratum <- vapply(seq_len(nrow(out)), function(i) paste(utils::capture.output(dput(stratum)), collapse = ""), character(1L))
+    for (field in names(stratum)) out[[field]] <- stratum[[field]]
     out$exclusions <- paste(smoke$gates$complete_case_exclusions, collapse = ";")
     base_gate <- all(smoke$gates$sample_map_aligned, smoke$gates$heterogeneous_features,
                      all(smoke$gates$extra_projection_id_rejected), all(smoke$gates$permutation_invariant))
     is_missing_projection <- identical(stratum$projection_case, "missing_id")
     if (is_missing_projection) {
         typed <- all(smoke$gates$missing_projection_id_rejected)
-        out$gate_passed <- FALSE
+        out$gate_expected <- "typed_failure"
+        out$gate_observed <- if (typed) "typed_failure" else "unexpected_success"
+        out$gate_passed <- typed
         out$typed_failure_rate <- as.integer(typed)
         out[, c("shared_recovery_error", "response_recovery_error", "exclusive_leakage", "projection_error")] <- NA_real_
-        out$failure_reason <- if (typed) "projection feature ID missing (expected typed failure)" else
+        out$failure_reason <- if (typed) "expected projection feature-ID typed failure" else
             "missing-ID negative control did not produce a typed failure"
     } else {
+        out$gate_expected <- "success"
+        out$gate_observed <- if (base_gate && all(smoke$gates$missing_projection_id_rejected)) "success" else "failure"
         out$gate_passed <- base_gate && all(smoke$gates$missing_projection_id_rejected)
         out$failure_reason <- NA_character_
     }

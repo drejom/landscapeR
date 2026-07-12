@@ -4,6 +4,7 @@
 ^CLAUDE\.md$
 ^\.claude-notes\.md$
 ^_pkgdown\.yml$
+^_site$
 ^docs$
 ^deploy\.sh$
 ^vignettes/development-log\.Rmd$

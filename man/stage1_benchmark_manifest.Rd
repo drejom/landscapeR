@@ -7,7 +7,7 @@
 stage1_benchmark_manifest()
 }
 \value{
-a canonical list for protocol \code{stage1-heterogeneous-v1}.
+a canonical list for protocol \code{stage1-heterogeneous-v2}.
 }
 \description{
 Construct the frozen Stage 1 heterogeneous benchmark manifest

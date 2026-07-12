@@ -18,8 +18,9 @@ knitr::opts_chunk$set(
 library(landscapeR)
 ```
 
-> **This is a living document.** It tracks what is working, what is being built,
-> and what is planned. Updated after each development sprint.
+> **This is a living document, not an acceptance-evidence report.** It tracks
+> implementation progress and links to the governing protocols. Acceptance
+> evidence is published only from immutable, hash-verified benchmark artifacts.
 
 ---
 
@@ -29,12 +30,12 @@ library(landscapeR)
 
 | Stage | Name | Status |
 |---|---|---|
-| Architecture | S4 contracts, registry, container, provenance | ✅ Done |
-| 0 | Synthetic controls (two-group SVD, double-well Langevin) | ✅ Done |
-| 1 | Comparative decomposition — `hogsvd_averaged`, `hogsvd_prereduced` | ✅ Done |
-| 1+ | Multi-component output (k = 6), bimodality-sorted component plots | ✅ Done |
-| 1+ | `project_into()` — Rockne2020 projection protocol | ✅ Done |
-| 2 | KDE log-density inversion, constrained polynomial smooth | ✅ Done |
+| Architecture | S4 contracts, registry, container, provenance | ✅ Implemented and CI-tested |
+| 0 | Synthetic controls (two-group SVD, double-well Langevin) | ⚠️ Implemented; full recovery/negative-control ladder not yet executed |
+| 1 | Comparative decomposition — legacy equal-feature strategies | ⚠️ Implemented; not evidence for heterogeneous multi-omic fitting |
+| 1 | Heterogeneous C1/C2 prototype and frozen comparison protocol | ⚠️ Smoke-tested; full evidence execution and candidate selection pending |
+| 1+ | Component gallery and legacy `project_into()` workflow | ⚠️ Exploratory/legacy; #24 is blocked on the selected heterogeneous strategy |
+| 2 | KDE log-density inversion and constrained polynomial smooth | ⚠️ Implemented; ADR 0002 remains provisional-accepted |
 
 ### Planned
 
@@ -42,20 +43,21 @@ library(landscapeR)
 |---|---|---|
 | 0.5 | Archetype classifier | `ranger`-based; assigns samples to known archetypes |
 | 0.75 | Distributional fit assessment | SBI backend via `reticulate`; replaces ad-hoc BC threshold |
-| 1 | HO-GSVD rank-deficiency handling | Kempf algorithm; critical for diabetes genotype layer |
-| 2 | Minimum barrier height filter | Suppress noise wells in smooth unimodal KDE |
-| 2 | Fokker-Planck time-to-transition | Solve FP equation; predict time to leukemia as in paper |
-| 2 | Survival prediction | Validate against Kaplan-Meier; replicate paper Fig 4 |
-| — | pkgdown site auto-deploy via CI | Render + rsync on push to main |
-| — | CML reference replication | End-to-end on GSE244990; reproduce Leukemia 2024 Fig |
+| 1 | Execute the frozen heterogeneous C1/C2 evidence protocol | Select a baseline before #24; no tuning after aggregate results |
+| 1 | HO-GSVD rank-deficiency handling | Kempf algorithm; candidate only after the current comparison decision |
+| 2 | Full Stage 0 recovery and negative-control ladder | Establish ADR 0002 thresholds and pass rates |
+| 2 | Minimum barrier height filter | Candidate only after Stage 0 evidence |
+| 2 | Fokker-Planck time-to-transition | Requires a separately validated longitudinal strategy |
+| 2 | Survival prediction | Requires validated real-data applicability and confirmation |
+| — | Real-data confirmation workflows | Only after the generic Stage 0 and applicability gates pass |
 
 ### Biological instantiations
 
 | Dataset | Modality | Status |
 |---|---|---|
-| AML/CML (Cbfb-MYH11, BCR-ABL) | mRNA, miRNA | Data loaded, Stage 1 running |
-| Pogona TSD | mRNA | Planned; sex-determination temperature axis |
-| Islet/diabetes multi-omic | mRNA + ATAC + genotype | Planned; rank-deficient genotype layer |
+| AML/CML (Cbfb-MYH11, BCR-ABL) | mRNA, miRNA | Historical exploratory context only; raw data are not in this repository and no claim is current |
+| Pogona TSD | mRNA | Planned only; requires a validated geometry/applicability assessment |
+| Islet/diabetes multi-omic | mRNA + ATAC + genotype | Planned only; rank-deficient genotype layer is a required Stage 1 stress case |
 
 ---
 
@@ -107,6 +109,9 @@ std_dw2 <- estimate_dynamics(dctor(), std_dw1)@value
 plot_potential(std_dw2)
 ```
 
+> **Illustration only:** this single deterministic call exercises the estimator;
+> it is not the multi-seed Stage 0 acceptance ladder or evidence for ADR 0002.
+
 Recovery benchmark:
 
 ```{r benchmark}
@@ -120,47 +125,34 @@ knitr::kable(data.frame(
 
 ---
 
-## Stage 1 — AML mRNA (primary 2018 cohort)
+## Historical AML/CML exploratory context
 
-The 2018 cohort is the paper's primary experiment: clean randomised batches,
-101 samples (T0–T6 + leukemic endpoint L). The 2016 cohort is batch-confounded
-and treated as a supplementary stress-test, projected into the 2018 state-space.
+Earlier exploratory work used AML/CML cohorts as a translation target for the
+Rockne--Frankhouser literature. Those source data and local preprocessing
+objects are deliberately **not** included in this public repository, so the
+old AML chunks are removed rather than presented as runnable analysis.
 
-```{r aml-stage1, eval=FALSE}
-aml  <- readRDS("../data-raw/aml_mrna_std.rds")
-
-# Run Stage 1 on the primary 2018 layer
-ctor  <- get_strategy("Decomposer", "hogsvd_averaged")
-std1  <- decompose(ctor(), aml)@value
-
-# Component plots sorted by bimodality coefficient
-# PC2 expected to be the AML state-transition axis (PC1 = age in paper)
-plot_components(std1, colour_by = "condition")
-```
-
-> **Open question:** Component plots shows PC1 as highest BC (0.87) and η² (0.18) in
-> the 2018 standalone SVD. The paper reports PC2 as the AML axis and PC1 as
-> age. Verifying against paper figures — this section will be updated once
-> confirmed.
+They are also not evidence for the package's present claims. Under the
+[evidence-first validation plan](https://github.com/drejom/landscapeR/blob/main/docs/implementation-plan-stage0-validation.md),
+real-data Stage 2 inference is blocked until the frozen generic Stage 0 ladder
+has passed, ADR 0002 has finalized thresholds, and a separate applicability and
+confirmation workflow has been specified. Any future AML/CML article will
+include a public data manifest, a fixed analysis specification, and the required
+confirmation/claim-status diagnostics.
 
 ---
 
-## Stage 2 — Potential landscape
+## Evidence status
 
-Stage 2 extracts the quasi-potential from the Stage 1 coordinates.
-The target: recover the double-well landscape reported in Rockne2020,
-with CTL samples in one well and CM/leukemic samples in the other.
+The accepted Stage 1 protocol compares two prototype estimators on synthetic,
+heterogeneous-feature controls. Its smoke tier is tested in CI, but it cannot
+select a candidate. The full protocol must emit a hash-verified artifact and a
+separate, render-only evidence article before either prototype can become the
+baseline for #24.
 
-```{r potential-aml, eval=FALSE}
-dctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
-std2  <- estimate_dynamics(dctor(list(component = 2L)), std1)@value
-plot_potential(std2)
-```
-
-> **Current status:** Stage 2 is implemented and runs. Over-fitting (too many
-> wells/barriers) occurs when run on the wrong component (age axis, PC1).
-> Running on PC2 pending confirmation of PC identity from paper.
-> A minimum barrier height filter is planned for the next sprint.
+Similarly, the Stage 2 implementation is an auditable estimator, not yet a
+validated biological inference engine. See ADR 0002 and the Stage 0 protocol
+for its current claim boundary.
 
 ---
 
@@ -180,4 +172,4 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
 
 ---
 
-*Last updated: 2026-06-29*
+*Last updated: 2026-07-12. Documentation site: <https://drejom.github.io/landscapeR/>.*

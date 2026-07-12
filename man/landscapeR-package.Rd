@@ -8,6 +8,14 @@
 \description{
 S4-based pipeline combining GSVD/HO-GSVD comparative decomposition with quasi-potential state-transition modelling on multi-layer omic data. Provides a contract/registry architecture for synthetic validation (Stage 0), archetype classification (Stage 0.5), distributional fit assessment (Stage 0.75), decomposition (Stage 1), and dynamics estimation (Stage 2).
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://drejom.github.io/landscapeR/}
+  \item Report bugs at \url{https://github.com/drejom/landscapeR/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Denis O'Meally \email{denis@omeally.com}
 

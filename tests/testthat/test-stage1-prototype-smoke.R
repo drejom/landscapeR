@@ -1,7 +1,7 @@
 test_that("stage1_candidate_smoke runs the frozen heterogeneous smoke stratum", {
     smoke <- stage1_candidate_smoke()
 
-    expect_identical(smoke$protocol_id, "stage1-heterogeneous-v1")
+    expect_identical(smoke$protocol_id, "stage1-heterogeneous-v2")
     expect_s4_class(smoke$control@ground_truth, "HeterogeneousSubspaceGroundTruth")
     expect_equal(smoke$results$candidate,
                  c("C1_symmetric_consensus", "C2_block_scaled_svd"))

@@ -18,7 +18,7 @@ and contract-gate results.
 }
 \description{
 Runs only the single deterministic smoke stratum from
-\code{stage1-heterogeneous-v1}. C1 and C2 are local prototype functions: neither
+\code{stage1-heterogeneous-v2}. C1 and C2 are local prototype functions: neither
 is registered as a production \code{Decomposer}, and this function does not make
 a candidate-selection or biological claim.
 }

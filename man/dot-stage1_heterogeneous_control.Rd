@@ -22,7 +22,7 @@
 \code{StateTransitionData} with \code{HeterogeneousSubspaceGroundTruth}.
 }
 \description{
-Generates the one seed/stratum fixed by protocol \code{stage1-heterogeneous-v1}:
+Generates the one seed/stratum fixed by protocol \code{stage1-heterogeneous-v2}:
 two layers with 80 and 400 disjoint features, independent assay sample and
 feature permutations, and shared/exclusive/confounder signal 24/12/12.
 Its assays are deliberately connected through a MultiAssayExperiment sample

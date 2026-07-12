@@ -1,14 +1,8 @@
-# Frozen specification — Stage 1 candidate comparison
+# Superseded frozen specification — Stage 1 candidate comparison
 
-**Protocol ID:** `stage1-heterogeneous-v2`
+**Protocol ID:** `stage1-heterogeneous-v1`
 
-**Status:** accepted — v2 supersedes the unexecuted v1 before aggregate results
-
-**Provenance:** ADR 0012 records the deterministic aggregation, reporting, and
-expected-negative-control semantics absent from v1. Candidate definitions,
-generator, grid, seeds, metrics, and numeric decision thresholds are unchanged.
-The unmodified v1 specification is retained in
-`docs/specs/stage1-candidate-protocol-v1.md`.
+**Status:** superseded before aggregate results by `stage1-heterogeneous-v2` (ADR 0012); retained unchanged for provenance
 **Governs:** ADR 0001 amendment, ADR 0009, Issue #24
 
 ## Purpose and boundary
@@ -19,9 +13,9 @@ shared sample subspace for complete paired multi-omic observations with
 heterogeneous feature spaces. The result selects a Stage 1 baseline; it does
 not establish a biological claim or permit Stage 2 inference.
 
-No grid, seed, metric, threshold, candidate definition, aggregation rule, or
-reporting rule may change after the first aggregate result. A change creates a
-new protocol version, retains earlier artifacts, and amends the ADR.
+No grid, seed, metric, threshold, or candidate definition may change after the
+first aggregate result. A change creates `stage1-heterogeneous-v2`, retains the
+v1 artifacts, and amends the ADR.
 
 ## Common data convention
 
@@ -143,57 +137,35 @@ projectors or reconstructed response matrices.
 ## Calibration selection and holdout acceptance
 
 A candidate is eligible only if it passes every contract gate in every
-calibration replicate. A missing-ID negative-control row passes when it emits
-the required typed validation failure; its numerical metrics are inapplicable,
-not evidence of a failed estimator.
+calibration replicate. Among eligible candidates, C1 replaces C2 only when all
+of these calibration conditions hold:
 
-For each full stratum, C1 and C2 are paired by seed. The calibration bootstrap
-resamples the 20 calibration seeds with replacement **within every stratum**,
-retaining paired C1/C2 rows. It uses 10,000 resamples, L'Ecuyer-CMRG seed
-`11001`, and a two-sided 95% percentile interval for the equal-stratum-weighted
-mean `C1 - C2` shared-recovery error.
-
-C1 replaces C2 only when both candidates are eligible and all of these
-calibration conditions hold:
-
-1. its equal-stratum-weighted mean shared-recovery error is at least `0.03`
-   lower (difference at most `-0.03`);
-2. the paired-bootstrap interval lies strictly below zero;
-3. its equal-stratum-weighted mean exclusive-leakage and exact-ID held-out
-   projection errors are each no more than `0.02` worse; and
+1. its paired mean shared-recovery error is at least `0.03` lower;
+2. the 95% paired bootstrap CI (10,000 resamples) for that difference lies
+   strictly below zero;
+3. its mean exclusive-leakage and held-out projection errors are no more than
+   `0.02` worse; and
 4. its median elapsed time is at most `1.5×` C2's median.
 
-Otherwise C2 remains the selected baseline if it is eligible. If neither
-candidate is eligible, the decision is `no_eligible_candidate`. The selection
-is serialized before examining holdout aggregate metrics.
-
-The holdout report accepts only the selected candidate's holdout rows. For each
-stratum it reports the median and a two-sided 95% percentile bootstrap interval
-for every applicable numerical metric, resampling the 20 holdout seeds 10,000
-times. Its deterministic seed is `11002 + i`, where `i` is the one-based
-position in canonical lexicographic grid order. Missing-ID negative strata
-instead report their typed-control pass rate. Holdout succeeds only if the
-selected candidate passes all contract gates and, in every **exact-ID**
-full-grid stratum with shared signal 24/noise 1, has median shared-recovery
-error at most `0.25` and median projection error at most `0.30`. Failure does
-not tune v2; it reopens ADR 0001 with the immutable v2 artifacts.
+Otherwise C2 remains the selected baseline. The selection must be frozen before
+examining holdout aggregate metrics. Holdout succeeds only if the selected
+candidate passes all contract gates and, in every full-grid stratum with shared
+signal 24/noise 1, has median shared-recovery error at most `0.25` and median
+projection error at most `0.30`. Failure does not tune v1; it reopens ADR 0001
+with the immutable v1 artifacts.
 
 ## Artifacts
 
-Store a content-addressed `stage1-heterogeneous-v2-<payload-sha256>/`
-artifact outside ordinary test fixtures with:
+Store `artifacts/stage1-heterogeneous-v1/` outside ordinary test fixtures with:
 
-- canonical protocol and generator digests, including selection/reporting rules;
-- seed manifest and package/commit environment (with an exact source commit);
+- canonical protocol and generator digests;
+- seed manifest and package/commit environment;
 - one row per candidate/replicate containing stratum, seed, split, gate status,
-  expected-negative semantics, metrics, elapsed time, memory, exclusions, and
-  failure reason;
-- a serialized calibration decision, holdout summary with per-stratum bootstrap
-  CIs, and figures rendered from the frozen table only; and
-- a hash manifest declaring every payload file.
+  metrics, elapsed time, memory, exclusions, and failure reason;
+- calibration selection result, holdout summary with per-stratum bootstrap CIs,
+  and a hash manifest; and
+- figures rendered from the frozen table only.
 
-Verification must reject missing, duplicate, altered, or undeclared payloads;
-the recursive file set must equal the declared payloads plus the hash manifest.
 Large matrices are regenerated from generator version and seed; they are not
 committed. Any artifact inspection must report the protocol ID and both
 protocol/generator digests.
