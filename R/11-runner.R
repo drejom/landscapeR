@@ -20,6 +20,7 @@ run_pipeline <- function(data, config) {
 
         ctor     <- get_strategy(s$contract, impl_name)
         params   <- config@params[[impl_name]] %||% list()
+        params$analysis_specification <- .analysis_spec_provenance(config@analysis)
         strategy <- ctor(params)
 
         result <- s$fn(strategy, data)

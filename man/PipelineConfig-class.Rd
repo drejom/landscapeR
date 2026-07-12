@@ -9,6 +9,12 @@ One \code{PipelineConfig} = one reproducible run. Algorithms and parameters
 are data, not code — changing a run means changing a config object, not
 editing source.
 }
+\details{
+Every \code{PipelineConfig} requires an explicit
+\code{\linkS4class{AnalysisSpecification}}.  Construct one with
+\code{\link{analysis_specification}} and supply it via the \code{analysis}
+argument.  There is no null/unspecified fallback.
+}
 \section{Slots}{
 
 \describe{
@@ -17,5 +23,7 @@ editing source.
 \item{\code{params}}{named list: implementation name -> parameter list}
 
 \item{\code{dataset}}{character identifier for the input dataset}
+
+\item{\code{analysis}}{validated \code{\linkS4class{AnalysisSpecification}} for this run}
 }}
 

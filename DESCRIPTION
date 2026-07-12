@@ -45,6 +45,7 @@ Collate:
     '18-sampling-design.R'
     '03-container.R'
     '04-stage-result.R'
+    '19-analysis-specification.R'
     '05-config.R'
     '06-provenance.R'
     '07-registry.R'
