@@ -9,10 +9,13 @@
                    class = c("stage1_prototype_error", "error", "condition")))
 }
 
-.centered_orthonormal <- function(n, rank) {
-    if (n <= rank) .stage1_proto_abort("sample count must exceed prototype rank")
-    basis <- qr.Q(qr(cbind(rep(1, n), matrix(rnorm(n * rank), n, rank))))
-    basis[, seq_len(rank) + 1L, drop = FALSE]
+.centered_orthonormal <- function(n, rank, reference = NULL) {
+    if (n <= rank + if (is.null(reference)) 0L else ncol(reference))
+        .stage1_proto_abort("sample count must exceed prototype rank")
+    reference <- if (is.null(reference)) matrix(numeric(0), n, 0L) else reference
+    basis <- qr.Q(qr(cbind(rep(1, n), reference, matrix(rnorm(n * rank), n, rank))))
+    start <- 2L + ncol(reference)
+    basis[, start:(start + rank - 1L), drop = FALSE]
 }
 
 .projector <- function(x) {
@@ -54,6 +57,8 @@
     sample_ids <- paste0("d", seq_len(n))
     experiments_out <- vector("list", length(p))
     response <- vector("list", length(p))
+    exclusive_response <- vector("list", length(p))
+    confounder_response <- vector("list", length(p))
     for (i in seq_along(p)) {
         features <- paste0("layer", i, "_f", seq_len(p[[i]]))
         b_shared <- qr.Q(qr(matrix(rnorm(p[[i]] * rank), p[[i]], rank)))[, seq_len(rank), drop = FALSE]
@@ -66,7 +71,11 @@
         sample_order <- sample.int(n)
         feature_order <- sample.int(p[[i]])
         response[[i]] <- signal[["shared"]] * b_shared[feature_order, , drop = FALSE]
+        exclusive_response[[i]] <- signal[["exclusive"]] * b_exclusive[feature_order, , drop = FALSE]
+        confounder_response[[i]] <- signal[["confounder"]] * b_confounder[feature_order, , drop = FALSE]
         rownames(response[[i]]) <- features[feature_order]
+        rownames(exclusive_response[[i]]) <- features[feature_order]
+        rownames(confounder_response[[i]]) <- features[feature_order]
         x <- x[sample_order, feature_order, drop = FALSE]
         rownames(x) <- sample_ids[sample_order]
         colnames(x) <- features[feature_order]
@@ -78,7 +87,9 @@
     truth <- new("HeterogeneousSubspaceGroundTruth",
         shared = u_shared,
         exclusive = u_exclusive,
-        response = response
+        response = response,
+        exclusive_response = exclusive_response,
+        confounder_response = confounder_response
     )
     std <- StateTransitionData(
         experiments = experiments_out,
@@ -231,12 +242,20 @@ stage1_candidate_smoke <- function(seed = 1001L) {
     n_holdout <- 60L
     r <- ncol(truth@shared)
     u_holdout <- .centered_orthonormal(n_holdout, r)
-    holdout <- Map(function(response, prep) {
-        x <- u_holdout %*% t(response) + matrix(rnorm(n_holdout * length(prep$means)),
-                                                   n_holdout, length(prep$means))
+    u_holdout_exclusive <- lapply(seq_along(truth@response), function(i)
+        .centered_orthonormal(n_holdout, r, u_holdout))
+    u_holdout_confounder <- .centered_orthonormal(
+        n_holdout, r, cbind(u_holdout, u_holdout_exclusive[[1L]]))
+    holdout <- Map(function(response, exclusive_response, confounder_response,
+                           u_exclusive, prep) {
+        x <- u_holdout %*% t(response) +
+             u_exclusive %*% t(exclusive_response) +
+             u_holdout_confounder %*% t(confounder_response) +
+             matrix(rnorm(n_holdout * length(prep$means)), n_holdout, length(prep$means))
         colnames(x) <- names(prep$means)
         x
-    }, truth@response, prepared)
+    }, truth@response, truth@exclusive_response, truth@confounder_response,
+       u_holdout_exclusive, prepared)
 
     fitters <- list(C1_symmetric_consensus = .prototype_consensus,
                     C2_block_scaled_svd = .prototype_block_svd)
