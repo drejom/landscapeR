@@ -9,7 +9,12 @@
                    class = c("stage1_execution_error", "error", "condition")))
 }
 
-`%||%` <- function(x, y) if (!is.null(x)) x else y
+.stage1_assert_unix_platform <- function() {
+    if (.Platform$OS.type != "unix")
+        .stage1_execution_abort(
+            "landscapeR requires a Unix-like platform (macOS or Linux); Windows is not supported (see ADR 0014)")
+    invisible(NULL)
+}
 
 .stage1_optional_commit <- function() {
     commit <- suppressWarnings(tryCatch(system2("git", c("rev-parse", "HEAD"),
@@ -125,7 +130,6 @@ stage1_development_manifest <- function() {
 .stage1_atomic_save_rds <- function(object, path) {
     temporary <- paste0(path, ".", Sys.getpid(), ".tmp")
     saveRDS(object, temporary)
-    if (.Platform$OS.type == "windows" && file.exists(path)) file.remove(path)
     if (!file.rename(temporary, path)) {
         unlink(temporary, force = TRUE)
         .stage1_execution_abort("could not atomically publish Stage 1 task checkpoint")
@@ -347,12 +351,17 @@ stage1_benchmark_progress <- function(workspace) {
     workers <- as.integer(workers)
     if (length(workers) != 1L || is.na(workers) || workers < 1L)
         .stage1_execution_abort("workers must be one positive integer")
-    if (workers > 1L && .Platform$OS.type == "windows")
-        .stage1_execution_abort("parallel execution requires a Unix-like platform")
-    completed <- vapply(seq_len(nrow(tasks)), function(i) {
-        cp <- .stage1_read_task_checkpoint(workspace, tasks[i, , drop = FALSE], identity)
-        !is.null(cp) && identical(cp$status, "complete")
-    }, logical(1L))
+    # Platform is already guaranteed Unix by the public entry-point gate (ADR 0014).
+    checkpoints <- lapply(seq_len(nrow(tasks)), function(i)
+        .stage1_read_task_checkpoint(workspace, tasks[i, , drop = FALSE], identity))
+    failed_keys <- tasks$key[vapply(checkpoints,
+        function(cp) !is.null(cp) && identical(cp$status, "failed"), logical(1L))]
+    if (length(failed_keys))
+        .stage1_execution_abort(sprintf(
+            "Stage 1 workspace has %d failed task checkpoint(s): %s — delete the workspace to start fresh",
+            length(failed_keys), paste(failed_keys, collapse = ", ")))
+    completed <- vapply(checkpoints,
+        function(cp) !is.null(cp) && identical(cp$status, "complete"), logical(1L))
     pending <- which(!completed)
     last_log_time <- -Inf
     emit <- function(force = FALSE) {
@@ -442,6 +451,7 @@ stage1_benchmark_progress <- function(workspace) {
 execute_stage1_benchmark_development <- function(workspace = NULL, workers = 1L,
                                                  progress = c("auto", "bar", "log", "none"),
                                                  keep_workspace = FALSE) {
+    .stage1_assert_unix_platform()
     progress <- match.arg(progress)
     if (identical(progress, "auto")) progress <- if (interactive()) "bar" else "log"
     manifest <- stage1_development_manifest()
@@ -477,6 +487,7 @@ execute_stage1_benchmark_development <- function(workspace = NULL, workers = 1L,
 execute_stage1_benchmark_full <- function(artifact_root, workers = 1L, workspace = NULL,
                                           progress = c("auto", "bar", "log", "none"),
                                           keep_workspace = FALSE) {
+    .stage1_assert_unix_platform()
     progress <- match.arg(progress)
     if (identical(progress, "auto")) progress <- if (interactive()) "bar" else "log"
     manifest <- stage1_benchmark_manifest()

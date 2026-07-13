@@ -70,3 +70,42 @@ test_that("workspace rejects changed execution identity and corrupt checkpoints"
         file.path(landscapeR:::.stage1_workspace_tasks_path(workspace), "undeclared.rds"))
     expect_error(stage1_benchmark_progress(workspace), class = "stage1_execution_error")
 })
+
+test_that("execute_stage1_benchmark_development aborts on failed checkpoints before running any task", {
+  skip_on_os("windows")
+  manifest <- stage1_development_manifest()
+  task_set <- landscapeR:::.stage1_execution_tasks("development", manifest)
+  identity  <- landscapeR:::.stage1_execution_identity("development", manifest)
+  workspace <- tempfile("stage1-failed-cp-")
+  landscapeR:::.stage1_init_workspace(workspace, identity, task_set$tasks)
+  # Inject a failed checkpoint for the first task
+  failed_cp <- list(
+    key = task_set$tasks$key[[1L]], identity = identity,
+    seed = task_set$tasks$seed[[1L]], stratum = task_set$tasks$stratum[[1L]],
+    status = "failed", rows = NULL, failure_reason = "synthetic failure",
+    completed_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE), elapsed_sec = 0
+  )
+  landscapeR:::.stage1_atomic_save_rds(
+    failed_cp,
+    landscapeR:::.stage1_workspace_task_path(workspace, task_set$tasks$key[[1L]])
+  )
+  landscapeR:::.stage1_claim_workspace(workspace)
+  on.exit(landscapeR:::.stage1_release_workspace(workspace), add = TRUE)
+  # Calling the checkpointed-tasks runner directly should abort immediately
+  expect_error(
+    landscapeR:::.stage1_execute_checkpointed_tasks(
+      workspace, task_set$tasks, "development", manifest, identity,
+      workers = 1L, progress = "none"),
+    class = "stage1_execution_error",
+    regexp = "failed task checkpoint"
+  )
+})
+
+test_that(".stage1_assert_unix_platform aborts on non-Unix platform simulation", {
+  # On CI (Linux/macOS) this should pass silently
+  if (.Platform$OS.type == "unix") {
+    expect_silent(landscapeR:::.stage1_assert_unix_platform())
+  } else {
+    expect_error(landscapeR:::.stage1_assert_unix_platform(), class = "stage1_execution_error")
+  }
+})
