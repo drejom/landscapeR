@@ -91,6 +91,32 @@ stage1_development_manifest <- function() {
 .stage1_workspace_metadata_path <- function(workspace) file.path(workspace, "run-metadata.rds")
 .stage1_workspace_tasks_path <- function(workspace) file.path(workspace, "tasks")
 .stage1_workspace_task_path <- function(workspace, key) file.path(.stage1_workspace_tasks_path(workspace), paste0(key, ".rds"))
+.stage1_workspace_lock_path <- function(workspace) file.path(workspace, "coordinator.lock")
+
+.stage1_claim_workspace <- function(workspace) {
+    lock <- .stage1_workspace_lock_path(workspace)
+    if (dir.create(lock, showWarnings = FALSE)) {
+        saveRDS(list(pid = Sys.getpid(), claimed_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE)),
+            file.path(lock, "owner.rds"))
+        return(invisible(lock))
+    }
+    owner <- tryCatch(readRDS(file.path(lock, "owner.rds")), error = function(e) NULL)
+    active <- !is.null(owner) && is.numeric(owner$pid) && length(owner$pid) == 1L &&
+        if (.Platform$OS.type == "windows") TRUE else identical(system2("kill", c("-0", owner$pid),
+            stdout = FALSE, stderr = FALSE), 0L)
+    if (isTRUE(active)) .stage1_execution_abort("Stage 1 workspace already has an active coordinator")
+    unlink(lock, recursive = TRUE, force = TRUE)
+    if (!dir.create(lock, showWarnings = FALSE))
+        .stage1_execution_abort("could not claim Stage 1 workspace coordinator lock")
+    saveRDS(list(pid = Sys.getpid(), claimed_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE)),
+        file.path(lock, "owner.rds"))
+    invisible(lock)
+}
+
+.stage1_release_workspace <- function(workspace) {
+    unlink(.stage1_workspace_lock_path(workspace), recursive = TRUE, force = TRUE)
+    invisible(NULL)
+}
 
 .stage1_atomic_save_rds <- function(object, path) {
     temporary <- paste0(path, ".", Sys.getpid(), ".tmp")
@@ -305,6 +331,8 @@ execute_stage1_benchmark_development <- function(workspace = NULL, workers = 1L,
     task_set <- .stage1_execution_tasks("development", manifest)
     identity <- .stage1_execution_identity("development", manifest)
     workspace <- .stage1_init_workspace(workspace, identity, task_set$tasks)
+    .stage1_claim_workspace(workspace)
+    on.exit(.stage1_release_workspace(workspace), add = TRUE)
     finalized <- FALSE
     on.exit(if (!finalized && dir.exists(workspace)) .stage1_mark_workspace(workspace, "interrupted"), add = TRUE)
     .stage1_execute_checkpointed_tasks(workspace, task_set$tasks, "development", manifest,
@@ -337,6 +365,8 @@ execute_stage1_benchmark_full <- function(artifact_root, workers = 1L, workspace
     identity <- .stage1_execution_identity("full", manifest, require_clean = TRUE)
     task_set <- .stage1_execution_tasks("full", manifest)
     workspace <- .stage1_init_workspace(workspace, identity, task_set$tasks)
+    .stage1_claim_workspace(workspace)
+    on.exit(.stage1_release_workspace(workspace), add = TRUE)
     finalized <- FALSE
     on.exit(if (!finalized && dir.exists(workspace)) .stage1_mark_workspace(workspace, "interrupted"), add = TRUE)
     .stage1_execute_checkpointed_tasks(workspace, task_set$tasks, "full", manifest,

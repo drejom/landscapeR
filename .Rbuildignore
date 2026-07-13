@@ -11,6 +11,7 @@
 ^\.github$
 ^\.playwright-mcp$
 ^\.claude$
+^\.pi-subagents$
 ^hooks$
 ^install-hooks\.sh$
 ^scripts$

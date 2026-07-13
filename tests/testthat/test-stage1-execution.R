@@ -46,6 +46,9 @@ test_that("workspace rejects changed execution identity and corrupt checkpoints"
     identity <- landscapeR:::.stage1_execution_identity("development", manifest)
     workspace <- tempfile("stage1-development-workspace-")
     landscapeR:::.stage1_init_workspace(workspace, identity, task_set$tasks)
+    landscapeR:::.stage1_claim_workspace(workspace)
+    expect_error(landscapeR:::.stage1_claim_workspace(workspace), class = "stage1_execution_error")
+    landscapeR:::.stage1_release_workspace(workspace)
     expect_error(landscapeR:::.stage1_collect_checkpoint_rows(workspace, task_set$tasks, identity),
                  class = "stage1_execution_error")
     changed <- identity
