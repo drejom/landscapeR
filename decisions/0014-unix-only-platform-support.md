@@ -51,7 +51,10 @@ Rationale:
 - `DESCRIPTION` gains `SystemRequirements: Unix-like OS (Linux or macOS)`.
 - `execute_stage1_benchmark_full()` and `execute_stage1_benchmark_development()`
   each call `.stage1_assert_unix_platform()` at the top, aborting with a typed
-  `stage1_execution_error` before touching any workspace state.
+  `stage1_execution_error` before touching any workspace state. The check uses
+  `Sys.info()[["sysname"]]` and accepts only `"Darwin"` and `"Linux"`, matching
+  the stated support matrix precisely (FreeBSD and other Unix-likes are also
+  excluded).
 - The `file.remove()` Windows guard in `.stage1_atomic_save_rds` (added in PR #45)
   is removed; the function now documents its Unix assumption.
 - The `tools::pskill(pid, 0L)` liveness probe is kept as-is; the Windows
