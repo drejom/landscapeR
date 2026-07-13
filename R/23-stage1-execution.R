@@ -232,6 +232,37 @@ stage1_benchmark_progress <- function(workspace) {
     invisible(NULL)
 }
 
+.stage1_execute_psock_tasks <- function(workspace, tasks, pending, tier, manifest, identity,
+                                       workers, emit) {
+    if (!length(pending)) return(invisible(NULL))
+    cluster <- parallel::makeCluster(workers, outfile = "")
+    on.exit(parallel::stopCluster(cluster), add = TRUE)
+    worker_libpaths <- .libPaths()
+    parallel::clusterExport(cluster, c("workspace", "tasks", "tier", "manifest", "identity", "worker_libpaths"),
+        envir = environment())
+    available <- unlist(parallel::clusterEvalQ(cluster, {
+        .libPaths(worker_libpaths)
+        suppressPackageStartupMessages(library(landscapeR))
+        exists(".stage1_run_checkpoint_task", envir = asNamespace("landscapeR"), inherits = FALSE)
+    }))
+    if (!all(available))
+        .stage1_execution_abort("macOS parallel execution requires the current landscapeR package to be installed")
+    batch_size <- workers * 4L
+    for (start in seq.int(1L, length(pending), by = batch_size)) {
+        batch <- pending[start:min(start + batch_size - 1L, length(pending))]
+        outcomes <- parallel::parLapplyLB(cluster, batch, function(index) tryCatch(
+            list(ok = TRUE, result = landscapeR:::.stage1_run_checkpoint_task(
+                workspace, tasks[index, , drop = FALSE], tier, manifest, identity)),
+            error = function(e) list(ok = FALSE, message = conditionMessage(e))))
+        for (outcome in outcomes) {
+            if (!isTRUE(outcome$ok))
+                .stage1_execution_abort(paste("PSOCK Stage 1 task failed:", outcome$message %||% "unknown error"))
+        }
+        emit()
+    }
+    invisible(NULL)
+}
+
 .stage1_execute_checkpointed_tasks <- function(workspace, tasks, tier, manifest, identity,
                                                workers, progress) {
     workers <- as.integer(workers)
@@ -259,6 +290,8 @@ stage1_benchmark_progress <- function(workspace) {
             runner(index)
             emit()
         }
+    } else if (identical(Sys.info()[["sysname"]], "Darwin")) {
+        .stage1_execute_psock_tasks(workspace, tasks, pending, tier, manifest, identity, workers, emit)
     } else {
         active <- list()
         next_task <- 1L
