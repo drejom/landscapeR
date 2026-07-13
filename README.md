@@ -23,6 +23,8 @@ the state-transition signal without requiring prior knowledge of the biology.
 
 ## Install
 
+**Platform:** macOS and Linux only. Windows is not supported (ADR 0014).
+
 ```r
 # install.packages("pak")
 pak::pak("drejom/landscapeR")
