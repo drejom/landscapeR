@@ -65,5 +65,6 @@ Collate:
     '20-stage1-prototype-smoke.R'
     '21-stage1-benchmark.R'
     '22-stage1-evidence.R'
+    '23-stage1-execution.R'
 Config/testthat/edition: 3
 biocViews: Software, DimensionReduction, MultipleComparison, StatisticalMethod

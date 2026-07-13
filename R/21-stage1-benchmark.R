@@ -157,6 +157,7 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     out$stratum_digest <- digest::digest(stratum, algo = "sha256")
     out$stratum <- vapply(seq_len(nrow(out)), function(i) paste(utils::capture.output(dput(stratum)), collapse = ""), character(1L))
     for (field in names(stratum)) out[[field]] <- stratum[[field]]
+    out$tier <- "full"
     out$exclusions <- paste(smoke$gates$complete_case_exclusions, collapse = ";")
     base_gate <- all(smoke$gates$sample_map_aligned, smoke$gates$heterogeneous_features,
                      all(smoke$gates$extra_projection_id_rejected), all(smoke$gates$permutation_invariant))
