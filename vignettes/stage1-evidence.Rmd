@@ -122,17 +122,25 @@ exact <- summary[
 ]
 for (metric in c("shared_recovery_error", "projection_error")) {
   figure_data <- exact[exact$metric == metric, , drop = FALSE]
+  if (nrow(figure_data) == 0L) {
+    plot.new()
+    title(main = paste("Stage 1 v2 holdout", metric),
+          sub = "No holdout rows available for this metric")
+    next
+  }
   plot(
     seq_len(nrow(figure_data)), figure_data$estimate,
     pch = 16L, col = "#2C7FB8",
     xlab = "Canonical holdout stratum", ylab = metric,
     main = paste("Stage 1 v2 holdout", metric)
   )
-  nonzero_ci <- figure_data$ci_lower != figure_data$ci_upper
-  if (any(nonzero_ci)) {
+  has_ci <- !is.na(figure_data$ci_lower) & !is.na(figure_data$ci_upper)
+  nonzero_ci <- has_ci & (figure_data$ci_lower != figure_data$ci_upper)
+  if (any(nonzero_ci, na.rm = TRUE)) {
+    idx <- which(nonzero_ci)
     arrows(
-      which(nonzero_ci), figure_data$ci_lower[nonzero_ci],
-      which(nonzero_ci), figure_data$ci_upper[nonzero_ci],
+      idx, figure_data$ci_lower[idx],
+      idx, figure_data$ci_upper[idx],
       angle = 90L, code = 3L, length = 0.03
     )
   }

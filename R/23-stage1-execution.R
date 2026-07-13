@@ -9,6 +9,8 @@
                    class = c("stage1_execution_error", "error", "condition")))
 }
 
+`%||%` <- function(x, y) if (!is.null(x)) x else y
+
 .stage1_optional_commit <- function() {
     commit <- suppressWarnings(tryCatch(system2("git", c("rev-parse", "HEAD"),
         stdout = TRUE, stderr = FALSE), error = function(e) NA_character_))
@@ -57,7 +59,10 @@ stage1_development_manifest <- function() {
 }
 
 .stage1_execution_identity <- function(tier, manifest, require_clean = FALSE) {
-    commit <- if (isTRUE(require_clean)) .stage1_source_commit(TRUE) else .stage1_optional_commit()
+    commit <- if (isTRUE(require_clean)) {
+        tryCatch(.stage1_source_commit(TRUE),
+            stage1_evidence_error = function(e) .stage1_execution_abort(conditionMessage(e)))
+    } else .stage1_optional_commit()
     list(
         tier = tier,
         protocol_id = manifest$protocol_id,
@@ -102,8 +107,7 @@ stage1_development_manifest <- function() {
     }
     owner <- tryCatch(readRDS(file.path(lock, "owner.rds")), error = function(e) NULL)
     active <- !is.null(owner) && is.numeric(owner$pid) && length(owner$pid) == 1L &&
-        if (.Platform$OS.type == "windows") TRUE else identical(system2("kill", c("-0", owner$pid),
-            stdout = FALSE, stderr = FALSE), 0L)
+        tryCatch(tools::pskill(as.integer(owner$pid), 0L), error = function(e) FALSE)
     if (isTRUE(active)) .stage1_execution_abort("Stage 1 workspace already has an active coordinator")
     unlink(lock, recursive = TRUE, force = TRUE)
     if (!dir.create(lock, showWarnings = FALSE))
@@ -121,6 +125,7 @@ stage1_development_manifest <- function() {
 .stage1_atomic_save_rds <- function(object, path) {
     temporary <- paste0(path, ".", Sys.getpid(), ".tmp")
     saveRDS(object, temporary)
+    if (.Platform$OS.type == "windows" && file.exists(path)) file.remove(path)
     if (!file.rename(temporary, path)) {
         unlink(temporary, force = TRUE)
         .stage1_execution_abort("could not atomically publish Stage 1 task checkpoint")
@@ -316,13 +321,18 @@ stage1_benchmark_progress <- function(workspace) {
     }))
     if (!all(available))
         .stage1_execution_abort("macOS parallel execution requires the current landscapeR package to be installed")
+    psock_run_one <- function(index) {
+        tryCatch(
+            list(ok = TRUE, result = utils::getFromNamespace(".stage1_run_checkpoint_task", "landscapeR")(
+                workspace, tasks[index, , drop = FALSE], tier, manifest, identity)),
+            error = function(e) list(ok = FALSE, message = conditionMessage(e)))
+    }
+    environment(psock_run_one) <- .GlobalEnv
+    parallel::clusterExport(cluster, "psock_run_one", envir = environment())
     batch_size <- workers * 4L
     for (start in seq.int(1L, length(pending), by = batch_size)) {
         batch <- pending[start:min(start + batch_size - 1L, length(pending))]
-        outcomes <- parallel::parLapplyLB(cluster, batch, function(index) tryCatch(
-            list(ok = TRUE, result = utils::getFromNamespace(".stage1_run_checkpoint_task", "landscapeR")(
-                workspace, tasks[index, , drop = FALSE], tier, manifest, identity)),
-            error = function(e) list(ok = FALSE, message = conditionMessage(e))))
+        outcomes <- parallel::parLapplyLB(cluster, batch, psock_run_one)
         for (outcome in outcomes) {
             if (!isTRUE(outcome$ok))
                 .stage1_execution_abort(paste("PSOCK Stage 1 task failed:", outcome$message %||% "unknown error"))
@@ -339,8 +349,10 @@ stage1_benchmark_progress <- function(workspace) {
         .stage1_execution_abort("workers must be one positive integer")
     if (workers > 1L && .Platform$OS.type == "windows")
         .stage1_execution_abort("parallel execution requires a Unix-like platform")
-    completed <- vapply(seq_len(nrow(tasks)), function(i)
-        !is.null(.stage1_read_task_checkpoint(workspace, tasks[i, , drop = FALSE], identity)), logical(1L))
+    completed <- vapply(seq_len(nrow(tasks)), function(i) {
+        cp <- .stage1_read_task_checkpoint(workspace, tasks[i, , drop = FALSE], identity)
+        !is.null(cp) && identical(cp$status, "complete")
+    }, logical(1L))
     pending <- which(!completed)
     last_log_time <- -Inf
     emit <- function(force = FALSE) {
@@ -363,6 +375,9 @@ stage1_benchmark_progress <- function(workspace) {
         .stage1_execute_psock_tasks(workspace, tasks, pending, tier, manifest, identity, workers, emit)
     } else {
         active <- list()
+        on.exit({
+            for (job in active) tryCatch(tools::pskill(job$pid, 9L), error = function(e) NULL)
+        }, add = TRUE)
         next_task <- 1L
         launch <- function(index) {
             job <- parallel::mcparallel(tryCatch(list(ok = TRUE, result = runner(index)),
