@@ -1,3 +1,9 @@
+test_that("execution durations are human-readable", {
+    expect_identical(landscapeR:::.stage1_format_duration(65), "1m 05s")
+    expect_identical(landscapeR:::.stage1_format_duration(7261), "2h 01m 01s")
+    expect_identical(landscapeR:::.stage1_format_duration(NA_real_), "unknown")
+})
+
 test_that("development manifest is deterministic and explicitly non-evidentiary", {
     manifest <- stage1_development_manifest()
     expect_identical(manifest$protocol_id, "stage1-heterogeneous-development-v1")

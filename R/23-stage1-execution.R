@@ -163,6 +163,20 @@ stage1_development_manifest <- function() {
     checkpoint
 }
 
+.stage1_run_task_rows <- function(tier, manifest, task) {
+    if (identical(tier, "full")) {
+        run_stage1_benchmark_replicate(manifest, seed = task$seed, stratum = task$stratum[[1L]])
+    } else {
+        parent <- stage1_benchmark_manifest()
+        rows <- run_stage1_benchmark_replicate(parent, seed = task$seed, stratum = task$stratum[[1L]])
+        rows$protocol_id <- manifest$protocol_id
+        rows$protocol_digest <- digest::digest(manifest, algo = "sha256")
+        rows$split <- "development"
+        rows$tier <- "development"
+        rows
+    }
+}
+
 .stage1_run_checkpoint_task <- function(workspace, task, tier, manifest, identity) {
     existing <- .stage1_read_task_checkpoint(workspace, task, identity)
     if (!is.null(existing)) {
@@ -171,16 +185,7 @@ stage1_development_manifest <- function() {
     }
     started <- proc.time()[["elapsed"]]
     result <- tryCatch({
-        if (identical(tier, "full")) {
-            rows <- run_stage1_benchmark_replicate(manifest, seed = task$seed, stratum = task$stratum[[1L]])
-        } else {
-            parent <- stage1_benchmark_manifest()
-            rows <- run_stage1_benchmark_replicate(parent, seed = task$seed, stratum = task$stratum[[1L]])
-            rows$protocol_id <- manifest$protocol_id
-            rows$protocol_digest <- digest::digest(manifest, algo = "sha256")
-            rows$split <- "development"
-            rows$tier <- "development"
-        }
+        rows <- .stage1_run_task_rows(tier, manifest, task)
         list(status = "complete", rows = rows, failure_reason = NA_character_)
     }, error = function(e) list(status = "failed", rows = NULL, failure_reason = conditionMessage(e)))
     checkpoint <- c(list(key = task$key, identity = identity, seed = as.integer(task$seed),
@@ -222,14 +227,78 @@ stage1_benchmark_progress <- function(workspace) {
          eta_sec = remaining)
 }
 
+.stage1_format_duration <- function(seconds) {
+    if (!is.finite(seconds)) return("unknown")
+    seconds <- max(0L, as.integer(round(seconds)))
+    hours <- seconds %/% 3600L
+    minutes <- (seconds %% 3600L) %/% 60L
+    remainder <- seconds %% 60L
+    if (hours) sprintf("%dh %02dm %02ds", hours, minutes, remainder) else
+        sprintf("%dm %02ds", minutes, remainder)
+}
+
 .stage1_emit_progress <- function(progress, state) {
     if (identical(progress, "none")) return(invisible(NULL))
-    line <- sprintf("Stage 1 %s: %d/%d (%.1f%%), elapsed %ss, rate %.2f tasks/min%s", state$tier,
+    line <- sprintf("Stage 1 %s: %d/%d (%.1f%%), elapsed %s, rate %.2f tasks/min%s", state$tier,
         state$completed, state$total, 100 * state$proportion,
-        format(round(state$elapsed_sec), trim = TRUE), 60 * state$rate_per_sec,
-        if (is.na(state$eta_sec)) "" else paste0(", ETA ", format(round(state$eta_sec), trim = TRUE), "s"))
+        .stage1_format_duration(state$elapsed_sec), 60 * state$rate_per_sec,
+        if (is.na(state$eta_sec)) "" else paste0(", ETA ", .stage1_format_duration(state$eta_sec)))
     if (identical(progress, "bar")) cat("\r", line, sep = "") else message(line)
     invisible(NULL)
+}
+
+.stage1_assert_writable_directory <- function(path) {
+    if (!dir.exists(path) && !dir.create(path, recursive = TRUE, showWarnings = FALSE))
+        .stage1_execution_abort("Stage 1 artifact root is not writable")
+    probe <- tempfile(".stage1-write-probe-", tmpdir = path)
+    if (!file.create(probe)) .stage1_execution_abort("Stage 1 artifact root is not writable")
+    unlink(probe, force = TRUE)
+    invisible(TRUE)
+}
+
+.stage1_numerical_preflight <- function(task, tier, manifest) {
+    rows <- .stage1_run_task_rows(tier, manifest, task)
+    if (!is.data.frame(rows) || nrow(rows) != length(stage1_benchmark_manifest()$candidates) ||
+        anyNA(rows$candidate) || anyDuplicated(rows$candidate))
+        .stage1_execution_abort("Stage 1 numerical preflight returned an invalid candidate result")
+    invisible(TRUE)
+}
+
+.stage1_preflight_workers <- function(tasks, tier, manifest, workers) {
+    workers <- as.integer(workers)
+    if (length(workers) != 1L || is.na(workers) || workers < 1L)
+        .stage1_execution_abort("workers must be one positive integer")
+    count <- min(workers, nrow(tasks))
+    indices <- seq_len(count)
+    if (count == 1L) {
+        .stage1_numerical_preflight(tasks[1L, , drop = FALSE], tier, manifest)
+        return(invisible(TRUE))
+    }
+    if (identical(Sys.info()[["sysname"]], "Darwin")) {
+        cluster <- parallel::makeCluster(count, outfile = "")
+        on.exit(parallel::stopCluster(cluster), add = TRUE)
+        worker_libpaths <- .libPaths()
+        parallel::clusterExport(cluster, c("tasks", "tier", "manifest", "worker_libpaths"), envir = environment())
+        available <- unlist(parallel::clusterEvalQ(cluster, {
+            .libPaths(worker_libpaths)
+            suppressPackageStartupMessages(library(landscapeR))
+            exists(".stage1_numerical_preflight", envir = asNamespace("landscapeR"), inherits = FALSE)
+        }))
+        if (!all(available))
+            .stage1_execution_abort("macOS numerical preflight requires the current landscapeR package to be installed")
+        outcomes <- parallel::parLapply(cluster, indices, function(index) tryCatch({
+            landscapeR:::.stage1_numerical_preflight(tasks[index, , drop = FALSE], tier, manifest)
+            TRUE
+        }, error = function(e) conditionMessage(e)))
+    } else {
+        outcomes <- parallel::mclapply(indices, function(index) tryCatch({
+            .stage1_numerical_preflight(tasks[index, , drop = FALSE], tier, manifest)
+            TRUE
+        }, error = function(e) conditionMessage(e)), mc.cores = count, mc.preschedule = TRUE)
+    }
+    failed <- Filter(is.character, outcomes)
+    if (length(failed)) .stage1_execution_abort(paste("Stage 1 numerical preflight failed:", failed[[1L]]))
+    invisible(TRUE)
 }
 
 .stage1_execute_psock_tasks <- function(workspace, tasks, pending, tier, manifest, identity,
@@ -368,6 +437,7 @@ execute_stage1_benchmark_development <- function(workspace = NULL, workers = 1L,
     on.exit(.stage1_release_workspace(workspace), add = TRUE)
     finalized <- FALSE
     on.exit(if (!finalized && dir.exists(workspace)) .stage1_mark_workspace(workspace, "interrupted"), add = TRUE)
+    .stage1_preflight_workers(task_set$tasks, "development", manifest, workers)
     .stage1_execute_checkpointed_tasks(workspace, task_set$tasks, "development", manifest,
         identity, workers, progress)
     rows <- .stage1_collect_checkpoint_rows(workspace, task_set$tasks, identity)
@@ -402,6 +472,8 @@ execute_stage1_benchmark_full <- function(artifact_root, workers = 1L, workspace
     on.exit(.stage1_release_workspace(workspace), add = TRUE)
     finalized <- FALSE
     on.exit(if (!finalized && dir.exists(workspace)) .stage1_mark_workspace(workspace, "interrupted"), add = TRUE)
+    .stage1_assert_writable_directory(artifact_root)
+    .stage1_preflight_workers(task_set$tasks, "full", manifest, workers)
     .stage1_execute_checkpointed_tasks(workspace, task_set$tasks, "full", manifest,
         identity, workers, progress)
     results <- .stage1_collect_checkpoint_rows(workspace, task_set$tasks, identity)
