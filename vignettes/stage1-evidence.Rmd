@@ -115,8 +115,28 @@ knitr::kable(transform(threshold_readout, worst_median = round(worst_median, 3))
 ## Frozen figures
 
 ```{r figures, fig.cap=c("Exact-ID holdout shared-recovery error by canonical stratum.", "Exact-ID holdout projection error by canonical stratum."), out.width="100%"}
-knitr::include_graphics(file.path(artifact_dir, "figures",
-  c("shared_recovery_error.png", "projection_error.png")))
+exact <- summary[
+  summary$projection_case == "exact_ids" &
+    summary$metric %in% c("shared_recovery_error", "projection_error"),
+  , drop = FALSE
+]
+for (metric in c("shared_recovery_error", "projection_error")) {
+  figure_data <- exact[exact$metric == metric, , drop = FALSE]
+  plot(
+    seq_len(nrow(figure_data)), figure_data$estimate,
+    pch = 16L, col = "#2C7FB8",
+    xlab = "Canonical holdout stratum", ylab = metric,
+    main = paste("Stage 1 v2 holdout", metric)
+  )
+  nonzero_ci <- figure_data$ci_lower != figure_data$ci_upper
+  if (any(nonzero_ci)) {
+    arrows(
+      which(nonzero_ci), figure_data$ci_lower[nonzero_ci],
+      which(nonzero_ci), figure_data$ci_upper[nonzero_ci],
+      angle = 90L, code = 3L, length = 0.03
+    )
+  }
+}
 ```
 
 ## Provenance and next step
