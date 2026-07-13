@@ -27,7 +27,11 @@ def main() -> int:
     args = parser.parse_args()
 
     site_root = args.site_root.resolve()
+    if not site_root.is_dir():
+        raise SystemExit(f"site root does not exist or is not a directory: {site_root}")
     article = args.article.resolve()
+    if not article.is_file():
+        raise SystemExit(f"article does not exist or is not a file: {article}")
     if not article.is_relative_to(site_root):
         raise SystemExit(f"article is outside site root: {article}")
     images = ImageParser()
@@ -40,7 +44,11 @@ def main() -> int:
         parsed = urlparse(source)
         if parsed.scheme or source.startswith("//") or source.startswith("data:"):
             continue
-        image = (article.parent / unquote(parsed.path)).resolve()
+        path_str = unquote(parsed.path)
+        if path_str.startswith("/"):
+            image = (site_root / path_str.lstrip("/")).resolve()
+        else:
+            image = (article.parent / path_str).resolve()
         if not image.is_relative_to(site_root):
             missing.append(f"{source} -> outside site root ({image})")
         elif not image.is_file():

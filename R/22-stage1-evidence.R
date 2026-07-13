@@ -99,7 +99,7 @@ select_stage1_candidate <- function(calibration_rows,
                                     manifest = stage1_benchmark_manifest()) {
     validate_stage1_benchmark_manifest(manifest)
     .stage1_require_results(calibration_rows, split = "calibration")
-    if (!all(calibration_rows$tier == "full"))
+    if (!isTRUE(all(calibration_rows$tier == "full")))
         .stage1_evidence_abort("non-evidentiary benchmark rows cannot select a candidate")
     if (!identical(sort(unique(calibration_rows$candidate)), sort(manifest$candidates)))
         .stage1_evidence_abort("calibration rows must contain exactly the frozen candidates")
@@ -177,7 +177,7 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
         !selected_candidate %in% manifest$candidates)
         .stage1_evidence_abort("holdout requires one eligible selected candidate")
     .stage1_require_results(holdout_rows, split = "holdout", selected = selected_candidate)
-    if (!all(holdout_rows$tier == "full"))
+    if (!isTRUE(all(holdout_rows$tier == "full")))
         .stage1_evidence_abort("non-evidentiary benchmark rows cannot assess holdout evidence")
     if (!identical(unique(holdout_rows$protocol_id), manifest$protocol_id) ||
         !identical(unique(holdout_rows$generator), manifest$generator) ||
