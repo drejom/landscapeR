@@ -1,4 +1,4 @@
-# Stage 0 — observable local execution for Stage 1 benchmark tiers
+# Stage 0 - observable local execution for Stage 1 benchmark tiers
 #
 # Checkpoints are local operational state, never evidence artifacts.  Each
 # deterministic stratum/seed task publishes one compact result payload; progress
@@ -358,7 +358,7 @@ stage1_benchmark_progress <- function(workspace) {
         function(cp) !is.null(cp) && identical(cp$status, "failed"), logical(1L))]
     if (length(failed_keys))
         .stage1_execution_abort(sprintf(
-            "Stage 1 workspace has %d failed task checkpoint(s): %s — delete the workspace to start fresh",
+            "Stage 1 workspace has %d failed task checkpoint(s): %s -- delete the workspace to start fresh",
             length(failed_keys), paste(failed_keys, collapse = ", ")))
     completed <- vapply(checkpoints,
         function(cp) !is.null(cp) && identical(cp$status, "complete"), logical(1L))
