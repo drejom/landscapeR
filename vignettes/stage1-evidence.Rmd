@@ -112,39 +112,88 @@ knitr::kable(transform(threshold_readout, worst_median = round(worst_median, 3))
   col.names = c("Metric", "Exact-ID strata", "Worst median", "Threshold", "All pass"))
 ```
 
-## Frozen figures
+## Holdout figures
 
-```{r figures, fig.cap=c("Exact-ID holdout shared-recovery error by canonical stratum.", "Exact-ID holdout projection error by canonical stratum."), out.width="100%"}
-exact <- summary[
+```{r figure-setup, include=FALSE}
+# Parse stratum factor columns from the holdout summary string representation.
+# The summary data.frame carries shared_signal and noise_sd directly; K and
+# missing_block_rate are extracted from the stratum character string.
+exact <- as.data.frame(summary[
   summary$projection_case == "exact_ids" &
     summary$metric %in% c("shared_recovery_error", "projection_error"),
   , drop = FALSE
-]
-for (metric in c("shared_recovery_error", "projection_error")) {
-  figure_data <- exact[exact$metric == metric, , drop = FALSE]
-  if (nrow(figure_data) == 0L) {
+])
+exact$K <- as.integer(
+  regmatches(exact$stratum, regexpr("(?<=K = )[0-9]+", exact$stratum, perl = TRUE)))
+exact$missing_block <- grepl("missing_block_rate = 0\\.[0-9]", exact$stratum)
+exact$signal_noise <- paste0(
+  "signal ", exact$shared_signal, " / noise ", exact$noise_sd)
+exact$col <- ifelse(exact$shared_signal == 24 & exact$noise_sd == 1,
+  "#D73027",   # high signal, low noise (threshold-decisive strata)
+  ifelse(exact$shared_signal == 24, "#FC8D59",  # high signal, high noise
+    ifelse(exact$noise_sd == 1, "#91BFDB",      # low signal, low noise
+      "#878787")))                               # low signal, high noise
+exact$pch <- ifelse(exact$K == 2L, 16L, 17L)
+
+# Helper: draw one metric panel
+.draw_holdout_panel <- function(dat, metric_label, threshold, ylab_text) {
+  if (nrow(dat) == 0L) {
     plot.new()
-    title(main = paste("Stage 1 v2 holdout", metric),
-          sub = "No holdout rows available for this metric")
-    next
+    title(main = metric_label, sub = "No data available")
+    return(invisible(NULL))
   }
-  plot(
-    seq_len(nrow(figure_data)), figure_data$estimate,
-    pch = 16L, col = "#2C7FB8",
-    xlab = "Canonical holdout stratum", ylab = metric,
-    main = paste("Stage 1 v2 holdout", metric)
+  idx <- seq_len(nrow(dat))
+  plot(idx, dat$estimate,
+    pch = dat$pch, col = dat$col,
+    ylim = c(0, 1),
+    xlab = "Canonical stratum index (sorted by grid order)",
+    ylab = ylab_text,
+    main = metric_label,
+    las = 1L
   )
-  has_ci <- !is.na(figure_data$ci_lower) & !is.na(figure_data$ci_upper)
-  nonzero_ci <- has_ci & (figure_data$ci_lower != figure_data$ci_upper)
-  if (any(nonzero_ci, na.rm = TRUE)) {
-    idx <- which(nonzero_ci)
-    arrows(
-      idx, figure_data$ci_lower[idx],
-      idx, figure_data$ci_upper[idx],
-      angle = 90L, code = 3L, length = 0.03
-    )
+  has_ci <- !is.na(dat$ci_lower) & !is.na(dat$ci_upper) &
+    dat$ci_lower != dat$ci_upper
+  if (any(has_ci)) {
+    arrows(idx[has_ci], dat$ci_lower[has_ci], idx[has_ci], dat$ci_upper[has_ci],
+      angle = 90L, code = 3L, length = 0.02, col = dat$col[has_ci])
   }
+  abline(h = threshold, lty = 2L, col = "black", lwd = 1.5)
+  text(x = nrow(dat) * 0.75, y = threshold + 0.04,
+    labels = paste("Acceptance threshold:", threshold),
+    adj = 0L, cex = 0.8)
+  legend("topleft",
+    legend = c(
+      "signal 24 / noise 1 (threshold-decisive)",
+      "signal 24 / noise 2",
+      "signal 12 / noise 1",
+      "signal 12 / noise 2",
+      "K = 2 (2-layer)",
+      "K = 3 (3-layer)"
+    ),
+    pch = c(16L, 16L, 16L, 16L, 16L, 17L),
+    col = c("#D73027", "#FC8D59", "#91BFDB", "#878787", "black", "black"),
+    bty = "n", cex = 0.7, ncol = 2L
+  )
+  invisible(NULL)
 }
+```
+
+```{r fig-shared-recovery, fig.width=9, fig.height=5.5, out.width="100%", fig.cap="**Figure 1. C2 holdout shared-subspace recovery error across all exact-ID strata.** Each point is the median shared-recovery error (lower is better) for one canonical stratum over 20 holdout seeds, with 95% bootstrap confidence intervals. Colour encodes the signal-to-noise regime: red = high signal (24) / low noise (1), the threshold-decisive conditions; orange = high signal / high noise; blue = low signal (12) / low noise; grey = low signal / high noise. Triangle symbols indicate 3-layer (K = 3) strata; circles indicate 2-layer (K = 2) strata. The dashed horizontal line is the frozen acceptance threshold (0.25). Points above the line are failing strata. The majority of strata fail even under high signal and low noise, indicating that C2 does not reliably recover the planted shared subspace in this heterogeneous-feature setting."}
+sre_dat <- exact[exact$metric == "shared_recovery_error", ]
+.draw_holdout_panel(sre_dat,
+  metric_label = "Holdout shared-subspace recovery error (C2)",
+  threshold = 0.25,
+  ylab_text = "Shared recovery error (lower is better)"
+)
+```
+
+```{r fig-projection, fig.width=9, fig.height=5.5, out.width="100%", fig.cap="**Figure 2. C2 holdout projection error across all exact-ID strata.** Each point is the median projection error (lower is better) for one canonical stratum over 20 holdout seeds, with 95% bootstrap confidence intervals. Colour and symbol encoding as in Figure 1. The dashed horizontal line is the frozen acceptance threshold (0.30). The low band of points (projection errors 0.22-0.35) corresponds to high-signal strata where the method partially captures the shared direction; the upper band (0.6-1.0) indicates near-complete failure. Even in the best-case high-signal, low-noise strata, a substantial fraction of replicates exceeds the threshold."}
+pe_dat <- exact[exact$metric == "projection_error", ]
+.draw_holdout_panel(pe_dat,
+  metric_label = "Holdout projection error (C2)",
+  threshold = 0.30,
+  ylab_text = "Projection error (lower is better)"
+)
 ```
 
 ## Provenance and next step
