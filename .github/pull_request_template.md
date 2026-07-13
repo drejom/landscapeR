@@ -21,7 +21,7 @@
 
 ## Checklist
 
-- [ ] `devtools::test()` passes locally (338+ tests)
+- [ ] `devtools::test()` passes locally
 - [ ] `R CMD check --no-manual` produces no new warnings
 - [ ] `pkgdown::build_site()` + `check-pkgdown-images.py` pass locally (if vignette changed)
 - [ ] ADR filed for any non-trivial algorithm or dependency choice

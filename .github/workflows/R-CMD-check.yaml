@@ -58,9 +58,9 @@ jobs:
       - name: Figure review (vignette changes)
         if: github.event_name == 'pull_request'
         env:
-          GH_TOKEN: ${{ github.token }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          gh pr view ${{ github.event.pull_request.number }} --json body --jq '.body' > /tmp/pr_body.txt
+          printf '%s' "$PR_BODY" > /tmp/pr_body.txt
           python3 scripts/check-figure-review.py /tmp/pr_body.txt
 
   pkgdown:

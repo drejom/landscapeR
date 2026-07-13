@@ -17,16 +17,22 @@ from pathlib import Path
 
 
 def vignettes_changed() -> bool:
-    """Return True when the current diff touches any file under vignettes/."""
-    result = subprocess.run(
-        ["git", "diff", "--name-only", "HEAD~1", "HEAD"],
-        capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        # Can't determine changed files — fail safe: assume yes
-        return True
-    changed = result.stdout.splitlines()
-    return any(f.startswith("vignettes/") for f in changed)
+    """Return True when the current diff touches any file under vignettes/.
+
+    Tries to diff against origin/main, then main, then HEAD~1 (for local use).
+    Falls back to True (fail-safe) if none of these refs are available, which
+    can happen in shallow clones where the target ref is not fetched.
+    """
+    for target in ["origin/main", "main", "HEAD~1"]:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", target, "HEAD"],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            changed = result.stdout.splitlines()
+            return any(f.startswith("vignettes/") for f in changed)
+    # Can't determine changed files — fail safe: assume yes
+    return True
 
 
 def has_figure_review(body: str) -> bool:
