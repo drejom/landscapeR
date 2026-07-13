@@ -1,5 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.git$
 ^decisions$
 ^CLAUDE\.md$
 ^\.claude-notes\.md$

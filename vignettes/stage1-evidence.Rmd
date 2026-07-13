@@ -1,0 +1,133 @@
+---
+title: "Stage 1 heterogeneous synthetic evidence"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Stage 1 heterogeneous synthetic evidence}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 8, fig.height = 5, dpi = 120)
+library(landscapeR)
+
+artifact_name <- "stage1-heterogeneous-v2-a28239b9af0c5569e3be1892a5b60308c8451aefa04a165852cf521606087d4c"
+artifact_candidates <- c(
+  file.path("inst", "benchmarks", artifact_name),
+  file.path("..", "inst", "benchmarks", artifact_name),
+  system.file("benchmarks", artifact_name, package = "landscapeR")
+)
+artifact_dir <- artifact_candidates[dir.exists(artifact_candidates)][1L]
+stopifnot(length(artifact_dir) == 1L, !is.na(artifact_dir))
+evidence <- read_stage1_evidence_artifact(artifact_dir)
+task_keys <- unique(evidence$results[c("stratum_digest", "seed")])
+completed_tasks <- nrow(task_keys)
+expected_tasks <- nrow(landscapeR:::.stage1_benchmark_strata(evidence$manifest)) * nrow(evidence$manifest$seeds)
+expected_result_rows <- expected_tasks * length(evidence$manifest$candidates)
+stopifnot(
+  identical(completed_tasks, expected_tasks),
+  identical(nrow(evidence$results), expected_result_rows),
+  all(evidence$results$gate_passed)
+)
+```
+
+This article renders the completed, frozen
+[`stage1-heterogeneous-v2`](https://github.com/drejom/landscapeR/blob/main/docs/specs/stage1-candidate-protocol.md)
+synthetic-evidence artifact. It does **not** rerun the benchmark, tune a
+candidate, or make a biological claim. The complete artifact is hash-verified
+before its contents are read.
+
+## Result
+
+The calibration rule selected `C2_block_scaled_svd`, but the frozen holdout
+acceptance rule failed. Therefore **no heterogeneous Stage 1 baseline is
+accepted** and Issue #24 remains blocked. C1 cannot be substituted after this
+result: it was not the calibration-selected candidate, and the v2 holdout is
+consumed.
+
+```{r decision}
+knitr::kable(data.frame(
+  field = c("protocol", "protocol digest", "generator digest", "artifact verification",
+            "completed tasks", "result rows", "source commit", "calibration selection",
+            "holdout decision", "holdout thresholds passed"),
+  value = c(
+    evidence$manifest$protocol_id,
+    evidence$selection$protocol_digest,
+    evidence$selection$generator_digest,
+    "complete payload and content-addressed name verified",
+    completed_tasks,
+    nrow(evidence$results),
+    evidence$environment$commit,
+    evidence$selection$selected_candidate,
+    evidence$holdout$decision,
+    evidence$holdout$thresholds_passed
+  ),
+  stringsAsFactors = FALSE
+), col.names = c("Field", "Value"))
+```
+
+## Execution inventory
+
+The verified table contains all 40,960 deterministic stratum-by-seed tasks and
+no failed contract-gate rows. Expected missing-ID controls remain successful
+when they emit their required typed failure.
+
+```{r inventory}
+knitr::kable(data.frame(
+  field = c("completed deterministic tasks", "candidate-result rows", "failed contract-gate rows"),
+  value = c(completed_tasks, nrow(evidence$results), sum(!evidence$results$gate_passed)),
+  stringsAsFactors = FALSE
+), col.names = c("Field", "Value"))
+```
+
+## Holdout threshold readout
+
+The protocol requires every exact-ID stratum with shared signal 24 and noise
+SD 1 to meet both thresholds. This table reports the worst median among those
+frozen strata; a value above its threshold is sufficient to reject the
+candidate.
+
+```{r thresholds}
+summary <- evidence$holdout$summary
+required <- summary[
+  summary$projection_case == "exact_ids" &
+    summary$shared_signal == 24 &
+    summary$noise_sd == 1 &
+    summary$metric %in% c("shared_recovery_error", "projection_error"),
+  , drop = FALSE
+]
+thresholds <- c(shared_recovery_error = 0.25, projection_error = 0.30)
+threshold_readout <- do.call(rbind, lapply(names(thresholds), function(metric) {
+  values <- required$estimate[required$metric == metric]
+  data.frame(
+    metric = metric,
+    exact_id_strata = length(unique(required$stratum_digest[required$metric == metric])),
+    worst_median = max(values),
+    threshold = thresholds[[metric]],
+    all_strata_pass = all(values <= thresholds[[metric]]),
+    stringsAsFactors = FALSE
+  )
+}))
+knitr::kable(transform(threshold_readout, worst_median = round(worst_median, 3)),
+  col.names = c("Metric", "Exact-ID strata", "Worst median", "Threshold", "All pass"))
+```
+
+## Frozen figures
+
+```{r figures, fig.cap=c("Exact-ID holdout shared-recovery error by canonical stratum.", "Exact-ID holdout projection error by canonical stratum."), out.width="100%"}
+knitr::include_graphics(file.path(artifact_dir, "figures",
+  c("shared_recovery_error.png", "projection_error.png")))
+```
+
+## Provenance and next step
+
+The checked artifact coverage comprises all 40,960 synthetic tasks and 81,920
+candidate-result rows. Full artifacts are published only once every task
+checkpoint is complete, so this result has no failed tasks. It also records the
+seed manifest, protocol and generator digests, the calibration decision, and
+the holdout report. Its source commit is
+`6f1f0614b2c4f0d539baa69a20df1ef43705ade6`.
+
+The negative confirmation result is retained as evidence. Any future attempt to
+improve a candidate requires a new ADR and a newly frozen protocol; it must not
+reuse or tune against this holdout.

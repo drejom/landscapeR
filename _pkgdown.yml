@@ -20,6 +20,10 @@ navbar:
       href: https://github.com/drejom/landscapeR
 
 articles:
+  - title: Evidence
+    navbar: Evidence
+    contents:
+      - stage1-evidence
   - title: Development log
     navbar: Development log
     contents:

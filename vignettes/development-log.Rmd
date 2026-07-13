@@ -33,7 +33,7 @@ library(landscapeR)
 | Architecture | S4 contracts, registry, container, provenance | ✅ Implemented and CI-tested |
 | 0 | Synthetic controls (two-group SVD, double-well Langevin) | ⚠️ Implemented; full recovery/negative-control ladder not yet executed |
 | 1 | Comparative decomposition — legacy equal-feature strategies | ⚠️ Implemented; not evidence for heterogeneous multi-omic fitting |
-| 1 | Heterogeneous C1/C2 prototype and frozen comparison protocol | ⚠️ Smoke-tested; full evidence execution and candidate selection pending |
+| 1 | Heterogeneous C1/C2 prototype and frozen comparison protocol | ⚠️ Full synthetic run complete; C2 won calibration but failed frozen holdout, so no baseline is accepted and #24 remains blocked |
 | 1+ | Component gallery and legacy `project_into()` workflow | ⚠️ Exploratory/legacy; #24 is blocked on the selected heterogeneous strategy |
 | 2 | KDE log-density inversion and constrained polynomial smooth | ⚠️ Implemented; ADR 0002 remains provisional-accepted |
 
@@ -43,7 +43,7 @@ library(landscapeR)
 |---|---|---|
 | 0.5 | Archetype classifier | `ranger`-based; assigns samples to known archetypes |
 | 0.75 | Distributional fit assessment | SBI backend via `reticulate`; replaces ad-hoc BC threshold |
-| 1 | Execute the frozen heterogeneous C1/C2 evidence protocol | Select a baseline before #24; no tuning after aggregate results |
+| 1 | New heterogeneous-candidate decision | Requires a new ADR and frozen protocol; v2 holdout cannot be reused for tuning |
 | 1 | HO-GSVD rank-deficiency handling | Kempf algorithm; candidate only after the current comparison decision |
 | 2 | Full Stage 0 recovery and negative-control ladder | Establish ADR 0002 thresholds and pass rates |
 | 2 | Minimum barrier height filter | Candidate only after Stage 0 evidence |
@@ -144,11 +144,13 @@ confirmation/claim-status diagnostics.
 
 ## Evidence status
 
-The accepted Stage 1 protocol compares two prototype estimators on synthetic,
-heterogeneous-feature controls. Its smoke tier is tested in CI, but it cannot
-select a candidate. The full protocol must emit a hash-verified artifact and a
-separate, render-only evidence article before either prototype can become the
-baseline for #24.
+The accepted Stage 1 v2 protocol compared two prototype estimators on
+synthetic, heterogeneous-feature controls. Its completed, hash-verified full
+artifact selected `C2_block_scaled_svd` in calibration, but C2 failed the
+frozen holdout acceptance thresholds. Consequently no Stage 1 baseline is
+accepted and #24 remains blocked. The [Stage 1 synthetic evidence article](stage1-evidence.html)
+renders the immutable artifact; neither C1 substitution nor C2 tuning is
+permitted from the consumed v2 holdout.
 
 Similarly, the Stage 2 implementation is an auditable estimator, not yet a
 validated biological inference engine. See ADR 0002 and the Stage 0 protocol
@@ -172,4 +174,4 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
 
 ---
 
-*Last updated: 2026-07-12. Documentation site: <https://drejom.github.io/landscapeR/>.*
+*Last updated: 2026-07-13. Documentation site: <https://drejom.github.io/landscapeR/>.*

@@ -54,6 +54,27 @@ test_that("holdout assessment rejects other splits and reports frozen medians", 
         stage1_evidence_fixture("calibration")[1, , drop = FALSE]), class = "stage1_evidence_error")
 })
 
+test_that("committed full v2 artifact verifies and records the failed confirmation", {
+    artifact <- system.file("benchmarks",
+        "stage1-heterogeneous-v2-a28239b9af0c5569e3be1892a5b60308c8451aefa04a165852cf521606087d4c",
+        package = "landscapeR")
+    expect_true(nzchar(artifact))
+    expect_true(verify_stage1_evidence_artifact(artifact))
+    evidence <- read_stage1_evidence_artifact(artifact)
+    expect_identical(evidence$environment$commit, "6f1f0614b2c4f0d539baa69a20df1ef43705ade6")
+    strata <- landscapeR:::.stage1_benchmark_strata(evidence$manifest)
+    expected_tasks <- nrow(strata) * nrow(evidence$manifest$seeds)
+    observed_tasks <- nrow(unique(evidence$results[c("stratum_digest", "seed")]))
+    expect_identical(expected_tasks, 40960L)
+    expect_identical(observed_tasks, expected_tasks)
+    expect_identical(nrow(evidence$results), observed_tasks * length(evidence$manifest$candidates))
+    expect_silent(landscapeR:::.stage1_assert_full_coverage(evidence$results, evidence$manifest, strata))
+    expect_identical(evidence$selection$selected_candidate, "C2_block_scaled_svd")
+    expect_identical(evidence$holdout$decision, "failed")
+    expect_false(evidence$holdout$thresholds_passed)
+    expect_true(all(evidence$results$gate_passed))
+})
+
 test_that("full evidence artifact verifier rejects undeclared and altered payloads", {
     manifest <- stage1_benchmark_manifest()
     calibration <- stage1_evidence_fixture("calibration")

@@ -287,7 +287,7 @@ stage1_benchmark_progress <- function(workspace) {
         if (!all(available))
             .stage1_execution_abort("macOS numerical preflight requires the current landscapeR package to be installed")
         outcomes <- parallel::parLapply(cluster, indices, function(index) tryCatch({
-            landscapeR:::.stage1_numerical_preflight(tasks[index, , drop = FALSE], tier, manifest)
+            utils::getFromNamespace(".stage1_numerical_preflight", "landscapeR")(tasks[index, , drop = FALSE], tier, manifest)
             TRUE
         }, error = function(e) conditionMessage(e)))
     } else {
@@ -320,7 +320,7 @@ stage1_benchmark_progress <- function(workspace) {
     for (start in seq.int(1L, length(pending), by = batch_size)) {
         batch <- pending[start:min(start + batch_size - 1L, length(pending))]
         outcomes <- parallel::parLapplyLB(cluster, batch, function(index) tryCatch(
-            list(ok = TRUE, result = landscapeR:::.stage1_run_checkpoint_task(
+            list(ok = TRUE, result = utils::getFromNamespace(".stage1_run_checkpoint_task", "landscapeR")(
                 workspace, tasks[index, , drop = FALSE], tier, manifest, identity)),
             error = function(e) list(ok = FALSE, message = conditionMessage(e))))
         for (outcome in outcomes) {
