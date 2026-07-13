@@ -10,9 +10,10 @@
 }
 
 .stage1_assert_unix_platform <- function() {
-    if (.Platform$OS.type != "unix")
-        .stage1_execution_abort(
-            "landscapeR requires a Unix-like platform (macOS or Linux); Windows is not supported (see ADR 0014)")
+    sysname <- Sys.info()[["sysname"]]
+    if (!sysname %in% c("Darwin", "Linux"))
+        .stage1_execution_abort(sprintf(
+            "landscapeR requires macOS or Linux (detected: %s); see ADR 0014", sysname))
     invisible(NULL)
 }
 
@@ -352,16 +353,18 @@ stage1_benchmark_progress <- function(workspace) {
     if (length(workers) != 1L || is.na(workers) || workers < 1L)
         .stage1_execution_abort("workers must be one positive integer")
     # Platform is already guaranteed Unix by the public entry-point gate (ADR 0014).
-    checkpoints <- lapply(seq_len(nrow(tasks)), function(i)
-        .stage1_read_task_checkpoint(workspace, tasks[i, , drop = FALSE], identity))
-    failed_keys <- tasks$key[vapply(checkpoints,
-        function(cp) !is.null(cp) && identical(cp$status, "failed"), logical(1L))]
+    statuses <- vapply(tasks$key, function(key) {
+        path <- .stage1_workspace_task_path(workspace, key)
+        if (!file.exists(path)) return("missing")
+        cp <- tryCatch(readRDS(path), error = function(e) NULL)
+        if (is.null(cp)) "unreadable" else as.character(cp$status)
+    }, character(1L))
+    failed_keys <- tasks$key[statuses == "failed"]
     if (length(failed_keys))
         .stage1_execution_abort(sprintf(
             "Stage 1 workspace has %d failed task checkpoint(s): %s -- delete the workspace to start fresh",
             length(failed_keys), paste(failed_keys, collapse = ", ")))
-    completed <- vapply(checkpoints,
-        function(cp) !is.null(cp) && identical(cp$status, "complete"), logical(1L))
+    completed <- statuses == "complete"
     pending <- which(!completed)
     last_log_time <- -Inf
     emit <- function(force = FALSE) {
