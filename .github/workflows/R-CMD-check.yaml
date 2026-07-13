@@ -31,10 +31,17 @@ jobs:
             any::rcmdcheck
             any::devtools
             any::testthat
+            any::pkgdown
 
       - name: Check
         run: rcmdcheck::rcmdcheck(args = c("--no-manual"), error_on = "warning")
         shell: Rscript {0}
+
+      - name: Build pkgdown site
+        run: Rscript -e 'pkgdown::build_site()'
+
+      - name: Check pkgdown article images
+        run: python3 scripts/check-pkgdown-images.py --site-root _site _site/articles/stage1-evidence.html
 
   lint:
     runs-on: ubuntu-latest
