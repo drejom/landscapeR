@@ -26,7 +26,7 @@
 
 .stage1_require_results <- function(rows, split = NULL, selected = NULL) {
     required <- c("candidate", "seed", "split", "stratum_digest", "stratum",
-                  "protocol_id", "generator", "protocol_digest", "generator_digest",
+                  "protocol_id", "generator", "protocol_digest", "generator_digest", "tier",
                   "gate_expected", "gate_observed", "gate_passed", "projection_case",
                   "shared_signal", "noise_sd", "shared_recovery_error",
                   "response_recovery_error", "exclusive_leakage", "projection_error",
@@ -99,6 +99,8 @@ select_stage1_candidate <- function(calibration_rows,
                                     manifest = stage1_benchmark_manifest()) {
     validate_stage1_benchmark_manifest(manifest)
     .stage1_require_results(calibration_rows, split = "calibration")
+    if (!all(calibration_rows$tier == "full"))
+        .stage1_evidence_abort("non-evidentiary benchmark rows cannot select a candidate")
     if (!identical(sort(unique(calibration_rows$candidate)), sort(manifest$candidates)))
         .stage1_evidence_abort("calibration rows must contain exactly the frozen candidates")
     if (!identical(unique(calibration_rows$protocol_id), manifest$protocol_id) ||
@@ -175,6 +177,8 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
         !selected_candidate %in% manifest$candidates)
         .stage1_evidence_abort("holdout requires one eligible selected candidate")
     .stage1_require_results(holdout_rows, split = "holdout", selected = selected_candidate)
+    if (!all(holdout_rows$tier == "full"))
+        .stage1_evidence_abort("non-evidentiary benchmark rows cannot assess holdout evidence")
     if (!identical(unique(holdout_rows$protocol_id), manifest$protocol_id) ||
         !identical(unique(holdout_rows$generator), manifest$generator) ||
         !identical(unique(holdout_rows$protocol_digest), .protocol_digest(manifest)) ||
@@ -347,49 +351,6 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
     if (!file.rename(stage, destination)) .stage1_evidence_abort("could not atomically publish evidence artifact")
     on.exit(NULL, add = FALSE)
     destination
-}
-
-#' Execute the complete frozen Stage 1 evidence protocol
-#'
-#' This explicit, long-running operation is outside ordinary tests. It executes
-#' every v2 stratum and declared seed, selects only from calibration evidence,
-#' and atomically publishes a hash-verified synthetic artifact.
-#'
-#' @param artifact_root directory in which to publish a new content-addressed artifact.
-#' @param workers positive number of Unix worker processes; use `1` for sequential execution.
-#' @return path to the immutable artifact directory.
-#' @export
-execute_stage1_benchmark_full <- function(artifact_root, workers = 1L) {
-    manifest <- stage1_benchmark_manifest()
-    source_commit <- .stage1_source_commit(require_clean = TRUE)
-    strata <- .stage1_benchmark_strata(manifest)
-    result_list <- .stage1_execute_tasks(strata, manifest$seeds$seed,
-        runner = function(task) run_stage1_benchmark_replicate(manifest,
-            seed = task$seed, stratum = as.list(strata[task$stratum_index, , drop = FALSE])),
-        workers = workers)
-    results <- do.call(rbind, result_list)
-    rownames(results) <- NULL
-    .stage1_assert_full_coverage(results, manifest, strata)
-    calibration <- results[results$split == "calibration", , drop = FALSE]
-    selection <- select_stage1_candidate(calibration, manifest)
-    if (is.na(selection$selected_candidate)) {
-        report <- list(
-            protocol_id = manifest$protocol_id, protocol_digest = .protocol_digest(manifest),
-            generator_digest = .generator_digest(), split = "holdout",
-            selected_candidate = NA_character_, all_gates_passed = FALSE,
-            thresholds_passed = FALSE, decision = "not_assessed_no_eligible_candidate",
-            summary = data.frame(stratum_digest = character(), stratum = character(),
-                projection_case = character(), shared_signal = numeric(), noise_sd = numeric(),
-                metric = character(), estimate = numeric(), ci_lower = numeric(), ci_upper = numeric(),
-                n = integer(), stringsAsFactors = FALSE), rules = manifest$reporting_rules
-        )
-    } else {
-        holdout <- results[results$split == "holdout" &
-            results$candidate == selection$selected_candidate, , drop = FALSE]
-        report <- assess_stage1_holdout(selection$selected_candidate, holdout, manifest)
-    }
-    .stage1_write_full_artifact(artifact_root, manifest, results, selection, report, workers,
-        source_commit = source_commit)
 }
 
 #' Verify a full Stage 1 evidence artifact

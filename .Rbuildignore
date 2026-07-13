@@ -1,5 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.git$
 ^decisions$
 ^CLAUDE\.md$
 ^\.claude-notes\.md$
@@ -11,6 +12,7 @@
 ^\.github$
 ^\.playwright-mcp$
 ^\.claude$
+^\.pi-subagents$
 ^hooks$
 ^install-hooks\.sh$
 ^scripts$

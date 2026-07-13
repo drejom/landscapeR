@@ -1,9 +1,9 @@
 # 0001 — Stage 1 HO-GSVD implementation
 
 **Stage:** 1 (comparative decomposition)
-**Status:** provisional-accepted
+**Status:** provisional-accepted for legacy equal-feature use; reopened for a heterogeneous baseline
 **Date:** 2026-06-27
-**Updated:** 2026-06-27
+**Updated:** 2026-07-13
 
 ## Context
 
@@ -120,3 +120,24 @@ layer's influence. A selected baseline remains registered as a regression
 comparator. Future
 `Decomposer` strategies require their own ADR and a predeclared comparison to
 the accepted strategy on the same Stage 0 harness before admission.
+
+## 2026-07-13 amendment — frozen heterogeneous v2 result
+
+The complete `stage1-heterogeneous-v2` Stage 0 evidence run completed all
+40,960 tasks with no task failures. Its content-addressed, hash-verified
+artifact is committed at:
+
+```
+inst/benchmarks/stage1-heterogeneous-v2-a28239b9af0c5569e3be1892a5b60308c8451aefa04a165852cf521606087d4c/
+```
+
+The artifact records source commit
+`6f1f0614b2c4f0d539baa69a20df1ef43705ade6`. Calibration selected
+`C2_block_scaled_svd`; however, C2 failed the frozen holdout acceptance rule
+(`thresholds_passed = FALSE`). Accordingly, **no heterogeneous Stage 1
+baseline is accepted** and Issue #24 remains blocked.
+
+This is a confirmation failure, not a license to select C1 or to retune C2:
+C1 was not the calibration-selected candidate and the v2 holdout is consumed.
+Any revised candidate or threshold must be proposed in a new ADR and evaluated
+under a newly frozen protocol, while retaining this artifact unchanged.

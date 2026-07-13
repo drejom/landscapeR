@@ -14,6 +14,7 @@ BugReports: https://github.com/drejom/landscapeR/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
+VignetteBuilder: knitr
 Depends:
     R (>= 4.3.0),
     MultiAssayExperiment
@@ -65,5 +66,6 @@ Collate:
     '20-stage1-prototype-smoke.R'
     '21-stage1-benchmark.R'
     '22-stage1-evidence.R'
+    '23-stage1-execution.R'
 Config/testthat/edition: 3
 biocViews: Software, DimensionReduction, MultipleComparison, StatisticalMethod
