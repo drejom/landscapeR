@@ -11,9 +11,10 @@
 
 .stage1_assert_unix_platform <- function() {
     sysname <- Sys.info()[["sysname"]]
-    if (!sysname %in% c("Darwin", "Linux"))
+    if (is.null(sysname) || !sysname %in% c("Darwin", "Linux"))
         .stage1_execution_abort(sprintf(
-            "landscapeR requires macOS or Linux (detected: %s); see ADR 0014", sysname))
+            "landscapeR requires macOS or Linux (detected: %s); see ADR 0014",
+            if (is.null(sysname)) "unknown" else sysname))
     invisible(NULL)
 }
 
@@ -357,8 +358,14 @@ stage1_benchmark_progress <- function(workspace) {
         path <- .stage1_workspace_task_path(workspace, key)
         if (!file.exists(path)) return("missing")
         cp <- tryCatch(readRDS(path), error = function(e) NULL)
-        if (is.null(cp)) "unreadable" else as.character(cp$status)
+        if (!is.list(cp) || is.null(cp$status) || length(cp$status) != 1L) return("unreadable")
+        as.character(cp$status)
     }, character(1L))
+    unreadable_keys <- tasks$key[statuses == "unreadable"]
+    if (length(unreadable_keys))
+        .stage1_execution_abort(sprintf(
+            "Stage 1 workspace has %d unreadable/corrupt checkpoint(s): %s -- delete the workspace to start fresh",
+            length(unreadable_keys), paste(unreadable_keys, collapse = ", ")))
     failed_keys <- tasks$key[statuses == "failed"]
     if (length(failed_keys))
         .stage1_execution_abort(sprintf(
