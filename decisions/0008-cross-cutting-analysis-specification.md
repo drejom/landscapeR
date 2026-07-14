@@ -63,6 +63,17 @@ A separate orientation anchor is needed only when the target declaration does
 not supply a scientifically meaningful direction. Axis direction is fixed
 before Stage 2 and is never chosen from fitted landscape topology.
 
+**Amendment (2026-07-13): selection resolves rather than replaces the target.**
+The original mutual exclusion between `target_field` and `manual_component` is
+superseded. A draft specification carries the complete target declaration but
+no selected component. Confirmation retains that target and adds
+`selected_component`, the component index in the frozen reference basis. The
+term `manual_component` is removed: manual acceptance or override is decision
+provenance, not a property of the component. The confirmed specification also
+records the proposal digest, whether the recommendation was accepted or
+overridden, and the analyst rationale. A versioned migration is required; no
+legacy/null fallback may silently discard target intent.
+
 ## Consequences
 
 - `PipelineConfig` validation grows beyond dataset and strategy identifiers.

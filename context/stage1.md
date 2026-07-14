@@ -73,7 +73,7 @@ The proposal is a **formal scored object** (not just a plot): it carries a ranke
 
 **Two downstream paths from the proposal object:**
 - *Synthetic controls*: ground truth is known (planted component index is recorded in `SubspaceGroundTruth`). CI asserts `proposal$rank[1] == ground_truth_component` automatically — no human needed.
-- *Real data*: ground truth is unknown. Human reviews the gallery, then calls `confirm_component(proposal, index = k)` to promote component k to a `manual_component` in the `AnalysisSpecification`. Human is mandatory; this step cannot be automated away.
+- *Real data*: ground truth is unknown. Human reviews the gallery, then calls `confirm_component(proposal, index = k)` to retain the target declaration and add `selected_component = k` to the confirmed `AnalysisSpecification`. Human is mandatory; this step cannot be automated away.
 
 **Intended API sequence:**
 ```r
@@ -94,7 +94,13 @@ plot(proposal)
 
 # Step 4: confirm and proceed (human decision for real data;
 #          automated assertion in synthetic control tests)
-aspec <- confirm_component(proposal, index = 2L)
+aspec <- confirm_component(
+    proposal,
+    index = 2L,
+    rationale = "Condition-associated axis is stable and distinct from time"
+)
+# retains target declaration; adds selected_component = 2L
+# records accepted/overridden recommendation, proposal digest, and rationale
 # id auto-generated: "{dataset}_{target_field}_PC{k}"
 # e.g. "aml_2018_condition_PC2", "synthetic_condition_PC1"
 # Stable: same dataset + target field + component choice -> same id
