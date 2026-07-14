@@ -38,7 +38,7 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
         X <- t(assay(omic_layers[[1L]]))
         if (!is.numeric(X) || any(!is.finite(X)))
             return(stage_failure(
-                "svd requires a finite numeric assay matrix"
+                "svd requires a finite numeric omic-layer matrix"
             ))
         if (isTRUE(p_params$center))
             X <- scale(X, center = TRUE, scale = FALSE)

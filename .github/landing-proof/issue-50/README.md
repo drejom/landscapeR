@@ -27,5 +27,6 @@ The same disclosed seed produces this rendered diagnostics table:
 
 The table deliberately makes no pass, acceptance, or eligibility judgement.
 Together with the figures, it demonstrates that the K=1 implementation visibly
-landed. These are not immutable acceptance evidence; #51 and #67 remain the K=1
-acceptance gates.
+landed. PR #69 embeds the images through immutable commit-SHA URLs so its
+transition record survives feature-branch deletion. These are not immutable
+acceptance evidence; #51 and #67 remain the K=1 acceptance gates.

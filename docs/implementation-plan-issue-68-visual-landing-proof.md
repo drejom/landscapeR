@@ -108,8 +108,8 @@ Before code review:
   unavailable comparison refs, artifact presence, public/scientific R changes,
   internal-only R exemptions, prepared-data changes, developer workflows, and
   both exemption categories.
-- R tests: 454 passed; focused K=1 tests: 111 passed; focused Stage 2 plotting
-  tests: 6 passed.
+- R tests: 456 passed; focused K=1 tests: 111 passed; focused Stage 2 plotting
+  tests: 8 passed.
 - `R CMD check --no-manual` passes code, documentation, examples, tests, and
   package vignettes. The local environment still reports the installed
   `MultiAssayExperiment` R-version mismatch warning and the existing long
@@ -138,4 +138,8 @@ Before code review:
   standalone `layer` terminology. The checker now inspects changed R sources
   against existing namespace exports and scientific S4/registry markers while
   retaining valid private-helper exemptions; public text uses `omic layer`.
-  A clean two-axis review rerun is required before merge.
+- The next sign-off pass found uncertainty-free critical-point classifications
+  enabled by default and branch-addressed PR images. `plot_potential()` now
+  defaults to the descriptive quasi-potential/rug view with explicit exploratory
+  opt-in for point classifications, and PR #69 uses immutable commit-SHA image
+  URLs. A clean two-axis review rerun is required before merge.

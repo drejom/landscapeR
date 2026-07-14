@@ -8,17 +8,17 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 
 #' Plot the quasi-potential landscape (Stage 2 output)
 #'
-#' Shows U(x) = -log p(x) along the state-transition axis, with stable critical points
-#' (wells) marked as triangles and unstable critical points (barriers) as
-#' inverted triangles.  Barrier heights are annotated.
+#' Shows U(x) = -log p(x) along the state-transition axis. Point-estimate
+#' critical-point classifications and barrier heights are omitted by default;
+#' they require explicit diagnostic opt-in until uncertainty is available.
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage2} present
 #' @param colour_by character column name in \code{colData(std)} to colour
 #'   the rug of sample positions, or \code{NULL} (default \code{NULL})
-#' @param show_critical_points logical; show point-estimate well/barrier
-#'   classifications and barrier-height segments. Set to \code{FALSE} when
-#'   uncertainty has not been estimated and classification would overstate the
-#'   evidence.
+#' @param show_critical_points logical; explicitly opt in to point-estimate
+#'   well/barrier classifications and barrier-height segments. Defaults to
+#'   \code{FALSE} because current output does not estimate critical-point
+#'   uncertainty; opt-in output is exploratory diagnostic information only.
 #' @return a \code{ggplot} object
 #'
 #' @examples
@@ -29,7 +29,7 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 #'
 #' @export
 plot_potential <- function(std, colour_by = NULL,
-                           show_critical_points = TRUE) {
+                           show_critical_points = FALSE) {
     stopifnot(is(std, "StateTransitionData"))
     if (!is.logical(show_critical_points) ||
         length(show_critical_points) != 1L || is.na(show_critical_points))

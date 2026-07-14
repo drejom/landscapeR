@@ -32,14 +32,14 @@ test_that("plot_potential rug draws from coords_k when coords slot is empty", {
     expect_s3_class(plot_potential(std3), "gg")
 })
 
-test_that("plot_potential can omit point-estimate critical-point classification", {
+test_that("plot_potential omits point-estimate critical-point classification by default", {
     std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
     std2 <- suppressWarnings(
         decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std))@value
     std3 <- estimate_dynamics(
         get_strategy("DynamicsEstimator", "kde_logdensity")(), std2)@value
 
-    plot <- plot_potential(std3, show_critical_points = FALSE)
+    plot <- plot_potential(std3)
 
     expect_s3_class(plot, "gg")
     expect_null(plot$labels$shape)
@@ -47,6 +47,23 @@ test_that("plot_potential can omit point-estimate critical-point classification"
         plot$layers,
         function(layer) inherits(layer$geom, "GeomPoint") ||
             inherits(layer$geom, "GeomSegment"),
+        logical(1L)
+    )))
+})
+
+test_that("plot_potential requires explicit opt-in for point-estimate classification", {
+    std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+    std2 <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std))@value
+    std3 <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std2)@value
+
+    plot <- plot_potential(std3, show_critical_points = TRUE)
+
+    expect_identical(plot$labels$shape, "Critical point")
+    expect_true(any(vapply(
+        plot$layers,
+        function(layer) inherits(layer$geom, "GeomPoint"),
         logical(1L)
     )))
 })
