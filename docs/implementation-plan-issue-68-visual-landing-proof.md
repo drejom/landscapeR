@@ -92,3 +92,34 @@ Before code review:
   is green or report any external blocker as incomplete.
 - Only after this audit passes, run the repository two-axis code review against
   `ad77a2a`.
+
+## Completion evidence
+
+- PR #69 is the canonical transition record for #50 and #68. It contains
+  captured base/new checker output, a before/after table, rendered K=1 figures,
+  cold-reader conclusions, reproduction commands, and calibration-only claim
+  status.
+- Main branch protection requires PRs, strict `R-CMD-check` and `lint` checks,
+  conversation resolution, admin enforcement, and prohibits force pushes and
+  branch deletion.
+- All 24 open issues contain a required visual-proof declaration or an explicit
+  research/decision-only exemption whose implementation expiry is stated.
+- Policy CLI contract tests: 19 passed, including malformed templates,
+  unavailable comparison refs, artifact presence, public/scientific R changes,
+  prepared-data changes, developer workflows, and both exemption categories.
+- R tests: 450 passed; focused K=1 tests: 107 passed; focused Stage 2 plotting
+  tests: 6 passed.
+- `R CMD check --no-manual` passes code, documentation, examples, tests, and
+  package vignettes. The local environment still reports the installed
+  `MultiAssayExperiment` R-version mismatch warning and the existing long
+  benchmark-path NOTE.
+- Pkgdown builds the current development log; all three referenced images are
+  present and the proof was visually inspected. Critical-point classification
+  is deliberately omitted from the calibration figure because uncertainty is
+  not yet estimated.
+- ADR coverage, registry compliance, diff checks, and the live PR-body policy
+  check pass.
+- The first two-axis review found public-R exemption, artifact-verification,
+  malformed/ref test, raw-validation, metadata-access, and uncertainty-display
+  gaps. Commit `aa1937b` addresses those findings. A final clean review is
+  required before merge.
