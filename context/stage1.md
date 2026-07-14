@@ -72,6 +72,9 @@ plot(proposal)   # calls plot_components() internally
 # Step 3: confirm and proceed (human decision for real data;
 #          automated assertion in synthetic control tests)
 aspec <- confirm_component(proposal, index = 2L)
+# id auto-generated: "{dataset}_{target_field}_PC{k}"
+# e.g. "aml_2018_condition_PC2", "synthetic_condition_PC1"
+# Stable: same dataset + target field + component choice -> same id
 run_pipeline(std2, cfg_with(aspec))
 ```
 
