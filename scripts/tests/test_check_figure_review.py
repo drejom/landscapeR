@@ -128,6 +128,17 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("obviously public", result.stderr)
 
+    def test_rejects_template_comments_as_required_proof(self) -> None:
+        self._commit_change(current_docs=True)
+        body = REQUIRED_PROOF.replace(
+            "The old workflow duplicates one omic layer before decomposition.",
+            "<!-- Describe the old behavior. -->"
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Before", result.stderr)
+
     def test_rejects_incomplete_required_proof_packet(self) -> None:
         self._commit_change(current_docs=True)
         body = REQUIRED_PROOF.replace(

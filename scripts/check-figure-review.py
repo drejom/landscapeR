@@ -57,8 +57,13 @@ def field(body: str, label: str) -> str | None:
 def substantive(value: str | None, minimum: int = 12) -> bool:
     if value is None:
         return False
-    normalized = re.sub(r"[`*_]", "", value).strip().lower()
-    return normalized not in PLACEHOLDERS and len(normalized) >= minimum
+    without_comments = re.sub(r"<!--.*?-->", "", value, flags=re.DOTALL)
+    normalized = re.sub(r"[`*_]", "", without_comments).strip().lower()
+    starts_with_placeholder = any(
+        normalized == token or normalized.startswith(f"{token}:")
+        for token in PLACEHOLDERS if token
+    )
+    return not starts_with_placeholder and len(normalized) >= minimum
 
 
 def fail(message: str) -> int:
