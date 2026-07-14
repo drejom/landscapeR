@@ -61,6 +61,9 @@ _Avoid_: basin, attractor basin
 **no-transition result**:
 A valid Stage 2 conclusion that the selected target biological axis has a single well or no supported barrier. It means the data do not support a state-transition topology on that axis; it is not an estimation failure and must not be smoothed into a multi-well claim.
 
+**multi-axis ineligible result**:
+A successful applicability conclusion that Stage 1 supports a stable target-associated subspace but not a stable one-dimensional target axis. The current 1D estimator must not flatten or select within that subspace. A future 2D strategy requires its own ADR, Stage 0 control ladder, and acceptance criteria before use.
+
 **claim status**:
 A machine-readable statement of the evidence scope for a Stage 2 result: confirmatory, exploratory, ineligible for the current estimator, or a no-transition result. It is derived from declared sampling design, applicability, discovery/confirmation, concordance, and stability gates rather than a vignette disclaimer. Ineligible and no-transition results are successful scientific outcomes, distinct from typed computational or input failures.
 

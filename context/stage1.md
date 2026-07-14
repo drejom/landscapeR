@@ -107,6 +107,9 @@ The evidence-tier operation that matches each resampled decomposition to the fro
 **target-axis stability**:
 The frequency with which an equivalent biological axis recurs after bootstrap component alignment. It is reported separately from component-index stability, orientation stability, subspace stability, and proposal rank stability. A target axis may be biologically stable even when its ordinal PC index changes across resamples.
 
+**stable-subspace/no-stable-axis result**:
+A valid component-proposal abstention: the target association and enclosing subspace recur across resamples, but no single one-dimensional direction is identifiable because components rotate or exchange signal. The proposal must not choose the best-looking PC. The result is ineligible for the current 1D Stage 2 estimator and remains descriptive evidence for a future separately validated 2D strategy.
+
 **axis orientation anchor**:
 An optional predeclared biological metadata rule that gives a selected target biological axis a semantic direction (for example, increasing developmental day or toward treated samples). Technical alignment to the discovery-cohort reference is automatic; directional biological claims require this anchor and must not use downstream Stage 2 topology to set it.
 
