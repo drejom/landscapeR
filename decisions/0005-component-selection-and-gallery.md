@@ -72,14 +72,23 @@ survives projection despite confounding, that strengthens the biological claim.
 
 ## Evidence
 
-From the AML 2016 training data (this session):
+> **Correction (2026-07-13): superseded exploratory evidence.** The analysis
+> below fitted the state space to the wrong cohort. The 2016 sequencing design
+> confounds timepoint with sequencing run and must not define the AML state
+> space. The clean, randomised 2018 primary cohort defines the state space;
+> 2016 is projected into that frozen basis as a hostile external stress test.
+> The numbers below are retained only as historical context and are not
+> admissible evidence for component selection, projection validity, or a
+> biological claim. They must not be reproduced as the package workflow.
+
+From the AML 2016 training data (superseded analysis):
 
 | Component | r(coord, condition) | r(coord, timepoint) | Interpretation |
 |-----------|---------------------|---------------------|----------------|
 | PC1       | −0.17               | 0.81                | Age / batch    |
 | PC2       | 0.53                | −0.07               | Disease axis   |
 
-From the AML 2018 validation data projected into 2016 training V*:
+From the AML 2018 validation data projected into 2016 training V* (superseded analysis):
 
 | Component | r(coord, condition) |
 |-----------|---------------------|

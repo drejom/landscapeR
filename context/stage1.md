@@ -37,6 +37,9 @@ _Avoid_: multi-block PCA (a different method), tensor decomposition (incorrect f
 The subspace spanned by the columns of V* — the axes that are common across all K omic layers. It contains candidate target biological axes and other shared sources of variation.
 _Avoid_: common space, joint embedding
 
+**state-space definition**:
+The immutable declaration of the discovery observations, feature identities, preprocessing reference, and fitted component basis that jointly define one state space. It is established before and independently of projection. A secondary cohort can only be projected after matching its features to this frozen declaration; it never contributes observations, features, centring/scaling parameters, or component selection back into the state-space definition.
+
 **target biological axis**:
 The selected column of V* (and corresponding row of each UᵢΣᵢ) whose coordinate is associated with a predeclared biological variable or contrast. It is selected from a reproducible, predeclared proposal ranking or manually fixed by the analyst; the final choice and rationale are recorded in provenance.
 _Avoid_: PC1/PC2 (too generic — the target biological axis may not be the dominant component)
@@ -48,6 +51,8 @@ A disease-specific target biological axis whose coordinate separates healthy fro
 A structured, serializable table of associations between every Stage 1 component and every eligible `colData` field. It is computed before component selection and answers which recorded variables each component is *associated with*; it does not infer causation or declare a variable to be a confounder. Identifier fields (for example `mouse_id`) are excluded. Fields and their eventual scientific roles are marked as predeclared or discovered so the discovery/confirmation boundary remains explicit.
 
 The atlas always preserves **univariate associations** for transparent interpretation. Once nuisance fields are declared, it may additionally report **adjusted associations** (for example, condition after accounting for weeks). Adjusted results are labelled separately and never replace or hide their unadjusted counterparts. The component proposal must retain both rather than collapse them into an opaque composite score.
+
+Only a discovery-cohort atlas may drive `propose_component()` and `confirm_component()`. After confirmation, the target axis and complete state-space definition are frozen. A projected-cohort atlas is validation-only: it evaluates the already selected coordinates and is structurally prohibited from reranking components or changing the `AnalysisSpecification`. For AML, `primary_2018` defines the state space and `supp_2016` is a hostile projection stress test; timepoint and sequencing run are confounded in the 2016 experiment, so it is not a clean independent replication cohort.
 
 Association assessment must honour the `SamplingDesign` declared on `StateTransitionData` (ADR 0006). Cross-sectional data use independent-observation methods. Longitudinal data use the declared subject-ID and ordered-time columns; adjusted estimates and uncertainty must account for within-subject repeated measures. Subject identifiers are design variables, not association targets. If longitudinal data lack a compatible subject-aware association method, assessment fails explicitly rather than silently treating observations as independent. The atlas records the model and sampling design used.
 
