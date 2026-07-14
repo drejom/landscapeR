@@ -4,13 +4,18 @@
 \alias{plot_potential}
 \title{Plot the quasi-potential landscape (Stage 2 output)}
 \usage{
-plot_potential(std, colour_by = NULL)
+plot_potential(std, colour_by = NULL, show_critical_points = TRUE)
 }
 \arguments{
 \item{std}{\code{StateTransitionData} with \code{metadata()$stage2} present}
 
 \item{colour_by}{character column name in \code{colData(std)} to colour
 the rug of sample positions, or \code{NULL} (default \code{NULL})}
+
+\item{show_critical_points}{logical; show point-estimate well/barrier
+classifications and barrier-height segments. Set to \code{FALSE} when
+uncertainty has not been estimated and classification would overstate the
+evidence.}
 }
 \value{
 a \code{ggplot} object

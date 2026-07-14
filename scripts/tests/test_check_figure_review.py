@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,6 +26,7 @@ REQUIRED_PROOF = """\
 **Cold-reader conclusion:** K=1 now runs without a duplicated-omic-layer workaround.
 **Reproduction:** Run `Rscript scripts/render-proof.R`.
 **Claim status:** Implementation proof only; calibration-only and non-evidentiary.
+**Artifact:** See the before/after table in the Visual review section.
 
 ### Current documentation
 
@@ -32,6 +34,12 @@ REQUIRED_PROOF = """\
 - [ ] Unaffected
 
 **Documentation reference or rationale:** Development log K=1 section.
+
+## Visual review
+
+| Before | After |
+|---|---|
+| Duplicated omic layer | Registered SVD |
 """
 
 
@@ -96,6 +104,32 @@ class VisualProofCheckerCliTest(unittest.TestCase):
             cwd=self.repo, capture_output=True, text=True
         )
 
+    def test_rejects_malformed_template_without_visual_heading(self) -> None:
+        self._commit_change(current_docs=True)
+        result = self._run_checker(REQUIRED_PROOF.replace(
+            "## Visual landing proof", "## Landing notes"
+        ))
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("heading is required", result.stderr)
+
+    def test_fails_safe_when_no_comparison_ref_is_available(self) -> None:
+        self._git("switch", "--orphan", "isolated")
+        for child in self.repo.iterdir():
+            if child.name != ".git":
+                if child.is_dir():
+                    shutil.rmtree(child)
+                else:
+                    child.unlink()
+        (self.repo / "isolated.txt").write_text("only commit\n", encoding="utf-8")
+        self._git("add", "isolated.txt")
+        self._git("commit", "-m", "isolated root")
+        self._git("branch", "-D", "main")
+        result = self._run_checker(VALID_EXEMPTION)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("cannot determine changed files", result.stderr)
+
     def test_requires_exactly_one_proof_classification(self) -> None:
         self._commit_change()
         neither = self._run_checker("## Visual landing proof\n")
@@ -109,7 +143,7 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertIn("exactly one", both.stderr)
 
     def test_rejects_generic_exemption_rationale(self) -> None:
-        self._commit_change()
+        self._commit_path("tests/testthat/helper-fixture.R")
         body = VALID_EXEMPTION.replace(
             "This changes test fixture naming without changing any public, scientific, data, plotting, or developer-workflow behavior.",
             "N/A"
@@ -142,14 +176,21 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         result = self._run_checker(VALID_EXEMPTION)
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("obviously public", result.stderr)
+        self.assertIn("obviously qualifying", result.stderr)
+
+    def test_rejects_exemption_for_r_scientific_or_public_behavior(self) -> None:
+        self._commit_path("R/public-api.R", "public_api <- function() 'changed'\n")
+        result = self._run_checker(VALID_EXEMPTION)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("obviously qualifying", result.stderr)
 
     def test_rejects_exemption_for_prepared_data_workflow(self) -> None:
         self._commit_path("data-raw/prepare-cohort.R")
         result = self._run_checker(VALID_EXEMPTION)
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("obviously public", result.stderr)
+        self.assertIn("obviously qualifying", result.stderr)
 
     def test_accepts_research_decision_only_exemption(self) -> None:
         self._commit_path("decisions/9999-proposed-research.md")
@@ -174,6 +215,30 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         result = self._run_checker(body)
 
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_rejects_prose_only_required_proof_without_artifact(self) -> None:
+        self._commit_change(current_docs=True)
+        body = REQUIRED_PROOF.replace(
+            "| Before | After |\n|---|---|\n| Duplicated omic layer | Registered SVD |",
+            "The implementation changed as described above."
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("inspectable artifact", result.stderr)
+
+    def test_requires_current_docs_for_r_behavior_change(self) -> None:
+        self._commit_path("R/public-api.R", "public_api <- function() 'changed'\n")
+        body = REQUIRED_PROOF.replace("- [x] Updated", "- [ ] Updated").replace(
+            "- [ ] Unaffected", "- [x] Unaffected"
+        ).replace(
+            "Development log K=1 section.",
+            "The public workflow is claimed to be unaffected despite the R behavior change."
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requires current documentation", result.stderr)
 
     def test_rejects_template_comments_as_required_proof(self) -> None:
         self._commit_change(current_docs=True)
@@ -211,7 +276,7 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertIn("Visual landing proof packet accepted", result.stdout)
 
     def test_accepts_complete_proof_when_docs_are_substantively_unaffected(self) -> None:
-        self._commit_change(current_docs=False)
+        self._commit_path("scripts/internal-status.py")
         body = REQUIRED_PROOF.replace("- [x] Updated", "- [ ] Updated").replace(
             "- [ ] Unaffected", "- [x] Unaffected"
         ).replace(
@@ -229,7 +294,7 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         )
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("exactly one", result.stderr)
+        self.assertIn("heading is required", result.stderr)
 
 
 if __name__ == "__main__":

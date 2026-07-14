@@ -146,6 +146,30 @@ test_that("svd records truthful deterministic provenance", {
     expect_identical(forged_provenance@params$k, 6L)
 })
 
+test_that("K=1 double-well constructor typed-fails invalid public inputs", {
+    expect_error(
+        synthetic_k1_double_well_control(n = 1L),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        synthetic_k1_double_well_control(beta = c(1, 2)),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        synthetic_k1_double_well_control(seed = .Machine$integer.max),
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("K=1 calibration returns structured failure for invalid control inputs", {
+    result <- k1_double_well_calibration(n = 1L)
+
+    expect_identical(result$status, "failure")
+    expect_identical(result$evidence_status, "non_evidentiary_calibration")
+    expect_match(result$reason, "n must")
+    expect_length(result$provenance, 0L)
+})
+
 test_that("K=1 double-well observations are independent stationary draws", {
     std <- synthetic_k1_double_well_control(
         n = 1000L, p = 5L, noise_sd = 0.02, seed = 114L

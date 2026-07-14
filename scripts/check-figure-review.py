@@ -25,8 +25,16 @@ PLACEHOLDERS = {
 }
 CURRENT_DOCUMENTATION_PREFIXES = ("vignettes/",)
 CURRENT_DOCUMENTATION_FILES = {"README.md"}
-OBVIOUSLY_PUBLIC_PREFIXES = ("data-raw/", "vignettes/")
-OBVIOUSLY_PUBLIC_FILES = {"DESCRIPTION", "NAMESPACE", "README.md"}
+OBVIOUSLY_QUALIFYING_PREFIXES = (
+    ".github/", "R/", "data-raw/", "docs/agents/", "hooks/", "man/",
+    "scripts/", "vignettes/",
+)
+OBVIOUSLY_QUALIFYING_FILES = {
+    "DESCRIPTION", "NAMESPACE", "README.md", "_pkgdown.yml",
+    "install-hooks.sh",
+}
+CURRENT_DOCS_REQUIRED_PREFIXES = ("R/", "data-raw/")
+CURRENT_DOCS_REQUIRED_FILES = {"DESCRIPTION", "NAMESPACE"}
 
 
 def changed_files() -> list[str]:
@@ -86,20 +94,39 @@ def validate_exemption(body: str, files: list[str]) -> int:
     if category not in ALLOWED_EXEMPTION_CATEGORIES:
         allowed = ", ".join(sorted(ALLOWED_EXEMPTION_CATEGORIES))
         return fail(f"Exemption category must be one of: {allowed}.")
-    obvious_public = [
+    obviously_qualifying = [
         path for path in files
-        if path in OBVIOUSLY_PUBLIC_FILES
-        or path.startswith(OBVIOUSLY_PUBLIC_PREFIXES)
+        if path in OBVIOUSLY_QUALIFYING_FILES
+        or path.startswith(OBVIOUSLY_QUALIFYING_PREFIXES)
     ]
-    if obvious_public:
+    if obviously_qualifying:
         return fail(
-            "An exemption cannot cover an obviously public change: "
-            + ", ".join(obvious_public)
+            "An exemption cannot cover an obviously qualifying change: "
+            + ", ".join(obviously_qualifying)
         )
     if not substantive(rationale, minimum=24):
         return fail("A substantive exemption rationale is required; generic N/A is invalid.")
     print(f"Visual landing proof exemption accepted ({category}).")
     return 0
+
+
+def visual_review_has_artifact(body: str) -> bool:
+    section_match = re.search(
+        r"^## Visual review\s*$\n(.*?)(?=^##\s|\Z)",
+        body,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if not section_match:
+        return False
+    section = section_match.group(1)
+    has_image = re.search(r"!\[[^\]]+\]\([^)]+\)", section) is not None
+    has_table = re.search(
+        r"^\s*\|.+\|\s*$\n^\s*\|(?:\s*:?-+:?\s*\|)+\s*$",
+        section,
+        flags=re.MULTILINE,
+    ) is not None
+    has_rendered_output = re.search(r"```[^\n]*\n.+?```", section, re.DOTALL) is not None
+    return has_image or has_table or has_rendered_output
 
 
 def validate_required_proof(body: str, files: list[str]) -> int:
@@ -110,6 +137,7 @@ def validate_required_proof(body: str, files: list[str]) -> int:
         "Cold-reader conclusion",
         "Reproduction",
         "Claim status",
+        "Artifact",
     )
     for label in required_fields:
         if not substantive(field(body, label)):
@@ -134,6 +162,20 @@ def validate_required_proof(body: str, files: list[str]) -> int:
             "Current documentation is declared updated, but no README or vignette change "
             "exists in the current documentation diff."
         )
+    docs_required = any(
+        path in CURRENT_DOCS_REQUIRED_FILES
+        or path.startswith(CURRENT_DOCS_REQUIRED_PREFIXES)
+        for path in files
+    )
+    if unaffected and docs_required:
+        return fail(
+            "An R, prepared-data, DESCRIPTION, or NAMESPACE change requires current documentation."
+        )
+    if not visual_review_has_artifact(body):
+        return fail(
+            "The Visual review section must contain an inspectable artifact: "
+            "a Markdown image, table, or fenced rendered output."
+        )
 
     print("Visual landing proof packet accepted.")
     return 0
@@ -148,6 +190,8 @@ def main() -> int:
         return fail(f"PR body file not found: {args.pr_body_file}")
 
     body = args.pr_body_file.read_text(encoding="utf-8")
+    if re.search(r"^## Visual landing proof\s*$", body, re.MULTILINE) is None:
+        return fail("A `## Visual landing proof` heading is required.")
     proof_required = checked(body, "Proof required")
     exempt = checked(body, "Exempt")
     if proof_required == exempt:

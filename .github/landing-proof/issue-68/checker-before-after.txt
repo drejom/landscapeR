@@ -1,0 +1,7 @@
+$ python3 check-before.py pr-body.md
+No vignette changes detected — figure review not required.
+[exit 0]
+
+$ python3 check-after.py pr-body.md
+ERROR: A `## Visual landing proof` heading is required.
+[exit 1]

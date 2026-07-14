@@ -25,6 +25,8 @@
 
 **Claim status:** <!-- implementation proof | exploratory | calibration-only | accepted evidence, etc. -->
 
+**Artifact:** <!-- Point to the Markdown image, table, or fenced rendered output in Visual review. -->
+
 ### Current documentation
 
 <!-- Select exactly one when proof is required. -->

@@ -141,6 +141,36 @@ synthetic_control <- function(n        = 40L,
 # Generic K=1 cross-sectional double-well calibration control
 # ---------------------------------------------------------------------------
 
+.k1_double_well_validation_message <- function(n, p, noise_sd, beta, seed) {
+    whole_number <- function(x, minimum, maximum = .Machine$integer.max) {
+        is.numeric(x) && length(x) == 1L && is.finite(x) &&
+            x >= minimum && x <= maximum && x == as.integer(x)
+    }
+    if (!whole_number(n, 2L))
+        return("n must be a single integer greater than or equal to 2")
+    if (!whole_number(p, 2L))
+        return("p must be a single integer greater than or equal to 2")
+    if (!is.numeric(noise_sd) || length(noise_sd) != 1L ||
+        !is.finite(noise_sd) || noise_sd <= 0)
+        return("noise_sd must be a single finite number greater than 0")
+    if (!is.numeric(beta) || length(beta) != 1L ||
+        !is.finite(beta) || beta <= 0)
+        return("beta must be a single finite number greater than 0")
+    if (!whole_number(seed, 0L, .Machine$integer.max - 1L))
+        return(paste0(
+            "seed must be a single integer between 0 and ",
+            .Machine$integer.max - 1L
+        ))
+    NULL
+}
+
+.stop_landscapeR_validation <- function(message, call = sys.call(-1L)) {
+    stop(structure(
+        list(message = message, call = call),
+        class = c("landscapeR_validation_error", "error", "condition")
+    ))
+}
+
 .sample_double_well_stationary <- function(n, beta) {
     # Rejection sampling with a standard-Cauchy proposal. For y = x^2,
     # (1 + y) exp(-beta (y - 1)^2) is maximized at
@@ -185,12 +215,14 @@ synthetic_k1_double_well_control <- function(n = 200L,
                                               noise_sd = 0.05,
                                               beta = 2,
                                               seed = 42L) {
-    stopifnot(
-        is.numeric(n), n >= 2L,
-        is.numeric(p), p >= 2L,
-        is.numeric(noise_sd), noise_sd > 0,
-        is.numeric(beta), beta > 0
+    validation_message <- .k1_double_well_validation_message(
+        n, p, noise_sd, beta, seed
     )
+    if (!is.null(validation_message))
+        .stop_landscapeR_validation(paste0(
+            "synthetic_k1_double_well_control(): ", validation_message
+        ))
+
     n <- as.integer(n)
     p <- as.integer(p)
     seed <- as.integer(seed)
@@ -362,6 +394,22 @@ k1_double_well_calibration <- function(n = 200L,
                                         beta = 2,
                                         seed = 42L,
                                         config = .k1_double_well_calibration_config()) {
+    validation_message <- .k1_double_well_validation_message(
+        n, p, noise_sd, beta, seed
+    )
+    if (!is.null(validation_message))
+        return(list(
+            status = "failure",
+            evidence_status = "non_evidentiary_calibration",
+            decomposer = NA_character_,
+            dynamics_estimator = NA_character_,
+            config_digest = if (is(config, "PipelineConfig"))
+                digest::digest(config, algo = "sha256") else NA_character_,
+            control_digest = NA_character_,
+            provenance = list(),
+            reason = paste0("invalid calibration control: ", validation_message)
+        ))
+
     std <- synthetic_k1_double_well_control(
         n = n,
         p = p,

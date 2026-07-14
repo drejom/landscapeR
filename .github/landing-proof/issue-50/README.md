@@ -7,10 +7,12 @@ These two images are the first reference proof packet under issue #68 and ADR
 Rscript -e 'pkgdown::build_site()'
 ```
 
-- `empirical-density.png` is the descriptive evidence layer: the empirical
-  registered-SVD coordinate density.
+- `empirical-density.png` is the descriptive evidence layer: the planted
+  cross-sectional coordinate density supplied to the synthetic expression
+  control through public `colData`.
 - `quasi-potential.png` is the hypothesis-conditioned interpretation layer: the
-  fitted calibration-only quasi-potential and critical points.
+  fitted calibration-only quasi-potential. Critical-point classification is
+  deliberately omitted because uncertainty is not yet estimated.
 
 They demonstrate that the K=1 implementation visibly landed. They are not
 immutable acceptance evidence; #51 and #67 remain the K=1 acceptance gates.

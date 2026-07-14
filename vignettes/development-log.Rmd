@@ -103,7 +103,7 @@ strategy for a K=1 analysis.
 The current development path now keeps K=1 explicit from generation through
 Stage 1 and the cross-sectional Stage 2 estimator:
 
-```{r k1-double-well, fig.cap=c("Descriptive evidence: empirical density of the registered-SVD coordinate, shown before fitting a quasi-potential.", "Hypothesis-conditioned interpretation: the fitted calibration-only quasi-potential with stable and unstable critical points; this is not an acceptance result.")}
+```{r k1-double-well, fig.cap=c("Descriptive evidence: empirical density of the planted cross-sectional coordinate supplied to the single-omic-layer expression control.", "Hypothesis-conditioned interpretation: the fitted calibration-only quasi-potential; critical-point classification is deliberately omitted because uncertainty is not yet estimated.")}
 std_k1 <- synthetic_k1_double_well_control(
   n = 200L, p = 100L, noise_sd = 0.03, seed = 50L
 )
@@ -111,8 +111,7 @@ std_k1 <- synthetic_k1_double_well_control(
 svd_ctor <- get_strategy("Decomposer", "svd")
 std_k1_s1 <- suppressWarnings(decompose(svd_ctor(), std_k1))@value
 
-stage1_k1 <- metadata(std_k1_s1)$stage1
-coordinate_k1 <- drop(dr_coords_k(stage1_k1)[[1L]][, 1L])
+coordinate_k1 <- colData(std_k1)$x_coord
 
 empirical_density <- ggplot2::ggplot(
   data.frame(coordinate = coordinate_k1),
@@ -121,7 +120,7 @@ empirical_density <- ggplot2::ggplot(
   ggplot2::geom_density(fill = "#67A9CF", alpha = 0.45, linewidth = 0.8) +
   ggplot2::geom_rug(alpha = 0.35) +
   ggplot2::labs(
-    title = "Descriptive evidence: empirical SVD coordinate density",
+    title = "Descriptive evidence: planted cross-sectional coordinate density",
     x = "State-transition coordinate",
     y = "Density"
   ) +
@@ -130,13 +129,20 @@ print(empirical_density)
 
 dynamics_ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
 std_k1_s2 <- estimate_dynamics(dynamics_ctor(), std_k1_s1)@value
-plot_potential(std_k1_s2)
+plot_potential(std_k1_s2, show_critical_points = FALSE) +
+  ggplot2::labs(
+    subtitle = paste(
+      "Critical-point classification omitted — uncertainty is not yet",
+      "estimated; calibration-only output"
+    )
+  )
 ```
 
 **Cold-reader conclusion:** the single-omic-layer expression control now passes
 through the registered SVD strategy and produces the expected two-well
-quasi-potential without fabricating a second omic layer. The empirical density
-and fitted quasi-potential remain visible together under ADR 0017.
+quasi-potential without fabricating a second omic layer. The public synthetic
+input distribution remains visible before the fitted interpretation, and the
+plot omits critical-point classification because uncertainty is not yet estimated.
 
 This is implementation and calibration proof, not acceptance evidence. The
 frozen K=1 thinness, negative-control, and independent acceptance protocol is
