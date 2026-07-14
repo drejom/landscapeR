@@ -9,8 +9,6 @@ synthetic_k1_double_well_control(
   p = 100L,
   noise_sd = 0.05,
   beta = 2,
-  n_steps = 1000L,
-  dt = 0.01,
   seed = 42L
 )
 }
@@ -21,11 +19,7 @@ synthetic_k1_double_well_control(
 
 \item{noise_sd}{numeric expression noise standard deviation}
 
-\item{beta}{numeric inverse temperature for the double-well simulation}
-
-\item{n_steps}{integer Metropolis transitions per independent trajectory}
-
-\item{dt}{numeric proposal-variance scale}
+\item{beta}{numeric inverse temperature for the double-well distribution}
 
 \item{seed}{integer reproducibility seed}
 }
@@ -34,10 +28,9 @@ single-layer \code{StateTransitionData} with
 \code{K1DoubleWellGroundTruth}
 }
 \description{
-Draws cross-sectional coordinates from independent Markov trajectories
-targeting the known double-well stationary distribution, embeds them along
-one planted feature direction in a single high-dimensional expression
-matrix, and retains both subspace and potential ground truth. This is a
-disclosed calibration/development control, never an acceptance artifact
-(ADR 0016).
+Draws independent coordinates exactly from the known double-well stationary
+distribution by rejection sampling, embeds them along one planted feature
+direction in a single high-dimensional expression matrix, and retains both
+subspace and potential ground truth. This is a disclosed
+calibration/development control, never an acceptance artifact (ADR 0016).
 }

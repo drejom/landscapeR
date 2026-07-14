@@ -141,21 +141,41 @@ synthetic_control <- function(n        = 40L,
 # Generic K=1 cross-sectional double-well calibration control
 # ---------------------------------------------------------------------------
 
+.sample_double_well_stationary <- function(n, beta) {
+    # Rejection sampling with a standard-Cauchy proposal. For y = x^2,
+    # (1 + y) exp(-beta (y - 1)^2) is maximized at
+    # y* = sqrt(1 + 1 / (2 beta)), giving an analytic envelope constant.
+    y_star <- sqrt(1 + 1 / (2 * beta))
+    log_envelope <- log(pi) + log1p(y_star) - beta * (y_star - 1)^2
+    draws <- numeric(0L)
+
+    while (length(draws) < n) {
+        remaining <- n - length(draws)
+        proposal <- stats::rt(max(64L, 8L * remaining), df = 1)
+        log_target <- -beta * (proposal^2 - 1)^2
+        log_proposal <- -log(pi) - log1p(proposal^2)
+        log_acceptance <- log_target - log_proposal - log_envelope
+        log_acceptance[!is.finite(log_acceptance)] <- -Inf
+        accepted <- proposal[
+            log(stats::runif(length(proposal))) < pmin(0, log_acceptance)
+        ]
+        draws <- c(draws, accepted)
+    }
+    draws[seq_len(n)]
+}
+
 #' Generate a K=1 expression control with a planted double-well coordinate
 #'
-#' Draws cross-sectional coordinates from independent Markov trajectories
-#' targeting the known double-well stationary distribution, embeds them along
-#' one planted feature direction in a single high-dimensional expression
-#' matrix, and retains both subspace and potential ground truth. This is a
-#' disclosed calibration/development control, never an acceptance artifact
-#' (ADR 0016).
+#' Draws independent coordinates exactly from the known double-well stationary
+#' distribution by rejection sampling, embeds them along one planted feature
+#' direction in a single high-dimensional expression matrix, and retains both
+#' subspace and potential ground truth. This is a disclosed
+#' calibration/development control, never an acceptance artifact (ADR 0016).
 #'
 #' @param n integer number of independent cross-sectional observations
 #' @param p integer number of expression features
 #' @param noise_sd numeric expression noise standard deviation
-#' @param beta numeric inverse temperature for the double-well simulation
-#' @param n_steps integer Metropolis transitions per independent trajectory
-#' @param dt numeric proposal-variance scale
+#' @param beta numeric inverse temperature for the double-well distribution
 #' @param seed integer reproducibility seed
 #' @return single-layer \code{StateTransitionData} with
 #'   \code{K1DoubleWellGroundTruth}
@@ -164,35 +184,19 @@ synthetic_k1_double_well_control <- function(n = 200L,
                                               p = 100L,
                                               noise_sd = 0.05,
                                               beta = 2,
-                                              n_steps = 1000L,
-                                              dt = 0.01,
                                               seed = 42L) {
     stopifnot(
         is.numeric(n), n >= 2L,
         is.numeric(p), p >= 2L,
         is.numeric(noise_sd), noise_sd > 0,
-        is.numeric(beta), beta > 0,
-        is.numeric(n_steps), n_steps >= 1L,
-        is.numeric(dt), dt > 0
+        is.numeric(beta), beta > 0
     )
     n <- as.integer(n)
     p <- as.integer(p)
     seed <- as.integer(seed)
 
-    # One independently initialized random-walk Metropolis trajectory per
-    # observation. Samples share a target distribution, never a trajectory.
     setup_rng(seed)
-    n_steps <- as.integer(n_steps)
-    x_raw <- sample(c(-1, 1), size = n, replace = TRUE) +
-        rnorm(n, sd = 1 / sqrt(8 * beta))
-    proposal_sd <- sqrt(2 * dt / beta)
-    potential <- function(x) (x^2 - 1)^2
-    for (step in seq_len(n_steps)) {
-        proposal <- x_raw + rnorm(n, sd = proposal_sd)
-        log_acceptance <- -beta * (potential(proposal) - potential(x_raw))
-        accept <- log(stats::runif(n)) < pmin(0, log_acceptance)
-        x_raw[accept] <- proposal[accept]
-    }
+    x_raw <- .sample_double_well_stationary(n, beta)
     center_shift <- mean(x_raw)
     x_coord <- x_raw
 
@@ -253,9 +257,7 @@ synthetic_k1_double_well_control <- function(n = 200L,
         K = 1L,
         noise_sd = noise_sd,
         beta = beta,
-        sampler = "independent_random_walk_metropolis",
-        n_steps = as.integer(n_steps),
-        dt = dt,
+        sampler = "exact_cauchy_rejection",
         seed = seed,
         expression_seed = seed + 1L,
         coordinate_center = center_shift,
@@ -358,8 +360,6 @@ k1_double_well_calibration <- function(n = 200L,
                                         p = 100L,
                                         noise_sd = 0.05,
                                         beta = 2,
-                                        n_steps = 1000L,
-                                        dt = 0.01,
                                         seed = 42L,
                                         config = .k1_double_well_calibration_config()) {
     std <- synthetic_k1_double_well_control(
@@ -367,8 +367,6 @@ k1_double_well_calibration <- function(n = 200L,
         p = p,
         noise_sd = noise_sd,
         beta = beta,
-        n_steps = n_steps,
-        dt = dt,
         seed = seed
     )
     control <- metadata(std)$k1_double_well_control

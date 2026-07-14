@@ -146,20 +146,22 @@ test_that("svd records truthful deterministic provenance", {
     expect_identical(forged_provenance@params$k, 6L)
 })
 
-test_that("K=1 double-well observations come from independent trajectories", {
+test_that("K=1 double-well observations are independent stationary draws", {
     std <- synthetic_k1_double_well_control(
-        n = 1000L, p = 5L, noise_sd = 0.02,
-        n_steps = 1L, seed = 114L
+        n = 1000L, p = 5L, noise_sd = 0.02, seed = 114L
     )
     x <- colData(std)$source_x_coord
+    control <- metadata(std)$k1_double_well_control
 
+    expect_identical(control$sampler, "exact_cauchy_rejection")
     expect_lt(abs(stats::cor(x[-length(x)], x[-1L])), 0.1)
+    expect_lt(abs(mean(x)), 0.1)
+    expect_true(mean(x > 0) > 0.45 && mean(x > 0) < 0.55)
 })
 
 test_that("K=1 double-well constructor carries subspace and potential truth", {
     std <- synthetic_k1_double_well_control(
-        n = 120L, p = 50L, noise_sd = 0.02,
-        n_steps = 300L, seed = 107L
+        n = 120L, p = 50L, noise_sd = 0.02, seed = 107L
     )
 
     expect_s4_class(std, "StateTransitionData")
@@ -186,8 +188,7 @@ test_that("K=1 double-well constructor carries subspace and potential truth", {
 
 test_that("K=1 double-well calibration runs SVD and Stage 2 without judging acceptance", {
     calibration <- suppressWarnings(k1_double_well_calibration(
-        n = 160L, p = 50L, noise_sd = 0.02,
-        n_steps = 400L, seed = 108L
+        n = 160L, p = 50L, noise_sd = 0.02, seed = 108L
     ))
 
     expect_identical(calibration$status, "success")
@@ -206,7 +207,7 @@ test_that("K=1 double-well calibration runs SVD and Stage 2 without judging acce
 
 test_that("K=1 calibration reports configuration failures with control provenance", {
     wrong_type <- suppressWarnings(k1_double_well_calibration(
-        n = 40L, p = 20L, n_steps = 80L, seed = 112L,
+        n = 40L, p = 20L, seed = 112L,
         config = "not-a-config"
     ))
     expect_identical(wrong_type$status, "failure")
@@ -226,7 +227,7 @@ test_that("K=1 calibration reports configuration failures with control provenanc
         )
     )
     missing_strategy <- suppressWarnings(k1_double_well_calibration(
-        n = 40L, p = 20L, n_steps = 80L, seed = 113L,
+        n = 40L, p = 20L, seed = 113L,
         config = bad_config
     ))
     expect_identical(missing_strategy$status, "failure")
@@ -246,7 +247,7 @@ test_that("K=1 calibration reports configuration failures with control provenanc
         )
     )
     component_two <- suppressWarnings(k1_double_well_calibration(
-        n = 40L, p = 20L, n_steps = 80L, seed = 115L,
+        n = 40L, p = 20L, seed = 115L,
         config = component_two_config
     ))
     expect_identical(component_two$status, "failure")

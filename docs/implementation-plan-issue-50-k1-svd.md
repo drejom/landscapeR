@@ -39,8 +39,8 @@ Tests use planted ground truth and independent subspace metrics rather than impl
 ## Completion evidence
 
 - K=1 constructor, explicit `svd` registry strategy, exact-one-layer typed failure, truthful provenance, deterministic subspace recovery, and calibration-only double-well harness are implemented.
-- Focused tests: 97 passed.
-- Full test suite: 437 passed.
+- Focused tests: 100 passed.
+- Full test suite: 440 passed.
 - `R CMD check --no-manual`: code, documentation, examples, tests, and vignettes passed. Local check reports one environment warning because the installed `MultiAssayExperiment` was built under R 4.5.3 while local R is 4.5.2, plus the already documented long benchmark-path NOTE. Neither originates in this diff; CI will validate in a matched environment.
 - Two-axis review found and prompted fixes for small-sample SVD rank truncation, beta-scaled quasi-potential truth, calibration configuration/provenance, and duplicated recovery metrics.
 - No acceptance thresholds, real data, AML longitudinal control, or HO-GSVD fallback were added.
