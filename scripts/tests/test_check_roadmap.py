@@ -173,6 +173,47 @@ class RoadmapCheckerCliTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("generated or uncategorized", result.stderr)
 
+    def test_ignores_hidden_operating_system_files(self) -> None:
+        (self.repo / "docs" / ".DS_Store").write_text("metadata", encoding="utf-8")
+
+        result = self._run()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_rejects_empty_markdown_link_without_traceback(self) -> None:
+        (self.repo / "docs" / "README.md").write_text(
+            "See [empty]().\n", encoding="utf-8"
+        )
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("empty Markdown link", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_rejects_absolute_local_link(self) -> None:
+        (self.repo / "docs" / "README.md").write_text(
+            "See [host file](/etc/hosts).\n", encoding="utf-8"
+        )
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("outside repository", result.stderr)
+
+    def test_rejects_traversal_to_existing_file_outside_repository(self) -> None:
+        outside = self.repo.parent / f"{self.repo.name}-outside.md"
+        outside.write_text("outside\n", encoding="utf-8")
+        self.addCleanup(outside.unlink)
+        (self.repo / "docs" / "README.md").write_text(
+            f"See [outside](../../{outside.name}).\n", encoding="utf-8"
+        )
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("outside repository", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,7 +22,7 @@ NEXT_TASK = re.compile(
     r"^\*\*Next task[^\n]*:\*\*\s+\*\*#(?P<number>\d+)\b",
     flags=re.MULTILINE,
 )
-LOCAL_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+LOCAL_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]*)\)")
 ALLOWED_STATE_PREFIXES = ("active", "queued", "conditional", "parked", "complete")
 ALLOWED_DOCS_AREAS = {"agents", "archive", "plans", "specs"}
 
@@ -77,9 +77,13 @@ def check_open_issues(rows: dict[int, str], json_path: Path) -> None:
         )
 
 
+def is_hidden_path(path: Path, root: Path) -> bool:
+    return any(part.startswith(".") for part in path.relative_to(root).parts)
+
+
 def check_docs_layout(docs_root: Path) -> None:
     for path in docs_root.rglob("*"):
-        if not path.is_file():
+        if not path.is_file() or is_hidden_path(path, docs_root):
             continue
         relative = path.relative_to(docs_root)
         if relative == Path("README.md"):
@@ -90,15 +94,30 @@ def check_docs_layout(docs_root: Path) -> None:
             )
 
 
-def check_local_links(path: Path, text: str) -> None:
+def check_local_links(path: Path, text: str, repo_root: Path) -> None:
     for raw_target in LOCAL_LINK.findall(text):
-        target = raw_target.strip().split()[0].strip("<>")
+        raw_target = raw_target.strip()
+        if not raw_target:
+            raise ValueError(f"empty Markdown link in {path}")
+        if raw_target.startswith("<") and raw_target.endswith(">"):
+            target = raw_target[1:-1]
+        else:
+            target = raw_target.split(maxsplit=1)[0]
         if target.startswith(("http://", "https://", "mailto:", "#")):
             continue
         target = unquote(target.split("#", 1)[0])
         if not target:
             continue
-        resolved = (path.parent / target).resolve()
+        target_path = Path(target)
+        if target_path.is_absolute():
+            raise ValueError(f"local link points outside repository in {path}: {raw_target}")
+        resolved = (path.parent / target_path).resolve()
+        try:
+            resolved.relative_to(repo_root)
+        except ValueError as error:
+            raise ValueError(
+                f"local link points outside repository in {path}: {raw_target}"
+            ) from error
         if not resolved.exists():
             raise ValueError(f"broken local link in {path}: {raw_target}")
 
@@ -133,10 +152,17 @@ def validate(
     if open_issues_path is not None:
         check_open_issues(rows, open_issues_path)
 
-    check_local_links(roadmap_path, roadmap)
+    repo_root = roadmap_path.resolve().parent
+    check_local_links(roadmap_path, roadmap, repo_root)
     check_docs_layout(docs_root)
     for path in sorted(docs_root.rglob("*.md")):
-        check_local_links(path, read_text(path, "source documentation"))
+        if is_hidden_path(path, docs_root):
+            continue
+        check_local_links(
+            path,
+            read_text(path, "source documentation"),
+            repo_root,
+        )
 
 
 def main() -> int:

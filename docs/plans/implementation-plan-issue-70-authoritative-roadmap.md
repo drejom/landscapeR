@@ -65,7 +65,7 @@ The PR will show:
 - `scripts/check-roadmap.py` validates the authority declaration, one next task,
   unique issue rows, live open-issue coverage, non-stale closed rows, and local
   links across source documents.
-- 31 repository policy CLI contract tests passed.
+- 35 repository policy CLI contract tests passed.
 - 456 R assertions passed.
 - ADR coverage and registry compliance passed.
 - pkgdown rebuilt successfully under `_site/`; both article image audits passed,
