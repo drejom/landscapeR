@@ -28,6 +28,7 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
         requested_k <- p_params$k_components
         if (!is.numeric(requested_k) || length(requested_k) != 1L ||
             !is.finite(requested_k) || requested_k < 1L ||
+            requested_k > .Machine$integer.max ||
             requested_k != as.integer(requested_k))
             return(stage_failure(
                 "svd k_components must be a single positive integer"

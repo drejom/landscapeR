@@ -143,18 +143,19 @@ synthetic_control <- function(n        = 40L,
 
 #' Generate a K=1 expression control with a planted double-well coordinate
 #'
-#' Draws cross-sectional coordinates from the known double-well Langevin
-#' control, embeds them along one planted feature direction in a single
-#' high-dimensional expression matrix, and retains both subspace and potential
-#' ground truth. This is a disclosed calibration/development control, never an
-#' acceptance artifact (ADR 0016).
+#' Draws cross-sectional coordinates from independent Markov trajectories
+#' targeting the known double-well stationary distribution, embeds them along
+#' one planted feature direction in a single high-dimensional expression
+#' matrix, and retains both subspace and potential ground truth. This is a
+#' disclosed calibration/development control, never an acceptance artifact
+#' (ADR 0016).
 #'
 #' @param n integer number of independent cross-sectional observations
 #' @param p integer number of expression features
 #' @param noise_sd numeric expression noise standard deviation
 #' @param beta numeric inverse temperature for the double-well simulation
-#' @param n_steps integer Langevin steps between collected observations
-#' @param dt numeric Langevin integration step size
+#' @param n_steps integer Metropolis transitions per independent trajectory
+#' @param dt numeric proposal-variance scale
 #' @param seed integer reproducibility seed
 #' @return single-layer \code{StateTransitionData} with
 #'   \code{K1DoubleWellGroundTruth}
@@ -178,16 +179,22 @@ synthetic_k1_double_well_control <- function(n = 200L,
     p <- as.integer(p)
     seed <- as.integer(seed)
 
-    potential_control <- synthetic_potential_control(
-        n = n,
-        beta = beta,
-        n_steps = n_steps,
-        dt = dt,
-        seed = seed
-    )
-    x_raw <- as.numeric(colData(potential_control)$x_coord)
+    # One independently initialized random-walk Metropolis trajectory per
+    # observation. Samples share a target distribution, never a trajectory.
+    setup_rng(seed)
+    n_steps <- as.integer(n_steps)
+    x_raw <- sample(c(-1, 1), size = n, replace = TRUE) +
+        rnorm(n, sd = 1 / sqrt(8 * beta))
+    proposal_sd <- sqrt(2 * dt / beta)
+    potential <- function(x) (x^2 - 1)^2
+    for (step in seq_len(n_steps)) {
+        proposal <- x_raw + rnorm(n, sd = proposal_sd)
+        log_acceptance <- -beta * (potential(proposal) - potential(x_raw))
+        accept <- log(stats::runif(n)) < pmin(0, log_acceptance)
+        x_raw[accept] <- proposal[accept]
+    }
     center_shift <- mean(x_raw)
-    x_coord <- x_raw - center_shift
+    x_coord <- x_raw
 
     # Use a separate deterministic stream for the expression observation model.
     setup_rng(seed + 1L)
@@ -246,6 +253,7 @@ synthetic_k1_double_well_control <- function(n = 200L,
         K = 1L,
         noise_sd = noise_sd,
         beta = beta,
+        sampler = "independent_random_walk_metropolis",
         n_steps = as.integer(n_steps),
         dt = dt,
         seed = seed,
@@ -408,6 +416,15 @@ k1_double_well_calibration <- function(n = 200L,
             decomposer = decomposer,
             dynamics_estimator = dynamics_estimator,
             config_digest = config_digest
+        ))
+
+    selected_component <- config@analysis@manual_component
+    if (length(selected_component) != 1L || selected_component != 1L)
+        return(calibration_failure(
+            "K=1 double-well calibration requires selected component 1",
+            decomposer,
+            dynamics_estimator,
+            config_digest
         ))
 
     pipeline_result <- tryCatch(

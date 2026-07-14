@@ -51,7 +51,7 @@ test_that("svd typed-fails invalid component requests", {
                              signal = 40, seed = 110L)
     ctor <- get_strategy("Decomposer", "svd")
 
-    for (invalid_k in list(0L, -1L, NA_integer_, 1.5, "two")) {
+    for (invalid_k in list(0L, -1L, NA_integer_, 1.5, "two", 2^31)) {
         result <- suppressWarnings(decompose(
             ctor(list(k_components = invalid_k)), std
         ))
@@ -146,6 +146,16 @@ test_that("svd records truthful deterministic provenance", {
     expect_identical(forged_provenance@params$k, 6L)
 })
 
+test_that("K=1 double-well observations come from independent trajectories", {
+    std <- synthetic_k1_double_well_control(
+        n = 1000L, p = 5L, noise_sd = 0.02,
+        n_steps = 1L, seed = 114L
+    )
+    x <- colData(std)$source_x_coord
+
+    expect_lt(abs(stats::cor(x[-length(x)], x[-1L])), 0.1)
+})
+
 test_that("K=1 double-well constructor carries subspace and potential truth", {
     std <- synthetic_k1_double_well_control(
         n = 120L, p = 50L, noise_sd = 0.02,
@@ -222,4 +232,24 @@ test_that("K=1 calibration reports configuration failures with control provenanc
     expect_identical(missing_strategy$status, "failure")
     expect_match(missing_strategy$reason, "not_registered")
     expect_length(missing_strategy$provenance, 1L)
+
+    component_two_config <- new("PipelineConfig",
+        strategies = list(
+            Decomposer = "svd",
+            DynamicsEstimator = "kde_logdensity"
+        ),
+        params = list(),
+        dataset = "invalid_component_config",
+        analysis = analysis_specification(
+            id = "invalid_component_config_PC2",
+            manual_component = 2L
+        )
+    )
+    component_two <- suppressWarnings(k1_double_well_calibration(
+        n = 40L, p = 20L, n_steps = 80L, seed = 115L,
+        config = component_two_config
+    ))
+    expect_identical(component_two$status, "failure")
+    expect_match(component_two$reason, "component 1")
+    expect_length(component_two$provenance, 1L)
 })

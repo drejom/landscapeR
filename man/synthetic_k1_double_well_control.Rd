@@ -23,9 +23,9 @@ synthetic_k1_double_well_control(
 
 \item{beta}{numeric inverse temperature for the double-well simulation}
 
-\item{n_steps}{integer Langevin steps between collected observations}
+\item{n_steps}{integer Metropolis transitions per independent trajectory}
 
-\item{dt}{numeric Langevin integration step size}
+\item{dt}{numeric proposal-variance scale}
 
 \item{seed}{integer reproducibility seed}
 }
@@ -34,9 +34,10 @@ single-layer \code{StateTransitionData} with
 \code{K1DoubleWellGroundTruth}
 }
 \description{
-Draws cross-sectional coordinates from the known double-well Langevin
-control, embeds them along one planted feature direction in a single
-high-dimensional expression matrix, and retains both subspace and potential
-ground truth. This is a disclosed calibration/development control, never an
-acceptance artifact (ADR 0016).
+Draws cross-sectional coordinates from independent Markov trajectories
+targeting the known double-well stationary distribution, embeds them along
+one planted feature direction in a single high-dimensional expression
+matrix, and retains both subspace and potential ground truth. This is a
+disclosed calibration/development control, never an acceptance artifact
+(ADR 0016).
 }

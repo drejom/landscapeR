@@ -24,9 +24,9 @@ k1_double_well_calibration(
 
 \item{beta}{numeric inverse temperature for the double-well simulation}
 
-\item{n_steps}{integer Langevin steps between collected observations}
+\item{n_steps}{integer Metropolis transitions per independent trajectory}
 
-\item{dt}{numeric Langevin integration step size}
+\item{dt}{numeric proposal-variance scale}
 
 \item{seed}{integer reproducibility seed}
 
