@@ -400,7 +400,24 @@ synthetic_k1_double_well_control <- function(n = 200L,
         dataset = "synthetic_k1_double_well_calibration",
         analysis = analysis_specification(
             id = "synthetic_k1_double_well_calibration_PC1",
-            manual_component = 1L,
+            target_field = "x_coord",
+            target_type = "continuous",
+            continuous_direction = "increasing",
+            lifecycle = "confirmed",
+            selected_component = 1L,
+            proposal_digest = digest::digest(
+                list(
+                    control = "synthetic_k1_double_well_calibration",
+                    target = "x_coord",
+                    selected_component = 1L
+                ),
+                algo = "sha256"
+            ),
+            proposal_decision = "accepted",
+            analyst_rationale = paste(
+                "Synthetic ground truth fixes the planted K=1 target axis at",
+                "component 1."
+            ),
             claim_intent = "exploratory"
         )
     )
@@ -496,7 +513,7 @@ k1_double_well_calibration <- function(n = 200L,
             config_digest = config_digest
         ))
 
-    selected_component <- config@analysis@manual_component
+    selected_component <- config@analysis@selected_component
     if (length(selected_component) != 1L || selected_component != 1L)
         return(calibration_failure(
             "K=1 double-well calibration requires selected component 1",

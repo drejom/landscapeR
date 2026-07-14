@@ -5,43 +5,62 @@
 \alias{AnalysisSpecification-class}
 \title{Versioned analysis specification for one target-axis run}
 \description{
-An \code{AnalysisSpecification} expresses scientific intent for exactly one
-reproducible run.  It is attached to \code{\linkS4class{PipelineConfig}}, not to
-the data container, because the same \code{StateTransitionData} may support
-separate biological questions.
+An \code{AnalysisSpecification} expresses complete scientific intent for one
+reproducible run. It is attached to \code{\linkS4class{PipelineConfig}},
+not to the data container, because the same data may support separate
+biological questions.
 }
 \details{
-The spec names one target axis (either a \code{colData} field proposed for
-component selection, or an explicit manual component index already chosen
-after review), zero or more nuisance variables, an optional orientation
-anchor, and the claim intent of the run.
-
-Use \code{\link{analysis_specification}} to construct validated objects;
-do not call \code{new("AnalysisSpecification")} directly.
+Version 2 retains a complete target declaration through three lifecycle
+states: a draft has no proposal, a proposal records the ranked proposal's
+digest, and a confirmed specification adds the selected component plus the
+analyst's accept/override decision and rationale.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{version}}{schema version, always \code{"1.0.0"}}
+\item{\code{version}}{schema version, always \code{"2.0.0"}}
 
 \item{\code{id}}{non-empty run identity string}
 
-\item{\code{target_field}}{zero-or-one \code{colData} field name proposed for
-component selection (proposal only — does not select a component)}
+\item{\code{lifecycle}}{\code{"draft"}, \code{"proposal"}, or \code{"confirmed"}}
 
-\item{\code{manual_component}}{zero-or-one positive integer: an explicit component
-index chosen after reviewing the Stage 1 component gallery}
+\item{\code{target_field}}{one \code{colData} target field}
 
-\item{\code{nuisance_fields}}{unique character vector of metadata field names to
-treat as confounders}
+\item{\code{target_type}}{\code{"binary"}, \code{"ordered"}, or \code{"continuous"}}
 
-\item{\code{orientation_anchor}}{zero-or-one \code{colData} field name providing
-an orientation convention for the selected axis; must not duplicate a
-target or nuisance role}
+\item{\code{reference_level}}{binary target reference level}
+
+\item{\code{comparison_level}}{binary target comparison level}
+
+\item{\code{ordered_levels}}{ordered target levels in predeclared direction}
+
+\item{\code{continuous_direction}}{\code{"increasing"} or \code{"decreasing"}}
+
+\item{\code{selected_component}}{positive component index in the frozen reference
+basis; present only for a confirmed specification}
+
+\item{\code{proposal_digest}}{SHA-256 digest of the ranked component proposal;
+present for proposal and confirmed states}
+
+\item{\code{proposal_decision}}{\code{"accepted"} or \code{"overridden"}; present
+only for a confirmed specification}
+
+\item{\code{analyst_rationale}}{non-empty human rationale for confirmation}
+
+\item{\code{nuisance_fields}}{unique metadata fields declared as confounders}
+
+\item{\code{orientation_anchor}}{optional numeric metadata field providing an
+orientation convention distinct from target and nuisance roles}
 
 \item{\code{claim_intent}}{\code{"exploratory"} or \code{"primary_confirmatory"}}
+
+\item{\code{migration_source_digest}}{optional digest of the exact v1 payload from
+which this specification was explicitly migrated}
 }}
 
 \seealso{
-\code{\link{analysis_specification}}, \code{\link{canonical_digest}}
+\code{\link{analysis_specification}},
+\code{\link{migrate_analysis_specification}},
+\code{\link{canonical_digest}}
 }
