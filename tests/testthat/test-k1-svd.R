@@ -14,6 +14,19 @@ test_that("synthetic_control supports one omic layer", {
     expect_identical(std@sampling_design@kind, "cross_sectional")
 })
 
+test_that("synthetic_control typed-fails invalid public inputs", {
+    invalid_calls <- list(
+        function() synthetic_control(K = 1.5),
+        function() synthetic_control(n = c(12L, 13L)),
+        function() synthetic_control(signal_spec = "large"),
+        function() synthetic_control(seed = NA_integer_)
+    )
+
+    for (invalid_call in invalid_calls) {
+        expect_error(invalid_call(), class = "landscapeR_validation_error")
+    }
+})
+
 test_that("registered svd decomposes one layer into the common result contract", {
     expect_true("Decomposer:svd" %in% list_strategies("Decomposer"))
 

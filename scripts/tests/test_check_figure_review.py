@@ -178,8 +178,25 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("obviously qualifying", result.stderr)
 
+    def test_accepts_exemption_for_internal_only_r_refactor(self) -> None:
+        self._commit_path(
+            "R/private-helper.R",
+            ".private_helper <- function(x) x\n",
+        )
+        result = self._run_checker(VALID_EXEMPTION)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Visual landing proof exemption accepted", result.stdout)
+
     def test_rejects_exemption_for_r_scientific_or_public_behavior(self) -> None:
-        self._commit_path("R/public-api.R", "public_api <- function() 'changed'\n")
+        source = self.repo / "R" / "public-api.R"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("public_api <- function() 'changed'\n", encoding="utf-8")
+        (self.repo / "NAMESPACE").write_text(
+            "export(public_api)\n", encoding="utf-8"
+        )
+        self._git("add", "R/public-api.R", "NAMESPACE")
+        self._git("commit", "-m", "change public R API")
         result = self._run_checker(VALID_EXEMPTION)
 
         self.assertNotEqual(result.returncode, 0)
@@ -227,8 +244,30 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("inspectable artifact", result.stderr)
 
+    def test_required_proof_accepts_internal_r_refactor_with_docs_unaffected(self) -> None:
+        self._commit_path(
+            "R/private-helper.R",
+            ".private_helper <- function(x) x\n",
+        )
+        body = REQUIRED_PROOF.replace("- [x] Updated", "- [ ] Updated").replace(
+            "- [ ] Unaffected", "- [x] Unaffected"
+        ).replace(
+            "Development log K=1 section.",
+            "The internal helper refactor does not change any documented public workflow."
+        )
+        result = self._run_checker(body)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_requires_current_docs_for_r_behavior_change(self) -> None:
-        self._commit_path("R/public-api.R", "public_api <- function() 'changed'\n")
+        source = self.repo / "R" / "public-api.R"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("public_api <- function() 'changed'\n", encoding="utf-8")
+        (self.repo / "NAMESPACE").write_text(
+            "export(public_api)\n", encoding="utf-8"
+        )
+        self._git("add", "R/public-api.R", "NAMESPACE")
+        self._git("commit", "-m", "change public R API")
         body = REQUIRED_PROOF.replace("- [x] Updated", "- [ ] Updated").replace(
             "- [ ] Unaffected", "- [x] Unaffected"
         ).replace(

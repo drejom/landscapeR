@@ -20,6 +20,37 @@
 # Single synthetic control
 # ---------------------------------------------------------------------------
 
+.is_whole_number <- function(x, minimum, maximum = .Machine$integer.max) {
+    is.numeric(x) && length(x) == 1L && is.finite(x) &&
+        x >= minimum && x <= maximum && x == as.integer(x)
+}
+
+.synthetic_control_validation_message <- function(n, p, K, signal,
+                                                   signal_spec, noise_sd,
+                                                   seed) {
+    if (!.is_whole_number(n, 2L))
+        return("n must be a single integer greater than or equal to 2")
+    if (!.is_whole_number(p, 2L))
+        return("p must be a single integer greater than or equal to 2")
+    if (!.is_whole_number(K, 1L))
+        return("K must be a single integer greater than or equal to 1")
+    if (!is.numeric(signal) || length(signal) != 1L ||
+        !is.finite(signal) || signal <= 0)
+        return("signal must be a single finite number greater than 0")
+    if (!is.numeric(signal_spec) || length(signal_spec) != 1L ||
+        !is.finite(signal_spec))
+        return("signal_spec must be a single finite number")
+    if (!is.numeric(noise_sd) || length(noise_sd) != 1L ||
+        !is.finite(noise_sd) || noise_sd <= 0)
+        return("noise_sd must be a single finite number greater than 0")
+    if (!.is_whole_number(seed, 0L))
+        return(paste0(
+            "seed must be a single integer between 0 and ",
+            .Machine$integer.max
+        ))
+    NULL
+}
+
 #' Generate one synthetic control dataset
 #'
 #' Each layer is  X_i = signal * outer(u_shared, v_true)
@@ -44,14 +75,18 @@ synthetic_control <- function(n        = 40L,
                                signal_spec = 8,
                                noise_sd    = 1,
                                seed        = 42L) {
-    stopifnot(
-        is.numeric(n), n >= 2L,
-        is.numeric(p), p >= 2L,
-        is.numeric(K), K >= 1L,
-        is.numeric(signal), signal > 0,
-        is.numeric(noise_sd), noise_sd > 0
+    validation_message <- .synthetic_control_validation_message(
+        n, p, K, signal, signal_spec, noise_sd, seed
     )
-    n <- as.integer(n); p <- as.integer(p); K <- as.integer(K)
+    if (!is.null(validation_message))
+        .stop_landscapeR_validation(paste0(
+            "synthetic_control(): ", validation_message
+        ))
+
+    n <- as.integer(n)
+    p <- as.integer(p)
+    K <- as.integer(K)
+    seed <- as.integer(seed)
 
     setup_rng(seed)
 
@@ -142,13 +177,9 @@ synthetic_control <- function(n        = 40L,
 # ---------------------------------------------------------------------------
 
 .k1_double_well_validation_message <- function(n, p, noise_sd, beta, seed) {
-    whole_number <- function(x, minimum, maximum = .Machine$integer.max) {
-        is.numeric(x) && length(x) == 1L && is.finite(x) &&
-            x >= minimum && x <= maximum && x == as.integer(x)
-    }
-    if (!whole_number(n, 2L))
+    if (!.is_whole_number(n, 2L))
         return("n must be a single integer greater than or equal to 2")
-    if (!whole_number(p, 2L))
+    if (!.is_whole_number(p, 2L))
         return("p must be a single integer greater than or equal to 2")
     if (!is.numeric(noise_sd) || length(noise_sd) != 1L ||
         !is.finite(noise_sd) || noise_sd <= 0)
@@ -156,7 +187,7 @@ synthetic_control <- function(n        = 40L,
     if (!is.numeric(beta) || length(beta) != 1L ||
         !is.finite(beta) || beta <= 0)
         return("beta must be a single finite number greater than 0")
-    if (!whole_number(seed, 0L, .Machine$integer.max - 1L))
+    if (!.is_whole_number(seed, 0L, .Machine$integer.max - 1L))
         return(paste0(
             "seed must be a single integer between 0 and ",
             .Machine$integer.max - 1L

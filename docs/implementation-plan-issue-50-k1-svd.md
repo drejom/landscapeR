@@ -42,9 +42,9 @@ Tests use planted ground truth and independent subspace metrics rather than impl
 ## Completion evidence
 
 - K=1 constructor, explicit `svd` registry strategy, exact-one-layer typed failure, truthful provenance, deterministic subspace recovery, and calibration-only double-well harness are implemented.
-- Focused tests: 100 passed.
-- Full test suite: 440 passed.
+- Focused tests: 111 passed.
+- Full test suite: 454 passed.
 - `R CMD check --no-manual`: code, Rd documentation, examples, package tests, and package-included vignettes passed. Local check reports one environment warning because the installed `MultiAssayExperiment` was built under R 4.5.3 while local R is 4.5.2, plus the already documented long benchmark-path NOTE. The living development log is excluded from `R CMD check` and is verified separately by the pkgdown build and rendered visual review.
-- Two-axis review found and prompted fixes for small-sample SVD rank truncation, beta-scaled quasi-potential truth, calibration configuration/provenance, and duplicated recovery metrics.
+- Two-axis review found and prompted fixes for small-sample SVD rank truncation, beta-scaled quasi-potential truth, calibration configuration/provenance, duplicated recovery metrics, typed generator validation, and the previously omitted exact-stationary sampler ADR amendment.
 - No acceptance thresholds, real data, AML longitudinal control, or HO-GSVD fallback were added.
 - **Correction under #68:** the initial completion audit omitted visual landing proof and left the public development log on the obsolete duplicated-omic-layer workaround. #50 is not complete until its branch PR contains the proof packet, the current documentation is rendered and inspected, and CI passes.

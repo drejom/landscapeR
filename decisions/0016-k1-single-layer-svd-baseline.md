@@ -140,6 +140,59 @@ topology, and confounder-axis language are now recorded in the domain model.
 ADR 0002's K=1-specific numeric thresholds, pass rates, and negative-control
 limit remain unresolved until the frozen ladder above is complete.
 
+### 7. Exact stationary sampling for the generic double-well control
+
+**Amendment (2026-07-14).** Implementation review found that this ADR specified
+independent cross-sectional double-well observations but did not choose how to
+sample them. That omission allowed a finite-chain sampler to be implemented
+without an explicit algorithm decision. This amendment records the correction
+before the frozen #51 acceptance protocol or any acceptance replicate exists.
+No acceptance result was inspected in making this choice.
+
+Options considered:
+
+| Option | Property | Disqualifier or concern |
+|---|---|---|
+| Thin one Langevin or Metropolis trajectory | Familiar dynamical simulation | Observations remain serially dependent and finite burn-in does not provide exact stationary ground truth |
+| Run one finite Markov chain per observation | Removes cross-observation dependence | Finite-chain convergence still makes the declared stationary density approximate and tuning-dependent |
+| Numerically invert a discretized stationary CDF | Independent draws | Grid truncation and resolution become unrecorded approximation parameters |
+| Rejection sample with a standard-Cauchy proposal | Independent exact stationary draws with an analytic envelope and no new dependency | Less directly connected to the deferred longitudinal dynamics simulator |
+
+Criteria, fixed before #51 evidence:
+
+- draws are independent and exactly target
+  \(p(x) \propto \exp[-\beta(x^2-1)^2]\);
+- no burn-in, thinning, convergence diagnostic, grid, or hidden tuning parameter
+  can alter the answer key;
+- the sampler is deterministic under the declared seed and needs no new package
+  dependency;
+- the generated quasi-potential remains in the Stage 2 units
+  \(-\log p(x)=\beta(x^2-1)^2+C\);
+- output remains labelled disclosed, non-evidentiary calibration.
+
+**Chosen:** standard-Cauchy rejection sampling. For proposal density
+\(q(x)=1/[\pi(1+x^2)]\), the unnormalised target-to-proposal ratio is
+
+\[
+\pi(1+y)\exp[-\beta(y-1)^2], \qquad y=x^2.
+\]
+
+Its maximum occurs at
+\(y_*=\sqrt{1+1/(2\beta)}\), which gives an analytic finite envelope constant.
+Accepting proposals against that envelope therefore produces independent exact
+stationary draws without estimating the target normalising constant.
+
+Consequences:
+
+- `n_steps`, burn-in, thinning, and integration-step parameters do not belong to
+  the generic cross-sectional K=1 control;
+- Langevin/Fokker--Planck trajectory simulation remains a separate deferred
+  longitudinal capability and must not be inferred from this sampler;
+- changing the target density or proposal/envelope requires a new ADR amendment
+  before calibration or acceptance output is generated;
+- #51 may use this generator only after freezing its own disjoint calibration
+  and acceptance seeds and metrics.
+
 ---
 
 ## What "bifurcation topology" means in this context

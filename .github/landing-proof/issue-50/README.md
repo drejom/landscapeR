@@ -14,5 +14,18 @@ Rscript -e 'pkgdown::build_site()'
   fitted calibration-only quasi-potential. Critical-point classification is
   deliberately omitted because uncertainty is not yet estimated.
 
-They demonstrate that the K=1 implementation visibly landed. They are not
-immutable acceptance evidence; #51 and #67 remain the K=1 acceptance gates.
+The same disclosed seed produces this rendered diagnostics table:
+
+| Diagnostic | Observed calibration output |
+|---|---:|
+| Evidence status | `non_evidentiary_calibration` |
+| Stage 1 strategy | `svd` |
+| Subspace angle | 1.431° |
+| Mean well-location error | 0.085 |
+| Barrier-location error | 0.062 |
+| Barrier-height error | 0.223 |
+
+The table deliberately makes no pass, acceptance, or eligibility judgement.
+Together with the figures, it demonstrates that the K=1 implementation visibly
+landed. These are not immutable acceptance evidence; #51 and #67 remain the K=1
+acceptance gates.

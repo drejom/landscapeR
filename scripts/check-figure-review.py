@@ -26,14 +26,14 @@ PLACEHOLDERS = {
 CURRENT_DOCUMENTATION_PREFIXES = ("vignettes/",)
 CURRENT_DOCUMENTATION_FILES = {"README.md"}
 OBVIOUSLY_QUALIFYING_PREFIXES = (
-    ".github/", "R/", "data-raw/", "docs/agents/", "hooks/", "man/",
+    ".github/", "data-raw/", "docs/agents/", "hooks/", "man/",
     "scripts/", "vignettes/",
 )
 OBVIOUSLY_QUALIFYING_FILES = {
     "DESCRIPTION", "NAMESPACE", "README.md", "_pkgdown.yml",
     "install-hooks.sh",
 }
-CURRENT_DOCS_REQUIRED_PREFIXES = ("R/", "data-raw/")
+CURRENT_DOCS_REQUIRED_PREFIXES = ("data-raw/", "man/")
 CURRENT_DOCS_REQUIRED_FILES = {"DESCRIPTION", "NAMESPACE"}
 
 
@@ -169,7 +169,7 @@ def validate_required_proof(body: str, files: list[str]) -> int:
     )
     if unaffected and docs_required:
         return fail(
-            "An R, prepared-data, DESCRIPTION, or NAMESPACE change requires current documentation."
+            "A public API/documentation or prepared-data change requires current documentation."
         )
     if not visual_review_has_artifact(body):
         return fail(

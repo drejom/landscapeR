@@ -104,10 +104,11 @@ Before code review:
   branch deletion.
 - All 24 open issues contain a required visual-proof declaration or an explicit
   research/decision-only exemption whose implementation expiry is stated.
-- Policy CLI contract tests: 19 passed, including malformed templates,
+- Policy CLI contract tests: 21 passed, including malformed templates,
   unavailable comparison refs, artifact presence, public/scientific R changes,
-  prepared-data changes, developer workflows, and both exemption categories.
-- R tests: 450 passed; focused K=1 tests: 107 passed; focused Stage 2 plotting
+  internal-only R exemptions, prepared-data changes, developer workflows, and
+  both exemption categories.
+- R tests: 454 passed; focused K=1 tests: 111 passed; focused Stage 2 plotting
   tests: 6 passed.
 - `R CMD check --no-manual` passes code, documentation, examples, tests, and
   package vignettes. The local environment still reports the installed
@@ -121,5 +122,9 @@ Before code review:
   check pass.
 - The first two-axis review found public-R exemption, artifact-verification,
   malformed/ref test, raw-validation, metadata-access, and uncertainty-display
-  gaps. Commit `aa1937b` addresses those findings. A final clean review is
+  gaps. Commit `aa1937b` addressed those findings.
+- The final review found an over-broad private-R policy, stale checks after PR
+  body edits, missing PR-rendered calibration diagnostics, typed
+  `synthetic_control()` validation, and an unrecorded exact-stationary sampler
+  choice. The follow-up review-fix commit addresses all five; a clean rerun is
   required before merge.
