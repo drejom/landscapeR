@@ -34,8 +34,8 @@ migrate_analysis_specification(
 
 \item{continuous_direction}{continuous target direction}
 
-\item{proposal_digest}{digest of the ranked proposal that informed a legacy
-manual component}
+\item{proposal_digest}{optional digest of an existing ranked proposal;
+required when migrating a legacy manual component}
 
 \item{proposal_decision}{\code{"accepted"} or \code{"overridden"}}
 

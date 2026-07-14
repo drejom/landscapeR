@@ -1,10 +1,10 @@
 # Implementation plan — issue #61 AnalysisSpecification v2
 
-> **Execution record, not scheduling authority.** The root
-> [`ROADMAP.md`](../../ROADMAP.md) owns package order. This file records the
-> approved issue #61 implementation and will be marked historical on completion.
+> **Historical implementation record.** Status and sequencing in this file
+> describe its originating work and are superseded for current scheduling by
+> the root [`ROADMAP.md`](../../ROADMAP.md).
 
-**Status:** implementation complete; two-axis code review pending
+**Status:** complete; two-axis code review completed before PR
 
 ## Objective
 
@@ -71,9 +71,9 @@ The PR will include:
 - claim status: schema/API implementation proof only; no scientific acceptance
   claim.
 
-## Pre-review verification
+## Completion verification
 
-- 523 R assertions passed.
+- 522 R assertions passed.
 - 35 repository policy/checker tests passed.
 - ADR coverage, registry compliance, roadmap/live-issue integrity, and diff
   whitespace checks passed.
@@ -81,3 +81,18 @@ The PR will include:
   lifecycle table rendered in the development log.
 - Full package build/check completed with only the existing local
   `MultiAssayExperiment` R-version warning and benchmark-path NOTE.
+
+## Pre-PR two-axis code review
+
+`/code-review` was pinned to `origin/main...HEAD` with issue #61 and ADR 0008 as
+the specification sources. The runtime had exhausted its subagent spawn quota,
+so the Standards and Spec axes were completed independently in the parent as the
+required fallback rather than omitted.
+
+- **Standards:** one implementation-coupled test reached through the private
+  `.analysis_spec_provenance()` helper. It was changed to inspect provenance
+  through the public `run_pipeline()` result seam. No unresolved standards or
+  smell findings remain.
+- **Spec:** no missing, incorrect, or out-of-scope behavior found after mapping
+  every issue #61 requirement to constructor, migration fixture, boundary,
+  provenance, documentation, and landing-proof artifacts.

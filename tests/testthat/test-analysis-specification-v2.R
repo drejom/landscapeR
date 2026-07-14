@@ -178,12 +178,6 @@ test_that("canonical identity includes target and confirmation provenance", {
         canonical_digest(accepted),
         canonical_digest(overridden)
     ))
-    provenance <- landscapeR:::.analysis_spec_provenance(accepted)
-    expect_identical(provenance$lifecycle, "confirmed")
-    expect_identical(provenance$target_type, "binary")
-    expect_identical(provenance$selected_component, 1L)
-    expect_identical(provenance$proposal_decision, "accepted")
-    expect_false("manual_component" %in% names(provenance))
 })
 
 test_that("v1 target-only migration requires explicit missing direction", {
@@ -354,9 +348,13 @@ test_that("run_pipeline uses selected_component from a confirmed specification",
     expect_identical(result@status, "success")
     expect_identical(metadata(result@value)$stage2$params$component, 2L)
     recorded <- result@value@provenance[[1L]]@params$analysis_specification
+    expect_identical(recorded$lifecycle, "confirmed")
     expect_identical(recorded$target_field, "planted_group")
+    expect_identical(recorded$target_type, "binary")
     expect_identical(recorded$selected_component, 2L)
+    expect_identical(recorded$proposal_decision, "accepted")
     expect_identical(recorded$digest, canonical_digest(confirmed))
+    expect_false("manual_component" %in% names(recorded))
 })
 
 test_that("run_pipeline validates declared target values and component bounds", {

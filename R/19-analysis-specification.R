@@ -418,8 +418,8 @@ analysis_specification <- function(
 #' @param reference_level,comparison_level binary target direction
 #' @param ordered_levels ordered target direction
 #' @param continuous_direction continuous target direction
-#' @param proposal_digest digest of the ranked proposal that informed a legacy
-#'   manual component
+#' @param proposal_digest optional digest of an existing ranked proposal;
+#'   required when migrating a legacy manual component
 #' @param proposal_decision \code{"accepted"} or \code{"overridden"}
 #' @param analyst_rationale non-empty human rationale for a legacy component
 #' @return a validated v2 \code{AnalysisSpecification}
