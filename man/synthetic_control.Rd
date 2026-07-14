@@ -19,7 +19,7 @@ synthetic_control(
 
 \item{p}{integer number of features / genes per layer}
 
-\item{K}{integer number of layers (>= 2)}
+\item{K}{integer number of layers (>= 1)}
 
 \item{signal}{numeric singular value of the shared component (must be > 0)}
 

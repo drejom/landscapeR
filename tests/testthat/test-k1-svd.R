@@ -1,0 +1,131 @@
+test_that("synthetic_control supports one omic layer", {
+    std <- synthetic_control(n = 12L, p = 30L, K = 1L,
+                             signal = 40, seed = 101L)
+
+    expect_s4_class(std, "StateTransitionData")
+    expect_s4_class(std@ground_truth, "SubspaceGroundTruth")
+    expect_length(experiments(std), 1L)
+    expect_identical(names(experiments(std)), "layer1")
+    expect_length(std@ground_truth@exclusive, 1L)
+    expect_identical(metadata(std)$control$K, 1L)
+    expect_identical(std@sampling_design@kind, "cross_sectional")
+})
+
+test_that("registered svd decomposes one layer into the common result contract", {
+    expect_true("Decomposer:svd" %in% list_strategies("Decomposer"))
+
+    std <- synthetic_control(n = 12L, p = 30L, K = 1L,
+                             signal = 40, seed = 102L)
+    ctor <- get_strategy("Decomposer", "svd")
+    result <- suppressWarnings(decompose(ctor(), std))
+
+    expect_s4_class(result, "StageResult")
+    expect_identical(result@status, "success")
+    expect_s4_class(metadata(result@value)$stage1, "DecompositionResult")
+
+    decomposition <- metadata(result@value)$stage1
+    expect_identical(dr_k(decomposition), 6L)
+    expect_equal(dim(dr_V_k(decomposition)), c(30L, 6L))
+    expect_equal(dim(dr_sigma_k(decomposition)), c(1L, 6L))
+    expect_length(dr_coords_k(decomposition), 1L)
+    expect_equal(dim(dr_coords_k(decomposition)[[1L]]), c(12L, 6L))
+    expect_length(shared_axis(decomposition), 30L)
+})
+
+test_that("svd typed-fails outside its exactly-one-layer capability", {
+    std <- synthetic_control(n = 12L, p = 30L, K = 2L,
+                             signal = 40, seed = 103L)
+    ctor <- get_strategy("Decomposer", "svd")
+    result <- decompose(ctor(), std)
+
+    expect_s4_class(result, "StageResult")
+    expect_identical(result@status, "failure")
+    expect_match(result@reason, "svd requires exactly 1 layer", fixed = TRUE)
+})
+
+test_that("hogsvd_averaged does not silently handle K=1", {
+    std <- synthetic_control(n = 12L, p = 30L, K = 1L,
+                             signal = 40, seed = 104L)
+    ctor <- get_strategy("Decomposer", "hogsvd_averaged")
+    result <- decompose(ctor(), std)
+
+    expect_s4_class(result, "StageResult")
+    expect_identical(result@status, "failure")
+    expect_match(result@reason, "requires at least 2 layers", fixed = TRUE)
+})
+
+test_that("svd deterministically recovers planted K=1 subspace", {
+    make_control <- function() {
+        synthetic_control(
+            n = 20L, p = 60L, K = 1L,
+            signal = 100, signal_spec = 5,
+            noise_sd = 0.001, seed = 105L
+        )
+    }
+
+    benchmark_1 <- suppressWarnings(recovery_benchmark(make_control(), "svd"))
+    benchmark_2 <- suppressWarnings(recovery_benchmark(make_control(), "svd"))
+
+    expect_lt(benchmark_1$angle_deg, 1)
+    expect_identical(benchmark_1$angle_deg, benchmark_2$angle_deg)
+    expect_identical(benchmark_1$signal_above_bbp, TRUE)
+})
+
+test_that("svd records truthful deterministic provenance", {
+    std <- synthetic_control(n = 15L, p = 40L, K = 1L,
+                             signal = 50, seed = 106L)
+    input_hash <- digest::digest(std)
+    ctor <- get_strategy("Decomposer", "svd")
+
+    result_1 <- suppressWarnings(decompose(ctor(), std))
+    result_2 <- suppressWarnings(decompose(ctor(), std))
+
+    expect_identical(result_1@status, "success")
+    expect_length(result_1@provenance, 1L)
+    expect_length(result_1@value@provenance, 1L)
+
+    provenance <- result_1@provenance[[1L]]
+    expect_identical(provenance@implementation, "svd")
+    expect_identical(provenance@contract, "Decomposer")
+    expect_identical(provenance@params$K, 1L)
+    expect_identical(provenance@params$center, TRUE)
+    expect_identical(provenance@params$k_components, 6L)
+    expect_identical(unname(provenance@input_hashes[["data"]]), input_hash)
+    expect_identical(result_1@value, result_2@value)
+})
+
+test_that("K=1 double-well constructor carries subspace and potential truth", {
+    std <- synthetic_k1_double_well_control(
+        n = 120L, p = 50L, noise_sd = 0.02,
+        n_steps = 300L, seed = 107L
+    )
+
+    expect_s4_class(std, "StateTransitionData")
+    expect_s4_class(std@ground_truth, "K1DoubleWellGroundTruth")
+    expect_s4_class(std@ground_truth@subspace, "SubspaceGroundTruth")
+    expect_s4_class(std@ground_truth@potential, "PotentialGroundTruth")
+    expect_length(experiments(std), 1L)
+    expect_equal(dim(assay(experiments(std)[[1L]])), c(50L, 120L))
+    expect_identical(std@sampling_design@kind, "cross_sectional")
+
+    control <- metadata(std)$k1_double_well_control
+    expect_identical(control$calibration_only, TRUE)
+    expect_identical(control$evidence_status, "non_evidentiary_calibration")
+    expect_identical(control$seed, 107L)
+})
+
+test_that("K=1 double-well calibration runs SVD and Stage 2 without judging acceptance", {
+    calibration <- suppressWarnings(k1_double_well_calibration(
+        n = 160L, p = 50L, noise_sd = 0.02,
+        n_steps = 400L, seed = 108L
+    ))
+
+    expect_identical(calibration$status, "success")
+    expect_identical(calibration$evidence_status, "non_evidentiary_calibration")
+    expect_identical(calibration$decomposer, "svd")
+    expect_identical(calibration$dynamics_estimator, "kde_logdensity")
+    expect_true(is.finite(calibration$subspace_angle_deg))
+    expect_true(is.finite(calibration$well_error))
+    expect_true(is.finite(calibration$barrier_error))
+    expect_false(any(c("pass", "accepted", "eligible") %in% names(calibration)))
+})

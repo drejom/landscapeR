@@ -30,7 +30,7 @@
 #'
 #' @param n integer number of samples (columns in the omic matrix convention)
 #' @param p integer number of features / genes per layer
-#' @param K integer number of layers (>= 2)
+#' @param K integer number of layers (>= 1)
 #' @param signal numeric singular value of the shared component (must be > 0)
 #' @param signal_spec numeric singular value of each layer-specific component
 #' @param noise_sd numeric standard deviation of the additive i.i.d. Gaussian noise
@@ -47,7 +47,7 @@ synthetic_control <- function(n        = 40L,
     stopifnot(
         is.numeric(n), n >= 2L,
         is.numeric(p), p >= 2L,
-        is.numeric(K), K >= 2L,
+        is.numeric(K), K >= 1L,
         is.numeric(signal), signal > 0,
         is.numeric(noise_sd), noise_sd > 0
     )
@@ -123,6 +123,257 @@ synthetic_control <- function(n        = 40L,
     metadata(std) <- md
 
     std
+}
+
+# ---------------------------------------------------------------------------
+# Generic K=1 cross-sectional double-well calibration control
+# ---------------------------------------------------------------------------
+
+#' Generate a K=1 expression control with a planted double-well coordinate
+#'
+#' Draws cross-sectional coordinates from the known double-well Langevin
+#' control, embeds them along one planted feature direction in a single
+#' high-dimensional expression matrix, and retains both subspace and potential
+#' ground truth. This is a disclosed calibration/development control, never an
+#' acceptance artifact (ADR 0016).
+#'
+#' @param n integer number of independent cross-sectional observations
+#' @param p integer number of expression features
+#' @param noise_sd numeric expression noise standard deviation
+#' @param beta numeric inverse temperature for the double-well simulation
+#' @param n_steps integer Langevin steps between collected observations
+#' @param dt numeric Langevin integration step size
+#' @param seed integer reproducibility seed
+#' @return single-layer \code{StateTransitionData} with
+#'   \code{K1DoubleWellGroundTruth}
+#' @export
+synthetic_k1_double_well_control <- function(n = 200L,
+                                              p = 100L,
+                                              noise_sd = 0.05,
+                                              beta = 2,
+                                              n_steps = 1000L,
+                                              dt = 0.01,
+                                              seed = 42L) {
+    stopifnot(
+        is.numeric(n), n >= 2L,
+        is.numeric(p), p >= 2L,
+        is.numeric(noise_sd), noise_sd > 0,
+        is.numeric(beta), beta > 0,
+        is.numeric(n_steps), n_steps >= 1L,
+        is.numeric(dt), dt > 0
+    )
+    n <- as.integer(n)
+    p <- as.integer(p)
+    seed <- as.integer(seed)
+
+    potential_control <- synthetic_potential_control(
+        n = n,
+        beta = beta,
+        n_steps = n_steps,
+        dt = dt,
+        seed = seed
+    )
+    x_raw <- as.numeric(colData(potential_control)$x_coord)
+    center_shift <- mean(x_raw)
+    x_coord <- x_raw - center_shift
+
+    # Use a separate deterministic stream for the expression observation model.
+    setup_rng(seed + 1L)
+    v_true <- .unit_rnorm(p)
+    X <- outer(x_coord, v_true) +
+        matrix(rnorm(n * p, sd = noise_sd), nrow = n, ncol = p)
+
+    sample_ids <- paste0("s", seq_len(n))
+    feature_ids <- paste0("g", seq_len(p))
+    expression <- t(X)
+    rownames(expression) <- feature_ids
+    colnames(expression) <- sample_ids
+    experiment <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(expression = expression)
+    )
+
+    col_df <- S4Vectors::DataFrame(
+        row.names = sample_ids,
+        x_coord = x_coord,
+        source_x_coord = x_raw,
+        well = ifelse(x_raw < 0, "left", "right")
+    )
+
+    subspace_truth <- new("SubspaceGroundTruth",
+        shared = matrix(v_true, ncol = 1L,
+                        dimnames = list(feature_ids, "target_axis")),
+        exclusive = list(),
+        angles = numeric(0L)
+    )
+    potential_truth <- new("PotentialGroundTruth",
+        potential = function(x) ((x + center_shift)^2 - 1)^2,
+        wells = matrix(
+            c(-1 - center_shift, 0, 1 - center_shift, 0),
+            ncol = 2L,
+            byrow = TRUE,
+            dimnames = list(c("left", "right"), c("x", "U"))
+        ),
+        barrier = 1
+    )
+    truth <- new("K1DoubleWellGroundTruth",
+        subspace = subspace_truth,
+        potential = potential_truth
+    )
+
+    std <- StateTransitionData(
+        experiments = list(layer1 = experiment),
+        colData = col_df,
+        ground_truth = truth,
+        sampling_design = cross_sectional()
+    )
+    md <- metadata(std)
+    md$k1_double_well_control <- list(
+        n = n,
+        p = p,
+        K = 1L,
+        noise_sd = noise_sd,
+        beta = beta,
+        n_steps = as.integer(n_steps),
+        dt = dt,
+        seed = seed,
+        expression_seed = seed + 1L,
+        coordinate_center = center_shift,
+        true_wells = c(-1 - center_shift, 1 - center_shift),
+        true_barrier = -center_shift,
+        true_barrier_height = 1,
+        calibration_only = TRUE,
+        evidence_status = "non_evidentiary_calibration"
+    )
+    metadata(std) <- md
+    std
+}
+
+#' Run the generic K=1 double-well calibration path
+#'
+#' Runs the registered single-layer SVD and cross-sectional dynamics strategy
+#' on one disclosed synthetic control. The return value contains recovery
+#' diagnostics but deliberately contains no acceptance/pass judgement.
+#'
+#' @inheritParams synthetic_k1_double_well_control
+#' @param decomposer character registered K=1 Decomposer name
+#' @param dynamics_estimator character registered cross-sectional
+#'   DynamicsEstimator name
+#' @return named list of labelled non-evidentiary calibration diagnostics
+#' @export
+k1_double_well_calibration <- function(n = 200L,
+                                        p = 100L,
+                                        noise_sd = 0.05,
+                                        beta = 2,
+                                        n_steps = 1000L,
+                                        dt = 0.01,
+                                        seed = 42L,
+                                        decomposer = "svd",
+                                        dynamics_estimator = "kde_logdensity") {
+    std <- synthetic_k1_double_well_control(
+        n = n,
+        p = p,
+        noise_sd = noise_sd,
+        beta = beta,
+        n_steps = n_steps,
+        dt = dt,
+        seed = seed
+    )
+    evidence_status <- metadata(std)$k1_double_well_control$evidence_status
+
+    decomposition_result <- decompose(get_strategy("Decomposer", decomposer)(), std)
+    if (decomposition_result@status != "success")
+        return(list(
+            status = "failure",
+            evidence_status = evidence_status,
+            decomposer = decomposer,
+            dynamics_estimator = dynamics_estimator,
+            reason = decomposition_result@reason
+        ))
+
+    decomposed <- decomposition_result@value
+    stage1 <- metadata(decomposed)$stage1
+    v_true <- std@ground_truth@subspace@shared[, 1L]
+    v_hat <- shared_axis(stage1)
+    cosine <- sum(v_true * v_hat) /
+        (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))
+    cosine_abs <- min(1, abs(cosine))
+    subspace_angle <- acos(cosine_abs) * 180 / pi
+
+    # Component sign is mathematically arbitrary. Synthetic truth supplies the
+    # calibration orientation until the real-data proposal workflow exists.
+    orientation <- if (cosine < 0) -1 else 1
+    if (orientation < 0) {
+        V_k <- dr_V_k(stage1)
+        V_k[, 1L] <- -V_k[, 1L]
+        coords_k <- dr_coords_k(stage1)
+        coords_k[[1L]][, 1L] <- -coords_k[[1L]][, 1L]
+        stage1 <- DecompositionResult(
+            V_star = V_k[, 1L],
+            sigma = dr_sigma(stage1),
+            coords = list(drop(coords_k[[1L]][, 1L])),
+            warnings = dr_warnings(stage1),
+            V_k = V_k,
+            sigma_k = dr_sigma_k(stage1),
+            coords_k = coords_k,
+            k = dr_k(stage1)
+        )
+        md <- metadata(decomposed)
+        md$stage1 <- stage1
+        metadata(decomposed) <- md
+    }
+
+    dynamics_result <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", dynamics_estimator)(),
+        decomposed
+    )
+    if (dynamics_result@status != "success")
+        return(list(
+            status = "failure",
+            evidence_status = evidence_status,
+            decomposer = decomposer,
+            dynamics_estimator = dynamics_estimator,
+            subspace_angle_deg = subspace_angle,
+            reason = dynamics_result@reason
+        ))
+
+    stage2 <- metadata(dynamics_result@value)$stage2
+    control <- metadata(std)$k1_double_well_control
+    well_error <- if (length(stage2$wells) >= 2L) {
+        mean(vapply(control$true_wells, function(well) {
+            min(abs(stage2$wells - well))
+        }, numeric(1L)))
+    } else {
+        NA_real_
+    }
+    barrier_error <- if (length(stage2$barriers) >= 1L) {
+        min(abs(stage2$barriers - control$true_barrier))
+    } else {
+        NA_real_
+    }
+    barrier_heights <- unlist(lapply(
+        stage2$barrier_heights,
+        function(height) height[!is.na(height)]
+    ))
+    barrier_height_error <- if (length(barrier_heights)) {
+        min(abs(barrier_heights - control$true_barrier_height))
+    } else {
+        NA_real_
+    }
+
+    list(
+        status = "success",
+        evidence_status = evidence_status,
+        decomposer = decomposer,
+        dynamics_estimator = dynamics_estimator,
+        seed = as.integer(seed),
+        subspace_angle_deg = subspace_angle,
+        orientation_flipped = orientation < 0,
+        well_error = well_error,
+        barrier_error = barrier_error,
+        barrier_height_error = barrier_height_error,
+        n_wells_found = length(stage2$wells),
+        n_barriers_found = length(stage2$barriers)
+    )
 }
 
 # ---------------------------------------------------------------------------

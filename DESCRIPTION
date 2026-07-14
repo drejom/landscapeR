@@ -59,6 +59,7 @@ Collate:
     '10-rng.R'
     '11-runner.R'
     '12-stage1-hogsvd.R'
+    '12a-stage1-svd.R'
     '13-stage0-synthetic.R'
     '14-stage1-plots.R'
     '15-stage2-kde.R'
