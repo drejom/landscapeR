@@ -51,6 +51,8 @@
 | **point of no return** | Informal name for an unstable critical point at which stochastic transitions become highly likely and disease progression accelerates; equivalent to the transition-state critical point c₂ in a double-well | tipping point (acceptable in non-technical contexts) |
 | **double-well potential** | A quasi-potential with exactly two stable critical points separated by one unstable critical point; characterises two-state systems (e.g. AML: healthy and leukemic) | two-well landscape |
 | **three-well potential** | A quasi-potential with three stable and two unstable critical points; characterises three-state systems (e.g. CML: Early, Transition, Late) | tri-stable landscape, tristable potential |
+| **bifurcation topology** | A quasi-potential with one shared early region of marginal stability that resolves into two distinct wells as a function of developmental progression or condition; produces a Y-shape in a PC1/PC2 biplot. Characterises the Pogona TSD dataset. Outside the scope of the current 1D KDE Stage 2 estimator; requires a 2D or time-aware estimator and its own ADR and Stage 0 control ladder. | branching potential, Y-shape potential |
+| **confounder axis** | A Stage 1 component that captures a declared nuisance variable (e.g. age, batch) rather than the target biological contrast. In the AML Cancer Research 2020 reference result, PC1 is a confounder axis (age); PC2 is the disease axis. The component-selection proposal must rank the target biological axis above confounder axes. | nuisance component, batch component |
 
 ## Pipeline architecture
 

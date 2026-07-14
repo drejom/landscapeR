@@ -57,12 +57,20 @@ A numeric criterion (e.g. maximum tolerated error in recovered barrier height) d
 _Avoid_: tolerance, cutoff, `[tbd]` (the placeholder — these must become real numbers)
 
 **double-well control**:
-A Stage 0 synthetic control whose ground-truth quasi-potential has exactly two wells — the simplest non-trivial case and the baseline validation target.
+A Stage 0 synthetic control whose ground-truth quasi-potential has exactly two wells — the simplest non-trivial case and the baseline validation target. Must be validated for K=1 before any K=1 real-data analysis (AML, CML mRNA, Pogona).
 _Avoid_: two-state control
 
 **three-well control**:
 A Stage 0 synthetic control whose ground-truth quasi-potential has three wells — required to validate Stage 2 on CML-like landscapes.
 _Avoid_: tri-stable control
+
+**bifurcation control**:
+A Stage 0 synthetic control whose ground-truth topology is a Y-shape: one shared early attractor that splits into two distinct wells as a function of a developmental or condition variable. Characterises the Pogona TSD dataset (undifferentiated early embryos → male/female attractors). This topology is outside the current 1D KDE Stage 2 estimator scope and requires a separate ADR before real-data use.
+_Avoid_: branching control, split control
+
+**K=1 confounder-separation control**:
+A Stage 0 control with a single omic layer (K=1) where a planted nuisance variable (e.g. age) dominates PC1 and the planted target biological axis appears at PC2. Validates that the component-selection proposal correctly ranks the disease axis over the confounder. Load-bearing for the AML reference recapitulation (Cancer Research 2020: PC1=age, PC2=disease).
+_Avoid_: confounded control (too generic)
 
 ### Ground truth classes
 
