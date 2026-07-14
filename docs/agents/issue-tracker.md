@@ -2,6 +2,18 @@
 
 Issues for this project live in **GitHub Issues** at `drejom/landscapeR`.
 
+## Scheduling authority
+
+GitHub issues specify individual deliverables; they are not the work schedule.
+The root [`ROADMAP.md`](../../ROADMAP.md) is the sole authority for milestone
+order, dependencies, active/queued/parked state, and the next task. Never select
+work from issue number, label, recency, or an archived implementation plan.
+
+When an issue or PR changes sequencing, blocking status, milestone scope, or the
+canonical roadmap issue register, update `ROADMAP.md` in the same PR. A closing
+PR marks its row `complete on merge` and advances exactly one next task before
+merge. A new issue or ADR does not reorder work by itself.
+
 Use the `gh` CLI for all read/write operations:
 
 ```bash

@@ -18,15 +18,16 @@ knitr::opts_chunk$set(
 library(landscapeR)
 ```
 
-> **This is a living document, not an acceptance-evidence report.** It tracks
-> implementation progress and links to the governing protocols. Acceptance
-> evidence is published only from immutable, hash-verified benchmark artifacts.
+> **This is a living implementation record, not the package schedule or an
+> acceptance-evidence report.** The root
+> [ROADMAP](https://github.com/drejom/landscapeR/blob/main/ROADMAP.md) is the
+> single scheduling authority. This article shows current user-visible behavior
+> and links to implementation/evidence records. Acceptance evidence is published
+> only from immutable, hash-verified benchmark artifacts.
 
 ---
 
-## Roadmap
-
-### Implemented
+## Current implementation status
 
 | Stage | Name | Status |
 |---|---|---|
@@ -38,19 +39,9 @@ library(landscapeR)
 | 1+ | Component gallery and legacy `project_into()` workflow | ⚠️ Exploratory/legacy; #24 is blocked on the selected heterogeneous strategy |
 | 2 | KDE log-density inversion and constrained polynomial smooth | ⚠️ Implemented; ADR 0002 remains provisional-accepted |
 
-### Planned
-
-| Stage | Name | Notes |
-|---|---|---|
-| 0.5 | Archetype classifier | `ranger`-based; assigns samples to known archetypes |
-| 0.75 | Distributional fit assessment | SBI backend via `reticulate`; replaces ad-hoc BC threshold |
-| 1 | New heterogeneous-candidate decision | Requires a new ADR and frozen protocol; v2 holdout cannot be reused for tuning |
-| 1 | HO-GSVD rank-deficiency handling | Kempf algorithm; candidate only after the current comparison decision |
-| 2 | Full Stage 0 recovery and negative-control ladder | Establish ADR 0002 thresholds and pass rates |
-| 2 | Minimum barrier height filter | Candidate only after Stage 0 evidence |
-| 2 | Fokker-Planck time-to-transition | Requires a separately validated longitudinal strategy |
-| 2 | Survival prediction | Requires validated real-data applicability and confirmation |
-| — | Real-data confirmation workflows | Only after the generic Stage 0 and applicability gates pass |
+Future sequencing, dependencies, and parked capabilities are maintained only in
+[ROADMAP.md](https://github.com/drejom/landscapeR/blob/main/ROADMAP.md), so this
+article does not duplicate a second planned-work list.
 
 ### Biological instantiations
 
@@ -188,7 +179,7 @@ objects are deliberately **not** included in this public repository, so the
 old AML chunks are removed rather than presented as runnable analysis.
 
 They are also not evidence for the package's present claims. Under the
-[evidence-first validation plan](https://github.com/drejom/landscapeR/blob/main/docs/implementation-plan-stage0-validation.md),
+[evidence-first validation plan](https://github.com/drejom/landscapeR/blob/main/docs/plans/implementation-plan-stage0-validation.md),
 real-data Stage 2 inference is blocked until the frozen generic Stage 0 ladder
 has passed, ADR 0002 has finalized thresholds, and a separate applicability and
 confirmation workflow has been specified. Any future AML/CML article will

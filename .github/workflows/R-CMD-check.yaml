@@ -9,6 +9,7 @@ name: R-CMD-check
 
 permissions:
   contents: read
+  issues: read
 
 jobs:
   R-CMD-check:
@@ -53,6 +54,13 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Roadmap integrity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number > /tmp/open-issues.json
+          python3 scripts/check-roadmap.py --open-issues-json /tmp/open-issues.json
 
       - name: ADR coverage
         run: python3 scripts/check-adr-coverage.py

@@ -9,17 +9,18 @@ multi-omic contexts.
 
 ## What it does
 
-1. **Stage 1 — Comparative decomposition**: builds a shared state space across
-   omic layers whose axes explicitly contrast conditions (disease vs control,
-   temperature, genotype). Batch effects and confounders are separated from
-   biological signal by design.
+1. **Stage 1 — decomposition**: builds candidate state-space axes from one or
+   more omic layers. Biological target and nuisance meaning is assigned only
+   through the declared metadata-association, proposal, and human-confirmation
+   workflow; unsupervised decomposition does not label an axis by itself.
 
 2. **Stage 2 — Quasi-potential dynamics**: fits U(x) = −log p(x) on those
    coordinates and reads out critical points (wells, barriers) and barrier heights —
    the tipping points and irreversibility of state transitions.
 
-A gallery diagnostic (`plot_components()`) identifies which component carrying
-the state-transition signal without requiring prior knowledge of the biology.
+Component galleries are descriptive diagnostics. The planned structured
+metadata atlas/proposal workflow—not a plot heuristic—will recommend a target
+biological axis for human confirmation.
 
 ## Install
 
@@ -38,24 +39,27 @@ automatically via `pak`.
 ```r
 library(landscapeR)
 
-# Synthetic double-well ground truth
-std  <- synthetic_potential_control(n = 80L, seed = 42L)
+# Single-omic-layer synthetic double-well calibration control
+std <- synthetic_k1_double_well_control(n = 80L, p = 100L, seed = 42L)
 
-# Stage 1
-ctor  <- get_strategy("Decomposer", "hogsvd_averaged")
-std1  <- decompose(ctor(), std)@value
-plot_components(std1, colour_by = "group")
+# Stage 1: explicit registered SVD
+svd_ctor <- get_strategy("Decomposer", "svd")
+std1 <- decompose(svd_ctor(), std)@value
+plot_spectrum(std1)
 
-# Stage 2
-dctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
-std2  <- estimate_dynamics(dctor(), std1)@value
-plot_potential(std2)
+# Stage 2: cross-sectional calibration output only
+dynamics_ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+std2 <- estimate_dynamics(dynamics_ctor(), std1)@value
+plot_potential(std2)  # critical-point classifications are off by default
 ```
 
 ## Status
 
-Active development — see the [pkgdown site](https://drejom.github.io/landscapeR/)
-for the current development log and roadmap.
+Active development. [`ROADMAP.md`](https://github.com/drejom/landscapeR/blob/main/ROADMAP.md)
+is the single authoritative run sheet for scope, sequencing, dependencies, and
+the next task. The
+[pkgdown site](https://drejom.github.io/landscapeR/) presents current package
+behavior and evidence, not the work schedule.
 
 ## Reference
 

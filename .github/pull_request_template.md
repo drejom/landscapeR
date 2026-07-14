@@ -60,3 +60,4 @@
 - [ ] Figure axes and labels are human-readable
 - [ ] Scientific captions state what is plotted, what any threshold means, and what the reader should conclude
 - [ ] ADR filed or amended for any non-trivial algorithm, dependency, or cross-cutting decision
+- [ ] `ROADMAP.md` updated when this PR changes the next task, dependencies, milestone scope/state, or canonical issue register

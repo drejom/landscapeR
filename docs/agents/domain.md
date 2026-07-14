@@ -2,10 +2,11 @@
 
 ## Layout
 
-This repo uses a **multi-context** layout. `CONTEXT-MAP.md` at the root points to per-context files under `context/`. Shared architectural decisions live in `decisions/`.
+This repo uses a **multi-context** layout. `CONTEXT-MAP.md` at the root points to per-context files under `context/`. Shared architectural decisions live in `decisions/`. `ROADMAP.md` alone owns scheduling.
 
 ```
 /
+├── ROADMAP.md              ← authoritative scope, sequence, gates, next task
 ├── CONTEXT-MAP.md          ← index of all bounded contexts
 ├── context/                ← per-context CONTEXT.md files
 ├── decisions/              ← shared ADRs (all stages)
@@ -16,7 +17,8 @@ This repo uses a **multi-context** layout. `CONTEXT-MAP.md` at the root points t
 
 ## Reading rules for agents
 
-- Load `CONTEXT-MAP.md` first to find the relevant context file.
+- Read `ROADMAP.md` before selecting work; issues, contexts, ADRs, plans, and archives do not independently set priority.
+- Load `CONTEXT-MAP.md` to find the relevant context file.
 - Read `UBIQUITOUS_LANGUAGE.md` for canonical term definitions before writing any issue body, brief, or comment.
 - Read `decisions/README.md` before recommending any algorithm or dependency choice — ADRs are mandatory before code.
 - ADR status meanings: `accepted` = settled, `provisional-accepted` = in use but thresholds TBD, `provisional` = under evaluation.

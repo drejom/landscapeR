@@ -18,6 +18,14 @@ assignees: ""
 
 <!-- Reference governing ADRs and state what this work must not claim or change. -->
 
+## Roadmap placement
+
+- **Roadmap lane:** <!-- proposed lane; ROADMAP.md remains authoritative -->
+- **Depends on:**
+- **Blocks:**
+
+<!-- Creating this issue does not schedule it. Update ROADMAP.md in the same PR when placement or sequencing changes. -->
+
 ## Testing seam
 
 <!-- Name the highest public seam through which behavior will be verified. -->

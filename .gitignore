@@ -1,3 +1,6 @@
+# Operating-system metadata
+.DS_Store
+
 # History files
 .Rhistory
 .Rapp.history
@@ -45,13 +48,26 @@ __pycache__/
 
 # pkgdown site generated output
 _site/
-docs/index.html
+# Legacy docs/ destination: source docs are limited to README.md plus
+# agents/, specs/, plans/, and archive/. Never recommit generated site output.
+docs/*.html
+docs/*.js
+docs/*.xml
+docs/*.json
+docs/*.txt
+docs/deps/
 docs/reference/
 docs/articles/
 docs/news/
-docs/404.html
-docs/sitemap.xml
 docs/pkgdown.yml
+docs/link.svg
+docs/404.md
+docs/authors.md
+docs/index.md
+docs/LICENSE-text.md
+docs/CLAUDE.md
+docs/CONTEXT-MAP.md
+docs/UBIQUITOUS_LANGUAGE.md
 
 # literature PDFs (large binaries — keep locally, not in git)
 docs/literature/*.pdf

@@ -42,7 +42,12 @@ names. Don't do it for convenience.
 
 ## File map
 
+`ROADMAP.md` is the sole scheduling authority. Read it before selecting work;
+do not infer priority from issue numbers, labels, historical plans, or the
+development log.
+
 ```
+ROADMAP.md            package scope, milestone gates, dependencies, next task
 R/
   00-package.R        imports
   01-schema-version.R SCHEMA_VERSION constant ("0.1.0")
@@ -58,6 +63,7 @@ R/
   10-rng.R            setup_rng() — L'Ecuyer-CMRG for parallel reproducibility
   11-runner.R         run_pipeline() — sequential dev runner (not for production)
 
+context/              stage/domain orientation; not scheduling
 decisions/
   README.md           ADR workflow — read before making any algorithm choice
   0000-template.md    Template for new ADRs
@@ -65,6 +71,13 @@ decisions/
   0002-*              Stage 2 dynamics estimator (provisional-accepted)
   0003-*              Rockne-Frankhouser reference code (accepted)
   0004-*              Package identity — eigentime vs companion (accepted)
+
+docs/
+  README.md           documentation authority map
+  specs/              frozen scientific/executable protocols
+  plans/              historical per-issue execution evidence; not scheduling
+  archive/            completed/superseded audits; not scheduling
+  agents/             issue, triage, and domain workflow guidance
 
 tests/testthat/
   helper.R            empty_std() fixture
@@ -78,16 +91,15 @@ tests/testthat/
 
 | Stage | Name | Status |
 |---|---|---|
-| 0 | Synthetic control ladder | Implemented: subspace and double-well controls, recovery benchmarks, and an initial Stage 1 sweep. Acceptance-threshold and rank-deficiency sweeps remain. |
-| 0.5 | Signature library + archetype classifier | Deferred: unexported contract stubs only; no implementation. |
-| 0.75 | Distributional fit assessment | Deferred: unexported contract stub only; no implementation. |
-| 1 | Comparative decomposition (GSVD / HO-GSVD) | Implemented: multi-component `hogsvd_averaged` default and `hogsvd_prereduced` baseline, component gallery, and secondary-cohort projection. |
-| 2 | Dynamics (quasi-potential) | Implemented provisionally: KDE log-density estimator and plots. Stage 0 recovery benchmarks must set ADR 0002 acceptance thresholds. |
+| 0 | Synthetic control ladder | K=1 subspace and exact-stationary double-well calibration controls are implemented. Frozen independent K=1 thinness/negative/AML-shaped acceptance remains #51/#67. |
+| 0.5 | Signature library + archetype classifier | Deferred contract surface only; no accepted implementation. |
+| 0.75 | Distributional fit assessment | Deferred contract surface only; no accepted implementation. |
+| 1 | Decomposition and interpretation | Exactly-one-omic-layer `svd` is implemented. Legacy K≥2 strategies exist, but the heterogeneous v2 evidence was negative and no K≥2 production strategy is accepted. Atlas/proposal/confirmation remains #55. |
+| 2 | Dynamics (quasi-potential) | Cross-sectional KDE/log-density estimation is provisional-accepted. Longitudinal and multi-axis strategies are not implemented. |
 
-**Complete Stage 0 validation next.** It is load-bearing: Stage 2 has no real-data
-ground truth, so Stage 0 known-potential controls are the only honest validation.
-ADR 0002 still has `[tbd]` acceptance thresholds that Stage 0 recovery benchmarks
-must fill before the Stage 2 estimator can become fully accepted.
+Do not hard-code a next issue here. Follow the active milestone and deterministic
+next-task rule in `ROADMAP.md`. Stage 0 remains the evidence oracle for every
+scientific strategy and real-data claim boundary.
 
 ## ADR workflow — mandatory for algorithm choices
 
