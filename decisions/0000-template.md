@@ -33,6 +33,21 @@ If no Stage 0 data yet, say so explicitly — this is a provisional decision pen
 
 One paragraph on why. Reference the criteria above. Do not justify by availability alone.
 
+## Implementation landing proof
+
+Declare how an eventual implementation will be made inspectable under ADR 0017:
+
+- **Proof classification:** required | exempt
+- **Before/after or representative output:** ...
+- **Current documentation affected:** ...
+- **Claim status:** ...
+- **Exemption category and rationale:** internal-only | research/decision-only
+  (required only when exempt; a deferred exemption expires when implementation
+  begins)
+
+This is implementation proof, not a substitute for immutable scientific
+acceptance evidence.
+
 ## Consequences
 
 - What becomes easier?

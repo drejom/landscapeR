@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Fail on PRs that modify vignettes/ without a Figure review section in the PR body.
+"""Enforce the pull-request visual landing-proof policy.
 
-Usage: python3 scripts/check-figure-review.py <pr_body_file>
+Every PR must declare exactly one of:
 
-The PR body file should contain the full PR description text. Exits 0 when no
-vignette was changed or when a Figure review section is present and filled in.
-Exits 1 when a vignette was changed but the Figure review section is absent or
-contains only the template placeholder comment.
+* proof required, with a complete proof packet and documentation disposition; or
+* exempt, with an allowed category and substantive rationale.
+
+The checker observes the same public seam in CI and tests: PR body + Git diff.
 """
+
+from __future__ import annotations
 
 import argparse
 import re
@@ -16,74 +18,238 @@ import sys
 from pathlib import Path
 
 
-def vignettes_changed() -> bool:
-    """Return True when the current diff touches any file under vignettes/.
+ALLOWED_EXEMPTION_CATEGORIES = {"internal-only", "research/decision-only"}
+PLACEHOLDERS = {
+    "", "-", "n/a", "na", "none", "not applicable", "tbd", "todo",
+    "placeholder", "same as above",
+}
+CURRENT_DOCUMENTATION_PREFIXES = ("vignettes/",)
+CURRENT_DOCUMENTATION_FILES = {"README.md"}
+OBVIOUSLY_QUALIFYING_PREFIXES = (
+    ".github/", "data-raw/", "docs/agents/", "hooks/", "man/",
+    "scripts/", "vignettes/",
+)
+OBVIOUSLY_QUALIFYING_FILES = {
+    "DESCRIPTION", "NAMESPACE", "README.md", "_pkgdown.yml",
+    "install-hooks.sh",
+}
+CURRENT_DOCS_REQUIRED_PREFIXES = ("data-raw/", "man/")
+CURRENT_DOCS_REQUIRED_FILES = {"DESCRIPTION", "NAMESPACE"}
+R_DEFINITION_PATTERN = re.compile(
+    r"^\s*([A-Za-z.][A-Za-z0-9._]*)\s*<-\s*function\b",
+    flags=re.MULTILINE,
+)
+R_S4_PATTERN = re.compile(
+    r"\b(?:setGeneric|setClass|setClassUnion|setMethod)\s*\(\s*['\"]([^'\"]+)",
+)
 
-    Tries to diff against origin/main, then main, then HEAD~1 (for local use).
-    Falls back to True (fail-safe) if none of these refs are available, which
-    can happen in shallow clones where the target ref is not fetched.
-    """
+
+def changed_files() -> list[str]:
+    """Return files changed from the first available merge-base candidate."""
     for target in ["origin/main", "main", "HEAD~1"]:
         result = subprocess.run(
-            ["git", "diff", "--name-only", target, "HEAD"],
-            capture_output=True, text=True
+            ["git", "diff", "--name-only", f"{target}...HEAD"],
+            capture_output=True,
+            text=True,
         )
         if result.returncode == 0:
-            changed = result.stdout.splitlines()
-            return any(f.startswith("vignettes/") for f in changed)
-    # Can't determine changed files — fail safe: assume yes
-    return True
+            return [line for line in result.stdout.splitlines() if line]
+    raise RuntimeError("cannot determine changed files from origin/main, main, or HEAD~1")
 
 
-def has_figure_review(body: str) -> bool:
-    """Return True when the PR body contains a filled Figure review section."""
-    # Section must exist
-    if "## Figures" not in body and "**Figure review**" not in body:
+def checked(body: str, label: str) -> bool:
+    pattern = rf"^- \[([ xX])\] {re.escape(label)}\s*$"
+    match = re.search(pattern, body, flags=re.MULTILINE)
+    return bool(match and match.group(1).lower() == "x")
+
+
+def field(body: str, label: str) -> str | None:
+    pattern = rf"^\*\*{re.escape(label)}:\*\*[ \t]*(.*?)[ \t]*$"
+    match = re.search(pattern, body, flags=re.MULTILINE)
+    return match.group(1).strip() if match else None
+
+
+def substantive(value: str | None, minimum: int = 12) -> bool:
+    if value is None:
         return False
-    # Must not consist only of the template placeholder comment
+    without_comments = re.sub(r"<!--.*?-->", "", value, flags=re.DOTALL)
+    normalized = re.sub(r"[`*_]", "", without_comments).strip().lower()
+    starts_with_placeholder = any(
+        normalized == token
+        or re.match(rf"^{re.escape(token)}(?:\s|:|-|—)", normalized) is not None
+        for token in PLACEHOLDERS if token
+    )
+    return not starts_with_placeholder and len(normalized) >= minimum
+
+
+def fail(message: str) -> int:
+    print(f"ERROR: {message}", file=sys.stderr)
+    return 1
+
+
+def current_documentation_changed(files: list[str]) -> bool:
+    return any(
+        path in CURRENT_DOCUMENTATION_FILES
+        or path.startswith(CURRENT_DOCUMENTATION_PREFIXES)
+        for path in files
+    )
+
+
+def namespace_exports() -> set[str]:
+    namespace = Path("NAMESPACE")
+    if not namespace.is_file():
+        return set()
+    exports: set[str] = set()
+    for _, contents in re.findall(
+        r"^(export|exportMethods|exportClasses)\(([^)]+)\)",
+        namespace.read_text(encoding="utf-8"),
+        flags=re.MULTILINE,
+    ):
+        exports.add(contents.strip().strip("'\""))
+    return exports
+
+
+def public_or_scientific_r_changes(files: list[str]) -> list[str]:
+    exports = namespace_exports()
+    qualifying: list[str] = []
+    for path_text in files:
+        if not path_text.startswith("R/"):
+            continue
+        path = Path(path_text)
+        if not path.is_file():
+            continue
+        source = path.read_text(encoding="utf-8")
+        definitions = set(R_DEFINITION_PATTERN.findall(source))
+        s4_symbols = set(R_S4_PATTERN.findall(source))
+        if (
+            "#' @export" in source
+            or "register_strategy(" in source
+            or bool(definitions & exports)
+            or bool(s4_symbols & exports)
+            or "setMethod(" in source
+        ):
+            qualifying.append(path_text)
+    return qualifying
+
+
+def validate_exemption(body: str, files: list[str]) -> int:
+    category = field(body, "Exemption category")
+    rationale = field(body, "Exemption rationale")
+    if category not in ALLOWED_EXEMPTION_CATEGORIES:
+        allowed = ", ".join(sorted(ALLOWED_EXEMPTION_CATEGORIES))
+        return fail(f"Exemption category must be one of: {allowed}.")
+    obviously_qualifying = [
+        path for path in files
+        if path in OBVIOUSLY_QUALIFYING_FILES
+        or path.startswith(OBVIOUSLY_QUALIFYING_PREFIXES)
+    ]
+    obviously_qualifying.extend(public_or_scientific_r_changes(files))
+    if obviously_qualifying:
+        return fail(
+            "An exemption cannot cover an obviously qualifying change: "
+            + ", ".join(obviously_qualifying)
+        )
+    if not substantive(rationale, minimum=24):
+        return fail("A substantive exemption rationale is required; generic N/A is invalid.")
+    print(f"Visual landing proof exemption accepted ({category}).")
+    return 0
+
+
+def visual_review_has_artifact(body: str) -> bool:
     section_match = re.search(
-        r"\*\*Figure review\*\*.*?(?=\n##|\Z)", body, re.DOTALL
+        r"^## Visual review\s*$\n(.*?)(?=^##\s|\Z)",
+        body,
+        flags=re.MULTILINE | re.DOTALL,
     )
     if not section_match:
         return False
-    section = section_match.group(0)
-    # Strip HTML comments
-    stripped = re.sub(r"<!--.*?-->", "", section, flags=re.DOTALL).strip()
-    # Require at least one non-empty line after the header (actual content)
-    content_lines = [l.strip() for l in stripped.splitlines()
-                     if l.strip() and not l.strip().startswith("**Figure review**")]
-    return len(content_lines) > 0
+    section = section_match.group(1)
+    has_image = re.search(r"!\[[^\]]+\]\([^)]+\)", section) is not None
+    has_table = re.search(
+        r"^\s*\|.+\|\s*$\n^\s*\|(?:\s*:?-+:?\s*\|)+\s*$",
+        section,
+        flags=re.MULTILINE,
+    ) is not None
+    has_rendered_output = re.search(r"```[^\n]*\n.+?```", section, re.DOTALL) is not None
+    return has_image or has_table or has_rendered_output
+
+
+def validate_required_proof(body: str, files: list[str]) -> int:
+    required_fields = (
+        "Proof type",
+        "Before",
+        "After or representative output",
+        "Cold-reader conclusion",
+        "Reproduction",
+        "Claim status",
+        "Artifact",
+    )
+    for label in required_fields:
+        if not substantive(field(body, label)):
+            return fail(f"{label} must contain substantive visual landing-proof content.")
+
+    proof_type = field(body, "Proof type")
+    if proof_type not in {"before-after", "new-capability", "representative-output"}:
+        return fail(
+            "Proof type must be before-after, new-capability, or representative-output."
+        )
+
+    updated = checked(body, "Updated")
+    unaffected = checked(body, "Unaffected")
+    if updated == unaffected:
+        return fail("Select exactly one current-documentation disposition: Updated or Unaffected.")
+
+    documentation = field(body, "Documentation reference or rationale")
+    if not substantive(documentation, minimum=20):
+        return fail("Documentation reference or rationale must be substantive.")
+    if updated and not current_documentation_changed(files):
+        return fail(
+            "Current documentation is declared updated, but no README or vignette change "
+            "exists in the current documentation diff."
+        )
+    docs_required = bool(public_or_scientific_r_changes(files)) or any(
+        path in CURRENT_DOCS_REQUIRED_FILES
+        or path.startswith(CURRENT_DOCS_REQUIRED_PREFIXES)
+        for path in files
+    )
+    if unaffected and docs_required:
+        return fail(
+            "A public API/documentation or prepared-data change requires current documentation."
+        )
+    if not visual_review_has_artifact(body):
+        return fail(
+            "The Visual review section must contain an inspectable artifact: "
+            "a Markdown image, table, or fenced rendered output."
+        )
+
+    print("Visual landing proof packet accepted.")
+    return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("pr_body_file", type=Path,
-                        help="File containing the PR body text")
+    parser.add_argument("pr_body_file", type=Path, help="File containing the PR body")
     args = parser.parse_args()
 
     if not args.pr_body_file.is_file():
-        print(f"PR body file not found: {args.pr_body_file}", file=sys.stderr)
-        return 1
+        return fail(f"PR body file not found: {args.pr_body_file}")
 
     body = args.pr_body_file.read_text(encoding="utf-8")
+    if re.search(r"^## Visual landing proof\s*$", body, re.MULTILINE) is None:
+        return fail("A `## Visual landing proof` heading is required.")
+    proof_required = checked(body, "Proof required")
+    exempt = checked(body, "Exempt")
+    if proof_required == exempt:
+        return fail("Select exactly one visual landing-proof classification: Proof required or Exempt.")
 
-    if not vignettes_changed():
-        print("No vignette changes detected — figure review not required.")
-        return 0
+    try:
+        files = changed_files()
+    except RuntimeError as error:
+        return fail(str(error))
 
-    if has_figure_review(body):
-        print("Figure review section found and filled in.")
-        return 0
-
-    print(
-        "ERROR: This PR modifies vignettes/ but the PR body does not contain a "
-        "filled '**Figure review**' section.\n"
-        "Please screenshot each rendered figure, visually inspect it, and write "
-        "a one-sentence interpretation per figure in the PR description.\n"
-        "See .github/pull_request_template.md for the required format.",
-        file=sys.stderr
-    )
-    return 1
+    if exempt:
+        return validate_exemption(body, files)
+    return validate_required_proof(body, files)
 
 
 if __name__ == "__main__":

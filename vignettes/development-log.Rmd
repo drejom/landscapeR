@@ -31,7 +31,8 @@ library(landscapeR)
 | Stage | Name | Status |
 |---|---|---|
 | Architecture | S4 contracts, registry, container, provenance | ✅ Implemented and CI-tested |
-| 0 | Synthetic controls (two-group SVD, double-well Langevin) | ⚠️ Implemented; full recovery/negative-control ladder not yet executed |
+| 0 | Synthetic controls (K=1/K≥2 subspace, exact-stationary double well) | ⚠️ Calibration controls implemented; frozen K=1 recovery/negative-control ladder remains #51 |
+| 1 | Single-omic-layer registered SVD | ⚠️ Implemented and visually demonstrated; scientific acceptance remains blocked by #51 and #67 |
 | 1 | Comparative decomposition — legacy equal-feature strategies | ⚠️ Implemented; not evidence for heterogeneous multi-omic fitting |
 | 1 | Heterogeneous C1/C2 prototype and frozen comparison protocol | ⚠️ Full synthetic run complete; C2 won calibration but failed frozen holdout, so no baseline is accepted and #24 remains blocked |
 | 1+ | Component gallery and legacy `project_into()` workflow | ⚠️ Exploratory/legacy; #24 is blocked on the selected heterogeneous strategy |
@@ -80,48 +81,102 @@ std1 <- suppressWarnings(decompose(ctor(), std))@value
 plot_spectrum(std1)
 ```
 
-```{r component plots-synthetic}
-plot_components(std1, colour_by = "group")
-```
+> The metadata-coloured component gallery is temporarily omitted here because
+> its canonical MAE-level metadata alignment is being repaired in
+> [#54](https://github.com/drejom/landscapeR/issues/54). The spectrum above is
+> descriptive only and does not select a target biological axis.
 
-### Double-well potential control
+### K=1 single-omic-layer SVD and double-well calibration (#50)
 
-`synthetic_potential_control()` draws samples from a known double-well
-U(x) = (x² − 1)² via Langevin simulation. Provides a ground truth for
-Stage 2 validation: wells at ±1, barrier at 0, barrier height = 1.
+Before issue #50, the only runnable development-log path duplicated a
+single-omic-layer coordinate assay so it could enter a K≥2 HO-GSVD strategy.
+That workaround obscured the actual capability boundary and recorded the wrong
+strategy for a K=1 analysis.
 
-```{r double-well}
-# synthetic_potential_control returns a 1-layer object (Langevin coordinates).
-# Duplicate the layer so hogsvd_averaged (requires >= 2 layers) can run.
-std_dw  <- synthetic_potential_control(n = 120L, seed = 42L)
-se_dw   <- experiments(std_dw)[[1L]]
-std_dw2l <- StateTransitionData(
-  experiments = list(coords_a = se_dw, coords_b = se_dw),
-  colData     = colData(std_dw),
-  sampling_design = cross_sectional()
+| Condition | Before #50 | After #50 |
+|---|---|---|
+| K=1 synthetic subspace | Rejected by the generator | First-class control with planted subspace truth |
+| Stage 1 strategy | Duplicate the assay and call HO-GSVD | Registered exactly-one-omic-layer `svd` |
+| Double-well observations | Thinned trajectory in the older estimator-level control | Independent exact-stationary draws for the K=1 end-to-end calibration control |
+| Evidence status | Ambiguous development workaround | Explicitly `non_evidentiary_calibration` |
+
+The current development path now keeps K=1 explicit from generation through
+Stage 1 and the cross-sectional Stage 2 estimator:
+
+```{r k1-double-well, fig.cap=c("Descriptive evidence: empirical density of the planted cross-sectional coordinate supplied to the single-omic-layer expression control.", "Hypothesis-conditioned interpretation: the fitted calibration-only quasi-potential; critical-point classification is deliberately omitted because uncertainty is not yet estimated.")}
+std_k1 <- synthetic_k1_double_well_control(
+  n = 200L, p = 100L, noise_sd = 0.03, seed = 50L
 )
 
-ctor    <- get_strategy("Decomposer", "hogsvd_averaged")
-std_dw1 <- suppressWarnings(decompose(ctor(), std_dw2l))@value
+svd_ctor <- get_strategy("Decomposer", "svd")
+std_k1_s1 <- suppressWarnings(decompose(svd_ctor(), std_k1))@value
 
-dctor   <- get_strategy("DynamicsEstimator", "kde_logdensity")
-std_dw2 <- estimate_dynamics(dctor(), std_dw1)@value
-plot_potential(std_dw2)
+coordinate_k1 <- colData(std_k1)$x_coord
+
+empirical_density <- ggplot2::ggplot(
+  data.frame(coordinate = coordinate_k1),
+  ggplot2::aes(x = coordinate)
+) +
+  ggplot2::geom_density(fill = "#67A9CF", alpha = 0.45, linewidth = 0.8) +
+  ggplot2::geom_rug(alpha = 0.35) +
+  ggplot2::labs(
+    title = "Descriptive evidence: planted cross-sectional coordinate density",
+    x = "State-transition coordinate",
+    y = "Density"
+  ) +
+  ggplot2::theme_bw(base_size = 11)
+print(empirical_density)
+
+dynamics_ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+std_k1_s2 <- estimate_dynamics(dynamics_ctor(), std_k1_s1)@value
+plot_potential(std_k1_s2, show_critical_points = FALSE) +
+  ggplot2::labs(
+    subtitle = paste(
+      "Critical-point classification omitted — uncertainty is not yet",
+      "estimated; calibration-only output"
+    )
+  )
 ```
 
-> **Illustration only:** this single deterministic call exercises the estimator;
-> it is not the multi-seed Stage 0 acceptance ladder or evidence for ADR 0002.
+**Cold-reader conclusion:** the single-omic-layer expression control now passes
+through the registered SVD strategy and produces the expected two-well
+quasi-potential without fabricating a second omic layer. The public synthetic
+input distribution remains visible before the fitted interpretation, and the
+plot omits critical-point classification because uncertainty is not yet estimated.
 
-Recovery benchmark:
+This is implementation and calibration proof, not acceptance evidence. The
+frozen K=1 thinness, negative-control, and independent acceptance protocol is
+tracked in [#51](https://github.com/drejom/landscapeR/issues/51); the
+AML-grounded target/confounder control is [#67](https://github.com/drejom/landscapeR/issues/67).
 
-```{r benchmark}
-# benchmark uses the original single-layer ground-truth object directly
-bm <- potential_recovery_benchmark(std_dw)
+```{r k1-calibration-table}
+k1_calibration <- suppressWarnings(k1_double_well_calibration(
+  n = 200L, p = 100L, noise_sd = 0.03, seed = 50L
+))
+
 knitr::kable(data.frame(
-  metric = names(bm),
-  value  = round(unlist(bm), 3)
-), col.names = c("Metric", "Value"))
+  diagnostic = c(
+    "Evidence status",
+    "Stage 1 strategy",
+    "Subspace angle (degrees)",
+    "Mean well-location error",
+    "Barrier-location error",
+    "Barrier-height error"
+  ),
+  value = c(
+    k1_calibration$evidence_status,
+    k1_calibration$decomposer,
+    format(round(k1_calibration$subspace_angle_deg, 3), nsmall = 3),
+    format(round(k1_calibration$well_error, 3), nsmall = 3),
+    format(round(k1_calibration$barrier_error, 3), nsmall = 3),
+    format(round(k1_calibration$barrier_height_error, 3), nsmall = 3)
+  )
+), col.names = c("Diagnostic", "Observed calibration output"))
 ```
+
+The table deliberately contains no pass, acceptance, or eligibility judgement.
+Those decisions belong to the frozen independent protocol, not this disclosed
+calibration run.
 
 ---
 
@@ -174,4 +229,14 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
 
 ---
 
-*Last updated: 2026-07-13. Documentation site: <https://drejom.github.io/landscapeR/>.*
+## Implementation index
+
+- **2026-07-14 — K=1 foundation and visual landing-proof policy:**
+  [#50](https://github.com/drejom/landscapeR/issues/50) adds the registered
+  single-omic-layer SVD and calibration control;
+  [#68](https://github.com/drejom/landscapeR/issues/68) makes the pull request
+  the canonical visual transition record. The full before/after proof is
+  co-located with the diff in [PR #69](https://github.com/drejom/landscapeR/pull/69).
+  This remains implementation work, not K=1 acceptance evidence.
+
+*Last updated: 2026-07-14. Documentation site: <https://drejom.github.io/landscapeR/>.*

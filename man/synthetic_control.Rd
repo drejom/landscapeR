@@ -17,13 +17,13 @@ synthetic_control(
 \arguments{
 \item{n}{integer number of samples (columns in the omic matrix convention)}
 
-\item{p}{integer number of features / genes per layer}
+\item{p}{integer number of features / genes per omic layer}
 
-\item{K}{integer number of layers (>= 2)}
+\item{K}{integer number of omic layers (>= 1)}
 
 \item{signal}{numeric singular value of the shared component (must be > 0)}
 
-\item{signal_spec}{numeric singular value of each layer-specific component}
+\item{signal_spec}{numeric singular value of each omic-layer-specific component}
 
 \item{noise_sd}{numeric standard deviation of the additive i.i.d. Gaussian noise}
 
@@ -33,7 +33,7 @@ synthetic_control(
 \code{StateTransitionData} with \code{SubspaceGroundTruth}
 }
 \description{
-Each layer is  X_i = signal * outer(u_shared, v_true)
+Each omic layer is  X_i = signal * outer(u_shared, v_true)
 + signal_spec * outer(u_spec_i, v_spec_i) + noise.
 Both u and v vectors are unit-norm, so \code{signal} is the true singular
 value of the shared component.  The BBP detectability threshold at this

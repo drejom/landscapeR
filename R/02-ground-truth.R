@@ -57,4 +57,17 @@ setClass("PotentialGroundTruth",
     )
 )
 
+#' Ground truth for the generic K=1 end-to-end double-well calibration control
+#'
+#' Keeps the planted feature subspace and quasi-potential answer keys together
+#' so Stage 1 and Stage 2 can be assessed on the same synthetic object.
+#' @export
+setClass("K1DoubleWellGroundTruth",
+    contains = "GroundTruth",
+    representation(
+        subspace = "SubspaceGroundTruth",
+        potential = "PotentialGroundTruth"
+    )
+)
+
 setClassUnion("GroundTruthOrNULL", c("GroundTruth", "NULL"))

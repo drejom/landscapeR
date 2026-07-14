@@ -99,6 +99,27 @@ an algorithm because it exists or because it was the first one found.
 Stage 0 synthetic controls are the evidence oracle — algorithm selection is
 driven by recovery benchmarks, not by software availability.
 
+## Visual landing proof — mandatory completion surface
+
+ADR 0017 requires qualifying implementation work to land through a pull request
+with inspectable visual proof. This applies to scientific behavior, public APIs,
+user-visible behavior, plotting, prepared data/schema, and developer-facing
+workflows.
+
+- Fixes show rendered before/after behavior.
+- New capabilities show a representative figure, table, workflow render, or
+  equivalent inspectable output.
+- Every proof includes a cold-reader conclusion, reproduction procedure, and
+  claim status.
+- Public workflow changes update current package documentation.
+- Pull-request proof never substitutes for immutable scientific evidence.
+- Internal-only or research/decision-only exemptions must be explicit and
+  substantive; a deferred exemption expires when implementation begins.
+
+Do not call an issue complete because tests, package checks, or Rd files pass
+while this proof is missing. The development log is a concise current-status
+index; the pull request is the canonical transition record.
+
 ## Key open decisions
 
 - **ADR 0001** (Stage 1 HO-GSVD): `multiblock::hogsvd` vs Kempf rank-deficient

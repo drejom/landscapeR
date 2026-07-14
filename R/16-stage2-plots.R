@@ -8,13 +8,17 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 
 #' Plot the quasi-potential landscape (Stage 2 output)
 #'
-#' Shows U(x) = -log p(x) along the state-transition axis, with stable critical points
-#' (wells) marked as triangles and unstable critical points (barriers) as
-#' inverted triangles.  Barrier heights are annotated.
+#' Shows U(x) = -log p(x) along the state-transition axis. Point-estimate
+#' critical-point classifications and barrier heights are omitted by default;
+#' they require explicit diagnostic opt-in until uncertainty is available.
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage2} present
 #' @param colour_by character column name in \code{colData(std)} to colour
 #'   the rug of sample positions, or \code{NULL} (default \code{NULL})
+#' @param show_critical_points logical; explicitly opt in to point-estimate
+#'   well/barrier classifications and barrier-height segments. Defaults to
+#'   \code{FALSE} because current output does not estimate critical-point
+#'   uncertainty; opt-in output is exploratory diagnostic information only.
 #' @return a \code{ggplot} object
 #'
 #' @examples
@@ -24,8 +28,12 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 #' }
 #'
 #' @export
-plot_potential <- function(std, colour_by = NULL) {
+plot_potential <- function(std, colour_by = NULL,
+                           show_critical_points = FALSE) {
     stopifnot(is(std, "StateTransitionData"))
+    if (!is.logical(show_critical_points) ||
+        length(show_critical_points) != 1L || is.na(show_critical_points))
+        stop("show_critical_points must be a single non-missing logical")
     s2 <- metadata(std)$stage2
     if (is.null(s2))
         stop("Stage 2 has not been run on this object. Call estimate_dynamics() first.")
@@ -106,24 +114,34 @@ plot_potential <- function(std, colour_by = NULL) {
 
     p <- ggplot2::ggplot(curve_df, ggplot2::aes(x = x, y = U)) +
         ggplot2::geom_line(linewidth = 1, colour = "#2166AC") +
-        ggplot2::geom_point(data = cp_df,
-                             ggplot2::aes(shape = type),
-                             size = 4, colour = "#D6604D") +
-        ggplot2::scale_shape_manual(
-            values = c(well = 25, barrier = 24),
-            labels = c(well = "Stable (well)", barrier = "Unstable (barrier)")
-        ) +
         ggplot2::labs(
-            title  = "Quasi-potential landscape  U(x) = -log p(x)",
-            x      = "State-transition coordinate",
-            y      = "U(x)",
-            shape  = "Critical point"
+            title = "Quasi-potential landscape  U(x) = -log p(x)",
+            x = "State-transition coordinate",
+            y = "U(x)"
         ) +
         ggplot2::theme_bw(base_size = 11) +
         ggplot2::theme(legend.position = "bottom")
 
+    if (isTRUE(show_critical_points)) {
+        p <- p +
+            ggplot2::geom_point(
+                data = cp_df,
+                ggplot2::aes(shape = type),
+                size = 4,
+                colour = "#D6604D"
+            ) +
+            ggplot2::scale_shape_manual(
+                values = c(well = 25, barrier = 24),
+                labels = c(
+                    well = "Stable (well)",
+                    barrier = "Unstable (barrier)"
+                )
+            ) +
+            ggplot2::labs(shape = "Critical point")
+    }
+
     # Barrier-height segments
-    if (length(seg_rows)) {
+    if (isTRUE(show_critical_points) && length(seg_rows)) {
         seg_df <- do.call(rbind, seg_rows)
         p <- p + ggplot2::geom_segment(
             data = seg_df,
