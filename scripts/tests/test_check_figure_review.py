@@ -126,6 +126,17 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Visual landing proof exemption accepted", result.stdout)
 
+    def test_rejects_placeholder_prefixed_exemption_rationale(self) -> None:
+        self._commit_path("tests/testthat/helper-fixture.R")
+        body = VALID_EXEMPTION.replace(
+            "This changes test fixture naming without changing any public, scientific, data, plotting, or developer-workflow behavior.",
+            "N/A - this is long enough to bypass a length-only policy check."
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("substantive exemption rationale", result.stderr)
+
     def test_rejects_exemption_for_obviously_public_change(self) -> None:
         self._commit_obviously_public_change()
         result = self._run_checker(VALID_EXEMPTION)

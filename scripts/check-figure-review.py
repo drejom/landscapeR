@@ -60,7 +60,8 @@ def substantive(value: str | None, minimum: int = 12) -> bool:
     without_comments = re.sub(r"<!--.*?-->", "", value, flags=re.DOTALL)
     normalized = re.sub(r"[`*_]", "", without_comments).strip().lower()
     starts_with_placeholder = any(
-        normalized == token or normalized.startswith(f"{token}:")
+        normalized == token
+        or re.match(rf"^{re.escape(token)}(?:\s|:|-|—)", normalized) is not None
         for token in PLACEHOLDERS if token
     )
     return not starts_with_placeholder and len(normalized) >= minimum

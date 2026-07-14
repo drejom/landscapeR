@@ -110,7 +110,10 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
         provenance <- data@provenance[[length(data@provenance)]]
 
         all_warns <- dr_warnings(result)
-        if (length(all_warns)) for (warning_text in all_warns) warning(warning_text)
+        if (length(all_warns)) {
+            for (warning_text in all_warns)
+                warning(warning_text, call. = FALSE)
+        }
         stage_success(data, provenance = list(provenance))
     }
 )
