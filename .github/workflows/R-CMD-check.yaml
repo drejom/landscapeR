@@ -41,7 +41,9 @@ jobs:
         run: Rscript -e 'pkgdown::build_site()'
 
       - name: Check pkgdown article images
-        run: python3 scripts/check-pkgdown-images.py --site-root _site _site/articles/stage1-evidence.html
+        run: |
+          python3 scripts/check-pkgdown-images.py --site-root _site _site/articles/development-log.html
+          python3 scripts/check-pkgdown-images.py --site-root _site _site/articles/stage1-evidence.html
 
   lint:
     runs-on: ubuntu-latest
