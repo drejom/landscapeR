@@ -40,7 +40,7 @@ _Avoid_: common space, joint embedding
 **state-space definition**:
 The immutable, machine-generated record of the discovery observations, feature identities, preprocessing reference, and fitted component basis that jointly define one state space. Everything present at the Stage 1 input boundary is eligible: row/sample filtering is upstream analyst preparation and should use provenance-recording helpers where available. The analyst does not manually copy feature or sample IDs into `AnalysisSpecification`; Stage 1 records the exact ordered IDs, exclusions, input digest, preprocessing parameters, and fitted loadings it actually used.
 
-Stage 1 accepts one discovery `StateTransitionData` object. Projection is a separate, optional operation on zero or more secondary objects. A secondary cohort can only be projected after matching its features to the frozen state-space definition; it never contributes observations, features, centring/scaling parameters, component selection, or analysis identity back into that definition. A study without an external projection cohort remains valid.
+Stage 1 accepts one discovery `StateTransitionData` object. Projection is a separate, optional operation on zero or more secondary objects. A secondary cohort can only be projected after matching its features to the frozen state-space definition; it never contributes observations, features, centring/scaling parameters, component selection, or analysis identity back into that definition. A study without an external projection cohort remains valid. For the planned diabetes application, non-diabetic, autoantibody-positive, and type 1 diabetes donors define the ordered cross-sectional discovery state space; type 2 diabetes donors may be projected as an optional external biological comparison and must not alter that definition.
 
 **target biological axis**:
 The selected column of V* (and corresponding row of each UᵢΣᵢ) whose coordinate is associated with a predeclared biological variable or contrast. It is selected from a reproducible, predeclared proposal ranking or manually fixed by the analyst; the final choice and rationale are recorded in provenance.
@@ -61,11 +61,13 @@ Association assessment must honour the `SamplingDesign` declared on `StateTransi
 **component-selection proposal**:
 A reproducible ranking of Stage 1 components after an analyst assigns metadata fields the roles target, confounder/nuisance, descriptive-only, or excluded. It recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion. The assigned roles and whether they were predeclared or discovered become part of the `AnalysisSpecification` and provenance.
 
-The ranking criterion is declared per-analysis and supports two modes:
+The ranking criterion is declared per-analysis and supports multiple association forms:
 - **continuous association**: Spearman correlation of component scores against a numeric metadata column (e.g. weeks post-infection, developmental day). Use to identify or deprioritise time/age-driven components.
 - **binary group separation**: rank-biserial or point-biserial correlation of component scores against a binary metadata column (e.g. condition CM vs CTL, sex). Use to identify disease or contrast axes.
+- **longitudinal trajectory divergence**: a subject-aware condition-by-time interaction for repeated observations. For AML, report both average CM-versus-CTL separation and divergent trajectories; the interaction is the stronger disease-progression criterion.
+- **cross-sectional ordered-state trend**: association with a predeclared ordering of independent biological states. For diabetes, the discovery ordering is non-diabetic → autoantibody-positive → type 1 diabetes. This is evidence of ordered cross-sectional states, not direct observation of within-person temporal progression.
 
-Both modes may be declared together; a component may rank high on one and low on the other (as in AML: PC1 ranks high on weeks, PC2 ranks high on condition).
+Multiple forms may be declared together; a component may rank high on one and low on another (as in AML: PC1 ranks high on weeks, while the disease axis is expected to capture condition separation and trajectory divergence). Orthogonal biological measures such as cKit expression or blast counts can provide convergent diagnostic support but do not silently select the axis.
 
 The proposal is a **formal scored object** (not just a plot): it carries a ranked list of components with their association scores. `plot_components()` visualises this object; tests can assert against it directly.
 
