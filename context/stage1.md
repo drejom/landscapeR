@@ -101,6 +101,12 @@ aspec <- confirm_component(proposal, index = 2L)
 run_pipeline(std2, cfg_with(aspec))
 ```
 
+**bootstrap component alignment**:
+The evidence-tier operation that matches each resampled decomposition to the frozen discovery reference before assessing stability. Raw component indices are not scientific identities: signs may flip, PC order may swap when singular values are close, and near-degenerate components may rotate within a stable subspace. Alignment uses coordinates/loadings and the predeclared orientation anchor rather than downstream Stage 2 topology.
+
+**target-axis stability**:
+The frequency with which an equivalent biological axis recurs after bootstrap component alignment. It is reported separately from component-index stability, orientation stability, subspace stability, and proposal rank stability. A target axis may be biologically stable even when its ordinal PC index changes across resamples.
+
 **axis orientation anchor**:
 An optional predeclared biological metadata rule that gives a selected target biological axis a semantic direction (for example, increasing developmental day or toward treated samples). Technical alignment to the discovery-cohort reference is automatic; directional biological claims require this anchor and must not use downstream Stage 2 topology to set it.
 
