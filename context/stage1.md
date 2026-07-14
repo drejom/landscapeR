@@ -49,6 +49,8 @@ A structured, serializable table of associations between every Stage 1 component
 
 The atlas always preserves **univariate associations** for transparent interpretation. Once nuisance fields are declared, it may additionally report **adjusted associations** (for example, condition after accounting for weeks). Adjusted results are labelled separately and never replace or hide their unadjusted counterparts. The component proposal must retain both rather than collapse them into an opaque composite score.
 
+Association assessment must honour the `SamplingDesign` declared on `StateTransitionData` (ADR 0006). Cross-sectional data use independent-observation methods. Longitudinal data use the declared subject-ID and ordered-time columns; adjusted estimates and uncertainty must account for within-subject repeated measures. Subject identifiers are design variables, not association targets. If longitudinal data lack a compatible subject-aware association method, assessment fails explicitly rather than silently treating observations as independent. The atlas records the model and sampling design used.
+
 **component-selection proposal**:
 A reproducible ranking of Stage 1 components after an analyst assigns metadata fields the roles target, confounder/nuisance, descriptive-only, or excluded. It recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion. The assigned roles and whether they were predeclared or discovered become part of the `AnalysisSpecification` and provenance.
 
