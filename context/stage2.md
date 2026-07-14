@@ -17,8 +17,11 @@ The selected state-space coordinates and their empirical distribution, shown bef
 **Stage 2 interpretation**:
 The fitted quasi-potential, geometrically classified critical points, uncertainty, and biological labels derived from the descriptive evidence. Geometric classifications (well, barrier) remain distinct from biological labels (healthy, leukemic), and every interpretation references its descriptive precursor.
 
+**static longitudinal potential**:
+The Rockne-style longitudinal target: one time-homogeneous 1D potential governs stochastic within-subject trajectories, while the Langevin/Fokker–Planck dynamics evolve probability through time. A longitudinal strategy estimates drift/diffusion from ordered within-subject transitions, respects irregular intervals, and tests the static/Markov adequacy assumptions. If unsupported it returns no-supported-static-longitudinal-potential rather than fitting a preferred landscape. It must not estimate this quantity by naively pooling repeated observations. A time-varying U(x,t) is a separate future capability.
+
 **log-density inversion**:
-The Stage 2 estimation approach: estimate p(x) by KDE on the state-space coordinates, then compute U(x) = −log p(x). The primary estimation strategy.
+The cross-sectional Stage 2 estimation approach: estimate p(x) by KDE on independent biological-unit coordinates, then compute U(x) = −log p(x). It is not the longitudinal estimator.
 _Avoid_: KDE-based potential, negative log-density
 
 **cross-layer concordance**:
