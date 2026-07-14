@@ -126,5 +126,11 @@ Before code review:
 - The final review found an over-broad private-R policy, stale checks after PR
   body edits, missing PR-rendered calibration diagnostics, typed
   `synthetic_control()` validation, and an unrecorded exact-stationary sampler
-  choice. The follow-up review-fix commit addresses all five; a clean rerun is
-  required before merge.
+  choice. Commit `c76acb9` addresses all five: internal-only R changes can now
+  justify exemption, public-R markers remain guarded, PR `edited` events rerun
+  policy CI, #69 renders the disclosed diagnostics table, generator inputs
+  class-fail, and ADR 0016 records the analytic rejection sampler.
+- Editing PR #69's proof packet at head `c76acb9` created a second
+  `pull_request` workflow run (`29352677745`) after the synchronize run,
+  demonstrating that proof removal or alteration cannot retain a stale green
+  policy check. A clean two-axis review rerun is required before merge.
