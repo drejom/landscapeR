@@ -9,7 +9,7 @@ The scalar energy function U(x) = −log p(x) derived by log-density inversion o
 _Avoid_: potential energy, energy landscape, attractor landscape, effective potential (use only when specifically referring to the ODE-derived theoretical potential from Frankhouser2024)
 
 **sampling design**:
-The declared observation structure used to constrain Stage 2 claims. **Cross-sectional** data support a distributional quasi-potential estimate only. **Longitudinal** data include subject identity and ordered time points, enabling a distinct time-aware strategy to test directional behaviour or estimate temporal quantities.
+The declared observation structure used to constrain Stage 2 claims. **Cross-sectional** data support a distributional quasi-potential estimate from independent biological units; the planned diabetes application uses independent donors in the predeclared order non-diabetic → autoantibody-positive → T1D. **Longitudinal** data include subject identity and ordered repeated measurements; AML is the reference application and requires a distinct subject-aware strategy to test trajectory divergence, direction, or temporal quantities. These are complementary capabilities with different estimands, not interchangeable approximations. A predeclared one-observation-per-subject AML snapshot may be a separate sensitivity analysis but does not substitute for the longitudinal progression analysis.
 
 **Stage 2 descriptive evidence**:
 The selected state-space coordinates and their empirical distribution, shown before and beside any fitted quasi-potential. The empirical density, sample support, exclusions, and uncertainty remain inspectable; a smooth landscape must never be the only published representation (ADR 0017).
