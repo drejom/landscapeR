@@ -72,6 +72,7 @@
 | **PipelineConfig** | The configuration object that selects which strategy to use for each stage; the only place algorithm choices are made | settings, parameters |
 | **StageResult** | A typed wrapper around a stage's return value carrying success/failure status and provenance; never a raw list or exception | result, output |
 | **provenance** | The machine-readable record of how an artifact was produced, stored in `StateTransitionData` metadata; first-class in landscapeR | audit trail, lineage |
+| **visual landing proof** | The pull-request-co-located before/after or representative figure, table, or workflow render showing that a qualifying implementation visibly changed the intended behavior; includes reproduction instructions and claim status, and never substitutes for immutable scientific evidence | screenshot (too narrow), acceptance evidence (incorrect) |
 | **boundary validation** | The check run at every stage entry via `validate_boundary()` that verifies the input `StateTransitionData` satisfies the stage's preconditions | input validation, guard |
 | **schema version** | The `SCHEMA_VERSION` constant declaring the current `StateTransitionData` serialisation format; bumped whenever the container schema changes, with a registered migration for every prior version | data version, format version |
 
