@@ -91,15 +91,15 @@ The empirical measure used to estimate the diffusion coefficient: `MSD(t) = ⟨|
 _Avoid_: displacement variance
 
 **Fokker-Planck equation**:
-The deterministic PDE governing the time-evolution of probability density P(x,t) of the state variable: `∂P/∂t = −∂/∂x[∇U_p P] + β⁻¹ ∂²P/∂x²`. Solved numerically (via `deSolve` + `ReacTran`) to predict time-to-disease.
+The deterministic PDE governing the time-evolution of probability density P(x,t) of the state variable: `∂P/∂t = −∂/∂x[∇U_p P] + β⁻¹ ∂²P/∂x²`. Solved numerically to estimate barrier first-passage behaviour; numerical dependencies require their own accepted implementation decision.
 _Avoid_: FPE, diffusion equation, probability transport equation
 
 **empirical event distribution**:
-The observed subject-level distribution of a source-defined event time with explicit event status and right censoring, suitable for survival curves. It is descriptive evidence and remains distinct from Stage 2 model predictions. In AML, the `L` sample is currently a protocol-defined terminal event; its exact cKit/flow/blast threshold and interpretation require source verification before it may be called disease onset.
+The observed subject-level distribution of a source-defined event time with explicit event status and right censoring, suitable for external survival analysis. It describes the observation/termination process and is not a Stage 2 target. In AML, the `L` sample is currently a protocol-defined terminal event; its exact cKit/flow/blast threshold and interpretation require source verification before it may be called disease onset.
 
-**time-to-disease**:
-The model-derived first-passage-time distribution from a subject's initial state-space position across a predeclared disease boundary, obtained from longitudinal dynamics/Fokker–Planck propagation. It is validated against, but never substituted for, the empirical event distribution.
-_Avoid_: observed survival time, empirical event time
+**barrier first-passage time**:
+The model-derived distribution of time from a subject's initial state-space position to the unstable critical point, obtained from longitudinal dynamics/Fokker–Planck propagation. This mathematical transition is the primary longitudinal Stage 2 target. It is not automatically equivalent to a protocol terminal event, clinical disease onset, or observed survival time.
+_Avoid_: time-to-disease (unless independently clinically validated), survival time, endpoint time
 
 **point of no return**:
 The unstable critical point at which stochastic transitions become highly probable and the Fokker-Planck solution places most probability mass in the disease well. In the CML three-well landscape this is c₂ (Early-Transition state).

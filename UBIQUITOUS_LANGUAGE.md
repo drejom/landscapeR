@@ -17,7 +17,7 @@
 | **Langevin equation** | The stochastic differential equation `dX_t = −∇U_p dt + √(2β⁻¹) dB_t` governing how the state variable moves in the quasi-potential with noise | equation of motion |
 | **Fokker-Planck equation** | The deterministic PDE for the probability density P(x,t) of the state variable; solved numerically to predict time-to-disease | FP equation, probability transport equation |
 | **diffusion coefficient** | The noise parameter β⁻¹ in the Langevin/Fokker-Planck equations, estimated from the mean squared displacement of state-space trajectories | noise strength, stochastic fluctuation parameter |
-| **time-to-disease** | The expected first-passage time from the healthy well to the disease well, derived by integrating the Fokker-Planck solution | disease onset time, survival time (only for clinical comparisons) |
+| **barrier first-passage time** | The model-derived distribution of time from an initial state-space position to the unstable critical point under longitudinal dynamics; the primary longitudinal Stage 2 timing quantity | time-to-disease (unless clinically validated), disease onset time, survival time |
 
 ## Decomposition layer
 
