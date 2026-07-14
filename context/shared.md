@@ -58,6 +58,10 @@ _Avoid_: log entry, record
 **execution telemetry**:
 Volatile observations about a particular execution, such as elapsed wall-clock time, host, or start time. Useful for profiling and benchmark artifacts, but never stored in the deterministic returned `StateTransitionData` provenance chain.
 
+**claim-boundary guardrail**:
+A rule that constrains evidence labels and curated reports rather than prohibiting scientific function calls. Low-level primitives remain pure and composable; experts may inspect alternate components, run ad hoc estimators, and build custom workflows. Provenance records departures from the curated path, and the evidence assembler prevents post hoc or incompletely specified work from being silently labelled confirmatory.
+_Avoid_: workflow lock, forbidden call
+
 **boundary validation**:
 The check run at every stage entry via `validate_boundary()` that verifies the incoming `StateTransitionData` satisfies the stage's typed preconditions. Returns a typed failure — never throws a raw exception.
 _Avoid_: input validation, guard, precondition check

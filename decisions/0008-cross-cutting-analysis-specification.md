@@ -74,6 +74,17 @@ records the proposal digest, whether the recommendation was accepted or
 overridden, and the analyst rationale. A versioned migration is required; no
 legacy/null fallback may silently discard target intent.
 
+**Amendment (2026-07-13): guard claims, not scientific function calls.** The
+curated runner and evidence assembler use the specification to determine claim
+eligibility, but low-level pure functions remain public and composable. An
+analyst may inspect any component, override a proposal, run an estimator ad hoc,
+or construct a custom pipeline. Such work returns ordinary structured results
+with provenance; it is not blocked merely because it departs from the curated
+path. A post-inspection override or incompletely specified custom run is labelled
+exploratory by standard evidence tooling and cannot be silently promoted to
+confirmatory. Predeclared override rules may remain confirmatory-eligible when
+recorded before inspection and when all other gates pass.
+
 ## Consequences
 
 - `PipelineConfig` validation grows beyond dataset and strategy identifiers.
