@@ -6,6 +6,9 @@
 |---|---|---|
 | **state variable** | The minimal description of a biological system at a point in time — here, the whole-blood or PBMC transcriptome | snapshot, profile |
 | **state-space** | The low-dimensional coordinate system (typically one or two PCA axes) in which state variables are plotted over time | feature space, embedding, PC space |
+| **descriptive evidence layer** | The minimally interpreted analysis output needed to assess a claim—component coordinates and distributions, metadata associations, empirical densities, individual metrics, and exclusions. It is not synonymous with publishable raw subject-level data. | raw data layer |
+| **hypothesis-conditioned interpretation layer** | The declared roles, expected ordering, models, selections, fitted structures, biological labels, and aggregate judgements applied after descriptive evidence is available; always retained beside and linked to its descriptive precursor | results layer, final answer |
+| **observation before interpretation** | The rule that interpretation never overwrites or hides descriptive evidence; predeclared and discovered hypotheses remain distinguished (ADR 0017) | hypothesis-free analysis |
 | **state-transition** | The dynamic process by which a biological system moves from one stable state to another across an unstable boundary | phenotype switch, disease progression (too narrow) |
 | **quasi-potential** | A scalar energy function U(x) over the state-space whose local minima are stable states and local maxima are unstable transition boundaries; not a physical potential (has no physical units) | potential energy, energy landscape, attractor landscape |
 | **well** | A local minimum of the quasi-potential — a stable, energetically favourable biological state the system tends to occupy | attractor basin, stable state (use only when distinguishing from unstable state) |

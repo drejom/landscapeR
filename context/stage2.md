@@ -11,6 +11,12 @@ _Avoid_: potential energy, energy landscape, attractor landscape, effective pote
 **sampling design**:
 The declared observation structure used to constrain Stage 2 claims. **Cross-sectional** data support a distributional quasi-potential estimate only. **Longitudinal** data include subject identity and ordered time points, enabling a distinct time-aware strategy to test directional behaviour or estimate temporal quantities.
 
+**Stage 2 descriptive evidence**:
+The selected state-space coordinates and their empirical distribution, shown before and beside any fitted quasi-potential. The empirical density, sample support, exclusions, and uncertainty remain inspectable; a smooth landscape must never be the only published representation (ADR 0017).
+
+**Stage 2 interpretation**:
+The fitted quasi-potential, geometrically classified critical points, uncertainty, and biological labels derived from the descriptive evidence. Geometric classifications (well, barrier) remain distinct from biological labels (healthy, leukemic), and every interpretation references its descriptive precursor.
+
 **log-density inversion**:
 The Stage 2 estimation approach: estimate p(x) by KDE on the state-space coordinates, then compute U(x) = −log p(x). The primary estimation strategy.
 _Avoid_: KDE-based potential, negative log-density

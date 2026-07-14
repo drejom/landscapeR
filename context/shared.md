@@ -36,6 +36,17 @@ _Avoid_: settings, options, parameters (too generic)
 A typed wrapper around a stage's return value, carrying success/failure status, the output value, and a provenance step. Never a raw list or a thrown exception.
 _Avoid_: result, output, return value
 
+**descriptive evidence layer**:
+The minimally interpreted analysis output needed to assess a claim: component coordinates and distributions, eligible metadata associations, empirical densities, individual benchmark metrics, and exclusions. It does not mean unrestricted publication of raw source or subject-level data; privacy and data-use constraints still apply.
+_Avoid_: raw data layer (confuses analysis outputs with source data)
+
+**hypothesis-conditioned interpretation layer**:
+The declarations, models, selections, fitted structures, biological labels, and aggregate judgements imposed after descriptive evidence is available. It always references and remains visible beside its descriptive precursor. Predeclared and discovered declarations are distinguished.
+_Avoid_: results layer, final answer
+
+**observation before interpretation**:
+The cross-cutting rule that every interpretive artifact retains a route to its descriptive evidence and never overwrites or hides it (ADR 0017). Raw and adjusted associations, empirical and fitted distributions, and individual metrics and aggregate judgements remain separately inspectable.
+
 **provenance**:
 The deterministic machine-readable recipe for how an artifact was produced — strategy, parameters, pre-stage input digest, schema version, and RNG seed. Stored in `StateTransitionData@provenance` as `ProvenanceStep` objects. First-class: every stage records it, and equal input/configuration/seed yields equal provenance.
 _Avoid_: audit trail, lineage, history
