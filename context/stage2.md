@@ -9,7 +9,7 @@ The scalar energy function U(x) = −log p(x) derived by log-density inversion o
 _Avoid_: potential energy, energy landscape, attractor landscape, effective potential (use only when specifically referring to the ODE-derived theoretical potential from Frankhouser2024)
 
 **sampling design**:
-The declared observation structure used to constrain Stage 2 claims. **Cross-sectional** data support a distributional quasi-potential estimate from independent biological units; the planned diabetes application uses independent donors in the predeclared order non-diabetic → autoantibody-positive → T1D. **Longitudinal** data include subject identity and ordered repeated measurements; AML is the reference application and requires a distinct subject-aware strategy to test trajectory divergence, direction, or temporal quantities. These are complementary capabilities with different estimands, not interchangeable approximations. A predeclared one-observation-per-subject AML snapshot may be a separate sensitivity analysis but does not substitute for the longitudinal progression analysis.
+The declared observation structure used to constrain Stage 2 claims. **Cross-sectional** data support a distributional quasi-potential estimate from independent biological units; the planned diabetes application uses independent donors in the predeclared order non-diabetic → autoantibody-positive → T1D. **Longitudinal** data include subject identity and ordered repeated measurements and may declare protocol-defined event/censoring fields; AML is the reference application and requires a distinct subject-aware strategy to test trajectory divergence, direction, or temporal quantities. These are complementary capabilities with different estimands, not interchangeable approximations. A predeclared one-observation-per-subject AML snapshot may be a separate sensitivity analysis but does not substitute for the longitudinal progression analysis.
 
 **Stage 2 descriptive evidence**:
 The selected state-space coordinates and their empirical distribution, shown before and beside any fitted quasi-potential. The empirical density, sample support, exclusions, and uncertainty remain inspectable; a smooth landscape must never be the only published representation (ADR 0017).
@@ -94,9 +94,12 @@ _Avoid_: displacement variance
 The deterministic PDE governing the time-evolution of probability density P(x,t) of the state variable: `∂P/∂t = −∂/∂x[∇U_p P] + β⁻¹ ∂²P/∂x²`. Solved numerically (via `deSolve` + `ReacTran`) to predict time-to-disease.
 _Avoid_: FPE, diffusion equation, probability transport equation
 
+**empirical event distribution**:
+The observed subject-level distribution of a source-defined event time with explicit event status and right censoring, suitable for survival curves. It is descriptive evidence and remains distinct from Stage 2 model predictions. In AML, the `L` sample is currently a protocol-defined terminal event; its exact cKit/flow/blast threshold and interpretation require source verification before it may be called disease onset.
+
 **time-to-disease**:
-The expected first-passage time from a subject's initial state-space position across the unstable critical point to the disease well, derived by integrating the Fokker-Planck solution forward in time.
-_Avoid_: disease onset time, survival time (only for clinical comparison contexts)
+The model-derived first-passage-time distribution from a subject's initial state-space position across a predeclared disease boundary, obtained from longitudinal dynamics/Fokker–Planck propagation. It is validated against, but never substituted for, the empirical event distribution.
+_Avoid_: observed survival time, empirical event time
 
 **point of no return**:
 The unstable critical point at which stochastic transitions become highly probable and the Fokker-Planck solution places most probability mass in the disease well. In the CML three-well landscape this is c₂ (Early-Transition state).
