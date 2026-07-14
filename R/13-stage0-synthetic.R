@@ -2,7 +2,7 @@
 #
 # Produces StateTransitionData objects with known ground truth for validating
 # Stages 1 and 2.  Each synthetic control embeds a single shared gene-space
-# direction (v_true) across K layers with independent noise.  The BBP signal
+# direction (v_true) across K omic layers with independent noise.  The BBP signal
 # threshold  (n*p)^(1/4)  separates the detectable and undetectable regimes.
 #
 # Primary entry points:
@@ -12,7 +12,7 @@
 #
 # The returned StateTransitionData has:
 #   ground_truth        <- SubspaceGroundTruth(shared = v_true as 1-column matrix,
-#                                              exclusive = list of per-layer v_spec,
+#                                              exclusive = list of per-omic-layer v_spec,
 #                                              angles = numeric(0))
 #   metadata()$control  <- the generating parameters (reproducible)
 
@@ -53,17 +53,17 @@
 
 #' Generate one synthetic control dataset
 #'
-#' Each layer is  X_i = signal * outer(u_shared, v_true)
+#' Each omic layer is  X_i = signal * outer(u_shared, v_true)
 #'                     + signal_spec * outer(u_spec_i, v_spec_i) + noise.
 #' Both u and v vectors are unit-norm, so \code{signal} is the true singular
 #' value of the shared component.  The BBP detectability threshold at this
 #' scale is \code{(n*p)^(1/4)}.
 #'
 #' @param n integer number of samples (columns in the omic matrix convention)
-#' @param p integer number of features / genes per layer
-#' @param K integer number of layers (>= 1)
+#' @param p integer number of features / genes per omic layer
+#' @param K integer number of omic layers (>= 1)
 #' @param signal numeric singular value of the shared component (must be > 0)
-#' @param signal_spec numeric singular value of each layer-specific component
+#' @param signal_spec numeric singular value of each omic-layer-specific component
 #' @param noise_sd numeric standard deviation of the additive i.i.d. Gaussian noise
 #' @param seed integer RNG seed for reproducibility
 #' @return \code{StateTransitionData} with \code{SubspaceGroundTruth}
@@ -90,11 +90,11 @@ synthetic_control <- function(n        = 40L,
 
     setup_rng(seed)
 
-    # Shared gene direction and sample direction (same across all layers)
+    # Shared gene direction and sample direction (same across all omic layers)
     v_true   <- .unit_rnorm(p)
     u_shared <- .unit_rnorm(n)
 
-    # Per-layer matrices
+    # Per-omic-layer matrices
     mats <- vector("list", K)
     v_specs <- vector("list", K)
     for (i in seq_len(K)) {
@@ -162,7 +162,7 @@ synthetic_control <- function(n        = 40L,
             std,
             stage = "generate_control",
             contract = "SyntheticControlGenerator",
-            implementation = "single_layer_subspace",
+            implementation = "single_omic_layer_subspace",
             params = ctrl_params,
             input_hashes = c(
                 specification = digest::digest(ctrl_params, algo = "sha256")
@@ -238,7 +238,7 @@ synthetic_control <- function(n        = 40L,
 #' @param noise_sd numeric expression noise standard deviation
 #' @param beta numeric inverse temperature for the double-well distribution
 #' @param seed integer reproducibility seed
-#' @return single-layer \code{StateTransitionData} with
+#' @return single-omic-layer \code{StateTransitionData} with
 #'   \code{K1DoubleWellGroundTruth}
 #' @export
 synthetic_k1_double_well_control <- function(n = 200L,
@@ -408,7 +408,8 @@ synthetic_k1_double_well_control <- function(n = 200L,
 
 #' Run the generic K=1 double-well calibration path
 #'
-#' Runs the configured single-layer decomposition and cross-sectional dynamics strategy
+#' Runs the configured single-omic-layer decomposition and cross-sectional
+#' dynamics strategy
 #' on one disclosed synthetic control. The return value contains recovery
 #' diagnostics but deliberately contains no acceptance/pass judgement.
 #'
@@ -614,8 +615,8 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
 #' angle and timing for each combination.
 #'
 #' @param ns integer vector of sample sizes
-#' @param ps integer vector of feature counts (genes per layer)
-#' @param Ks integer vector of layer counts
+#' @param ps integer vector of feature counts (genes per omic layer)
+#' @param Ks integer vector of omic-layer counts
 #' @param signals numeric vector of signal singular values to test
 #' @param strategy_name character Decomposer strategy to benchmark
 #' @param seed integer base seed (incremented per config)

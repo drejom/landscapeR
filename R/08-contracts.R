@@ -129,11 +129,12 @@ setClass("Decomposer", representation("VIRTUAL"))
 setGeneric("shared_axis",
     function(x, j = 1L) standardGeneric("shared_axis"))
 
-#' Decompose one or more layers into state-space axes
+#' Decompose one or more omic layers into state-space axes
 #'
-#' Registered implementations define the supported layer count. Plain SVD is
-#' the exactly-one-layer baseline; comparative GSVD/HO-GSVD strategies handle
-#' two or more layers and can partition shared from layer-exclusive structure.
+#' Registered implementations define the supported omic-layer count. Plain SVD
+#' is the exactly-one-omic-layer baseline; comparative GSVD/HO-GSVD strategies
+#' handle two or more omic layers and can partition shared from
+#' omic-layer-exclusive structure.
 #'
 #' Boundary validation (\code{\link{validate_boundary}}) is enforced
 #' structurally: the method below, dispatched on the VIRTUAL

@@ -10,7 +10,7 @@ test_that("synthetic_control supports one omic layer", {
     expect_identical(metadata(std)$control$K, 1L)
     expect_length(std@provenance, 1L)
     expect_identical(std@provenance[[1L]]@implementation,
-                     "single_layer_subspace")
+                     "single_omic_layer_subspace")
     expect_identical(std@sampling_design@kind, "cross_sectional")
 })
 
@@ -27,7 +27,7 @@ test_that("synthetic_control typed-fails invalid public inputs", {
     }
 })
 
-test_that("registered svd decomposes one layer into the common result contract", {
+test_that("registered svd decomposes one omic layer into the common result contract", {
     expect_true("Decomposer:svd" %in% list_strategies("Decomposer"))
 
     std <- synthetic_control(n = 12L, p = 30L, K = 1L,
@@ -88,7 +88,7 @@ test_that("svd typed-fails invalid centering and non-finite assay values", {
     expect_match(non_finite@reason, "finite numeric")
 })
 
-test_that("svd typed-fails outside its exactly-one-layer capability", {
+test_that("svd typed-fails outside its exactly-one-omic-layer capability", {
     std <- synthetic_control(n = 12L, p = 30L, K = 2L,
                              signal = 40, seed = 103L)
     ctor <- get_strategy("Decomposer", "svd")
@@ -96,7 +96,7 @@ test_that("svd typed-fails outside its exactly-one-layer capability", {
 
     expect_s4_class(result, "StageResult")
     expect_identical(result@status, "failure")
-    expect_match(result@reason, "svd requires exactly 1 layer", fixed = TRUE)
+    expect_match(result@reason, "svd requires exactly 1 omic layer", fixed = TRUE)
 })
 
 test_that("hogsvd_averaged does not silently handle K=1", {
@@ -107,7 +107,7 @@ test_that("hogsvd_averaged does not silently handle K=1", {
 
     expect_s4_class(result, "StageResult")
     expect_identical(result@status, "failure")
-    expect_match(result@reason, "requires at least 2 layers", fixed = TRUE)
+    expect_match(result@reason, "requires at least 2 omic layers", fixed = TRUE)
 })
 
 test_that("svd deterministically recovers planted K=1 subspace", {

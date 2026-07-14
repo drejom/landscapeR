@@ -33,7 +33,8 @@ named list of labelled non-evidentiary calibration diagnostics,
 including deterministic config/input digests and stage provenance
 }
 \description{
-Runs the configured single-layer decomposition and cross-sectional dynamics strategy
+Runs the configured single-omic-layer decomposition and cross-sectional
+dynamics strategy
 on one disclosed synthetic control. The return value contains recovery
 diagnostics but deliberately contains no acceptance/pass judgement.
 }

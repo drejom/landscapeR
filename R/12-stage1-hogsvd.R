@@ -113,7 +113,7 @@ setMethod(".decompose_impl", signature("HogsvdAveraged", "StateTransitionData"),
         input_hashes <- c(data = digest::digest(data))
         layers <- as.list(experiments(data))
         if (length(layers) < 2L)
-            return(stage_failure("hogsvd_averaged requires at least 2 layers"))
+            return(stage_failure("hogsvd_averaged requires at least 2 omic layers"))
 
         p_params <- modifyList(list(center = TRUE, k_components = 6L), strategy@params)
         matrices <- lapply(layers, function(e) t(assay(e)))  # n x p per layer
@@ -184,7 +184,7 @@ setMethod(".decompose_impl", signature("HogsvdPrereduced", "StateTransitionData"
         input_hashes <- c(data = digest::digest(data))
         layers  <- as.list(experiments(data))
         if (length(layers) < 2L)
-            return(stage_failure("hogsvd_prereduced requires at least 2 layers"))
+            return(stage_failure("hogsvd_prereduced requires at least 2 omic layers"))
 
         p_params <- modifyList(list(center = TRUE, k_components = 6L), strategy@params)
         matrices <- lapply(layers, function(e) t(assay(e)))

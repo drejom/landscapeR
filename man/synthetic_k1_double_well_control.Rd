@@ -24,7 +24,7 @@ synthetic_k1_double_well_control(
 \item{seed}{integer reproducibility seed}
 }
 \value{
-single-layer \code{StateTransitionData} with
+single-omic-layer \code{StateTransitionData} with
 \code{K1DoubleWellGroundTruth}
 }
 \description{

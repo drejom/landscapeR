@@ -35,6 +35,13 @@ OBVIOUSLY_QUALIFYING_FILES = {
 }
 CURRENT_DOCS_REQUIRED_PREFIXES = ("data-raw/", "man/")
 CURRENT_DOCS_REQUIRED_FILES = {"DESCRIPTION", "NAMESPACE"}
+R_DEFINITION_PATTERN = re.compile(
+    r"^\s*([A-Za-z.][A-Za-z0-9._]*)\s*<-\s*function\b",
+    flags=re.MULTILINE,
+)
+R_S4_PATTERN = re.compile(
+    r"\b(?:setGeneric|setClass|setClassUnion|setMethod)\s*\(\s*['\"]([^'\"]+)",
+)
 
 
 def changed_files() -> list[str]:
@@ -88,6 +95,43 @@ def current_documentation_changed(files: list[str]) -> bool:
     )
 
 
+def namespace_exports() -> set[str]:
+    namespace = Path("NAMESPACE")
+    if not namespace.is_file():
+        return set()
+    exports: set[str] = set()
+    for _, contents in re.findall(
+        r"^(export|exportMethods|exportClasses)\(([^)]+)\)",
+        namespace.read_text(encoding="utf-8"),
+        flags=re.MULTILINE,
+    ):
+        exports.add(contents.strip().strip("'\""))
+    return exports
+
+
+def public_or_scientific_r_changes(files: list[str]) -> list[str]:
+    exports = namespace_exports()
+    qualifying: list[str] = []
+    for path_text in files:
+        if not path_text.startswith("R/"):
+            continue
+        path = Path(path_text)
+        if not path.is_file():
+            continue
+        source = path.read_text(encoding="utf-8")
+        definitions = set(R_DEFINITION_PATTERN.findall(source))
+        s4_symbols = set(R_S4_PATTERN.findall(source))
+        if (
+            "#' @export" in source
+            or "register_strategy(" in source
+            or bool(definitions & exports)
+            or bool(s4_symbols & exports)
+            or "setMethod(" in source
+        ):
+            qualifying.append(path_text)
+    return qualifying
+
+
 def validate_exemption(body: str, files: list[str]) -> int:
     category = field(body, "Exemption category")
     rationale = field(body, "Exemption rationale")
@@ -99,6 +143,7 @@ def validate_exemption(body: str, files: list[str]) -> int:
         if path in OBVIOUSLY_QUALIFYING_FILES
         or path.startswith(OBVIOUSLY_QUALIFYING_PREFIXES)
     ]
+    obviously_qualifying.extend(public_or_scientific_r_changes(files))
     if obviously_qualifying:
         return fail(
             "An exemption cannot cover an obviously qualifying change: "
@@ -162,7 +207,7 @@ def validate_required_proof(body: str, files: list[str]) -> int:
             "Current documentation is declared updated, but no README or vignette change "
             "exists in the current documentation diff."
         )
-    docs_required = any(
+    docs_required = bool(public_or_scientific_r_changes(files)) or any(
         path in CURRENT_DOCS_REQUIRED_FILES
         or path.startswith(CURRENT_DOCS_REQUIRED_PREFIXES)
         for path in files

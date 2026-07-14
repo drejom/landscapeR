@@ -6,7 +6,7 @@ Implement only issue #50:
 
 1. permit K=1 synthetic generation without changing K≥2 behaviour;
 2. register explicit `Decomposer:svd`;
-3. typed-fail `svd` for any layer count other than one;
+3. typed-fail `svd` for any omic-layer count other than one;
 4. return the common `DecompositionResult` and truthful `svd` provenance;
 5. add deterministic K=1 subspace-recovery tests;
 6. add a generic cross-sectional K=1 double-well calibration harness.
@@ -17,10 +17,10 @@ No thresholds, acceptance/holdout evidence, AML longitudinal control, real data,
 
 The originating issue and ADR define these test seams:
 
-- `synthetic_control(..., K = 1L)` → valid single-layer `StateTransitionData` with planted ground truth;
+- `synthetic_control(..., K = 1L)` → valid single-omic-layer `StateTransitionData` with planted ground truth;
 - `get_strategy("Decomposer", "svd")` → registered constructor;
-- `decompose(svd(), std)` → successful common `DecompositionResult` for exactly one layer;
-- `decompose(svd(), multi_layer_std)` → typed `StageResult` failure;
+- `decompose(svd(), std)` → successful common `DecompositionResult` for exactly one omic layer;
+- `decompose(svd(), multi_omic_layer_std)` → typed `StageResult` failure;
 - returned provenance identifies `Decomposer:svd` through the normal pipeline boundary;
 - public K=1 calibration helper → structured, labelled non-evidentiary recovery output using known double-well truth;
 - implementing pull request → before/after or representative visual landing proof, a cold-reader conclusion, reproduction procedure, and calibration-only claim status;
@@ -41,7 +41,7 @@ Tests use planted ground truth and independent subspace metrics rather than impl
 
 ## Completion evidence
 
-- K=1 constructor, explicit `svd` registry strategy, exact-one-layer typed failure, truthful provenance, deterministic subspace recovery, and calibration-only double-well harness are implemented.
+- K=1 constructor, explicit `svd` registry strategy, exact-one-omic-layer typed failure, truthful provenance, deterministic subspace recovery, and calibration-only double-well harness are implemented.
 - Focused tests: 111 passed.
 - Full test suite: 454 passed.
 - `R CMD check --no-manual`: code, Rd documentation, examples, package tests, and package-included vignettes passed. Local check reports one environment warning because the installed `MultiAssayExperiment` was built under R 4.5.3 while local R is 4.5.2, plus the already documented long benchmark-path NOTE. The living development log is excluded from `R CMD check` and is verified separately by the pkgdown build and rendered visual review.

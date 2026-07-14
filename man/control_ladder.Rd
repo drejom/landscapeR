@@ -16,9 +16,9 @@ control_ladder(
 \arguments{
 \item{ns}{integer vector of sample sizes}
 
-\item{ps}{integer vector of feature counts (genes per layer)}
+\item{ps}{integer vector of feature counts (genes per omic layer)}
 
-\item{Ks}{integer vector of layer counts}
+\item{Ks}{integer vector of omic-layer counts}
 
 \item{signals}{numeric vector of signal singular values to test}
 

@@ -96,6 +96,22 @@ class VisualProofCheckerCliTest(unittest.TestCase):
     def _commit_obviously_public_change(self) -> None:
         self._commit_path("NAMESPACE", "export(public_feature)\n")
 
+    def _commit_existing_public_r_change(self) -> None:
+        self._git("switch", "main")
+        source = self.repo / "R" / "public-api.R"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("public_api <- function() 'before'\n", encoding="utf-8")
+        (self.repo / "NAMESPACE").write_text(
+            "export(public_api)\n", encoding="utf-8"
+        )
+        self._git("add", "R/public-api.R", "NAMESPACE")
+        self._git("commit", "-m", "add existing public R API")
+        self._git("switch", "feature")
+        self._git("rebase", "main")
+        source.write_text("public_api <- function() 'after'\n", encoding="utf-8")
+        self._git("add", "R/public-api.R")
+        self._git("commit", "-m", "change existing public R API")
+
     def _run_checker(self, body: str) -> subprocess.CompletedProcess[str]:
         body_file = self.repo / "pr-body.md"
         body_file.write_text(body, encoding="utf-8")
@@ -189,14 +205,17 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertIn("Visual landing proof exemption accepted", result.stdout)
 
     def test_rejects_exemption_for_r_scientific_or_public_behavior(self) -> None:
-        source = self.repo / "R" / "public-api.R"
-        source.parent.mkdir(parents=True, exist_ok=True)
-        source.write_text("public_api <- function() 'changed'\n", encoding="utf-8")
-        (self.repo / "NAMESPACE").write_text(
-            "export(public_api)\n", encoding="utf-8"
+        self._commit_existing_public_r_change()
+        result = self._run_checker(VALID_EXEMPTION)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("obviously qualifying", result.stderr)
+
+    def test_rejects_exemption_for_registered_scientific_method(self) -> None:
+        self._commit_path(
+            "R/scientific-strategy.R",
+            'setMethod("decompose", signature("Strategy", "Data"), function(x, y) y)\n',
         )
-        self._git("add", "R/public-api.R", "NAMESPACE")
-        self._git("commit", "-m", "change public R API")
         result = self._run_checker(VALID_EXEMPTION)
 
         self.assertNotEqual(result.returncode, 0)
@@ -260,14 +279,7 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_requires_current_docs_for_r_behavior_change(self) -> None:
-        source = self.repo / "R" / "public-api.R"
-        source.parent.mkdir(parents=True, exist_ok=True)
-        source.write_text("public_api <- function() 'changed'\n", encoding="utf-8")
-        (self.repo / "NAMESPACE").write_text(
-            "export(public_api)\n", encoding="utf-8"
-        )
-        self._git("add", "R/public-api.R", "NAMESPACE")
-        self._git("commit", "-m", "change public R API")
+        self._commit_existing_public_r_change()
         body = REQUIRED_PROOF.replace("- [x] Updated", "- [ ] Updated").replace(
             "- [ ] Unaffected", "- [x] Unaffected"
         ).replace(

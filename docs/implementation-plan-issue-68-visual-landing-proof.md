@@ -104,7 +104,7 @@ Before code review:
   branch deletion.
 - All 24 open issues contain a required visual-proof declaration or an explicit
   research/decision-only exemption whose implementation expiry is stated.
-- Policy CLI contract tests: 21 passed, including malformed templates,
+- Policy CLI contract tests: 22 passed, including malformed templates,
   unavailable comparison refs, artifact presence, public/scientific R changes,
   internal-only R exemptions, prepared-data changes, developer workflows, and
   both exemption categories.
@@ -133,4 +133,9 @@ Before code review:
 - Editing PR #69's proof packet at head `c76acb9` created a second
   `pull_request` workflow run (`29352677745`) after the synchronize run,
   demonstrating that proof removal or alteration cannot retain a stale green
-  policy check. A clean two-axis review rerun is required before merge.
+  policy check.
+- The closing review then found an existing-export R-only blind spot and
+  standalone `layer` terminology. The checker now inspects changed R sources
+  against existing namespace exports and scientific S4/registry markers while
+  retaining valid private-helper exemptions; public text uses `omic layer`.
+  A clean two-axis review rerun is required before merge.

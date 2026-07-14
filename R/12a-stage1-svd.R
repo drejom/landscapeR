@@ -1,7 +1,7 @@
-# Stage 1 — single-layer SVD strategy
+# Stage 1 — single-omic-layer SVD strategy
 #
 # K=1 is a first-class strategy with truthful provenance, not a degradation
-# branch inside a multi-layer decomposer (ADR 0016).
+# branch inside a multi-omic-layer decomposer (ADR 0016).
 
 #' @rdname decompose
 #' @export
@@ -14,9 +14,9 @@ setClass("SvdDecomposer",
 setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
     function(strategy, data, ...) {
         input_hashes <- c(data = digest::digest(data))
-        layers <- as.list(experiments(data))
-        if (length(layers) != 1L)
-            return(stage_failure("svd requires exactly 1 layer"))
+        omic_layers <- as.list(experiments(data))
+        if (length(omic_layers) != 1L)
+            return(stage_failure("svd requires exactly 1 omic layer"))
 
         p_params <- modifyList(list(center = TRUE, k_components = 6L), strategy@params)
         if (!is.logical(p_params$center) || length(p_params$center) != 1L ||
@@ -35,7 +35,7 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
             ))
         requested_k <- as.integer(requested_k)
 
-        X <- t(assay(layers[[1L]]))
+        X <- t(assay(omic_layers[[1L]]))
         if (!is.numeric(X) || any(!is.finite(X)))
             return(stage_failure(
                 "svd requires a finite numeric assay matrix"

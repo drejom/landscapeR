@@ -11,7 +11,7 @@
 \alias{.decompose_impl,HogsvdPrereduced,StateTransitionData-method}
 \alias{SvdDecomposer-class}
 \alias{.decompose_impl,SvdDecomposer,StateTransitionData-method}
-\title{Decompose one or more layers into state-space axes}
+\title{Decompose one or more omic layers into state-space axes}
 \usage{
 decompose(strategy, data, ...)
 
@@ -35,9 +35,10 @@ decompose(strategy, data, ...)
 shared + exclusive subspaces in \code{metadata()}
 }
 \description{
-Registered implementations define the supported layer count. Plain SVD is
-the exactly-one-layer baseline; comparative GSVD/HO-GSVD strategies handle
-two or more layers and can partition shared from layer-exclusive structure.
+Registered implementations define the supported omic-layer count. Plain SVD
+is the exactly-one-omic-layer baseline; comparative GSVD/HO-GSVD strategies
+handle two or more omic layers and can partition shared from
+omic-layer-exclusive structure.
 }
 \details{
 Boundary validation (\code{\link{validate_boundary}}) is enforced
