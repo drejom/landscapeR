@@ -44,8 +44,11 @@ _Avoid_: PC1/PC2 (too generic — the target biological axis may not be the domi
 **disease axis**:
 A disease-specific target biological axis whose coordinate separates healthy from disease state variables or correlates with disease burden markers.
 
+**metadata-association atlas**:
+A structured, serializable table of associations between every Stage 1 component and every eligible `colData` field. It is computed before component selection and answers which recorded variables each component is *associated with*; it does not infer causation or declare a variable to be a confounder. Identifier fields (for example `mouse_id`) are excluded. Fields and their eventual scientific roles are marked as predeclared or discovered so the discovery/confirmation boundary remains explicit.
+
 **component-selection proposal**:
-A reproducible ranking of Stage 1 components against predeclared biological metadata. It recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion.
+A reproducible ranking of Stage 1 components after an analyst assigns metadata fields the roles target, confounder/nuisance, descriptive-only, or excluded. It recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion. The assigned roles and whether they were predeclared or discovered become part of the `AnalysisSpecification` and provenance.
 
 The ranking criterion is declared per-analysis and supports two modes:
 - **continuous association**: Spearman correlation of component scores against a numeric metadata column (e.g. weeks post-infection, developmental day). Use to identify or deprioritise time/age-driven components.
@@ -64,12 +67,19 @@ The proposal is a **formal scored object** (not just a plot): it carries a ranke
 # Step 1: run Stage 1
 std2 <- decompose(dec(), std)@value
 
-# Step 2: inspect proposal (human step for real data)
-proposal <- propose_component(std2, target_field = "condition",
-                              confounder_fields = "age_weeks")
-plot(proposal)   # calls plot_components() internally
+# Step 2: surface all eligible metadata associations
+atlas <- associate_metadata(std2)
+plot(atlas)
 
-# Step 3: confirm and proceed (human decision for real data;
+# Step 3: analyst assigns scientific roles and inspects proposal
+proposal <- propose_component(
+    atlas,
+    target = "condition",
+    confounders = "weeks_post_infection"
+)
+plot(proposal)
+
+# Step 4: confirm and proceed (human decision for real data;
 #          automated assertion in synthetic control tests)
 aspec <- confirm_component(proposal, index = 2L)
 # id auto-generated: "{dataset}_{target_field}_PC{k}"
