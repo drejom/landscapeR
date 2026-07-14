@@ -17,8 +17,8 @@ The selected state-space coordinates and their empirical distribution, shown bef
 **Stage 2 interpretation**:
 The fitted quasi-potential, geometrically classified critical points, uncertainty, and biological labels derived from the descriptive evidence. Geometric classifications (well, barrier) remain distinct from biological labels (healthy, leukemic), and every interpretation references its descriptive precursor.
 
-**static longitudinal potential**:
-The Rockne-style longitudinal target: one time-homogeneous 1D potential governs stochastic within-subject trajectories, while the Langevin/Fokker–Planck dynamics evolve probability through time. A longitudinal strategy estimates drift/diffusion from ordered within-subject transitions, respects irregular intervals, and tests the static/Markov adequacy assumptions. If unsupported it returns no-supported-static-longitudinal-potential rather than fitting a preferred landscape. It must not estimate this quantity by naively pooling repeated observations. A time-varying U(x,t) is a separate future capability.
+**common static longitudinal potential**:
+The first Rockne-style longitudinal target: one time-homogeneous 1D potential is shared across conditions, with CTL mice anchoring healthy occupancy and CM mice traversing toward disease; Langevin/Fokker–Planck dynamics evolve probability through time. The subject-aware strategy uses ordered within-mouse transitions, respects irregular intervals, and tests static/Markov adequacy assumptions. If unsupported it returns no-supported-static-longitudinal-potential rather than fitting a preferred landscape. It must not estimate this quantity by naively treating repeated observations as independent. A CM-specific landscape with CTL as an external reference, condition-specific comparative landscapes, and time-varying U(x,t) are separate future estimands.
 
 **log-density inversion**:
 The cross-sectional Stage 2 estimation approach: estimate p(x) by KDE on independent biological-unit coordinates, then compute U(x) = −log p(x). It is not the longitudinal estimator.
