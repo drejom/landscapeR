@@ -62,6 +62,16 @@ Volatile observations about a particular execution, such as elapsed wall-clock t
 The check run at every stage entry via `validate_boundary()` that verifies the incoming `StateTransitionData` satisfies the stage's typed preconditions. Returns a typed failure — never throws a raw exception.
 _Avoid_: input validation, guard, precondition check
 
+**compute tier**:
+The declared depth of computation and uncertainty propagation (ADR 0018): `inspect` gives deterministic point estimates without resampling; `standard` resamples biological units while conditioning on a fixed fitted state space; `evidence` resamples biological units and reruns every applicable fitted stage. Every artifact records its tier, and only `evidence` can become confirmatory after all other gates pass.
+_Avoid_: quick/full mode (does not state the inferential difference)
+
+**execution substrate**:
+The mechanism that runs independent pure tasks without changing their scientific meaning. Reusable package repetition uses the user-selected future plan; full evidence orchestration uses targets plus crew. Scientific functions never select the user's worker backend, and only one layer parallelises by default.
+
+**tidy interface boundary**:
+The explicit boundary where metadata or structured scientific results become human-readable tibbles for dplyr/tidyr/purrr and ggplot2 use (ADR 0019). Bioconductor containers and matrices remain canonical; assay-wide long-table materialisation is explicit and opt-in.
+
 **RNG seed**:
 The reproducibility anchor set by `setup_rng()` using L'Ecuyer-CMRG (compatible with parallel execution). Every stage function that uses randomness must accept a seed and call `setup_rng()`.
 _Avoid_: random seed, set.seed (the base R function — prefer the landscapeR wrapper)
