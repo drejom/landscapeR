@@ -53,6 +53,28 @@ The ranking criterion is declared per-analysis and supports two modes:
 
 Both modes may be declared together; a component may rank high on one and low on the other (as in AML: PC1 ranks high on weeks, PC2 ranks high on condition).
 
+The proposal is a **formal scored object** (not just a plot): it carries a ranked list of components with their association scores. `plot_components()` visualises this object; tests can assert against it directly.
+
+**Two downstream paths from the proposal object:**
+- *Synthetic controls*: ground truth is known (planted component index is recorded in `SubspaceGroundTruth`). CI asserts `proposal$rank[1] == ground_truth_component` automatically — no human needed.
+- *Real data*: ground truth is unknown. Human reviews the gallery, then calls `confirm_component(proposal, index = k)` to promote component k to a `manual_component` in the `AnalysisSpecification`. Human is mandatory; this step cannot be automated away.
+
+**Intended API sequence:**
+```r
+# Step 1: run Stage 1
+std2 <- decompose(dec(), std)@value
+
+# Step 2: inspect proposal (human step for real data)
+proposal <- propose_component(std2, target_field = "condition",
+                              confounder_fields = "age_weeks")
+plot(proposal)   # calls plot_components() internally
+
+# Step 3: confirm and proceed (human decision for real data;
+#          automated assertion in synthetic control tests)
+aspec <- confirm_component(proposal, index = 2L)
+run_pipeline(std2, cfg_with(aspec))
+```
+
 **axis orientation anchor**:
 An optional predeclared biological metadata rule that gives a selected target biological axis a semantic direction (for example, increasing developmental day or toward treated samples). Technical alignment to the discovery-cohort reference is automatic; directional biological claims require this anchor and must not use downstream Stage 2 topology to set it.
 
