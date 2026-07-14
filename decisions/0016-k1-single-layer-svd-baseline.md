@@ -70,8 +70,8 @@ must not auto-switch strategies from layer count.
 
 | Control | What it validates | Blocks |
 |---|---|---|
-| K=1 double-well synthetic | SVD recovers planted state-space axis; Stage 2 recovers well positions and barrier height | Everything below |
-| K=1 confounder-separation | Target axis is PC2 (not PC1); nuisance variable dominates PC1; component-selection proposal ranks correctly | AML real data |
+| Generic K=1 cross-sectional double-well | SVD recovers planted state-space axis; current cross-sectional Stage 2 recovers well positions and barrier height | Everything below |
+| AML-grounded K=1 longitudinal confounder-separation | Repeated synthetic mice; stronger planted time effect at PC1; planted condition-by-time disease divergence at PC2; sampling-design-aware atlas, proposal, and biological-unit bootstrap recover the target. Current cross-sectional Stage 2 must reject this input as ineligible. | AML Stage 1 recapitulation |
 | K=1 thinness sweep | Minimum n for reliable axis recovery at omics-scale p | AML real data |
 | K=1 negative control | No false wells when data is pure noise or single-well | AML real data |
 | K=1 bifurcation control | Y-shape topology recovered; two wells plus shared early state | Pogona real data |
@@ -83,9 +83,13 @@ before real data may be attempted.
 
 The AML paper explicitly shows PC1=age, PC2=disease. Any Stage 1 strategy
 that returns PC1 as the target biological axis on the AML data is wrong. The
-K=1 confounder-separation control (planted confounder stronger than planted
-disease axis) must demonstrate that the component-selection proposal correctly
-ranks the disease axis above the confounder axis before AML data is loaded.
+AML-grounded longitudinal K=1 confounder-separation control uses repeated
+synthetic mice, a stronger planted time effect, and planted condition-by-time
+disease divergence. It must demonstrate that the sampling-design-aware atlas,
+component-selection proposal, biological-unit bootstrap, and component
+alignment recover the disease axis before AML data is loaded. It does not
+validate the current cross-sectional Stage 2 estimator for longitudinal data;
+typed ineligibility at that boundary is the required result under ADR 0006.
 
 ### 4. The bifurcation topology is explicitly out of scope until its own ADR exists
 
@@ -103,12 +107,12 @@ bifurcation estimator.
 
 ```
 (a) Extend synthetic_control() to support K=1
-(b) Implement K=1 Stage 0 double-well control → freeze artifact
-(c) Set ADR 0002 K=1 acceptance thresholds from (b)
-(d) Implement K=1 confounder-separation control → freeze artifact
+(b) Implement generic cross-sectional K=1 double-well control → freeze artifact
+(c) Set ADR 0002 cross-sectional K=1 acceptance thresholds from (b)
+(d) Implement AML-grounded longitudinal K=1 confounder-separation control → freeze artifact
 (e) Implement K=1 thinness sweep → freeze artifact
 (f) Implement K=1 negative control → freeze artifact
-── AML real data may begin here (exploratory) ──
+── AML Stage 1 recapitulation may begin here (exploratory); longitudinal Stage 2 remains blocked by ADR 0006 ──
 (g) Implement K=1 bifurcation control → freeze artifact
 (h) Draft bifurcation Stage 2 ADR
 ── Pogona real data may begin here (exploratory) ──
@@ -153,8 +157,12 @@ It requires a 2D or time-aware estimator and a separate ADR.
 
 ## Consequences
 
-- **AML real data (`data-raw/aml_mrna_std.rds`)**: blocked until steps (a)–(f)
-  are complete
+- **AML Stage 1 real data (`data-raw/aml_mrna_std.rds`)**: blocked until steps
+  (a)–(f) are complete
+- **AML Stage 2 real data**: additionally blocked until a separately registered
+  longitudinal `DynamicsEstimator` has its own ADR and Stage 0 ladder, or a
+  distinct scientifically justified cross-sectional estimand is predeclared;
+  repeated observations may not be pooled as independent
 - **Pogona real data**: blocked until steps (a)–(h) are complete
 - **CML mRNA single-layer**: blocked until steps (a)–(f) are complete (same
   K=1 ladder; different biology but same validation requirement)

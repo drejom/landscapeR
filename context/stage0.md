@@ -68,8 +68,11 @@ _Avoid_: tri-stable control
 A Stage 0 synthetic control whose ground-truth topology is a Y-shape: one shared early attractor that splits into two distinct wells as a function of a developmental or condition variable. Characterises the Pogona TSD dataset (undifferentiated early embryos → male/female attractors). This topology is outside the current 1D KDE Stage 2 estimator scope and requires a separate ADR before real-data use.
 _Avoid_: branching control, split control
 
-**K=1 confounder-separation control**:
-A Stage 0 control with a single omic layer (K=1) where a planted nuisance variable (e.g. age) dominates PC1 and the planted target biological axis appears at PC2. Validates that the component-selection proposal correctly ranks the disease axis over the confounder. Load-bearing for the AML reference recapitulation (Cancer Research 2020: PC1=age, PC2=disease).
+**generic K=1 cross-sectional double-well control**:
+A single-layer control with independent observations and a known double-well target coordinate. It validates registered `svd` recovery and the current cross-sectional Stage 2 estimator without AML-specific sampling complexity.
+
+**AML-grounded K=1 longitudinal confounder-separation control**:
+A single-layer control with repeated synthetic mice, CTL/CM groups, a planted time effect stronger than the target signal, and planted condition-by-time disease divergence. The nuisance axis dominates PC1 and the target biological axis appears at PC2. It validates the sampling-design-aware atlas, component proposal, biological-unit bootstrap, and alignment. Under ADR 0006 the current cross-sectional Stage 2 estimator must return typed ineligibility rather than pool repeated observations. Load-bearing for AML Stage 1 recapitulation.
 _Avoid_: confounded control (too generic)
 
 ### Ground truth classes
