@@ -206,14 +206,15 @@ synthetic_k1_double_well_control <- function(n = 200L,
         angles = numeric(0L)
     )
     potential_truth <- new("PotentialGroundTruth",
-        potential = function(x) ((x + center_shift)^2 - 1)^2,
+        # Quasi-potential in the units estimated by Stage 2: -log(p).
+        potential = function(x) beta * ((x + center_shift)^2 - 1)^2,
         wells = matrix(
             c(-1 - center_shift, 0, 1 - center_shift, 0),
             ncol = 2L,
             byrow = TRUE,
             dimnames = list(c("left", "right"), c("x", "U"))
         ),
-        barrier = 1
+        barrier = beta
     )
     truth <- new("K1DoubleWellGroundTruth",
         subspace = subspace_truth,
@@ -240,7 +241,8 @@ synthetic_k1_double_well_control <- function(n = 200L,
         coordinate_center = center_shift,
         true_wells = c(-1 - center_shift, 1 - center_shift),
         true_barrier = -center_shift,
-        true_barrier_height = 1,
+        # Stage 2 estimates -log(p) = beta * U + constant.
+        true_barrier_height = beta,
         calibration_only = TRUE,
         evidence_status = "non_evidentiary_calibration"
     )
@@ -248,17 +250,76 @@ synthetic_k1_double_well_control <- function(n = 200L,
     std
 }
 
+.potential_recovery_metrics <- function(stage2,
+                                        true_wells,
+                                        true_barrier,
+                                        true_barrier_height,
+                                        orientation = 1) {
+    recovered_wells <- orientation * stage2$wells
+    recovered_barriers <- orientation * stage2$barriers
+
+    well_error <- if (length(recovered_wells) >= 2L) {
+        mean(vapply(true_wells, function(well) {
+            min(abs(recovered_wells - well))
+        }, numeric(1L)))
+    } else {
+        NA_real_
+    }
+    barrier_error <- if (length(recovered_barriers) >= 1L) {
+        min(abs(recovered_barriers - true_barrier))
+    } else {
+        NA_real_
+    }
+    barrier_heights <- unlist(lapply(
+        stage2$barrier_heights,
+        function(height) height[!is.na(height)]
+    ))
+    barrier_height_error <- if (length(barrier_heights)) {
+        min(abs(barrier_heights - true_barrier_height))
+    } else {
+        NA_real_
+    }
+
+    list(
+        well_error = well_error,
+        barrier_error = barrier_error,
+        barrier_height_error = barrier_height_error,
+        n_wells_found = length(stage2$wells),
+        n_barriers_found = length(stage2$barriers)
+    )
+}
+
+.k1_double_well_calibration_config <- function() {
+    new("PipelineConfig",
+        strategies = list(
+            Decomposer = "svd",
+            DynamicsEstimator = "kde_logdensity"
+        ),
+        params = list(
+            svd = list(),
+            kde_logdensity = list()
+        ),
+        dataset = "synthetic_k1_double_well_calibration",
+        analysis = analysis_specification(
+            id = "synthetic_k1_double_well_calibration_PC1",
+            manual_component = 1L,
+            claim_intent = "exploratory"
+        )
+    )
+}
+
 #' Run the generic K=1 double-well calibration path
 #'
-#' Runs the registered single-layer SVD and cross-sectional dynamics strategy
+#' Runs the configured single-layer decomposition and cross-sectional dynamics strategy
 #' on one disclosed synthetic control. The return value contains recovery
 #' diagnostics but deliberately contains no acceptance/pass judgement.
 #'
 #' @inheritParams synthetic_k1_double_well_control
-#' @param decomposer character registered K=1 Decomposer name
-#' @param dynamics_estimator character registered cross-sectional
-#'   DynamicsEstimator name
-#' @return named list of labelled non-evidentiary calibration diagnostics
+#' @param config explicit \code{PipelineConfig}; defaults to an exploratory
+#'   calibration configuration using registered \code{svd} and
+#'   \code{kde_logdensity} strategies
+#' @return named list of labelled non-evidentiary calibration diagnostics,
+#'   including deterministic config/input digests and stage provenance
 #' @export
 k1_double_well_calibration <- function(n = 200L,
                                         p = 100L,
@@ -267,8 +328,7 @@ k1_double_well_calibration <- function(n = 200L,
                                         n_steps = 1000L,
                                         dt = 0.01,
                                         seed = 42L,
-                                        decomposer = "svd",
-                                        dynamics_estimator = "kde_logdensity") {
+                                        config = .k1_double_well_calibration_config()) {
     std <- synthetic_k1_double_well_control(
         n = n,
         p = p,
@@ -278,20 +338,31 @@ k1_double_well_calibration <- function(n = 200L,
         dt = dt,
         seed = seed
     )
-    evidence_status <- metadata(std)$k1_double_well_control$evidence_status
+    if (!is(config, "PipelineConfig"))
+        stop("k1_double_well_calibration(): config must be a PipelineConfig")
 
-    decomposition_result <- decompose(get_strategy("Decomposer", decomposer)(), std)
-    if (decomposition_result@status != "success")
+    control <- metadata(std)$k1_double_well_control
+    evidence_status <- control$evidence_status
+    decomposer <- config@strategies[["Decomposer"]]
+    dynamics_estimator <- config@strategies[["DynamicsEstimator"]]
+    config_digest <- digest::digest(config, algo = "sha256")
+    control_digest <- digest::digest(std, algo = "sha256")
+
+    pipeline_result <- run_pipeline(std, config)
+    if (pipeline_result@status != "success")
         return(list(
             status = "failure",
             evidence_status = evidence_status,
             decomposer = decomposer,
             dynamics_estimator = dynamics_estimator,
-            reason = decomposition_result@reason
+            config_digest = config_digest,
+            control_digest = control_digest,
+            provenance = list(),
+            reason = pipeline_result@reason
         ))
 
-    decomposed <- decomposition_result@value
-    stage1 <- metadata(decomposed)$stage1
+    result <- pipeline_result@value
+    stage1 <- metadata(result)$stage1
     v_true <- std@ground_truth@subspace@shared[, 1L]
     v_hat <- shared_axis(stage1)
     cosine <- sum(v_true * v_hat) /
@@ -299,81 +370,31 @@ k1_double_well_calibration <- function(n = 200L,
     cosine_abs <- min(1, abs(cosine))
     subspace_angle <- acos(cosine_abs) * 180 / pi
 
-    # Component sign is mathematically arbitrary. Synthetic truth supplies the
-    # calibration orientation until the real-data proposal workflow exists.
+    # Component sign is mathematically arbitrary. Align recovered locations to
+    # synthetic truth for diagnostics without mutating the fitted pipeline.
     orientation <- if (cosine < 0) -1 else 1
-    if (orientation < 0) {
-        V_k <- dr_V_k(stage1)
-        V_k[, 1L] <- -V_k[, 1L]
-        coords_k <- dr_coords_k(stage1)
-        coords_k[[1L]][, 1L] <- -coords_k[[1L]][, 1L]
-        stage1 <- DecompositionResult(
-            V_star = V_k[, 1L],
-            sigma = dr_sigma(stage1),
-            coords = list(drop(coords_k[[1L]][, 1L])),
-            warnings = dr_warnings(stage1),
-            V_k = V_k,
-            sigma_k = dr_sigma_k(stage1),
-            coords_k = coords_k,
-            k = dr_k(stage1)
-        )
-        md <- metadata(decomposed)
-        md$stage1 <- stage1
-        metadata(decomposed) <- md
-    }
-
-    dynamics_result <- estimate_dynamics(
-        get_strategy("DynamicsEstimator", dynamics_estimator)(),
-        decomposed
+    stage2 <- metadata(result)$stage2
+    metrics <- .potential_recovery_metrics(
+        stage2 = stage2,
+        true_wells = control$true_wells,
+        true_barrier = control$true_barrier,
+        true_barrier_height = control$true_barrier_height,
+        orientation = orientation
     )
-    if (dynamics_result@status != "success")
-        return(list(
-            status = "failure",
-            evidence_status = evidence_status,
-            decomposer = decomposer,
-            dynamics_estimator = dynamics_estimator,
-            subspace_angle_deg = subspace_angle,
-            reason = dynamics_result@reason
-        ))
 
-    stage2 <- metadata(dynamics_result@value)$stage2
-    control <- metadata(std)$k1_double_well_control
-    well_error <- if (length(stage2$wells) >= 2L) {
-        mean(vapply(control$true_wells, function(well) {
-            min(abs(stage2$wells - well))
-        }, numeric(1L)))
-    } else {
-        NA_real_
-    }
-    barrier_error <- if (length(stage2$barriers) >= 1L) {
-        min(abs(stage2$barriers - control$true_barrier))
-    } else {
-        NA_real_
-    }
-    barrier_heights <- unlist(lapply(
-        stage2$barrier_heights,
-        function(height) height[!is.na(height)]
-    ))
-    barrier_height_error <- if (length(barrier_heights)) {
-        min(abs(barrier_heights - control$true_barrier_height))
-    } else {
-        NA_real_
-    }
-
-    list(
+    c(list(
         status = "success",
         evidence_status = evidence_status,
         decomposer = decomposer,
         dynamics_estimator = dynamics_estimator,
+        config_digest = config_digest,
+        control_digest = control_digest,
+        provenance = result@provenance,
         seed = as.integer(seed),
         subspace_angle_deg = subspace_angle,
         orientation_flipped = orientation < 0,
-        well_error = well_error,
-        barrier_error = barrier_error,
-        barrier_height_error = barrier_height_error,
-        n_wells_found = length(stage2$wells),
-        n_barriers_found = length(stage2$barriers)
-    )
+        true_barrier_height = control$true_barrier_height
+    ), metrics)
 }
 
 # ---------------------------------------------------------------------------
@@ -621,36 +642,13 @@ potential_recovery_benchmark <- function(std,
                     n_wells_found = 0L, n_barriers_found = 0L,
                     elapsed_sec = elapsed, reason = res@reason))
 
-    s2 <- metadata(res@value)$stage2
-
-    # Compare recovered vs true
-    true_wells   <- ctrl$true_wells        # c(-1, 1)
-    true_barrier <- ctrl$true_barrier      # 0
-    true_bh      <- ctrl$true_barrier_height  # 1
-
-    # Well error: match each true well to nearest recovered well
-    well_error <- if (length(s2$wells) >= 2L) {
-        mean(vapply(true_wells, function(w)
-            min(abs(s2$wells - w)), numeric(1L)))
-    } else NA_real_
-
-    barrier_error <- if (length(s2$barriers) >= 1L)
-        min(abs(s2$barriers - true_barrier))
-    else NA_real_
-
-    bh_found <- unlist(lapply(s2$barrier_heights, function(h) h[!is.na(h)]))
-    barrier_height_error <- if (length(bh_found) >= 1L)
-        min(abs(bh_found - true_bh))
-    else NA_real_
-
-    list(
-        well_error           = well_error,
-        barrier_error        = barrier_error,
-        barrier_height_error = barrier_height_error,
-        n_wells_found        = length(s2$wells),
-        n_barriers_found     = length(s2$barriers),
-        elapsed_sec          = elapsed
+    metrics <- .potential_recovery_metrics(
+        stage2 = metadata(res@value)$stage2,
+        true_wells = ctrl$true_wells,
+        true_barrier = ctrl$true_barrier,
+        true_barrier_height = ctrl$true_barrier_height
     )
+    c(metrics, list(elapsed_sec = elapsed))
 }
 
 # ---------------------------------------------------------------------------

@@ -12,8 +12,7 @@ k1_double_well_calibration(
   n_steps = 1000L,
   dt = 0.01,
   seed = 42L,
-  decomposer = "svd",
-  dynamics_estimator = "kde_logdensity"
+  config = .k1_double_well_calibration_config()
 )
 }
 \arguments{
@@ -31,16 +30,16 @@ k1_double_well_calibration(
 
 \item{seed}{integer reproducibility seed}
 
-\item{decomposer}{character registered K=1 Decomposer name}
-
-\item{dynamics_estimator}{character registered cross-sectional
-DynamicsEstimator name}
+\item{config}{explicit \code{PipelineConfig}; defaults to an exploratory
+calibration configuration using registered \code{svd} and
+\code{kde_logdensity} strategies}
 }
 \value{
-named list of labelled non-evidentiary calibration diagnostics
+named list of labelled non-evidentiary calibration diagnostics,
+including deterministic config/input digests and stage provenance
 }
 \description{
-Runs the registered single-layer SVD and cross-sectional dynamics strategy
+Runs the configured single-layer decomposition and cross-sectional dynamics strategy
 on one disclosed synthetic control. The return value contains recovery
 diagnostics but deliberately contains no acceptance/pass judgement.
 }

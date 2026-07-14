@@ -32,6 +32,17 @@ test_that("registered svd decomposes one layer into the common result contract",
     expect_length(shared_axis(decomposition), 30L)
 })
 
+test_that("svd returns available components for the smallest valid sample size", {
+    std <- synthetic_control(n = 2L, p = 10L, K = 1L,
+                             signal = 20, signal_spec = 1,
+                             noise_sd = 0.001, seed = 109L)
+    ctor <- get_strategy("Decomposer", "svd")
+    result <- suppressWarnings(decompose(ctor(), std))
+
+    expect_identical(result@status, "success")
+    expect_identical(dr_k(metadata(result@value)$stage1), 1L)
+})
+
 test_that("svd typed-fails outside its exactly-one-layer capability", {
     std <- synthetic_control(n = 12L, p = 30L, K = 2L,
                              signal = 40, seed = 103L)
@@ -109,8 +120,14 @@ test_that("K=1 double-well constructor carries subspace and potential truth", {
     expect_identical(std@sampling_design@kind, "cross_sectional")
 
     control <- metadata(std)$k1_double_well_control
+    expect_identical(std@ground_truth@potential@barrier, 2)
+    expect_equal(
+        std@ground_truth@potential@potential(-control$coordinate_center),
+        2
+    )
     expect_identical(control$calibration_only, TRUE)
     expect_identical(control$evidence_status, "non_evidentiary_calibration")
+    expect_identical(control$true_barrier_height, 2)
     expect_identical(control$seed, 107L)
 })
 
@@ -127,5 +144,9 @@ test_that("K=1 double-well calibration runs SVD and Stage 2 without judging acce
     expect_true(is.finite(calibration$subspace_angle_deg))
     expect_true(is.finite(calibration$well_error))
     expect_true(is.finite(calibration$barrier_error))
+    expect_identical(calibration$true_barrier_height, 2)
+    expect_length(calibration$provenance, 2L)
+    expect_true(is.character(calibration$config_digest))
+    expect_length(calibration$config_digest, 1L)
     expect_false(any(c("pass", "accepted", "eligible") %in% names(calibration)))
 })

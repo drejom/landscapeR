@@ -26,8 +26,17 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
         n <- nrow(X)
         p <- ncol(X)
         max_rank <- min(if (isTRUE(p_params$center)) n - 1L else n, p)
+        if (max_rank < 1L)
+            return(stage_failure(
+                "svd requires at least one estimable component"
+            ))
         decomposition <- svd(X, nu = max_rank, nv = max_rank)
-        k <- min(as.integer(p_params$k_components), length(decomposition$d))
+        k <- min(
+            as.integer(p_params$k_components),
+            length(decomposition$d),
+            ncol(decomposition$u),
+            ncol(decomposition$v)
+        )
         V_k <- decomposition$v[, seq_len(k), drop = FALSE]
 
         warns <- character()
