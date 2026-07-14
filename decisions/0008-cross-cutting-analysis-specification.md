@@ -53,6 +53,16 @@ The `StateTransitionData` container retains only intrinsic facts, including the
 sampling-design declaration in ADR 0006. A run's complete analysis
 specification is persisted in provenance.
 
+**Amendment (2026-07-13): target declarations carry their own direction.** A
+binary target declares neutral `reference_level` and `comparison_level` terms;
+an ordered target declares `ordered_levels`; and a continuous target declares
+an increasing or decreasing direction. The target's declared contrast/order is
+the default axis-orientation rule. The term `positive_level` is prohibited
+because it conflates coefficient sign, disease positivity, and value judgement.
+A separate orientation anchor is needed only when the target declaration does
+not supply a scientifically meaningful direction. Axis direction is fixed
+before Stage 2 and is never chosen from fitted landscape topology.
+
 ## Consequences
 
 - `PipelineConfig` validation grows beyond dataset and strategy identifiers.
