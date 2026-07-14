@@ -60,6 +60,21 @@ test_that("svd typed-fails invalid component requests", {
     }
 })
 
+test_that("svd typed-fails invalid centering and non-finite assay values", {
+    std <- synthetic_control(n = 12L, p = 30L, K = 1L,
+                             signal = 40, seed = 111L)
+    ctor <- get_strategy("Decomposer", "svd")
+
+    invalid_center <- decompose(ctor(list(center = NA)), std)
+    expect_identical(invalid_center@status, "failure")
+    expect_match(invalid_center@reason, "center")
+
+    assay(experiments(std)[[1L]])[1L, 1L] <- NA_real_
+    non_finite <- decompose(ctor(), std)
+    expect_identical(non_finite@status, "failure")
+    expect_match(non_finite@reason, "finite numeric")
+})
+
 test_that("svd typed-fails outside its exactly-one-layer capability", {
     std <- synthetic_control(n = 12L, p = 30L, K = 2L,
                              signal = 40, seed = 103L)
@@ -177,4 +192,34 @@ test_that("K=1 double-well calibration runs SVD and Stage 2 without judging acce
     expect_true(is.character(calibration$config_digest))
     expect_length(calibration$config_digest, 1L)
     expect_false(any(c("pass", "accepted", "eligible") %in% names(calibration)))
+})
+
+test_that("K=1 calibration reports configuration failures with control provenance", {
+    wrong_type <- suppressWarnings(k1_double_well_calibration(
+        n = 40L, p = 20L, n_steps = 80L, seed = 112L,
+        config = "not-a-config"
+    ))
+    expect_identical(wrong_type$status, "failure")
+    expect_match(wrong_type$reason, "PipelineConfig")
+    expect_length(wrong_type$provenance, 1L)
+
+    bad_config <- new("PipelineConfig",
+        strategies = list(
+            Decomposer = "not_registered",
+            DynamicsEstimator = "kde_logdensity"
+        ),
+        params = list(),
+        dataset = "invalid_calibration_config",
+        analysis = analysis_specification(
+            id = "invalid_calibration_config_PC1",
+            manual_component = 1L
+        )
+    )
+    missing_strategy <- suppressWarnings(k1_double_well_calibration(
+        n = 40L, p = 20L, n_steps = 80L, seed = 113L,
+        config = bad_config
+    ))
+    expect_identical(missing_strategy$status, "failure")
+    expect_match(missing_strategy$reason, "not_registered")
+    expect_length(missing_strategy$provenance, 1L)
 })

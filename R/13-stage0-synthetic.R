@@ -363,27 +363,70 @@ k1_double_well_calibration <- function(n = 200L,
         dt = dt,
         seed = seed
     )
-    if (!is(config, "PipelineConfig"))
-        stop("k1_double_well_calibration(): config must be a PipelineConfig")
-
     control <- metadata(std)$k1_double_well_control
     evidence_status <- control$evidence_status
-    decomposer <- config@strategies[["Decomposer"]]
-    dynamics_estimator <- config@strategies[["DynamicsEstimator"]]
-    config_digest <- digest::digest(config, algo = "sha256")
     control_digest <- digest::digest(std, algo = "sha256")
-
-    pipeline_result <- run_pipeline(std, config)
-    if (pipeline_result@status != "success")
-        return(list(
+    calibration_failure <- function(reason,
+                                    decomposer = NA_character_,
+                                    dynamics_estimator = NA_character_,
+                                    config_digest = NA_character_) {
+        list(
             status = "failure",
             evidence_status = evidence_status,
             decomposer = decomposer,
             dynamics_estimator = dynamics_estimator,
             config_digest = config_digest,
             control_digest = control_digest,
-            provenance = list(),
-            reason = pipeline_result@reason
+            provenance = std@provenance,
+            reason = reason
+        )
+    }
+
+    if (!is(config, "PipelineConfig"))
+        return(calibration_failure(
+            "k1_double_well_calibration(): config must be a PipelineConfig"
+        ))
+
+    config_valid <- validObject(config, test = TRUE)
+    if (!isTRUE(config_valid))
+        return(calibration_failure(paste(
+            "invalid PipelineConfig:",
+            paste(config_valid, collapse = "; ")
+        )))
+
+    decomposer <- config@strategies[["Decomposer"]]
+    dynamics_estimator <- config@strategies[["DynamicsEstimator"]]
+    config_digest <- digest::digest(config, algo = "sha256")
+    if (!is.character(decomposer) || length(decomposer) != 1L ||
+        !nzchar(decomposer) || !is.character(dynamics_estimator) ||
+        length(dynamics_estimator) != 1L || !nzchar(dynamics_estimator))
+        return(calibration_failure(
+            paste0(
+                "PipelineConfig must name one Decomposer and one ",
+                "DynamicsEstimator"
+            ),
+            decomposer = decomposer,
+            dynamics_estimator = dynamics_estimator,
+            config_digest = config_digest
+        ))
+
+    pipeline_result <- tryCatch(
+        run_pipeline(std, config),
+        error = function(e) e
+    )
+    if (inherits(pipeline_result, "error"))
+        return(calibration_failure(
+            conditionMessage(pipeline_result),
+            decomposer,
+            dynamics_estimator,
+            config_digest
+        ))
+    if (pipeline_result@status != "success")
+        return(calibration_failure(
+            pipeline_result@reason,
+            decomposer,
+            dynamics_estimator,
+            config_digest
         ))
 
     result <- pipeline_result@value

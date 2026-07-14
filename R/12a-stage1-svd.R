@@ -19,6 +19,12 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
             return(stage_failure("svd requires exactly 1 layer"))
 
         p_params <- modifyList(list(center = TRUE, k_components = 6L), strategy@params)
+        if (!is.logical(p_params$center) || length(p_params$center) != 1L ||
+            is.na(p_params$center))
+            return(stage_failure(
+                "svd center must be a single non-missing logical"
+            ))
+
         requested_k <- p_params$k_components
         if (!is.numeric(requested_k) || length(requested_k) != 1L ||
             !is.finite(requested_k) || requested_k < 1L ||
@@ -29,6 +35,10 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
         requested_k <- as.integer(requested_k)
 
         X <- t(assay(layers[[1L]]))
+        if (!is.numeric(X) || any(!is.finite(X)))
+            return(stage_failure(
+                "svd requires a finite numeric assay matrix"
+            ))
         if (isTRUE(p_params$center))
             X <- scale(X, center = TRUE, scale = FALSE)
 
@@ -39,7 +49,15 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
             return(stage_failure(
                 "svd requires at least one estimable component"
             ))
-        decomposition <- svd(X, nu = max_rank, nv = max_rank)
+        decomposition <- tryCatch(
+            svd(X, nu = max_rank, nv = max_rank),
+            error = function(e) e
+        )
+        if (inherits(decomposition, "error"))
+            return(stage_failure(sprintf(
+                "svd decomposition failed: %s",
+                conditionMessage(decomposition)
+            )))
         k <- min(
             requested_k,
             length(decomposition$d),
