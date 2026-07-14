@@ -98,7 +98,7 @@ data.frame(
                 spec_proposal@lifecycle,
                 spec_confirmed@lifecycle),
   target = rep("control -> disease", 3L),
-  proposal = c("absent", "retained", "retained"),
+  proposal = c("absent", "present", "retained"),
   selected_component = c(NA_integer_, NA_integer_,
                          spec_confirmed@selected_component),
   decision = c("absent", "absent", spec_confirmed@proposal_decision)

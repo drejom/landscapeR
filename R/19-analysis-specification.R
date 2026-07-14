@@ -134,7 +134,7 @@ setValidity("AnalysisSpecification", function(object) {
         if (length(object@ordered_levels) < 2L ||
                 anyNA(object@ordered_levels) ||
                 any(!nzchar(trimws(object@ordered_levels))) ||
-                anyDuplicated(object@ordered_levels))
+                anyDuplicated(object@ordered_levels) > 0L)
             errs <- c(errs,
                 "ordered target requires at least two unique non-empty ordered_levels")
         if (length(object@reference_level) || length(object@comparison_level) ||
@@ -205,14 +205,14 @@ setValidity("AnalysisSpecification", function(object) {
     if (length(nf) > 0L) {
         if (anyNA(nf) || any(!nzchar(trimws(nf))))
             errs <- c(errs, "nuisance_fields must not contain empty strings")
-        if (anyDuplicated(nf))
+        if (anyDuplicated(nf) > 0L)
             errs <- c(errs, "nuisance_fields must be unique")
     }
 
     oa <- object@orientation_anchor
     if (!empty_or_scalar(oa))
         errs <- c(errs, "orientation_anchor must be zero or one non-empty field name")
-    if (anyDuplicated(c(object@target_field, nf, oa)))
+    if (anyDuplicated(c(object@target_field, nf, oa)) > 0L)
         errs <- c(errs,
             "target_field, nuisance_fields, and orientation_anchor must be distinct")
 
@@ -338,7 +338,7 @@ analysis_specification <- function(
         integer(0L)
     } else {
         if (!is.numeric(selected_component) || length(selected_component) != 1L ||
-                is.na(selected_component) ||
+                !is.finite(selected_component) ||
                 selected_component != as.integer(selected_component))
             stop(paste0(
                 "analysis_specification(): selected_component must be a ",

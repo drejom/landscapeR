@@ -73,7 +73,7 @@ The PR will include:
 
 ## Completion verification
 
-- 522 R assertions passed.
+- 523 R assertions passed.
 - 35 repository policy/checker tests passed.
 - ADR coverage, registry compliance, roadmap/live-issue integrity, and diff
   whitespace checks passed.
@@ -96,3 +96,16 @@ required fallback rather than omitted.
 - **Spec:** no missing, incorrect, or out-of-scope behavior found after mapping
   every issue #61 requirement to constructor, migration fixture, boundary,
   provenance, documentation, and landing-proof artifacts.
+
+## Pull-request review follow-up
+
+All five automated review comments were addressed before merge readiness:
+
+- non-finite selected components now fail with the intended constructor error,
+  covered by a regression test;
+- `anyDuplicated()` conditions now compare explicitly with `0L`;
+- test SHA fixtures use `strrep()` consistently;
+- the synthetic proposal digest no longer includes the later selected-component
+  decision; and
+- proposal-stage tables say the digest is first **present**, then **retained** at
+  confirmation.

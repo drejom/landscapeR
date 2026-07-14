@@ -30,11 +30,26 @@ test_that("analysis_specification validates roles, lifecycle, and intent", {
             comparison_level = "disease",
             lifecycle = "confirmed",
             selected_component = 0L,
-            proposal_digest = paste(rep("a", 64L), collapse = ""),
+            proposal_digest = strrep("a", 64L),
             proposal_decision = "accepted",
             analyst_rationale = "Invalid component is rejected before use."
         ),
         "positive integer"
+    )
+    expect_error(
+        analysis_specification(
+            id = "infinite-component",
+            target_field = "group",
+            target_type = "binary",
+            reference_level = "control",
+            comparison_level = "disease",
+            lifecycle = "confirmed",
+            selected_component = Inf,
+            proposal_digest = strrep("a", 64L),
+            proposal_decision = "accepted",
+            analyst_rationale = "Infinite component indexes are invalid."
+        ),
+        "selected_component must be a single integer"
     )
     expect_error(
         analysis_specification(
@@ -67,7 +82,7 @@ test_that("confirmed lifecycle requires complete decision provenance", {
         do.call(
             analysis_specification,
             c(base, list(
-                proposal_digest = paste(rep("b", 64L), collapse = "")
+                proposal_digest = strrep("b", 64L)
             ))
         ),
         "proposal_decision"
@@ -76,7 +91,7 @@ test_that("confirmed lifecycle requires complete decision provenance", {
         do.call(
             analysis_specification,
             c(base, list(
-                proposal_digest = paste(rep("b", 64L), collapse = ""),
+                proposal_digest = strrep("b", 64L),
                 proposal_decision = "accepted"
             ))
         ),

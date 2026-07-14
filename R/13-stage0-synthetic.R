@@ -408,8 +408,7 @@ synthetic_k1_double_well_control <- function(n = 200L,
             proposal_digest = digest::digest(
                 list(
                     control = "synthetic_k1_double_well_calibration",
-                    target = "x_coord",
-                    selected_component = 1L
+                    target = "x_coord"
                 ),
                 algo = "sha256"
             ),

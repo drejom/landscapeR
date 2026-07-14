@@ -22,7 +22,7 @@ add proposal and confirmation information.
 | lifecycle | target field | target direction | proposal digest | selected component | decision |
 |---|---|---|---|---:|---|
 | `draft` | `condition` | `control → disease` | absent | — | absent |
-| `proposal` | `condition` | `control → disease` | retained | — | absent |
+| `proposal` | `condition` | `control → disease` | present | — | absent |
 | `confirmed` | `condition` | `control → disease` | retained | 2 | `accepted` + rationale |
 
 ## Explicit v1 migration

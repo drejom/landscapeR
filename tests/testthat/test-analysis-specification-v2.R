@@ -45,7 +45,7 @@ test_that("v2 draft rejects an incomplete binary target declaration", {
 })
 
 test_that("proposal lifecycle adds only a ranked-proposal digest", {
-    proposal_digest <- paste(rep("a", 64L), collapse = "")
+    proposal_digest <- strrep("a", 64L)
     spec <- analysis_specification(
         id = "binary-proposal",
         target_field = "condition",
@@ -64,7 +64,7 @@ test_that("proposal lifecycle adds only a ranked-proposal digest", {
 })
 
 test_that("confirmed lifecycle retains target and records the human decision", {
-    proposal_digest <- paste(rep("b", 64L), collapse = "")
+    proposal_digest <- strrep("b", 64L)
     spec <- analysis_specification(
         id = "binary-confirmed",
         target_field = "condition",
@@ -154,7 +154,7 @@ test_that("ordered and continuous targets require explicit direction", {
 })
 
 test_that("canonical identity includes target and confirmation provenance", {
-    digest_a <- paste(rep("a", 64L), collapse = "")
+    digest_a <- strrep("a", 64L)
     base_args <- list(
         id = "identity",
         target_field = "condition",
@@ -216,7 +216,7 @@ test_that("v1 target-only migration requires explicit missing direction", {
         "7c4c0d4f52fa353f3baea1ed99892b2cf02a429f297867b25e0811d40f159097"
     )
 
-    proposal_digest <- paste(rep("f", 64L), collapse = "")
+    proposal_digest <- strrep("f", 64L)
     migrated_proposal <- migrate_analysis_specification(
         legacy,
         target_type = "binary",
@@ -232,7 +232,7 @@ test_that("v1 manual-only migration never invents or discards target intent", {
     legacy <- readRDS(
         testthat::test_path("fixtures", "analysis-specification-v1.rds")
     )$manual_only
-    proposal_digest <- paste(rep("c", 64L), collapse = "")
+    proposal_digest <- strrep("c", 64L)
 
     expect_error(
         migrate_analysis_specification(legacy),
@@ -321,7 +321,7 @@ test_that("run_pipeline permits draft Stage 1 but requires confirmation for Stag
 
 test_that("run_pipeline uses selected_component from a confirmed specification", {
     std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
-    proposal_digest <- paste(rep("d", 64L), collapse = "")
+    proposal_digest <- strrep("d", 64L)
     confirmed <- analysis_specification(
         id = "confirmed-run",
         target_field = "planted_group",
@@ -376,7 +376,7 @@ test_that("run_pipeline validates declared target values and component bounds", 
     expect_identical(bad_level_result@status, "failure")
     expect_match(bad_level_result@reason, "declared binary levels")
 
-    proposal_digest <- paste(rep("e", 64L), collapse = "")
+    proposal_digest <- strrep("e", 64L)
     out_of_bounds <- analysis_specification(
         id = "bad-component",
         target_field = "planted_group",
