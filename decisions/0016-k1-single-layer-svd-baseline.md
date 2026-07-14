@@ -2,15 +2,18 @@
 
 **Status:** accepted  
 **Date:** 2026-07-13  
-**Depends on:** ADR 0002 (Stage 2 estimator), ADR 0007 (applicability gate), ADR 0015 (v3 thresholds)
+**Depends on:** ADR 0002 (cross-sectional Stage 2 estimator), ADR 0006 (sampling-design capability), ADR 0007 (applicability gate)
 
 ---
 
 ## ⚠️ STOP RULE — READ BEFORE ANY REAL-DATA ANALYSIS
 
-**No real-data single-layer analysis (AML mRNA, Pogona mRNA, CML mRNA) may
-proceed until the K=1 Stage 0 synthetic ladder in this ADR is complete and
-its acceptance thresholds are recorded in ADR 0002.**
+**No curated/evidentiary real-data single-layer analysis or biological claim
+(AML mRNA, Pogona mRNA, CML mRNA) may proceed until the applicable K=1 Stage 0
+synthetic ladder in this ADR is complete and its acceptance thresholds and pass
+rates are recorded in ADR 0002.** Low-level scientific functions remain
+callable under the claim-boundary policy in ADR 0008, but inspect-tier/ad hoc
+output is non-evidentiary and does not advance the project past this stop rule.
 
 This rule exists because it was violated once already: multi-layer (K≥2)
 complexity was pursued before the simplest case (K=1, plain SVD) had a
@@ -87,7 +90,7 @@ AML-grounded longitudinal K=1 confounder-separation control uses repeated
 synthetic mice, a stronger planted time effect, and planted condition-by-time
 disease divergence. It must demonstrate that the sampling-design-aware atlas,
 component-selection proposal, biological-unit bootstrap, and component
-alignment recover the disease axis before AML data is loaded. It does not
+alignment recover the disease axis before curated AML Stage 1 recapitulation begins. It does not
 validate the current cross-sectional Stage 2 estimator for longitudinal data;
 typed ineligibility at that boundary is the required result under ADR 0006.
 
@@ -106,35 +109,36 @@ bifurcation estimator.
 ### 5. The development sequence is fixed
 
 ```
-(a) Extend synthetic_control() to support K=1
-(b) Implement generic cross-sectional K=1 double-well control → freeze artifact
-(c) Set ADR 0002 cross-sectional K=1 acceptance thresholds from (b)
-(d) Implement AML-grounded longitudinal K=1 confounder-separation control → freeze artifact
-(e) Implement K=1 thinness sweep → freeze artifact
-(f) Implement K=1 negative control → freeze artifact
+(a) Extend synthetic_control() to support K=1 and register svd
+(b) Run a labelled calibration/development pass on disclosed seeds
+(c) Predeclare and freeze the complete K=1 acceptance protocol:
+    positive/negative controls, n/p grid, thresholds, false-positive limit,
+    hidden acceptance seeds, and pass-rate rules
+(d) Run generic cross-sectional recovery + thinness + negative controls on
+    the independent frozen acceptance set
+(e) Run AML-grounded longitudinal K=1 confounder-separation acceptance control
+(f) Freeze acceptance artifacts; record the already-frozen thresholds,
+    observed pass rates, and negative-control limit in ADR 0002
 ── AML Stage 1 recapitulation may begin here (exploratory); longitudinal Stage 2 remains blocked by ADR 0006 ──
-(g) Implement K=1 bifurcation control → freeze artifact
+(g) Implement K=1 bifurcation control under its separately frozen protocol
 (h) Draft bifurcation Stage 2 ADR
 ── Pogona real data may begin here (exploratory) ──
 ```
+
+Calibration output chooses the protocol and is permanently non-evidentiary. The
+independent acceptance set evaluates the frozen protocol; the same replicates
+must not both choose and validate thresholds.
 
 No step may be skipped. Real-data results produced before step (f) are
 exploratory and must carry that status in provenance. Confirmatory status
 requires a discovery/confirmation boundary (ADR 0008) in addition to (f).
 
-### 6. Domain gaps to fix before implementation
+### 6. Domain update status
 
-The following are missing from the domain model and must be corrected before
-code is written:
-
-- **`context/stage1.md`**: K=1 SVD as a valid degenerate case of comparative
-  decomposition; the fact that PC2 (not PC1) is the target in the AML reference
-- **`context/stage0.md`**: K=1 double-well and confounder-separation controls
-  as named domain concepts; bifurcation control as a named concept
-- **`UBIQUITOUS_LANGUAGE.md`**: bifurcation topology; Y-shape as a recognisable
-  archetype; confounder axis vs target biological axis in the K=1 context
-- **ADR 0002**: K=1-specific acceptance thresholds (currently all `[tbd]` and
-  implicitly written for multi-layer)
+The K=1 SVD case, AML PC2 target, generic/AML-grounded controls, bifurcation
+topology, and confounder-axis language are now recorded in the domain model.
+ADR 0002's K=1-specific numeric thresholds, pass rates, and negative-control
+limit remain unresolved until the frozen ladder above is complete.
 
 ---
 
@@ -183,5 +187,4 @@ It requires a 2D or time-aware estimator and a separate ADR.
   multimodal dataset currently available
 - ADR 0002: `decisions/0002-stage2-dynamics-estimator.md` (K=1 `[tbd]` thresholds)
 - ADR 0007: `decisions/0007-stage0.5-0.75-archetype-applicability-gate.md`
-- ADR 0015: `decisions/0015-stage1-protocol-v3-threshold-calibration.md`
 - Claude session `86b77184`: AML PC1=age, PC2=disease first identified

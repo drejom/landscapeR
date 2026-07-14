@@ -1,10 +1,10 @@
 # Stage 1 — Comparative decomposition
 
-Stage 1 takes K ≥ 1 omic layers as input and produces a shared state-space whose axes explicitly contrast biological conditions (disease vs control, temperature, genotype). It separates shared signal from layer-specific variation and from confounders.
+Stage 1 takes K ≥ 1 omic layers as input and produces candidate low-dimensional state-space axes without using outcome labels during decomposition. The subsequent metadata-association atlas, component proposal, and human confirmation determine which axis supports a predeclared biological contrast and which axes capture nuisance or layer-specific variation.
 
 **K=1 (single-layer SVD)** is the reference case: the registered `svd` `Decomposer` strategy accepts exactly one omic layer and performs plain SVD. It is not a degradation branch of `hogsvd_averaged`, and strategy selection is explicit rather than inferred from layer count. The Frankhouser/Rockne 2020 AML paper uses K=1 mRNA with PC2 as the disease axis (PC1 encodes age — a nuisance variable). This is the baseline that must be validated with Stage 0 synthetic controls before any real-data K=1 analysis.
 
-**K=2 (GSVD)** and **K≥2 (HO-GSVD)** are the multi-layer generalisations. The target biological axis may be any component, not necessarily PC1 — the component-selection proposal ranks candidates against predeclared biological metadata.
+**K=2 (GSVD)** and **K≥2 comparative decomposition** are the intended multi-layer generalisations. Following the v2 negative result and provisional ADR 0015, no production K≥2 strategy is currently accepted; the target axis may be any component and is identified only after decomposition through the proposal/confirmation workflow.
 
 ## Language
 
@@ -30,7 +30,7 @@ Generalised SVD of exactly two matrices; the K=2 special case of HO-GSVD. Produc
 _Avoid_: joint SVD
 
 **HO-GSVD**:
-Higher-order GSVD of K≥2 matrices. Produces one shared V* (gene loadings common across all layers) and K layer-specific left coordinate matrices UᵢΣᵢ. This is the primary Stage 1 algorithm.
+Higher-order GSVD of K≥2 matrices under compatible feature-space formulations. It remains a Stage 1 candidate family, not an accepted production strategy after the v2 negative result. Genuine heterogeneous-feature inputs require the layer-specific loading and shared sample-space contract in ADR 0009.
 _Avoid_: multi-block PCA (a different method), tensor decomposition (incorrect framing), HOSVD (a different factorisation)
 
 **shared subspace**:
@@ -140,11 +140,11 @@ The loading of a gene on a selected target biological axis (a scalar value from 
 _Avoid_: gene weight, PC loading, feature importance (prefer eigengene when the loading has biological interpretation)
 
 **projection**:
-Mapping new samples into an existing Stage 1 state-space using discovery-cohort loadings without refitting: `X_new · V*_training · Σ_training⁻¹`. Used for confirmation cohorts and treatment groups after the target biological axis and analysis choices have been frozen.
+Mapping new samples into an existing Stage 1 score space without refitting: `(X_new − center_training) · V_training = U_newΣ_training` for ordinary SVD coordinates. Projection matches canonical feature identities and applies the frozen discovery preprocessing reference; it does not independently recenter the secondary cohort or divide scores by singular values. Strategy-specific multi-layer projection must preserve the same declared coordinate convention.
 _Avoid_: embedding, transfer, out-of-sample prediction
 
 **discovery/confirmation boundary**:
-The separation between a primary cohort used to select a target biological axis and a secondary cohort projected into the frozen state-space to assess replication. Claims without an independent confirmation cohort are exploratory, not confirmatory.
+The separation between a primary cohort used to select a target biological axis and an eligible secondary cohort projected into the frozen state-space to assess replication. The AML `supp_2016` cohort is batch/time-confounded and therefore supplies hostile robustness/stress-test evidence, not clean independent confirmation; it cannot by itself make an AML claim confirmatory. Claims without an eligible independent confirmation cohort remain exploratory.
 
 **rank-deficient layer**:
 An omic layer whose matrix has fewer linearly independent rows or columns than expected (rank < min(rows, cols)). Requires a rank-deficiency-aware HO-GSVD implementation (Kempf variant). The diabetes genotype layer is expected to be rank-deficient.

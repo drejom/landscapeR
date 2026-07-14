@@ -123,17 +123,18 @@ Rationale:
 Test the simple thing first. Revisit TRAMWAY or RKHS approaches only if Stage 0
 recovery fails and the failure is attributable to the estimator, not the coordinates.
 
-## New dependencies (to add to DESCRIPTION)
+## Dependency boundary (amended 2026-07-13)
 
-All `Imports` — no optional/Suggests boundary for these; they are on the
-critical path for Stage 2:
+Only dependencies used by the accepted cross-sectional implementation belong on
+its runtime path. `ks` supports KDE/density derivatives. Root finding and linear
+algebra use base R where sufficient; `pracma` remains optional unless a later
+accepted implementation demonstrates a concrete need.
 
-| Package | Purpose | CRAN status |
-|---|---|---|
-| `ks` | KDE, density derivatives, principled bandwidth selection | CRAN, stable |
-| `deSolve` | ODE/PDE integration (C/Fortran backends) | CRAN, >20 years |
-| `ReacTran` | Advection-diffusion discretization for deSolve | CRAN, stable |
-| `pracma` | Root-finding (`fzero` equivalent), numerical utilities | CRAN, stable |
+`deSolve` and `ReacTran` belong to the deferred longitudinal/Fokker–Planck
+capability, not the current cross-sectional estimator's critical-path Imports.
+Their adoption must be decided in the longitudinal strategy ADR after candidate
+research and Stage 0 criteria. This amendment supersedes the earlier blanket
+"all Imports" dependency statement.
 
 ## Consequences
 

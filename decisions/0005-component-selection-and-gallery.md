@@ -101,6 +101,17 @@ reported in Rockne2020. This bimodality is not visible in PC1.
 
 ## Decision
 
+> **Contract amendment (2026-07-13).** The structured metadata-association atlas
+> and component proposal now own association scores and ranking (ADRs 0008 and
+> 0017; `context/stage1.md`). `plot_components()` renders descriptive component
+> distributions or a supplied atlas/proposal; it is not the sole scoring engine
+> and must not use independence-based eta-squared/correlation to rank repeated-
+> subject data. The curated Stage 2 path requires an explicitly confirmed
+> `selected_component`; it never falls back to component 1 or silently
+> auto-selects. Low-level explicit component calls remain available and are
+> exploratory unless governed by a confirmed specification. These amendments
+> supersede the older default/scoring statements below where they conflict.
+
 **Stage 1 returns `k_components` components (default k=6). `metadata()$stage1`
 gains `coords_k` (list of k coordinate matrices, n×k per layer), `V_k` (gene
 loading matrix p×k), and `sigma_k` (k singular values per layer). The existing

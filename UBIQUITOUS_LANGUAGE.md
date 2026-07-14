@@ -25,13 +25,13 @@
 |---|---|---|
 | **SVD** | Singular value decomposition X = UΣV*; the foundational matrix factorisation used to build a state-space from a gene expression matrix | PCA (PCA is a restatement of SVD — prefer SVD when describing the computation) |
 | **GSVD** | Generalised SVD of two matrices; decomposes shared and layer-specific variation simultaneously; the two-matrix special case of HO-GSVD | joint PCA |
-| **HO-GSVD** | Higher-order GSVD of K ≥ 2 matrices; produces one shared right singular matrix V* and K left singular matrices Uᵢ Σᵢ; landscapeR's Stage 1 algorithm | tensor decomposition (incorrect), multi-block PCA (different method) |
+| **HO-GSVD** | Higher-order GSVD of K ≥ 2 matrices; a candidate Stage 1 family, not an accepted production strategy after the v2 negative result. Genuine heterogeneous-feature inputs must satisfy ADR 0009. | tensor decomposition (incorrect), multi-block PCA (different method) |
 | **eigengene** | The loading of a gene on a selected target biological axis (a column of V*); quantifies that gene's directional contribution to the chosen biological contrast | gene weight, PC loading (prefer eigengene when the loading has biological interpretation) |
 | **target biological axis** | The selected shared component whose coordinate is associated with a predeclared biological variable or contrast; selected from a reproducible proposal or manually fixed with provenance | PC1/PC2 (the target may not be the dominant component) |
 | **disease axis** | A disease-specific target biological axis whose coordinate separates healthy from disease state variables or correlates with disease burden markers | leukemia axis, CML state-space (use disease-specific names only in disease-specific contexts) |
 | **component-selection proposal** | A reproducible ranking of Stage 1 components against predeclared biological metadata. It recommends but never silently selects the target biological axis, and never uses Stage 2 results as a criterion | component picker |
 | **omic layer** | A single type of molecular measurement (mRNA, miRNA, proteomics, methylation) contributing one data matrix to the multi-layer decomposition | modality, data type, assay (too generic) |
-| **projection** | Mapping new samples into an existing state-space using training loadings: `X_new · V*_training · Σ_training⁻¹` without refitting | embedding, transfer |
+| **projection** | Mapping new samples into a frozen state-space without refitting; for ordinary SVD scores, `(X_new − center_training) · V_training`. Uses canonical feature identity and discovery preprocessing, never independent secondary-cohort recentering or division by singular values. | embedding, transfer |
 
 ## Multi-scale biology
 
