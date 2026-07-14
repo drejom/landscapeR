@@ -11,9 +11,12 @@ home:
 
 navbar:
   structure:
-    left: [intro, reference, articles]
+    left: [intro, roadmap, reference, articles]
     right: [github]
   components:
+    roadmap:
+      text: Roadmap
+      href: https://github.com/drejom/landscapeR/blob/main/ROADMAP.md
     github:
       icon: fab fa-github
       aria-label: GitHub repository

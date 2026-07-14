@@ -1,5 +1,14 @@
 # Context Map
 
+## Planning authority
+
+[`ROADMAP.md`](./ROADMAP.md) is the sole source for package scope, sequencing,
+dependency gates, milestone state, and the next task. Context documents orient
+a stage; they do not schedule work.
+
+See [`docs/README.md`](./docs/README.md) for the complete documentation authority
+map.
+
 ## Contexts
 
 - [Shared infrastructure](./context/shared.md) — container, registry, provenance, boundary validation, RNG; the plumbing every stage depends on
