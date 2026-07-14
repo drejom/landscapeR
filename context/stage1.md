@@ -38,7 +38,9 @@ The subspace spanned by the columns of V* — the axes that are common across al
 _Avoid_: common space, joint embedding
 
 **state-space definition**:
-The immutable declaration of the discovery observations, feature identities, preprocessing reference, and fitted component basis that jointly define one state space. It is established before and independently of projection. A secondary cohort can only be projected after matching its features to this frozen declaration; it never contributes observations, features, centring/scaling parameters, or component selection back into the state-space definition.
+The immutable, machine-generated record of the discovery observations, feature identities, preprocessing reference, and fitted component basis that jointly define one state space. Everything present at the Stage 1 input boundary is eligible: row/sample filtering is upstream analyst preparation and should use provenance-recording helpers where available. The analyst does not manually copy feature or sample IDs into `AnalysisSpecification`; Stage 1 records the exact ordered IDs, exclusions, input digest, preprocessing parameters, and fitted loadings it actually used.
+
+Stage 1 accepts one discovery `StateTransitionData` object. Projection is a separate, optional operation on zero or more secondary objects. A secondary cohort can only be projected after matching its features to the frozen state-space definition; it never contributes observations, features, centring/scaling parameters, component selection, or analysis identity back into that definition. A study without an external projection cohort remains valid.
 
 **target biological axis**:
 The selected column of V* (and corresponding row of each UᵢΣᵢ) whose coordinate is associated with a predeclared biological variable or contrast. It is selected from a reproducible, predeclared proposal ranking or manually fixed by the analyst; the final choice and rationale are recorded in provenance.
