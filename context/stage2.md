@@ -83,7 +83,7 @@ The stochastic differential equation `dX_t = −∇U_p dt + √(2β⁻¹) dB_t` 
 _Avoid_: equation of motion (too generic)
 
 **diffusion coefficient**:
-The noise parameter β⁻¹ in the Langevin and Fokker-Planck equations. Estimated from the mean squared displacement of state-space trajectories. Controls how rapidly the system fluctuates.
+The noise parameter β⁻¹ in the Langevin and Fokker-Planck equations. The first longitudinal strategy estimates one constant diffusion coefficient from within-subject increments, with biological-unit uncertainty and adequacy checks for variation by state, time, or condition; it is never copied as a fixed value from the reference scripts. Unsupported constant diffusion yields an explicit adequacy result. State-, condition-, or time-dependent diffusion are separate future strategies.
 _Avoid_: noise strength, stochastic amplitude
 
 **mean squared displacement (MSD)**:
