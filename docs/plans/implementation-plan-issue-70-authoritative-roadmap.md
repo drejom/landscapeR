@@ -1,5 +1,9 @@
 # Implementation plan — issue #70 authoritative roadmap
 
+> **Historical implementation record.** Status and sequencing in this file
+> describe its originating work and are superseded for current scheduling by
+> the root [`ROADMAP.md`](../../ROADMAP.md).
+
 ## Objective
 
 Establish one living `ROADMAP.md` as the sole source for package sequencing and

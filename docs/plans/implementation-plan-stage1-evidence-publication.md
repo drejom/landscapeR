@@ -1,5 +1,9 @@
 # Stage 1 evidence publication plan
 
+> **Historical implementation record.** Status and sequencing in this file
+> describe its originating work and are superseded for current scheduling by
+> the root [`ROADMAP.md`](../../ROADMAP.md).
+
 **Scope:** publish the completed frozen `stage1-heterogeneous-v2` synthetic
 artifact and document its confirmation outcome.  This implements #40 after the
 remote run completed from source commit `6f1f061`.

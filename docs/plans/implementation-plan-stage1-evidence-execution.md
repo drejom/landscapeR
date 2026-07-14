@@ -1,5 +1,9 @@
 # Implementation plan — Stage 1 frozen evidence execution
 
+> **Historical implementation record.** Status and sequencing in this file
+> describe its originating work and are superseded for current scheduling by
+> the root [`ROADMAP.md`](../../ROADMAP.md).
+
 **Status:** active — Issue #40
 **Date:** 2026-07-12
 

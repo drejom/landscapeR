@@ -1,5 +1,9 @@
 # Implementation plan — issue #50 K=1 SVD foundation
 
+> **Historical implementation record.** Status and sequencing in this file
+> describe its originating work and are superseded for current scheduling by
+> the root [`ROADMAP.md`](../../ROADMAP.md).
+
 ## Fixed scope
 
 Implement only issue #50:

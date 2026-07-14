@@ -1,5 +1,9 @@
 # Implementation plan — evidence-first multi-omic validation
 
+> **Historical implementation record.** Status and sequencing in this file
+> describe its originating work and are superseded for current scheduling by
+> the root [`ROADMAP.md`](../../ROADMAP.md).
+
 **Status:** approved design; implementation not started
 **Date:** 2026-07-12
 

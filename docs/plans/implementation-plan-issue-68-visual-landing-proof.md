@@ -1,5 +1,9 @@
 # Implementation plan — issue #68 PR-co-located visual landing proof
 
+> **Historical implementation record.** Status and sequencing in this file
+> describe its originating work and are superseded for current scheduling by
+> the root [`ROADMAP.md`](../../ROADMAP.md).
+
 ## Objective
 
 Make visual landing proof a mandatory, reviewable completion surface for
