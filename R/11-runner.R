@@ -31,7 +31,7 @@ run_pipeline <- function(data, config) {
         params   <- config@params[[impl_name]] %||% list()
         params$analysis_specification <- .analysis_spec_provenance(config@analysis)
         if (identical(s$contract, "DynamicsEstimator"))
-            params$component <- config@analysis@manual_component
+            params$component <- config@analysis@selected_component
         strategy <- ctor(params)
 
         result <- s$fn(strategy, data)

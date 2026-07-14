@@ -1,62 +1,164 @@
-# Proposed specification — AnalysisSpecification
+# AnalysisSpecification v2
 
-**Status:** proposed implementation contract for ADR 0008
+**Status:** implemented contract for ADR 0008
 
-## Public interface
+## Purpose
+
+`AnalysisSpecification` carries one complete target hypothesis through
+component proposal and human confirmation. It belongs to `PipelineConfig`, not
+to `StateTransitionData`, because the same data may support multiple distinct
+questions.
+
+Selection resolves the target; it never replaces it.
+
+## Public constructor
 
 ```r
 analysis_specification(
   id,
-  target_field = NULL,
-  manual_component = NULL,
+  target_field,
+  target_type,
+  reference_level = NULL,
+  comparison_level = NULL,
+  ordered_levels = character(),
+  continuous_direction = NULL,
+  lifecycle = "draft",
+  selected_component = NULL,
+  proposal_digest = NULL,
+  proposal_decision = NULL,
+  analyst_rationale = NULL,
   nuisance_fields = character(),
   orientation_anchor = NULL,
   claim_intent = c("exploratory", "primary_confirmatory")
 )
 ```
 
-`PipelineConfig` gains one versioned `analysis` specification. It expresses
-intent for exactly one target-axis run; it is not attached to the dataset,
-because the same data may support separate biological questions.
+`migration_source_digest` is populated only by
+`migrate_analysis_specification()`; the public constructor does not accept it.
 
-## Representation
+## Complete target declaration
 
-`AnalysisSpecification` has:
+Every v2 object has one `target_field` and one `target_type`:
 
-- `version`: initially `"1.0.0"`;
-- `id`: non-empty run identity;
-- `target_field`: zero-or-one `colData` field for a component proposal;
-- `manual_component`: zero-or-one positive integer component choice;
-- `nuisance_fields`: unique metadata field names;
-- `orientation_anchor`: optional numeric metadata field;
-- `claim_intent`: `"exploratory"` or `"primary_confirmatory"`.
+| Target type | Required direction | Prohibited alternatives |
+|---|---|---|
+| `binary` | distinct `reference_level` and `comparison_level` | `ordered_levels`, `continuous_direction` |
+| `ordered` | at least two unique `ordered_levels` in scientific order | binary levels, `continuous_direction` |
+| `continuous` | `continuous_direction = "increasing"` or `"decreasing"` | discrete levels |
 
-## Invariants
+Neutral reference/comparison terms are deliberate. `positive_level` is not part
+of the interface because it conflates coefficient sign, disease positivity, and
+value judgement.
 
-- Exactly one of `target_field` or `manual_component` is supplied.
-- Target, nuisance, and orientation names are distinct; nuisance names are
-  unique.
-- A target field produces a reproducible **proposal only**. It may not silently
-  select a component. A Stage 2 run needs an explicit manual component choice
-  after review; provenance links the accepted choice to its proposal.
-- A manual component is checked against the available Stage 1 components.
-- The orientation anchor is numeric, non-degenerate, and records convention
-  only. It is not evidence of dynamics.
-- `primary_confirmatory` declares intent, not eligibility. Applicability,
-  sampling-design, concordance, stability, and Stage 0 gates determine the
-  actual claim status.
+At the pipeline boundary, declared metadata must exist. Binary and ordered
+cohorts must contain exactly their declared non-missing values. Continuous
+targets must be finite numeric values with non-zero variance.
 
-## Boundary and provenance
+## Lifecycle
 
-Class validity checks shape and internal consistency. Pipeline/stage boundaries
-check `colData` existence and required values. Missing required design metadata
-is recorded as an analysis-cohort exclusion; diagnostic metadata remains
-available-case only. Every successful stage records the canonical specification
-and digest in provenance.
+| Lifecycle | Target declaration | Proposal digest | Selected component | Decision + rationale |
+|---|---:|---:|---:|---:|
+| `draft` | required | absent | absent | absent |
+| `proposal` | retained | required | absent | absent |
+| `confirmed` | retained | retained | required | required |
 
-## Required tests
+A proposal digest identifies the separately inspectable ranked
+`ComponentProposal` that #55 will implement. The specification does not embed a
+second ranking implementation.
 
-Constructor defaults; mutually exclusive target/manual choices; invalid roles,
-claim intent, and component indexes; metadata/type validation; no silent target
-selection; orientation validation; manual-component bounds; and canonical
-provenance digest capture.
+`proposal_decision` is `accepted` or `overridden`. Both require non-empty analyst
+rationale. `selected_component` is the component index in the frozen reference
+basis and is checked against the fitted Stage 1 result before Stage 2.
+
+Real-data confirmation is human-only. Synthetic truth may support automated
+assertions. `claim_intent = "primary_confirmatory"` declares intent but cannot
+bypass applicability, stability, sampling-design, or Stage 0 gates.
+
+## Examples
+
+```r
+# Draft: complete target, no selected component
+draft <- analysis_specification(
+  id = "aml-condition-over-time",
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "CTL",
+  comparison_level = "CM",
+  nuisance_fields = c("weeks", "batch"),
+  claim_intent = "exploratory"
+)
+
+# Proposal: target is unchanged; only the proposal identity is added
+proposal <- analysis_specification(
+  id = "aml-condition-over-time",
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "CTL",
+  comparison_level = "CM",
+  lifecycle = "proposal",
+  proposal_digest = strrep("a", 64),
+  nuisance_fields = c("weeks", "batch")
+)
+
+# Confirmed: target remains and decision provenance is explicit
+confirmed <- analysis_specification(
+  id = "aml-condition-over-time",
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "CTL",
+  comparison_level = "CM",
+  lifecycle = "confirmed",
+  selected_component = 2L,
+  proposal_digest = strrep("a", 64),
+  proposal_decision = "accepted",
+  analyst_rationale = "Accepted the predeclared top-ranked target axis.",
+  nuisance_fields = c("weeks", "batch")
+)
+```
+
+## Explicit v1 migration
+
+Use `migrate_analysis_specification()` on an in-memory or deserialized v1 object.
+Migration records the exact v1 canonical payload digest in
+`migration_source_digest`.
+
+A target-only v1 object knows its field but not contrast/order/direction, so the
+missing declaration is mandatory. With no proposal digest it becomes a draft;
+if the caller supplies the digest of an existing ranked proposal it becomes a
+proposal:
+
+```r
+v2_draft <- migrate_analysis_specification(
+  legacy_target_spec,
+  target_type = "binary",
+  reference_level = "CTL",
+  comparison_level = "CM"
+)
+```
+
+A manual-component-only v1 object knows neither the target nor the proposal
+history. Migration therefore requires every missing field and preserves the old
+component as `selected_component`:
+
+```r
+v2_confirmed <- migrate_analysis_specification(
+  legacy_component_spec,
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "CTL",
+  comparison_level = "CM",
+  proposal_digest = proposal_digest,
+  proposal_decision = "overridden",
+  analyst_rationale = "Reconciled the legacy choice with the restored target."
+)
+```
+
+Without those explicit inputs migration fails. There is no null/legacy fallback
+that invents target intent or silently discards a selected component.
+
+## Identity and provenance
+
+`canonical_digest()` covers the schema version, lifecycle, complete target
+declaration, selected component, proposal decision, nuisance/orientation fields,
+claim intent, and migration source digest. Every pipeline stage records that
+canonical payload plus its digest in provenance.

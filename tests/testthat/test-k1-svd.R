@@ -258,9 +258,9 @@ test_that("K=1 calibration reports configuration failures with control provenanc
         ),
         params = list(),
         dataset = "invalid_calibration_config",
-        analysis = analysis_specification(
+        analysis = confirmed_potential_analysis(
             id = "invalid_calibration_config_PC1",
-            manual_component = 1L
+            component = 1L
         )
     )
     missing_strategy <- suppressWarnings(k1_double_well_calibration(
@@ -278,9 +278,9 @@ test_that("K=1 calibration reports configuration failures with control provenanc
         ),
         params = list(),
         dataset = "invalid_component_config",
-        analysis = analysis_specification(
+        analysis = confirmed_potential_analysis(
             id = "invalid_component_config_PC2",
-            manual_component = 2L
+            component = 2L
         )
     )
     component_two <- suppressWarnings(k1_double_well_calibration(

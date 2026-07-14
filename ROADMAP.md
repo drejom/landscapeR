@@ -8,7 +8,7 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this roadmap lands:** **#61 — AnalysisSpecification v2**.
+**Next task after this change lands:** **#53 — authoritative AML decimal weeks**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -124,7 +124,7 @@ cannot choose and validate the protocol.
 
 ## Single-agent order
 
-### 1. Analysis intent and confirmation lifecycle — #61
+### 1. Analysis intent and confirmation lifecycle — #61 (complete on merge)
 
 **Deliverable:** AnalysisSpecification v2 retains the complete target
 declaration and adds `selected_component`, proposal digest, accept/override
@@ -324,7 +324,7 @@ bodies may state dependencies but do not change this ordering.
 | [#49](https://github.com/drejom/landscapeR/issues/49) | K≥2/islet-diabetes | queued |
 | [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active |
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
-| [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | active |
+| [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | active — next |
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | active |
 | [#55](https://github.com/drejom/landscapeR/issues/55) | Exploratory AML Stage 1 interpretation | active |
 | [#56](https://github.com/drejom/landscapeR/issues/56) | Productisation/Shiny | parked |
@@ -332,7 +332,7 @@ bodies may state dependencies but do not change this ordering.
 | [#58](https://github.com/drejom/landscapeR/issues/58) | Productisation/tidy interface | parked |
 | [#59](https://github.com/drejom/landscapeR/issues/59) | General multi-axis Stage 2 | queued |
 | [#60](https://github.com/drejom/landscapeR/issues/60) | Optional AML metadata enrichment | active, non-blocking |
-| [#61](https://github.com/drejom/landscapeR/issues/61) | Exploratory AML Stage 1 foundation | active — next |
+| [#61](https://github.com/drejom/landscapeR/issues/61) | Exploratory AML Stage 1 foundation | complete on merge |
 | [#62](https://github.com/drejom/landscapeR/issues/62) | Longitudinal AML Stage 2 | queued |
 | [#63](https://github.com/drejom/landscapeR/issues/63) | Longitudinal extensions | parked |
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
@@ -356,6 +356,7 @@ plans.
 | 2026-07-13 | Stage 1 heterogeneous v2 evidence | Complete negative result; no K≥2 strategy accepted |
 | 2026-07-14 | K=1 SVD foundation | #50 complete; disclosed calibration only |
 | 2026-07-14 | Visual landing-proof workflow | #68 complete; PR is canonical transition proof |
+| 2026-07-14 | AnalysisSpecification v2 lifecycle | #61 complete on merge; target intent retained through confirmation |
 
 ---
 

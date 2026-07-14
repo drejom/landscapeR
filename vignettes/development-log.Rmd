@@ -53,6 +53,66 @@ article does not duplicate a second planned-work list.
 
 ---
 
+## Analysis intent lifecycle (AnalysisSpecification v2)
+
+A component decision now **resolves rather than replaces** its target. Every
+specification retains the target field and its neutral contrast/order/direction;
+confirmation adds the frozen-basis component and human decision provenance.
+
+```{r analysis-specification-v2}
+proposal_id <- strrep("a", 64L)
+
+spec_draft <- analysis_specification(
+  id = "condition-axis",
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "control",
+  comparison_level = "disease"
+)
+
+spec_proposal <- analysis_specification(
+  id = "condition-axis",
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "control",
+  comparison_level = "disease",
+  lifecycle = "proposal",
+  proposal_digest = proposal_id
+)
+
+spec_confirmed <- analysis_specification(
+  id = "condition-axis",
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "control",
+  comparison_level = "disease",
+  lifecycle = "confirmed",
+  selected_component = 2L,
+  proposal_digest = proposal_id,
+  proposal_decision = "accepted",
+  analyst_rationale = "Accepted the predeclared top-ranked target axis."
+)
+
+data.frame(
+  lifecycle = c(spec_draft@lifecycle,
+                spec_proposal@lifecycle,
+                spec_confirmed@lifecycle),
+  target = rep("control -> disease", 3L),
+  proposal = c("absent", "present", "retained"),
+  selected_component = c(NA_integer_, NA_integer_,
+                         spec_confirmed@selected_component),
+  decision = c("absent", "absent", spec_confirmed@proposal_decision)
+)
+```
+
+Legacy v1 objects migrate only through `migrate_analysis_specification()`.
+Target-only v1 objects require explicit direction; component-only v1 objects
+also require the missing target and proposal decision record. Migration fails
+rather than inventing intent or dropping the legacy component. See the
+[complete v2 and migration contract](https://github.com/drejom/landscapeR/blob/main/docs/specs/analysis-specification.md).
+
+---
+
 ## Stage 0 — Synthetic validation
 
 The pipeline is tested against two synthetic ground truths.

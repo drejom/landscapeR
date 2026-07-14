@@ -6,52 +6,93 @@
 \usage{
 analysis_specification(
   id,
-  target_field = NULL,
-  manual_component = NULL,
+  target_field,
+  target_type,
+  reference_level = NULL,
+  comparison_level = NULL,
+  ordered_levels = character(0L),
+  continuous_direction = NULL,
+  lifecycle = "draft",
+  selected_component = NULL,
+  proposal_digest = NULL,
+  proposal_decision = NULL,
+  analyst_rationale = NULL,
   nuisance_fields = character(0L),
   orientation_anchor = NULL,
   claim_intent = c("exploratory", "primary_confirmatory")
 )
 }
 \arguments{
-\item{id}{non-empty character run identity}
+\item{id}{non-empty run identity}
 
-\item{target_field}{character \code{colData} field name (proposal only);
-mutually exclusive with \code{manual_component}}
+\item{target_field}{one \code{colData} target field}
 
-\item{manual_component}{positive integer component index; mutually exclusive
-with \code{target_field}}
+\item{target_type}{\code{"binary"}, \code{"ordered"}, or
+\code{"continuous"}}
 
-\item{nuisance_fields}{character vector of \code{colData} field names to
-declare as confounders; must be unique and distinct from \code{target_field}
-and \code{orientation_anchor}}
+\item{reference_level, comparison_level}{binary target direction}
 
-\item{orientation_anchor}{optional single \code{colData} field name providing
-an orientation convention; must be numeric and non-degenerate (checked at
-the stage boundary); must not duplicate a target or nuisance role}
+\item{ordered_levels}{ordered target levels in predeclared direction}
+
+\item{continuous_direction}{\code{"increasing"} or \code{"decreasing"}}
+
+\item{lifecycle}{\code{"draft"}, \code{"proposal"}, or
+\code{"confirmed"}}
+
+\item{selected_component}{positive component index in the frozen reference
+basis; confirmed lifecycle only}
+
+\item{proposal_digest}{SHA-256 digest of the ranked proposal; proposal and
+confirmed lifecycles only}
+
+\item{proposal_decision}{\code{"accepted"} or \code{"overridden"};
+confirmed lifecycle only}
+
+\item{analyst_rationale}{non-empty human rationale; confirmed lifecycle only}
+
+\item{nuisance_fields}{unique \code{colData} fields declared as confounders}
+
+\item{orientation_anchor}{optional numeric non-degenerate \code{colData}
+field distinct from target and nuisance roles}
 
 \item{claim_intent}{\code{"exploratory"} (default) or
-\code{"primary_confirmatory"}}
+\code{"primary_confirmatory"}; intent does not establish eligibility}
 }
 \value{
-a validated \code{AnalysisSpecification} object
+a validated \code{AnalysisSpecification} v2 object
 }
 \description{
-One \code{AnalysisSpecification} = one named reproducible run.  Attach it to a
-\code{\linkS4class{PipelineConfig}} so the analysis intent travels with the run.
+One specification carries the same complete target declaration through a
+draft, ranked proposal, and human-confirmed component decision. Target
+direction is explicit: binary targets use neutral reference/comparison
+levels, ordered targets use \code{ordered_levels}, and continuous targets
+use an increasing/decreasing direction.
 }
 \details{
-Exactly one of \code{target_field} or \code{manual_component} must be supplied:
-
-\itemize{
-\item \code{target_field} is a \strong{proposal only}.  It names a \code{colData} column
-whose values will be used by a future component-selection procedure to
-suggest candidate components.  It does not silently select a component.
-A Stage 2 run requires an explicit \code{manual_component} chosen after
-reviewing the Stage 1 gallery; provenance will link the accepted choice
-to its proposal.
-\item \code{manual_component} is an explicit positive integer identifying the
-Stage 1 component to use.  It is validated against the available
-components at the stage boundary, not here.
+A draft has no proposal or confirmation fields. A proposal adds only
+\code{proposal_digest}. A confirmed specification requires
+\code{selected_component}, the proposal digest, an accepted/overridden
+decision, and non-empty analyst rationale. Real-data confirmation remains a
+human action; this constructor validates the record but does not recommend a
+component.
 }
+\examples{
+draft <- analysis_specification(
+    id = "aml-time",
+    target_field = "weeks",
+    target_type = "continuous",
+    continuous_direction = "increasing"
+)
+
+confirmed <- analysis_specification(
+    id = "aml-time",
+    target_field = "weeks",
+    target_type = "continuous",
+    continuous_direction = "increasing",
+    lifecycle = "confirmed",
+    selected_component = 2L,
+    proposal_digest = strrep("a", 64L),
+    proposal_decision = "accepted",
+    analyst_rationale = "Accepted the predeclared top-ranked component."
+)
 }
