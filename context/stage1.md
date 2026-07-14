@@ -47,6 +47,12 @@ A disease-specific target biological axis whose coordinate separates healthy fro
 **component-selection proposal**:
 A reproducible ranking of Stage 1 components against predeclared biological metadata. It recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion.
 
+The ranking criterion is declared per-analysis and supports two modes:
+- **continuous association**: Spearman correlation of component scores against a numeric metadata column (e.g. weeks post-infection, developmental day). Use to identify or deprioritise time/age-driven components.
+- **binary group separation**: rank-biserial or point-biserial correlation of component scores against a binary metadata column (e.g. condition CM vs CTL, sex). Use to identify disease or contrast axes.
+
+Both modes may be declared together; a component may rank high on one and low on the other (as in AML: PC1 ranks high on weeks, PC2 ranks high on condition).
+
 **axis orientation anchor**:
 An optional predeclared biological metadata rule that gives a selected target biological axis a semantic direction (for example, increasing developmental day or toward treated samples). Technical alignment to the discovery-cohort reference is automatic; directional biological claims require this anchor and must not use downstream Stage 2 topology to set it.
 
