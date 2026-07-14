@@ -2,7 +2,7 @@
 
 Stage 1 takes K ≥ 1 omic layers as input and produces a shared state-space whose axes explicitly contrast biological conditions (disease vs control, temperature, genotype). It separates shared signal from layer-specific variation and from confounders.
 
-**K=1 (single-layer SVD)** is the reference case: plain SVD on one mRNA matrix. The Frankhouser/Rockne 2020 AML paper uses K=1 mRNA with PC2 as the disease axis (PC1 encodes age — a nuisance variable). This is the baseline that must be validated with Stage 0 synthetic controls before any real-data K=1 analysis.
+**K=1 (single-layer SVD)** is the reference case: the registered `svd` `Decomposer` strategy accepts exactly one omic layer and performs plain SVD. It is not a degradation branch of `hogsvd_averaged`, and strategy selection is explicit rather than inferred from layer count. The Frankhouser/Rockne 2020 AML paper uses K=1 mRNA with PC2 as the disease axis (PC1 encodes age — a nuisance variable). This is the baseline that must be validated with Stage 0 synthetic controls before any real-data K=1 analysis.
 
 **K=2 (GSVD)** and **K≥2 (HO-GSVD)** are the multi-layer generalisations. The target biological axis may be any component, not necessarily PC1 — the component-selection proposal ranks candidates against predeclared biological metadata.
 

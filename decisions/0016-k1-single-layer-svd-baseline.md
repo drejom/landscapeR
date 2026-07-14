@@ -53,8 +53,16 @@ results this package must recapitulate. It requires:
 
 - its own Stage 0 synthetic controls with known ground truth
 - its own acceptance thresholds in ADR 0002
-- its own registered `Decomposer` strategy (or explicit K=1 support in
-  `hogsvd_averaged` with a documented degradation guarantee)
+- its own registered `svd` `Decomposer` strategy
+
+### 1a. Plain SVD is a separate registered strategy
+
+K=1 uses a first-class `svd` strategy selected explicitly through
+`PipelineConfig`. It accepts exactly one omic layer and returns the same
+`DecompositionResult` contract as multi-layer strategies. `hogsvd_averaged`
+remains K≥2 and does not contain a hidden K=1 degradation branch. This keeps
+provenance, parameters, eligibility, and Stage 0 evidence truthful; orchestration
+must not auto-switch strategies from layer count.
 
 ### 2. The K=1 Stage 0 ladder must be completed before any real-data K=1 analysis
 
