@@ -78,10 +78,15 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self._git("add", ".")
         self._git("commit", "-m", "feature")
 
+    def _commit_path(self, path: str, content: str = "changed\n") -> None:
+        target = self.repo / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+        self._git("add", path)
+        self._git("commit", "-m", f"change {path}")
+
     def _commit_obviously_public_change(self) -> None:
-        (self.repo / "NAMESPACE").write_text("export(public_feature)\n", encoding="utf-8")
-        self._git("add", "NAMESPACE")
-        self._git("commit", "-m", "public feature")
+        self._commit_path("NAMESPACE", "export(public_feature)\n")
 
     def _run_checker(self, body: str) -> subprocess.CompletedProcess[str]:
         body_file = self.repo / "pr-body.md"
@@ -115,7 +120,7 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertIn("substantive exemption rationale", result.stderr)
 
     def test_accepts_substantive_categorized_exemption(self) -> None:
-        self._commit_change()
+        self._commit_path("tests/testthat/helper-fixture.R", "fixture_name <- 'clearer'\n")
         result = self._run_checker(VALID_EXEMPTION)
 
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -127,6 +132,37 @@ class VisualProofCheckerCliTest(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("obviously public", result.stderr)
+
+    def test_rejects_exemption_for_prepared_data_workflow(self) -> None:
+        self._commit_path("data-raw/prepare-cohort.R")
+        result = self._run_checker(VALID_EXEMPTION)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("obviously public", result.stderr)
+
+    def test_accepts_research_decision_only_exemption(self) -> None:
+        self._commit_path("decisions/9999-proposed-research.md")
+        body = VALID_EXEMPTION.replace(
+            "internal-only", "research/decision-only"
+        ).replace(
+            "This changes test fixture naming without changing any public, scientific, data, plotting, or developer-workflow behavior.",
+            "This records candidate research only and explicitly prohibits implementation until a later ADR is accepted."
+        )
+        result = self._run_checker(body)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_required_proof_accepts_developer_workflow_with_docs_unaffected(self) -> None:
+        self._commit_path("scripts/developer-status.py")
+        body = REQUIRED_PROOF.replace("- [x] Updated", "- [ ] Updated").replace(
+            "- [ ] Unaffected", "- [x] Unaffected"
+        ).replace(
+            "Development log K=1 section.",
+            "The current user workflow is unchanged; the PR proof renders the developer-only status lifecycle."
+        )
+        result = self._run_checker(body)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_rejects_template_comments_as_required_proof(self) -> None:
         self._commit_change(current_docs=True)
