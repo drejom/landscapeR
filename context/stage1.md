@@ -50,7 +50,7 @@ _Avoid_: PC1/PC2 (too generic — the target biological axis may not be the domi
 A disease-specific target biological axis whose coordinate separates healthy from disease state variables or correlates with disease burden markers.
 
 **metadata-association atlas**:
-A structured, serializable table of associations between every Stage 1 component and every eligible `colData` field. It is computed before component selection and answers which recorded variables each component is *associated with*; it does not infer causation or declare a variable to be a confounder. Identifier fields (for example `mouse_id`) are excluded. Fields and their eventual scientific roles are marked as predeclared or discovered so the discovery/confirmation boundary remains explicit.
+A structured, serializable table of associations between every Stage 1 component and every eligible `colData` field. It is computed before component selection and answers which recorded variables each component is *associated with*; it does not infer causation or declare a variable to be a confounder. Identifier fields (for example `mouse_id`) are excluded. Target/nuisance declarations and expected associations are marked as predeclared or discovered so the discovery/confirmation boundary remains explicit; other eligible metadata need no special role to remain visible.
 
 The atlas always preserves **univariate associations** for transparent interpretation. Once nuisance fields are declared, it may additionally report **adjusted associations** (for example, condition after accounting for weeks). Adjusted results are labelled separately and never replace or hide their unadjusted counterparts. The component proposal must retain both rather than collapse them into an opaque composite score.
 
@@ -59,7 +59,7 @@ Only a discovery-cohort atlas may drive `propose_component()` and `confirm_compo
 Association assessment must honour the `SamplingDesign` declared on `StateTransitionData` (ADR 0006). Cross-sectional data use independent-observation methods. Longitudinal data use the declared subject-ID and ordered-time columns; adjusted estimates and uncertainty must account for within-subject repeated measures. Subject identifiers are design variables, not association targets. If longitudinal data lack a compatible subject-aware association method, assessment fails explicitly rather than silently treating observations as independent. The atlas records the model and sampling design used.
 
 **component-selection proposal**:
-A reproducible ranking of Stage 1 components after an analyst assigns metadata fields the roles target, confounder/nuisance, descriptive-only, or excluded. It recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion. The assigned roles and whether they were predeclared or discovered become part of the `AnalysisSpecification` and provenance.
+A reproducible ranking of Stage 1 components after an analyst declares one target field and any nuisance fields. Other eligible metadata remain visible in the atlas without another role class; identifiers and non-analytical fields are excluded. The proposal recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion. Target/nuisance declarations and whether expectations were predeclared or discovered become part of the `AnalysisSpecification` and provenance.
 
 The ranking criterion is declared per-analysis and supports multiple association forms:
 - **continuous association**: Spearman correlation of component scores against a numeric metadata column (e.g. weeks post-infection, developmental day). Use to identify or deprioritise time/age-driven components.
@@ -67,7 +67,7 @@ The ranking criterion is declared per-analysis and supports multiple association
 - **longitudinal trajectory divergence**: a subject-aware condition-by-time interaction for repeated observations. For AML, report both average CM-versus-CTL separation and divergent trajectories; the interaction is the stronger disease-progression criterion.
 - **cross-sectional ordered-state trend**: association with a predeclared ordering of independent biological states. For diabetes, the discovery ordering is non-diabetic → autoantibody-positive → type 1 diabetes. This is evidence of ordered cross-sectional states, not direct observation of within-person temporal progression.
 
-Multiple forms may be declared together; a component may rank high on one and low on another (as in AML: PC1 ranks high on weeks, while the disease axis is expected to capture condition separation and trajectory divergence). Orthogonal biological measures such as cKit expression or blast counts can provide convergent diagnostic support but do not silently select the axis.
+Multiple forms may be declared together; a component may rank high on one and low on another (as in AML: PC1 ranks high on weeks, while the disease axis is expected to capture condition separation and trajectory divergence). Associations with other eligible biological measures such as cKit expression or blast counts remain visible in the same atlas but do not silently enter the selection score.
 
 The proposal is a **formal scored object** (not just a plot): it carries a ranked list of components with their association scores. `plot_components()` visualises this object; tests can assert against it directly.
 
@@ -84,7 +84,7 @@ std2 <- decompose(dec(), std)@value
 atlas <- associate_metadata(std2)
 plot(atlas)
 
-# Step 3: analyst assigns scientific roles and inspects proposal
+# Step 3: analyst declares the target and nuisance fields and inspects proposal
 proposal <- propose_component(
     atlas,
     target = "condition",
@@ -113,8 +113,8 @@ A valid component-proposal abstention: the target association and enclosing subs
 **axis orientation anchor**:
 An optional predeclared biological metadata rule that gives a selected target biological axis a semantic direction (for example, increasing developmental day or toward treated samples). Technical alignment to the discovery-cohort reference is automatic; directional biological claims require this anchor and must not use downstream Stage 2 topology to set it.
 
-**metadata roles**:
-A declaration that separates one target biological variable, named nuisance variables, and diagnostic metadata. Eligible undeclared `colData` fields, including QC metrics, are screened automatically as diagnostics; identifiers are ignored by default. Strong diagnostic or nuisance association creates a visible confounding alert and calls for sensitivity analysis, never silent selection, orientation, residualisation, or correction. Missing values in required target/nuisance/orientation fields exclude that biological observation from the analysis cohort and are recorded; diagnostic screens report available-case counts without imputing metadata.
+**metadata declarations**:
+A declaration that separates one target biological variable and any named nuisance variables. All other eligible `colData` fields, including biological measures and QC metrics, remain visible automatically without receiving another role class; identifiers and declared non-analytical fields are ignored. A strong association with undeclared metadata or a nuisance field creates a visible alert and calls for sensitivity analysis, never silent selection, orientation, residualisation, or correction. Missing values in required target/nuisance/orientation fields exclude that biological observation from the analysis cohort and are recorded; other association screens report available-case counts without imputing metadata.
 
 **target-axis run**:
 One reproducible pipeline run with exactly one target biological axis. Distinct biological questions use distinct named runs, each with its own selection rule, orientation anchor, nuisance declaration, stability assessment, and provenance; a run must not search across targets for the most persuasive landscape. Studies with multiple runs predeclare one primary confirmatory analysis; the rest are exploratory unless a multiplicity plan says otherwise.
