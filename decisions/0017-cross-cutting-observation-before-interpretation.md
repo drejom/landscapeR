@@ -110,6 +110,49 @@ Concrete requirements:
 - A future Shiny application renders package-owned objects and cannot bypass
   these layers.
 
+### 2026-07-14 amendment — visual landing proof
+
+Observation-before-interpretation also applies to the act of landing a change.
+Tests and package checks can establish machine-level correctness while leaving a
+reviewer unable to see what changed. A qualifying implementation is therefore
+not complete until its pull request carries **visual landing proof**.
+
+The pull request is the canonical transition record because it co-locates the
+base revision, head revision, issue, diff, review, and commits. Required proof
+contains:
+
+- a rendered before/after comparison for a fix, or a representative figure,
+  table, workflow render, or equivalent inspectable output for a new capability;
+- a cold-reader interpretation;
+- a command or procedure that reproduces the proof; and
+- explicit claim status, including exploratory, calibration-only, or accepted
+  evidence where relevant.
+
+This obligation applies to scientific behavior, public APIs, user-visible
+behavior, plotting, prepared data/schema, and developer-facing workflows.
+Internal-only changes with no observable surface and research/decision-only
+work that prohibits implementation may be exempt, but the category and
+rationale must be declared explicitly before merge. A deferred exemption
+expires when implementation begins. Generic `N/A` is not an exemption.
+
+Pull-request proof, current documentation, and immutable scientific evidence
+answer different questions:
+
+1. **Pull-request landing proof:** did the implementation visibly change the
+   intended behavior?
+2. **Current package documentation:** how should the supported workflow be used
+   now? Public workflow changes update the affected vignette or README.
+3. **Immutable evidence artifact/article:** what scientific claim is supported?
+
+A pull-request image or development-log entry cannot select thresholds, confer
+acceptance, or replace a content-addressed evidence artifact. Restricted or
+unpublished data use synthetic or privacy-safe proof surfaces.
+
+The development log is a concise current-status and implementation index. It
+links issues and merged pull requests rather than duplicating every historical
+review packet. Qualifying work targets `main` through a reviewed pull request so
+the canonical landing-proof record exists.
+
 ## Consequences
 
 - Result objects and public plotting APIs must make both layers accessible.

@@ -55,7 +55,10 @@ jobs:
       - name: Registry compliance
         run: bash scripts/check-registry-compliance.sh
 
-      - name: Figure review (vignette changes)
+      - name: Visual landing-proof policy tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+
+      - name: Visual landing-proof policy
         if: github.event_name == 'pull_request'
         env:
           PR_BODY: ${{ github.event.pull_request.body }}

@@ -3,6 +3,12 @@
 Every non-trivial algorithm or design choice gets a record here before code is written.
 The format is deliberately lightweight — the goal is a defensible paper trail, not ceremony.
 
+An accepted ADR authorizes a decision; it does not by itself prove that an
+implementation landed. ADR 0017 requires qualifying implementations to carry
+visual landing proof in their pull request and to update current package
+documentation when the supported workflow changes. That proof remains separate
+from immutable scientific acceptance evidence.
+
 ## When to write one
 
 - Choosing a concrete algorithm implementation for a stage contract
