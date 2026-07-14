@@ -229,7 +229,8 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
   [#50](https://github.com/drejom/landscapeR/issues/50) adds the registered
   single-omic-layer SVD and calibration control;
   [#68](https://github.com/drejom/landscapeR/issues/68) makes the pull request
-  the canonical visual transition record. Both remain implementation work, not
-  K=1 acceptance evidence.
+  the canonical visual transition record. The full before/after proof is
+  co-located with the diff in [PR #69](https://github.com/drejom/landscapeR/pull/69).
+  This remains implementation work, not K=1 acceptance evidence.
 
 *Last updated: 2026-07-14. Documentation site: <https://drejom.github.io/landscapeR/>.*
