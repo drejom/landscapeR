@@ -129,12 +129,11 @@ setClass("Decomposer", representation("VIRTUAL"))
 setGeneric("shared_axis",
     function(x, j = 1L) standardGeneric("shared_axis"))
 
-#' Decompose multi-layer data into shared and layer-exclusive subspaces
+#' Decompose one or more layers into state-space axes
 #'
-#' Replaces plain SVD/PCA with GSVD (two layers) or HO-GSVD (N layers).
-#' Generalized singular value ratios partition the space automatically;
-#' confounders land in their own components rather than smearing the disease
-#' axis.
+#' Registered implementations define the supported layer count. Plain SVD is
+#' the exactly-one-layer baseline; comparative GSVD/HO-GSVD strategies handle
+#' two or more layers and can partition shared from layer-exclusive structure.
 #'
 #' Boundary validation (\code{\link{validate_boundary}}) is enforced
 #' structurally: the method below, dispatched on the VIRTUAL

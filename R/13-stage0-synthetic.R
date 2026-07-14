@@ -122,6 +122,18 @@ synthetic_control <- function(n        = 40L,
     md$control <- ctrl_params
     metadata(std) <- md
 
+    if (K == 1L) {
+        std <- record_provenance(
+            std,
+            stage = "generate_control",
+            contract = "SyntheticControlGenerator",
+            implementation = "single_layer_subspace",
+            params = ctrl_params,
+            input_hashes = c(
+                specification = digest::digest(ctrl_params, algo = "sha256")
+            )
+        )
+    }
     std
 }
 
@@ -247,6 +259,19 @@ synthetic_k1_double_well_control <- function(n = 200L,
         evidence_status = "non_evidentiary_calibration"
     )
     metadata(std) <- md
+    std <- record_provenance(
+        std,
+        stage = "generate_control",
+        contract = "SyntheticControlGenerator",
+        implementation = "k1_double_well",
+        params = md$k1_double_well_control,
+        input_hashes = c(
+            specification = digest::digest(
+                md$k1_double_well_control,
+                algo = "sha256"
+            )
+        )
+    )
     std
 }
 

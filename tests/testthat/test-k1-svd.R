@@ -8,6 +8,9 @@ test_that("synthetic_control supports one omic layer", {
     expect_identical(names(experiments(std)), "layer1")
     expect_length(std@ground_truth@exclusive, 1L)
     expect_identical(metadata(std)$control$K, 1L)
+    expect_length(std@provenance, 1L)
+    expect_identical(std@provenance[[1L]]@implementation,
+                     "single_layer_subspace")
     expect_identical(std@sampling_design@kind, "cross_sectional")
 })
 
@@ -41,6 +44,20 @@ test_that("svd returns available components for the smallest valid sample size",
 
     expect_identical(result@status, "success")
     expect_identical(dr_k(metadata(result@value)$stage1), 1L)
+})
+
+test_that("svd typed-fails invalid component requests", {
+    std <- synthetic_control(n = 12L, p = 30L, K = 1L,
+                             signal = 40, seed = 110L)
+    ctor <- get_strategy("Decomposer", "svd")
+
+    for (invalid_k in list(0L, -1L, NA_integer_, 1.5, "two")) {
+        result <- suppressWarnings(decompose(
+            ctor(list(k_components = invalid_k)), std
+        ))
+        expect_identical(result@status, "failure")
+        expect_match(result@reason, "k_components")
+    }
 })
 
 test_that("svd typed-fails outside its exactly-one-layer capability", {
@@ -93,7 +110,7 @@ test_that("svd records truthful deterministic provenance", {
 
     expect_identical(result_1@status, "success")
     expect_length(result_1@provenance, 1L)
-    expect_length(result_1@value@provenance, 1L)
+    expect_length(result_1@value@provenance, 2L)
 
     provenance <- result_1@provenance[[1L]]
     expect_identical(provenance@implementation, "svd")
@@ -103,6 +120,15 @@ test_that("svd records truthful deterministic provenance", {
     expect_identical(provenance@params$k_components, 6L)
     expect_identical(unname(provenance@input_hashes[["data"]]), input_hash)
     expect_identical(result_1@value, result_2@value)
+
+    forged <- suppressWarnings(decompose(
+        ctor(list(n = 999L, p = 888L, K = 99L, k = 77L)), std
+    ))
+    forged_provenance <- tail(forged@value@provenance, 1L)[[1L]]
+    expect_identical(forged_provenance@params$n, 15L)
+    expect_identical(forged_provenance@params$p, 40L)
+    expect_identical(forged_provenance@params$K, 1L)
+    expect_identical(forged_provenance@params$k, 6L)
 })
 
 test_that("K=1 double-well constructor carries subspace and potential truth", {
@@ -112,6 +138,8 @@ test_that("K=1 double-well constructor carries subspace and potential truth", {
     )
 
     expect_s4_class(std, "StateTransitionData")
+    expect_length(std@provenance, 1L)
+    expect_identical(std@provenance[[1L]]@implementation, "k1_double_well")
     expect_s4_class(std@ground_truth, "K1DoubleWellGroundTruth")
     expect_s4_class(std@ground_truth@subspace, "SubspaceGroundTruth")
     expect_s4_class(std@ground_truth@potential, "PotentialGroundTruth")
@@ -145,7 +173,7 @@ test_that("K=1 double-well calibration runs SVD and Stage 2 without judging acce
     expect_true(is.finite(calibration$well_error))
     expect_true(is.finite(calibration$barrier_error))
     expect_identical(calibration$true_barrier_height, 2)
-    expect_length(calibration$provenance, 2L)
+    expect_length(calibration$provenance, 3L)
     expect_true(is.character(calibration$config_digest))
     expect_length(calibration$config_digest, 1L)
     expect_false(any(c("pass", "accepted", "eligible") %in% names(calibration)))

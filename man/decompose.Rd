@@ -11,7 +11,7 @@
 \alias{.decompose_impl,HogsvdPrereduced,StateTransitionData-method}
 \alias{SvdDecomposer-class}
 \alias{.decompose_impl,SvdDecomposer,StateTransitionData-method}
-\title{Decompose multi-layer data into shared and layer-exclusive subspaces}
+\title{Decompose one or more layers into state-space axes}
 \usage{
 decompose(strategy, data, ...)
 
@@ -35,10 +35,9 @@ decompose(strategy, data, ...)
 shared + exclusive subspaces in \code{metadata()}
 }
 \description{
-Replaces plain SVD/PCA with GSVD (two layers) or HO-GSVD (N layers).
-Generalized singular value ratios partition the space automatically;
-confounders land in their own components rather than smearing the disease
-axis.
+Registered implementations define the supported layer count. Plain SVD is
+the exactly-one-layer baseline; comparative GSVD/HO-GSVD strategies handle
+two or more layers and can partition shared from layer-exclusive structure.
 }
 \details{
 Boundary validation (\code{\link{validate_boundary}}) is enforced

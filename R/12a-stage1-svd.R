@@ -19,6 +19,15 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
             return(stage_failure("svd requires exactly 1 layer"))
 
         p_params <- modifyList(list(center = TRUE, k_components = 6L), strategy@params)
+        requested_k <- p_params$k_components
+        if (!is.numeric(requested_k) || length(requested_k) != 1L ||
+            !is.finite(requested_k) || requested_k < 1L ||
+            requested_k != as.integer(requested_k))
+            return(stage_failure(
+                "svd k_components must be a single positive integer"
+            ))
+        requested_k <- as.integer(requested_k)
+
         X <- t(assay(layers[[1L]]))
         if (isTRUE(p_params$center))
             X <- scale(X, center = TRUE, scale = FALSE)
@@ -32,7 +41,7 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
             ))
         decomposition <- svd(X, nu = max_rank, nv = max_rank)
         k <- min(
-            as.integer(p_params$k_components),
+            requested_k,
             length(decomposition$d),
             ncol(decomposition$u),
             ncol(decomposition$v)
@@ -67,15 +76,15 @@ setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
             contract = "Decomposer",
             implementation = "svd",
             params = modifyList(
+                strategy@params,
                 list(
                     n = n,
                     p = p,
                     K = 1L,
                     k = k,
-                    center = p_params$center,
-                    k_components = p_params$k_components
-                ),
-                strategy@params
+                    center = isTRUE(p_params$center),
+                    k_components = requested_k
+                )
             ),
             input_hashes = input_hashes
         )
