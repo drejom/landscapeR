@@ -125,7 +125,7 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
     map_idx <- match(assay_samples, sm$colname)
     expected <- cd$condition[match(sm$primary[map_idx], rownames(cd))]
 
-    expect_identical(p$data$condition[seq_along(expected)], expected)
+    expect_identical(p$data$metadata_value[seq_along(expected)], expected)
     expect_s3_class(p$scales$get_scales("colour"), "ScaleDiscrete")
     expect_s3_class(p$scales$get_scales("fill"), "ScaleDiscrete")
     expect_identical(
@@ -148,7 +148,7 @@ test_that("plot_components visibly renders continuous MAE metadata", {
     map_idx <- match(assay_samples, sm$colname)
     expected <- cd$sample_weeks[match(sm$primary[map_idx], rownames(cd))]
 
-    expect_identical(p$data$sample_weeks[seq_along(expected)], expected)
+    expect_identical(p$data$metadata_value[seq_along(expected)], expected)
     expect_s3_class(p$scales$get_scales("colour"), "ScaleContinuous")
     expect_null(p$scales$get_scales("fill"))
     expect_true(any(vapply(
@@ -161,6 +161,31 @@ test_that("plot_components visibly renders continuous MAE metadata", {
         function(layer) inherits(layer$geom, "GeomRug"),
         logical(1L)
     )))
+})
+
+test_that("metadata field names cannot overwrite gallery coordinates or facets", {
+    std <- component_gallery_fixture()
+    cd <- colData(std)
+    cd$coord <- cd$sample_weeks
+    cd$component <- cd$condition
+    colData(std) <- cd
+    sm <- as.data.frame(MultiAssayExperiment::sampleMap(std))
+    assay_samples <- colnames(experiments(std)[[1L]])
+    map_idx <- match(assay_samples, sm$colname)
+    cd_idx <- match(sm$primary[map_idx], rownames(cd))
+
+    continuous <- plot_components(std, colour_by = "coord")
+    categorical <- plot_components(std, colour_by = "component")
+
+    expect_identical(
+        continuous$data$metadata_value[seq_along(cd_idx)],
+        cd$coord[cd_idx]
+    )
+    expect_identical(
+        categorical$data$metadata_value[seq_along(cd_idx)],
+        cd$component[cd_idx]
+    )
+    expect_identical(levels(categorical$data$component), c("PC1", "PC2", "PC3"))
 })
 
 test_that("plot_components rejects missing and duplicate metadata fields", {

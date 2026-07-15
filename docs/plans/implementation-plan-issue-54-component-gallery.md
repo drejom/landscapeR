@@ -73,6 +73,10 @@ same pinned diff.
 - **Scope:** no scoring, ranking, atlas, proposal, or biological interpretation
   was introduced. The proof-rendering fixture intentionally remains independent
   of package internals so it can reproduce the public behavior under test.
+- **PR review:** both review threads were implemented. Metadata values now use a
+  fixed internal plotting column, so source fields named `coord` or `component`
+  cannot overwrite gallery coordinates/facets. Canonical map resolution now uses
+  one vectorized `match()` plus duplicate detection rather than an O(n²) scan.
 
 ## Claim boundary
 

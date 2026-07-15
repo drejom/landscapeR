@@ -103,7 +103,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             component = sprintf("PC%d", j),
             stringsAsFactors = FALSE
         )
-        if (!is.null(meta_col)) df[[colour_by]] <- meta_col
+        if (!is.null(meta_col)) df$metadata_value <- meta_col
         df
     })
     df <- do.call(rbind, rows)
@@ -141,7 +141,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 linewidth = 0.5
             ) +
             ggplot2::geom_rug(
-                ggplot2::aes(colour = .data[[colour_by]]),
+                ggplot2::aes(colour = .data[["metadata_value"]]),
                 alpha = 0.75,
                 sides = "b"
             ) +
@@ -151,8 +151,8 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             df,
             ggplot2::aes(
                 x = coord,
-                fill = .data[[colour_by]],
-                colour = .data[[colour_by]]
+                fill = .data[["metadata_value"]],
+                colour = .data[["metadata_value"]]
             )
         ) +
             ggplot2::geom_density(alpha = 0.35, linewidth = 0.5) +
@@ -209,32 +209,31 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     assay_samples <- colnames(expt_list[[layer]])
     sm <- as.data.frame(sampleMap(std), stringsAsFactors = FALSE)
     layer_map <- sm[as.character(sm$assay) == layer_name, , drop = FALSE]
-    map_hits <- lapply(assay_samples, function(sample_name) {
-        which(as.character(layer_map$colname) == sample_name)
-    })
-    hit_count <- lengths(map_hits)
-    if (any(hit_count == 0L)) {
+    mapped_samples <- as.character(layer_map$colname)
+    map_idx <- match(assay_samples, mapped_samples)
+    if (anyNA(map_idx)) {
         .stop_landscapeR_validation(sprintf(
             paste0(
                 "plot_components(): missing canonical sample mapping for layer ",
                 "'%s' observation '%s'"
             ),
             layer_name,
-            assay_samples[[which(hit_count == 0L)[[1L]]]]
+            assay_samples[[which(is.na(map_idx))[[1L]]]]
         ))
     }
-    if (any(hit_count > 1L)) {
+    duplicate_samples <- unique(mapped_samples[duplicated(mapped_samples)])
+    ambiguous <- assay_samples %in% duplicate_samples
+    if (any(ambiguous)) {
         .stop_landscapeR_validation(sprintf(
             paste0(
                 "plot_components(): ambiguous canonical sample mapping for layer ",
                 "'%s' observation '%s'"
             ),
             layer_name,
-            assay_samples[[which(hit_count > 1L)[[1L]]]]
+            assay_samples[[which(ambiguous)[[1L]]]]
         ))
     }
 
-    map_idx <- vapply(map_hits, `[[`, integer(1L), 1L)
     primary <- as.character(layer_map$primary[map_idx])
     primary_rows <- rownames(cd)
     if (anyDuplicated(primary_rows) > 0L) {
