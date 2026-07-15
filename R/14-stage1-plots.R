@@ -62,7 +62,9 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         )
     s1 <- metadata(std)$stage1
     if (is.null(s1))
-        stop("Stage 1 has not been run on this object. Call decompose() first.")
+        .stop_landscapeR_validation(
+            "Stage 1 has not been run on this object. Call decompose() first."
+        )
 
     coords <- dr_coords_k(s1)
     expt_list <- as.list(experiments(std))

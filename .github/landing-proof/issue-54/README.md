@@ -43,10 +43,24 @@ plot into an association model.
 
 ## Canonical alignment check
 
-The fixture uses 24 synthetic primary observations. Its assay order begins with
-even-numbered samples, while MAE `colData` begins in reverse order. Tests compare
-the plotted metadata against an independent `sampleMap` lookup and recover all
-24 categorical and continuous values exactly.
+The fixture uses 24 synthetic primary observations and gives assay columns,
+`sampleMap` rows, and MAE `colData` rows three deliberately different
+permutations. The first six assay columns demonstrate that no positional join
+can recover the metadata:
+
+| Assay position | Assay column / primary | `sampleMap` row | MAE `colData` row | Condition | Weeks |
+|---:|---|---:|---:|---|---:|
+| 1 | `rna_07` / `p07` | 24 | 14 | CTL | 9.0 |
+| 2 | `rna_02` / `p02` | 23 | 4 | CM | 1.5 |
+| 3 | `rna_19` / `p19` | 22 | 11 | CTL | 27.0 |
+| 4 | `rna_04` / `p04` | 21 | 8 | CM | 4.5 |
+| 5 | `rna_23` / `p23` | 20 | 3 | CTL | 33.0 |
+| 6 | `rna_06` / `p06` | 19 | 12 | CM | 7.5 |
+
+Tests independently follow assay column → map row → primary metadata identity
+and recover all 24 categorical and continuous values exactly. PC2 was planted
+from the primary condition, so its clean CM/CTL separation in the after render
+is also an inspectable consequence of correct canonical alignment.
 
 ## Reproduction
 

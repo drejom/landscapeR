@@ -15,8 +15,14 @@ component_gallery_fixture <- function() {
   n <- 24L
   primary <- sprintf("p%02d", seq_len(n))
   assay_names <- sprintf("rna_%02d", seq_len(n))
-  assay_order <- c(seq(2L, n, by = 2L), seq(1L, n, by = 2L))
-  cd_order <- c(seq(n, 1L, by = -2L), seq(n - 1L, 1L, by = -2L))
+  assay_order <- c(
+    7L, 2L, 19L, 4L, 23L, 6L, 1L, 8L, 17L, 10L, 3L, 12L,
+    21L, 14L, 5L, 16L, 9L, 18L, 11L, 20L, 13L, 22L, 15L, 24L
+  )
+  cd_order <- c(
+    24L, 1L, 23L, 2L, 22L, 3L, 21L, 4L, 20L, 5L, 19L, 6L,
+    18L, 7L, 17L, 8L, 16L, 9L, 15L, 10L, 14L, 11L, 13L, 12L
+  )
   condition <- rep(c("CTL", "CM"), length.out = n)
   sample_weeks <- seq(0, by = 1.5, length.out = n)
 
@@ -34,13 +40,14 @@ component_gallery_fixture <- function() {
       dimnames = list(sprintf("g%d", 1:5), assay_colnames)
     ))
   )
+  map_order <- rev(seq_len(n))
   std <- StateTransitionData(
     experiments = list(rna = se),
     colData = cd,
     sampleMap = DataFrame(
       assay = factor(rep("rna", n), levels = "rna"),
-      primary = assay_primary,
-      colname = assay_colnames
+      primary = assay_primary[map_order],
+      colname = assay_colnames[map_order]
     )
   )
 

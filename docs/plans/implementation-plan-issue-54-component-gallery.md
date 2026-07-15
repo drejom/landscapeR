@@ -2,7 +2,7 @@
 
 > Scheduling remains authoritative in the root [`ROADMAP.md`](../../ROADMAP.md).
 
-**Status:** in progress
+**Status:** implementation complete; complete on merge
 
 ## Objective
 
@@ -55,6 +55,24 @@ Tests will not call private alignment helpers or add a hidden scoring seam.
    policy checks, then perform two-axis review against `origin/main`.
 7. Implement every review finding, rerun verification, open the PR, resolve all
    comments, and leave it green and mergeable.
+
+## Two-axis review
+
+The required parallel reviewer launch was attempted against `origin/main` and
+could not start because the session-wide subagent quota was already exhausted:
+`Subagent spawn limit reached for this session (40/40 used, 2 requested).`
+Separate direct Standards and Spec passes were therefore completed against the
+same pinned diff.
+
+- **Standards:** one typed-boundary gap was found and fixed: absence of Stage 1
+  now raises `landscapeR_validation_error` rather than a raw exception.
+- **Spec:** the initial fixture reordered assay columns and MAE metadata but left
+  `sampleMap` in assay order. The fixture now gives assay columns, `sampleMap`,
+  and MAE metadata three distinct permutations, and expectations independently
+  follow assay column → map row → primary metadata identity.
+- **Scope:** no scoring, ranking, atlas, proposal, or biological interpretation
+  was introduced. The proof-rendering fixture intentionally remains independent
+  of package internals so it can reproduce the public behavior under test.
 
 ## Claim boundary
 
