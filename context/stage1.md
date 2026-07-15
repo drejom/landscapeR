@@ -54,7 +54,7 @@ A structured, serializable table of associations between every Stage 1 component
 
 The atlas always preserves **univariate associations** for transparent interpretation. Once nuisance fields are declared, it may additionally report **adjusted associations** (for example, condition after accounting for weeks). Adjusted results are labelled separately and never replace or hide their unadjusted counterparts. The component proposal must retain both rather than collapse them into an opaque composite score.
 
-Only a discovery-cohort atlas may drive `propose_component()` and `confirm_component()`. After confirmation, the target axis and complete state-space definition are frozen. A projected-cohort atlas is validation-only: it evaluates the already selected coordinates and is structurally prohibited from reranking components or changing the `AnalysisSpecification`. For AML, `primary_2018` defines the state space and `supp_2016` is a hostile projection stress test; timepoint and sequencing run are confounded in the 2016 experiment, so it is not a clean independent replication cohort.
+Only a discovery-cohort atlas may drive `propose_component()` and `confirm_component()`. After confirmation, the target axis and complete state-space definition are frozen. A projected-cohort atlas is validation-only: it evaluates the already selected coordinates and is structurally prohibited from reranking components or changing the `AnalysisSpecification`. For AML, the 132-observation source-paper training cohort is prepared as `primary_2018` and defines the state space; the 101-observation source-paper validation cohort 1 is prepared as `supp_2016` and supplies a hostile projection stress test. Authoritative `sample_weeks` and sequencing run are confounded in the 2016 experiment, so it is not a clean independent replication cohort.
 
 Association assessment must honour the `SamplingDesign` declared on `StateTransitionData` (ADR 0006). Cross-sectional data use independent-observation methods. Longitudinal data use the declared subject-ID and ordered-time columns; adjusted estimates and uncertainty must account for within-subject repeated measures. Subject identifiers are design variables, not association targets. If longitudinal data lack a compatible subject-aware association method, assessment fails explicitly rather than silently treating observations as independent. The atlas records the model and sampling design used.
 
@@ -88,7 +88,7 @@ plot(atlas)
 proposal <- propose_component(
     atlas,
     target = "condition",
-    confounders = "weeks_post_infection"
+    confounders = "sample_weeks"
 )
 plot(proposal)
 

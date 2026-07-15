@@ -20,10 +20,11 @@ component — which is common:
 
 - In Rockne2020: PC1 (47% variance) is age/time; PC2 (11% variance) is leukemia.
   The dominant component is confounded with age; the disease axis is second.
-- In the 2016 training cohort: batch and timepoint are perfectly confounded,
-  so the dominant component captures the sequencing batch / age axis.
-- In the 2018 validation cohort (properly randomised): the dominant component
-  may well be the disease axis — but we cannot assume that in general.
+- In the 2016 source-paper validation cohort: batch and observation time are
+  perfectly confounded, so the dominant component captures the sequencing
+  batch / age axis.
+- In the 2018 source-paper training cohort (properly randomised): the dominant
+  component may well be the disease axis — but we cannot assume that in general.
 
 landscapeR's goal is to make this sophisticated analysis accessible without
 requiring the user to know in advance which component is biologically relevant.
@@ -42,10 +43,12 @@ The paper's validation protocol is:
 3. Run Stage 2 on the primary cohort's coordinates; use projected secondary as
    confirmation that signal survives
 
-For the AML data this means: **2018 = primary** (properly randomised, clean
-signal); **2016 = secondary** (batch-confounded, projected in as stress-test).
-The 2016 batch confounding is the point of the exercise — if the disease axis
-survives projection despite confounding, that strengthens the biological claim.
+For the AML data this means: **2018 = primary** (the source-paper training
+cohort with properly randomised batches); **2016 = secondary** (source-paper
+validation cohort 1, batch-confounded and projected as a hostile stress test).
+Survival of the frozen disease axis under that projection is robustness
+evidence, not clean independent confirmation and not a biological claim by
+itself.
 
 ## Options considered
 
@@ -81,14 +84,16 @@ survives projection despite confounding, that strengthens the biological claim.
 > admissible evidence for component selection, projection validity, or a
 > biological claim. They must not be reproduced as the package workflow.
 
-From the AML 2016 training data (superseded analysis):
+From the AML 2016 source-paper validation data, incorrectly used for fitting
+in the superseded analysis:
 
 | Component | r(coord, condition) | r(coord, timepoint) | Interpretation |
 |-----------|---------------------|---------------------|----------------|
 | PC1       | −0.17               | 0.81                | Age / batch    |
 | PC2       | 0.53                | −0.07               | Disease axis   |
 
-From the AML 2018 validation data projected into 2016 training V* (superseded analysis):
+From the AML 2018 source-paper training data projected into the incorrectly
+fitted 2016 validation basis (superseded analysis):
 
 | Component | r(coord, condition) |
 |-----------|---------------------|
