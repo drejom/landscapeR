@@ -29,5 +29,5 @@ This repo uses a **multi-context** layout. `CONTEXT-MAP.md` at the root points t
 - **Stage 0** — synthetic control ladder (load-bearing validation)
 - **Stage 1** — comparative decomposition (GSVD / HO-GSVD)
 - **Stage 2** — quasi-potential dynamics (log-density inversion)
-- **primary_2018** — primary experimental cohort (paper's training data, clean batches)
-- **supp_2016** — supplementary cohort (batch-confounded, projected via `project_into()`)
+- **primary_2018** — 132-observation source-paper training cohort; primary discovery basis for the exploratory landscapeR AML workflow
+- **supp_2016** — 101-observation source-paper validation cohort 1; batch/time-confounded secondary projection stress test

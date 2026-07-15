@@ -66,15 +66,13 @@ use the declared subject/time structure before it may report directional or
 timing quantities. Legacy objects migrate to an explicit unspecified state that
 Stage 2 rejects until the user declares the design.
 
-**Amendment (2026-07-13): optional event/censoring declaration.** A longitudinal
-sampling design may additionally name event-status and event-time fields. This
-supports protocol-defined terminal events, right censoring, first-passage
-validation, and survival-ready descriptive outputs without making general
-survival modelling part of the Stage 2 contract. Event meaning and threshold
-must come from source protocol metadata; an event-triggered euthanasia sample
-must not be relabelled as disease onset without evidence. Event/censoring
-structure is intrinsic to the observation design and survives projection and
-provenance.
+**Withdrawn amendment (2026-07-13): optional event/censoring declaration.**
+The proposal to add event-status and event-time fields was not implemented and
+is withdrawn as speculative generality. The current longitudinal contract names
+only subject identity and ordered observation time. A last observation is not
+universally an event, and one AML study's categorical labels must not define a
+general package schema. Event/censoring semantics require a concrete analysis
+caller, verified source protocol, and a separate decision when that need exists.
 
 ## Consequences
 

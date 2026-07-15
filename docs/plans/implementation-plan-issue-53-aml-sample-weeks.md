@@ -1,0 +1,65 @@
+# Implementation plan — issue #53 AML source weeks and cohort identity
+
+> Scheduling remains authoritative in the root [`ROADMAP.md`](../../ROADMAP.md).
+
+**Status:** in progress
+
+## Objective
+
+Correct the reversed GSE133642 2016/2018 prepared-layer assignments and carry
+the authoritative public `sample_weeks` values into both layers without deriving
+time or inventing endpoint semantics. Together the matrices remain a real
+biological validation dataset for landscapeR; their source-paper roles remain
+explicit and distinct.
+
+## Pre-agreed test seams
+
+The issue and source-lineage audit establish these observable seams:
+
+1. the committed, privacy-safe GSE133642 sample-time mapping artifact;
+2. the data-preparation mapping function used by `data-raw/load-aml-cml.R`;
+3. the generated `StateTransitionData` schema, layer assignment, declared
+   `SamplingDesign`, and data-source provenance;
+4. the prepared-data documentation and PR landing-proof tables.
+
+Tests will not require network access or reconstruct expected weeks from dates
+or categorical labels.
+
+## Contract
+
+- `mrna_primary_2018`: 132 observations from source cohort
+  `AML.mRNA.2018.all_samples`, the source-paper training/state-space cohort.
+- `mrna_supp_2016`: 101 observations from source cohort `AML.mRNA.2016`, the
+  source-paper validation cohort retained as landscapeR's hostile projection
+  stress test after excluding the separate 15-observation `WK*` arm.
+- Every retained observation maps one-to-one by authoritative `library_id` and
+  receives the source numeric `sample_weeks` value unchanged.
+- The combined container declares `longitudinal("mouse_id", "sample_weeks",
+  "weeks")`.
+- Existing categorical labels remain inert metadata. No endpoint/event field,
+  inference, or general disease-specific contract is added.
+- Provenance records the immutable source revision, source checksum, file,
+  column, units, join key, and extraction procedure.
+
+## Vertical slices
+
+1. Red/green the source mapping artifact integrity and corrected layer counts.
+2. Red/green exact mapping, unmatched/duplicate rejection, and literal decimal
+   values including all six source `L` observations.
+3. Switch the raw matrices and metadata parsers to their correct prepared
+   layers; attach exact weeks through the validated mapping seam.
+4. Declare the minimal longitudinal sampling design and record source/cohort
+   provenance.
+5. Regenerate and audit the local prepared object: 233 observations, 30 mice,
+   no missing weeks, strict within-mouse ordering, and corrected 132/101 roles.
+6. Update prepared-data documentation, source-study/package-validation wording,
+   roadmap state, and privacy-safe landing proof.
+7. Run focused/full tests, package check, pkgdown/policy checks, and an explicit
+   completion audit.
+8. Run the two-axis `/code-review` against `origin/main`, implement all findings,
+   rerun verification, then open the PR with immutable landing-proof links.
+
+## Claim boundary
+
+This is data-lineage and machinery-validation work. It makes no biological,
+endpoint, longitudinal-dynamics, or strategy-acceptance claim.

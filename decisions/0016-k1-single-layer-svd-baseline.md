@@ -26,8 +26,17 @@ validated synthetic baseline. Do not repeat this.
 The Frankhouser/Rockne 2020 Cancer Research paper (AML, GSE133642) uses a
 **single mRNA matrix** (K=1) decomposed by plain SVD. **PC2 is the disease
 axis — PC1 encodes age** and is treated as a nuisance variable in that paper.
-The 2018 primary cohort (101 mice) is used for SVD; the 2016 supplementary
-cohort (132 mice) is projected into that state-space.
+The 2018 primary cohort (132 observations from 14 mice; the source-paper
+training cohort) is used for SVD. The prepared 2016 secondary cohort (101
+observations from 16 mice; source-paper validation cohort 1) is reserved for
+projection into that frozen state-space after projection safety passes. Together
+the matrices are real biological validation data for landscapeR; those package
+roles do not alter their source-study identities.
+
+**Source-lineage correction (2026-07-14).** The previous text reversed the two
+matrix assignments and misstated sample counts as mouse counts. Issue #53
+verified every observation against the immutable public `sample_weeks` source
+and corrected the prepared-data roles before any AML Stage 1 result was run.
 
 This is the reference result landscapeR must recapitulate before any biological
 claim is made. The data is prepared (`data-raw/aml_mrna_std.rds`). The pipeline
