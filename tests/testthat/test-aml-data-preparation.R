@@ -1,3 +1,11 @@
+mapping_script <- system.file(
+    "scripts",
+    "gse133642-metadata.R",
+    package = "landscapeR"
+)
+expect_true(nzchar(mapping_script), info = "AML mapping code is installed")
+source(mapping_script, local = TRUE)
+
 aml_sample_mapping <- function() {
     path <- system.file(
         "extdata",
@@ -5,7 +13,7 @@ aml_sample_mapping <- function() {
         package = "landscapeR"
     )
     testthat::expect_true(nzchar(path), info = "AML source-time mapping is installed")
-    utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
+    read_gse133642_sample_weeks(path)
 }
 
 test_that("AML source-time mapping fixes cohort identity and covers every observation", {
@@ -37,6 +45,55 @@ test_that("AML source-time mapping fixes cohort identity and covers every observ
         mapping$source_cohort[mapping$prepared_layer == "mrna_supp_2016"] ==
             "AML.mRNA.2016"
     ))
+})
+
+test_that("AML mapping rejects duplicates, unmatched samples, and identity drift", {
+    mapping <- aml_sample_mapping()
+    example <- mapping[mapping$prepared_layer == "mrna_primary_2018", ]
+    meta <- data.frame(
+        mouse_id = example$mouse_id,
+        row.names = example$expression_name,
+        stringsAsFactors = FALSE
+    )
+
+    attached <- attach_gse133642_sample_weeks(
+        meta,
+        prepared_layer = "mrna_primary_2018",
+        source_cohort = "AML.mRNA.2018.all_samples",
+        mapping = mapping
+    )
+    expect_identical(attached$sample_weeks, example$sample_weeks)
+
+    duplicate <- mapping
+    duplicate$library_id[2L] <- duplicate$library_id[1L]
+    expect_error(
+        validate_gse133642_sample_weeks(duplicate),
+        "duplicate observation keys"
+    )
+
+    unmatched <- meta[1L, , drop = FALSE]
+    rownames(unmatched) <- "T0_9999_CM_CHW_M_G1_99999"
+    expect_error(
+        attach_gse133642_sample_weeks(
+            unmatched,
+            prepared_layer = "mrna_primary_2018",
+            source_cohort = "AML.mRNA.2018.all_samples",
+            mapping = mapping
+        ),
+        "does not map one-to-one"
+    )
+
+    wrong_mouse <- meta
+    wrong_mouse$mouse_id[1L] <- "not-the-source-mouse"
+    expect_error(
+        attach_gse133642_sample_weeks(
+            wrong_mouse,
+            prepared_layer = "mrna_primary_2018",
+            source_cohort = "AML.mRNA.2018.all_samples",
+            mapping = mapping
+        ),
+        "mouse identifiers disagree"
+    )
 })
 
 test_that("AML source weeks preserve authoritative decimals without endpoint schema", {

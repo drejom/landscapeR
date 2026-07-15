@@ -51,8 +51,10 @@ observations, missing values, and mouse-identity disagreements fail the loader.
 ## Reproduction
 
 ```sh
+Rscript data-raw/build-gse133642-sample-weeks.R
 Rscript -e 'devtools::test(filter = "aml-data-preparation")'
 Rscript data-raw/load-aml-cml.R
+Rscript data-raw/check-gse133642-prepared.R
 Rscript -e 'devtools::test()'
 python3 scripts/check-roadmap.py
 ```

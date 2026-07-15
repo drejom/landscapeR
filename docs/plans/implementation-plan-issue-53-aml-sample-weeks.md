@@ -2,7 +2,7 @@
 
 > Scheduling remains authoritative in the root [`ROADMAP.md`](../../ROADMAP.md).
 
-**Status:** in progress
+**Status:** implementation complete; two-axis review findings fixed; PR pending
 
 ## Objective
 
@@ -63,3 +63,28 @@ or categorical labels.
 
 This is data-lineage and machinery-validation work. It makes no biological,
 endpoint, longitudinal-dynamics, or strategy-acceptance claim.
+
+## Pre-PR two-axis code review
+
+The review was pinned to `origin/main` at
+`2e6190010b136e4cfe3c443493f66225f372abe0` and issue #53. The session-wide
+subagent spawn quota was already exhausted, so the Standards and Spec axes were
+performed as separate direct passes rather than omitted.
+
+**Standards findings fixed:**
+
+1. Added `data-raw/build-gse133642-sample-weeks.R` so the packaged mapping is
+   reproducible from the immutable source and fails on SHA-256 drift.
+2. Extracted the data-preparation mapping seam to the non-exported
+   `inst/scripts/gse133642-metadata.R`, shared by the loader and tests rather
+   than hiding validation in the monolithic loader.
+
+**Spec findings fixed:**
+
+1. Added behavioral tests proving duplicate source keys, unmatched expression
+   observations, and mouse-identity drift fail closed.
+2. Added `data-raw/check-gse133642-prepared.R` to reproducibly audit the local
+   generated objects, full provenance, minimal SamplingDesign, and corrected
+   multi-modal consequence instead of relying on an ad hoc command.
+
+No findings remain on either axis after the fixes.

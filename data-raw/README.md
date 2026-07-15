@@ -7,7 +7,9 @@ The raw matrices and generated `.rds` files are intentionally not tracked.
 
 | File | Contents |
 |---|---|
-| `load-aml-cml.R` | Source script — run with `Rscript data-raw/load-aml-cml.R` from repo root |
+| `build-gse133642-sample-weeks.R` | Rebuild the packaged mapping from the checksum-verified immutable public source and local GEO headers |
+| `load-aml-cml.R` | Build the local prepared objects — run with `Rscript data-raw/load-aml-cml.R` from repo root |
+| `check-gse133642-prepared.R` | Audit generated AML objects against mapping, cohort, ordering, sampling-design, and provenance contracts |
 | `aml_mrna_std.rds` | AML mRNA, GSE133642, two layers (see below) |
 | `cml_mrna_std.rds` | CML mRNA, GSE244990, single layer |
 | `aml_multimodal_std.rds` | AML mRNA + miRNA, GSE133642 + GSE173785, 2018 source-paper training cohort |
@@ -56,7 +58,19 @@ introduced.
 
 The mapping contains only published mouse sample identifiers, source cohort,
 prepared layer, mouse identity, and numeric weeks. It contains no dates,
-endpoint field, or event inference.
+endpoint field, or event inference. Rebuild it with:
+
+```sh
+Rscript data-raw/build-gse133642-sample-weeks.R
+```
+
+The rebuild downloads the immutable source, rejects a SHA-256 mismatch, maps
+only retained GEO expression libraries, and validates the 132/101 layer counts.
+After building the local ignored `.rds` files, run:
+
+```sh
+Rscript data-raw/check-gse133642-prepared.R
+```
 
 ## AML workflow boundary
 
