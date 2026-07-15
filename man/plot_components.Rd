@@ -2,39 +2,41 @@
 % Please edit documentation in R/14-stage1-plots.R
 \name{plot_components}
 \alias{plot_components}
-\title{Component plots: all Stage 1 components coloured by a metadata variable}
+\title{Component gallery coloured by canonically aligned sample metadata}
 \usage{
 plot_components(std, colour_by = NULL, n_components = 6L, layer = 1L)
 }
 \arguments{
 \item{std}{\code{StateTransitionData} with \code{metadata()$stage1} present}
 
-\item{colour_by}{character -- colData column name to separate samples by.
-Can be categorical (eta-squared reported) or continuous (|r| reported).}
+\item{colour_by}{optional single MAE-level \code{colData} column name.
+Categorical and continuous fields are supported.}
 
 \item{n_components}{integer number of components to show (default 6)}
 
-\item{layer}{integer -- which layer's coordinates to use (default 1)}
+\item{layer}{integer selected assay layer (default 1)}
 }
 \value{
-a \code{ggplot} object (facet_wrap over components)
+a \code{ggplot} object faceted over components in decomposition order
 }
 \description{
-Shows the sample coordinate distribution for each of the top \code{n_components}
-components as a panel of ridge/violin plots.  Each panel is labelled with an
-eta-squared separation score for categorical \code{colour_by}
-variables, or |r| for continuous ones.  Panels are sorted
-highest-score-first so the most informative component is top-left.
+Shows the sample-coordinate distribution for each of the first
+\code{n_components} components as density and rug panels in decomposition
+order. Metadata are read from MAE-level \code{colData} and aligned to the
+selected assay through its canonical \code{sampleMap}; row position is never
+treated as sample identity.
 }
 \details{
-Use this immediately after Stage 1 to decide which component feeds into
-Stage 2.  The paper-reported state-transition axis is not always component 1:
-in Rockne2020 it is PC2 (age dominates PC1).
+Categorical metadata group the descriptive densities and rugs. Continuous
+metadata colour the rug with a continuous gradient while retaining the
+overall density. The gallery does not calculate association scores or rank
+components; those responsibilities belong to the metadata atlas and proposal
+workflow.
 }
 \examples{
 std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
 ctor <- get_strategy("Decomposer", "hogsvd_averaged")
 std2 <- suppressWarnings(decompose(ctor(), std))@value
-plot_components(std2, colour_by = "group")
+plot_components(std2, colour_by = "planted_group")
 
 }

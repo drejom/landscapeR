@@ -36,7 +36,7 @@ library(landscapeR)
 | 1 | Single-omic-layer registered SVD | ⚠️ Implemented and visually demonstrated; scientific acceptance remains blocked by #51 and #67 |
 | 1 | Comparative decomposition — legacy equal-feature strategies | ⚠️ Implemented; not evidence for heterogeneous multi-omic fitting |
 | 1 | Heterogeneous C1/C2 prototype and frozen comparison protocol | ⚠️ Full synthetic run complete; C2 won calibration but failed frozen holdout, so no baseline is accepted and #24 remains blocked |
-| 1+ | Component gallery and legacy `project_into()` workflow | ⚠️ Exploratory/legacy; #24 is blocked on the selected heterogeneous strategy |
+| 1+ | Descriptive component gallery and legacy `project_into()` workflow | ⚠️ Gallery is implemented with canonical metadata alignment; projection remains blocked on #24 |
 | 2 | KDE log-density inversion and constrained polynomial smooth | ⚠️ Implemented; ADR 0002 remains provisional-accepted |
 
 Future sequencing, dependencies, and parked capabilities are maintained only in
@@ -132,10 +132,28 @@ std1 <- suppressWarnings(decompose(ctor(), std))@value
 plot_spectrum(std1)
 ```
 
-> The metadata-coloured component gallery is temporarily omitted here because
-> its canonical MAE-level metadata alignment is being repaired in
-> [#54](https://github.com/drejom/landscapeR/issues/54). The spectrum above is
-> descriptive only and does not select a target biological axis.
+The component gallery aligns MAE-level metadata through each assay's canonical
+sample map. Categorical metadata group the observed distributions; continuous
+metadata colour the rug beneath the same overall density.
+
+```{r component-gallery, fig.cap=c("Categorical descriptive gallery: planted synthetic groups colour densities and rugs after canonical sample alignment.", "Continuous descriptive gallery: the planted continuous coordinate colours the rug while the overall component density remains visible.")}
+plot_components(
+  std1,
+  colour_by = "planted_group",
+  n_components = 4L
+)
+
+plot_components(
+  std1,
+  colour_by = "u_shared",
+  n_components = 4L
+)
+```
+
+**Cold-reader conclusion:** metadata colour is visible for both categorical and
+continuous fields, panels remain in decomposition order, and the gallery makes
+no association score or component recommendation. Scientific ranking and human
+confirmation remain the responsibility of the future atlas/proposal workflow.
 
 ### K=1 single-omic-layer SVD and double-well calibration (#50)
 

@@ -15,153 +15,240 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 #
 # In vignettes and @examples, assign the returned ggplot and print it.
 #
-# Component plots workflow (typical for real data):
+# Component gallery workflow (typical for real data):
 #
 #   std2 <- decompose(get_strategy("Decomposer","hogsvd_averaged")(), std)@value
-#   plot_components(std2, colour_by = "condition")   # inspect component plots
-#   # decide component 2 is the state-transition axis, pass to Stage 2:
-#   dyn <- estimate_dynamics(get_strategy("DynamicsEstimator","kde_logdensity")(),
-#                             std2, component = 2L)
+#   plot_components(std2, colour_by = "condition")
+#
+# The gallery is descriptive. Association scoring, proposal ranking, and human
+# confirmation belong to the metadata-atlas workflow rather than this plot.
 
 # ---------------------------------------------------------------------------
-# plot_components(): component plots of k Stage 1 components with separation scores
+# plot_components(): descriptive gallery of k Stage 1 components
 # ---------------------------------------------------------------------------
 
-#' Component plots: all Stage 1 components coloured by a metadata variable
+#' Component gallery coloured by canonically aligned sample metadata
 #'
-#' Shows the sample coordinate distribution for each of the top \code{n_components}
-#' components as a panel of ridge/violin plots.  Each panel is labelled with an
-#' eta-squared separation score for categorical \code{colour_by}
-#' variables, or |r| for continuous ones.  Panels are sorted
-#' highest-score-first so the most informative component is top-left.
+#' Shows the sample-coordinate distribution for each of the first
+#' \code{n_components} components as density and rug panels in decomposition
+#' order. Metadata are read from MAE-level \code{colData} and aligned to the
+#' selected assay through its canonical \code{sampleMap}; row position is never
+#' treated as sample identity.
 #'
-#' Use this immediately after Stage 1 to decide which component feeds into
-#' Stage 2.  The paper-reported state-transition axis is not always component 1:
-#' in Rockne2020 it is PC2 (age dominates PC1).
+#' Categorical metadata group the descriptive densities and rugs. Continuous
+#' metadata colour the rug with a continuous gradient while retaining the
+#' overall density. The gallery does not calculate association scores or rank
+#' components; those responsibilities belong to the metadata atlas and proposal
+#' workflow.
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage1} present
-#' @param colour_by character -- colData column name to separate samples by.
-#'   Can be categorical (eta-squared reported) or continuous (|r| reported).
+#' @param colour_by optional single MAE-level \code{colData} column name.
+#'   Categorical and continuous fields are supported.
 #' @param n_components integer number of components to show (default 6)
-#' @param layer integer -- which layer's coordinates to use (default 1)
-#' @return a \code{ggplot} object (facet_wrap over components)
+#' @param layer integer selected assay layer (default 1)
+#' @return a \code{ggplot} object faceted over components in decomposition order
 #'
 #' @examples
 #' std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
 #' ctor <- get_strategy("Decomposer", "hogsvd_averaged")
 #' std2 <- suppressWarnings(decompose(ctor(), std))@value
-#' plot_components(std2, colour_by = "group")
+#' plot_components(std2, colour_by = "planted_group")
 #'
 #' @export
 plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L) {
-    stopifnot(is(std, "StateTransitionData"))
+    if (!is(std, "StateTransitionData"))
+        .stop_landscapeR_validation(
+            "plot_components(): std must be a StateTransitionData object"
+        )
     s1 <- metadata(std)$stage1
     if (is.null(s1))
-        stop("Stage 1 has not been run on this object. Call decompose() first.")
+        .stop_landscapeR_validation(
+            "Stage 1 has not been run on this object. Call decompose() first."
+        )
 
-    idx     <- min(as.integer(layer), length(dr_coords_k(s1)))
-    cmat    <- dr_coords_k(s1)[[idx]]
-    k_avail <- ncol(cmat)
-
-    k_show   <- min(as.integer(n_components), k_avail)
+    coords <- dr_coords_k(s1)
     expt_list <- as.list(experiments(std))
-    cd        <- as.data.frame(colData(expt_list[[idx]]))
-    meta_col  <- if (!is.null(colour_by) && colour_by %in% colnames(cd))
-        cd[[colour_by]] else NULL
-
-    # Bimodality coefficient (Freeman & Dale 2013)
-    # BC = (skew^2 + 1) / (excess_kurtosis + 3*(n-1)^2/((n-2)*(n-3)))
-    # BC > 0.555 suggests bimodality; used as primary sort key.
-    .bc <- function(x) {
-        n  <- length(x)
-        if (n < 4L) return(NA_real_)
-        m2 <- mean((x - mean(x))^2)
-        m3 <- mean((x - mean(x))^3)
-        m4 <- mean((x - mean(x))^4)
-        sk <- m3 / m2^1.5
-        ku <- m4 / m2^2 - 3          # excess kurtosis
-        correction <- 3 * (n - 1L)^2 / ((n - 2L) * (n - 3L))
-        (sk^2 + 1) / (ku + correction)
+    if (!is.numeric(layer) || length(layer) != 1L || !is.finite(layer) ||
+        layer != as.integer(layer) || layer < 1L || layer > length(coords) ||
+        layer > length(expt_list)) {
+        .stop_landscapeR_validation(sprintf(
+            "plot_components(): layer must be an integer from 1 to %d",
+            min(length(coords), length(expt_list))
+        ))
     }
-
-    # Secondary: separation score from metadata (eta^2 categorical, |r| continuous)
-    .eta2 <- function(x, g) {
-        g <- as.factor(g)
-        if (nlevels(g) < 2L) return(NA_real_)
-        ss_total <- var(x) * (length(x) - 1L)
-        if (ss_total == 0) return(NA_real_)
-        gm <- mean(x)
-        ss_between <- sum(tapply(x, g, function(xi)
-            length(xi) * (mean(xi) - gm)^2))
-        ss_between / ss_total
+    idx <- as.integer(layer)
+    cmat <- coords[[idx]]
+    if (!is.matrix(cmat) || nrow(cmat) != ncol(expt_list[[idx]])) {
+        .stop_landscapeR_validation(sprintf(
+            paste0(
+                "plot_components(): Stage 1 coordinates for layer %d do not ",
+                "match the selected assay's observation count"
+            ),
+            idx
+        ))
     }
-
-    .sep <- function(x, meta) {
-        if (is.null(meta)) return(NA_real_)
-        if (is.numeric(meta)) return(abs(cor(x, meta, use = "complete.obs")))
-        .eta2(x, meta)
+    if (!is.numeric(n_components) || length(n_components) != 1L ||
+        !is.finite(n_components) || n_components != as.integer(n_components) ||
+        n_components < 1L) {
+        .stop_landscapeR_validation(
+            "plot_components(): n_components must be a positive integer"
+        )
     }
+    k_show <- min(as.integer(n_components), ncol(cmat))
+    meta_col <- .component_gallery_metadata(std, idx, colour_by)
 
     rows <- lapply(seq_len(k_show), function(j) {
-        coord <- cmat[, j]
-        bc    <- .bc(coord)
-        sep   <- .sep(coord, meta_col)
-        # Panel label: PC index + BC; secondary sep score if available
-        label <- if (!is.na(sep))
-            sprintf("PC%d  BC=%.2f  %s=%.2f", j, bc,
-                    if (is.numeric(meta_col)) "|r|" else "eta^2", sep)
-        else
-            sprintf("PC%d  BC=%.2f", j, bc)
         df <- data.frame(
-            coord     = coord,
-            component = label,
-            bc        = bc,
+            coord = cmat[, j],
+            component = sprintf("PC%d", j),
             stringsAsFactors = FALSE
         )
-        if (!is.null(meta_col)) df[[colour_by]] <- meta_col
+        if (!is.null(meta_col)) df$metadata_value <- meta_col
         df
     })
+    df <- do.call(rbind, rows)
+    df$component <- factor(
+        df$component,
+        levels = sprintf("PC%d", seq_len(k_show))
+    )
 
-    # Sort by bimodality coefficient (primary), sep score (secondary tiebreak)
-    bc_scores  <- vapply(rows, function(d) d$bc[1L],  numeric(1L))
-    rows <- rows[order(bc_scores, decreasing = TRUE)]
-    df   <- do.call(rbind, rows)
-    df$component <- factor(df$component,
-                            levels = unique(df$component))
+    subtitle <- if (is.null(meta_col)) {
+        "Components shown in decomposition order; add colour_by to overlay metadata"
+    } else if (is.numeric(meta_col)) {
+        sprintf(
+            "Components shown in decomposition order; continuous %s colours the rug",
+            colour_by
+        )
+    } else {
+        sprintf(
+            "Components shown in decomposition order; %s groups densities and rugs",
+            colour_by
+        )
+    }
 
-    sep_label <- if (!is.null(meta_col) && is.numeric(meta_col)) "|r|" else "eta^2"
-    subtitle <- if (!is.null(colour_by))
-        sprintf("Sorted by bimodality coefficient (BC); %s(%s) overlaid",
-                sep_label, colour_by)
-    else
-        "Sorted by bimodality coefficient (BC > 0.555 = bimodal) -- add colour_by to overlay metadata"
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = coord))
+    if (is.null(meta_col)) {
+        p <- p +
+            ggplot2::geom_density(
+                fill = "grey80", colour = "grey35", alpha = 0.55,
+                linewidth = 0.5
+            ) +
+            ggplot2::geom_rug(colour = "grey35", alpha = 0.45, sides = "b")
+    } else if (is.numeric(meta_col)) {
+        p <- p +
+            ggplot2::geom_density(
+                fill = "grey85", colour = "grey35", alpha = 0.55,
+                linewidth = 0.5
+            ) +
+            ggplot2::geom_rug(
+                ggplot2::aes(colour = .data[["metadata_value"]]),
+                alpha = 0.75,
+                sides = "b"
+            ) +
+            ggplot2::scale_colour_viridis_c(na.value = "grey70")
+    } else {
+        p <- ggplot2::ggplot(
+            df,
+            ggplot2::aes(
+                x = coord,
+                fill = .data[["metadata_value"]],
+                colour = .data[["metadata_value"]]
+            )
+        ) +
+            ggplot2::geom_density(alpha = 0.35, linewidth = 0.5) +
+            ggplot2::geom_rug(alpha = 0.55, sides = "b") +
+            ggplot2::scale_fill_viridis_d(na.value = "grey70") +
+            ggplot2::scale_colour_viridis_d(na.value = "grey70")
+    }
 
-    aes_base <- if (!is.null(colour_by) && colour_by %in% colnames(df))
-        ggplot2::aes(x = coord, fill = .data[[colour_by]], colour = .data[[colour_by]])
-    else
-        ggplot2::aes(x = coord)
-
-    p <- ggplot2::ggplot(df, aes_base) +
-        ggplot2::geom_density(alpha = 0.4, linewidth = 0.5) +
-        ggplot2::geom_rug(alpha = 0.4, sides = "b") +
-        ggplot2::geom_vline(xintercept = 0, linetype = "dotted",
-                             colour = "grey60", linewidth = 0.4) +
+    p +
+        ggplot2::geom_vline(
+            xintercept = 0, linetype = "dotted",
+            colour = "grey60", linewidth = 0.4
+        ) +
         ggplot2::facet_wrap(~ component, scales = "free") +
         ggplot2::labs(
-            title    = sprintf("Component component plots -- layer %d", idx),
+            title = sprintf("Stage 1 component gallery \u2014 layer %d", idx),
             subtitle = subtitle,
-            x        = "Coordinate",
-            y        = "Density",
-            fill     = colour_by,
-            colour   = colour_by
+            x = "Coordinate",
+            y = "Density",
+            fill = colour_by,
+            colour = colour_by
         ) +
         ggplot2::theme_bw(base_size = 10) +
         ggplot2::theme(legend.position = "bottom")
+}
 
-    if (!is.null(colour_by) && colour_by %in% colnames(df))
-        p <- p + ggplot2::scale_fill_brewer(palette = "Set1", na.value = "grey70") +
-                 ggplot2::scale_colour_brewer(palette = "Set1", na.value = "grey70")
-    p
+.component_gallery_metadata <- function(std, layer, colour_by) {
+    if (is.null(colour_by)) return(NULL)
+    if (!is.character(colour_by) || length(colour_by) != 1L ||
+        is.na(colour_by) || !nzchar(colour_by)) {
+        .stop_landscapeR_validation(
+            "plot_components(): colour_by must be NULL or one non-empty column name"
+        )
+    }
+
+    cd_s4 <- colData(std)
+    field_idx <- which(names(cd_s4) == colour_by)
+    if (!length(field_idx)) {
+        .stop_landscapeR_validation(sprintf(
+            "plot_components(): colour_by '%s' was not found in MAE-level colData",
+            colour_by
+        ))
+    }
+    if (length(field_idx) > 1L) {
+        .stop_landscapeR_validation(sprintf(
+            "plot_components(): colour_by '%s' is ambiguous in MAE-level colData",
+            colour_by
+        ))
+    }
+    cd <- as.data.frame(cd_s4)
+
+    expt_list <- as.list(experiments(std))
+    layer_name <- names(expt_list)[[layer]]
+    assay_samples <- colnames(expt_list[[layer]])
+    sm <- as.data.frame(sampleMap(std), stringsAsFactors = FALSE)
+    layer_map <- sm[as.character(sm$assay) == layer_name, , drop = FALSE]
+    mapped_samples <- as.character(layer_map$colname)
+    map_idx <- match(assay_samples, mapped_samples)
+    if (anyNA(map_idx)) {
+        .stop_landscapeR_validation(sprintf(
+            paste0(
+                "plot_components(): missing canonical sample mapping for layer ",
+                "'%s' observation '%s'"
+            ),
+            layer_name,
+            assay_samples[[which(is.na(map_idx))[[1L]]]]
+        ))
+    }
+    duplicate_samples <- unique(mapped_samples[duplicated(mapped_samples)])
+    ambiguous <- assay_samples %in% duplicate_samples
+    if (any(ambiguous)) {
+        .stop_landscapeR_validation(sprintf(
+            paste0(
+                "plot_components(): ambiguous canonical sample mapping for layer ",
+                "'%s' observation '%s'"
+            ),
+            layer_name,
+            assay_samples[[which(ambiguous)[[1L]]]]
+        ))
+    }
+
+    primary <- as.character(layer_map$primary[map_idx])
+    primary_rows <- rownames(cd)
+    if (anyDuplicated(primary_rows) > 0L) {
+        .stop_landscapeR_validation(
+            "plot_components(): MAE-level colData has ambiguous primary sample IDs"
+        )
+    }
+    cd_idx <- match(primary, primary_rows)
+    if (anyNA(cd_idx)) {
+        .stop_landscapeR_validation(sprintf(
+            "plot_components(): MAE-level colData is missing primary sample '%s'",
+            primary[[which(is.na(cd_idx))[[1L]]]]
+        ))
+    }
+    cd[[field_idx]][cd_idx]
 }
 
 # ---------------------------------------------------------------------------
@@ -245,8 +332,9 @@ plot_spectrum <- function(std, n_sv = 20L) {
 #' @param colour_by character column name in \code{colData(std)} to colour
 #'   samples by, or \code{NULL} for unlabelled points (default \code{NULL})
 #' @param component integer -- which component column to plot from each layer's
-#'   coordinate matrix (default \code{1L}).  Component 1 is the primary
-#'   state-transition axis; use \code{plot_components()} to choose.
+#'   coordinate matrix (default \code{1L}). Use \code{plot_components()} to
+#'   inspect descriptive distributions; scientific selection requires the
+#'   atlas/proposal and confirmation workflow.
 #' @return a \code{ggplot} object
 #'
 #' @examples
