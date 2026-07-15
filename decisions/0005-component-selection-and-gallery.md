@@ -117,16 +117,27 @@ reported in Rockne2020. This bimodality is not visible in PC1.
 > exploratory unless governed by a confirmed specification. These amendments
 > supersede the older default/scoring statements below where they conflict.
 
+> **Gallery repair (2026-07-15; issue #54).** `plot_components()` reads
+> `colour_by` only from MAE-level `colData` and aligns values to the selected
+> assay through the canonical `sampleMap`; row order is never sample identity.
+> Components remain in decomposition order. Categorical metadata group
+> descriptive densities and rugs, while continuous metadata colours the rug
+> beside the overall density. The gallery computes no BC, eta-squared,
+> correlation, association score, or private rank. Missing/ambiguous fields and
+> sample mappings fail explicitly. This implements the 2026-07-13 boundary and
+> supersedes the initial scored/sorted gallery behavior below.
+
 **Stage 1 returns `k_components` components (default k=6). `metadata()$stage1`
 gains `coords_k` (list of k coordinate matrices, n×k per layer), `V_k` (gene
 loading matrix p×k), and `sigma_k` (k singular values per layer). The existing
 `V_star` and `coords` fields are preserved as aliases pointing to component 1
 for backwards compatibility.**
 
-**`plot_components(std, colour_by, n_components=6)` is added as a component plots
-showing, for each component, the per-condition distribution and a separation
-score (η² for categorical, r² for continuous). Components are sorted
-highest-separation-first.**
+**Historical initial behavior, now superseded:** `plot_components(std,
+colour_by, n_components=6)` originally labelled distributions with
+independence-based separation scores and reordered panels. The accepted gallery
+now follows the amendments above: descriptive distributions, canonical metadata
+alignment, and decomposition order only.
 
 **`estimate_dynamics()` gains a `component` parameter (integer, default 1).
 When running on real data the user inspects the component plots and passes the relevant

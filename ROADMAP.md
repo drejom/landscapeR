@@ -8,7 +8,7 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#54 — human-readable component gallery**.
+**Next task after this change lands:** **#55 — component interpretation workflow**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -66,9 +66,10 @@ There is no calendar promise. Scientific gates, not dates, advance milestones.
 - No K=1 acceptance thresholds or supported sample range are final.
 - No sampling-design-aware component atlas/proposal/confirmation implementation
   exists.
-- Prepared AML time/cohort lineage is corrected by #53 on merge; the generated
-  objects remain local because raw GEO data are not tracked.
-- `plot_components()` does not yet align MAE-level metadata correctly.
+- Prepared AML time/cohort lineage is corrected by #53; generated objects
+  remain local because raw GEO data are not tracked.
+- The descriptive component gallery is corrected by #54 on merge; the
+  sampling-design-aware atlas/proposal/confirmation workflow remains #55.
 - No K≥2 production decomposition strategy is accepted.
 - Longitudinal Stage 2 and 2D/bifurcation Stage 2 are research/ADR work only.
 - No curated or evidentiary AML, diabetes, or Pogona biological claim is
@@ -135,7 +136,7 @@ explicit v1 migration that never fabricates missing target intent.
 **Exit:** all v1/v2 boundary, migration, digest, and no-fallback tests pass; #55
 can return a confirmed v2 specification.
 
-### 2. Authoritative AML observation time and cohort identity — #53 (complete on merge)
+### 2. Authoritative AML observation time and cohort identity — #53 (complete)
 
 **Deliverable:** correct the reversed 2018/2016 prepared layers, preserve the
 source `sample_weeks` values exactly, declare only `mouse_id` and
@@ -147,7 +148,7 @@ provenance without inventing endpoint/event semantics.
 `supp_2016` is the 101-observation source-paper validation cohort 1; no
 categorical-label parsing or guessed time exists.
 
-### 3. Human-readable component gallery — #54
+### 3. Human-readable component gallery — #54 (complete on merge)
 
 **Deliverable:** canonical MAE-level metadata/sample alignment, categorical and
 continuous colour rendering, corrected title, typed missing/ambiguous metadata
@@ -328,9 +329,9 @@ bodies may state dependencies but do not change this ordering.
 | [#49](https://github.com/drejom/landscapeR/issues/49) | K≥2/islet-diabetes | queued |
 | [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active |
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
-| [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete on merge |
-| [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | active — next |
-| [#55](https://github.com/drejom/landscapeR/issues/55) | Exploratory AML Stage 1 interpretation | active |
+| [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete |
+| [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
+| [#55](https://github.com/drejom/landscapeR/issues/55) | Exploratory AML Stage 1 interpretation | active — next |
 | [#56](https://github.com/drejom/landscapeR/issues/56) | Productisation/Shiny | parked |
 | [#57](https://github.com/drejom/landscapeR/issues/57) | Conditional infrastructure | conditional |
 | [#58](https://github.com/drejom/landscapeR/issues/58) | Productisation/tidy interface | parked |
@@ -361,7 +362,8 @@ plans.
 | 2026-07-14 | K=1 SVD foundation | #50 complete; disclosed calibration only |
 | 2026-07-14 | Visual landing-proof workflow | #68 complete; PR is canonical transition proof |
 | 2026-07-14 | AnalysisSpecification v2 lifecycle | #61 complete; target intent retained through confirmation |
-| 2026-07-14 | AML observation-time and cohort lineage | #53 complete on merge; exact source weeks and corrected 2018/2016 roles |
+| 2026-07-14 | AML observation-time and cohort lineage | #53 complete; exact source weeks and corrected 2018/2016 roles |
+| 2026-07-15 | Descriptive component gallery | #54 complete on merge; canonical metadata colour without private ranking |
 
 ---
 

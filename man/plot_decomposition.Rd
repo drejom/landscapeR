@@ -13,8 +13,9 @@ plot_decomposition(std, colour_by = NULL, component = 1L)
 samples by, or \code{NULL} for unlabelled points (default \code{NULL})}
 
 \item{component}{integer -- which component column to plot from each layer's
-coordinate matrix (default \code{1L}).  Component 1 is the primary
-state-transition axis; use \code{plot_components()} to choose.}
+coordinate matrix (default \code{1L}). Use \code{plot_components()} to
+inspect descriptive distributions; scientific selection requires the
+atlas/proposal and confirmation workflow.}
 }
 \value{
 a \code{ggplot} object
