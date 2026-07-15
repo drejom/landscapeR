@@ -234,11 +234,26 @@ calibration run.
 ## Historical AML/CML exploratory context
 
 Earlier exploratory work used AML/CML cohorts as a translation target for the
-Rockne--Frankhouser literature. Those source data and local preprocessing
-objects are deliberately **not** included in this public repository, so the
-old AML chunks are removed rather than presented as runnable analysis.
+Rockne--Frankhouser literature. The raw matrices and generated local
+preprocessing objects are deliberately **not** included in this public
+repository, so the old AML chunks are removed rather than presented as runnable
+analysis. A minimal mapping of already-public mouse sample identifiers to the
+checksum-pinned authoritative `sample_weeks` values is included solely to make
+data lineage testable.
 
-They are also not evidence for the package's present claims. Under the
+The corrected GSE133642 preparation keeps the source-study roles distinct from
+landscapeR's use of both matrices as real biological validation data:
+
+| Prepared layer | Source-study role | Observations | landscapeR role |
+|---|---|---:|---|
+| `mrna_primary_2018` | 2018 training cohort | 132 | future exploratory discovery basis |
+| `mrna_supp_2016` | 2016 validation cohort 1 | 101 | later hostile batch/time-confounded projection test |
+
+Its longitudinal declaration names only `mouse_id` and exact numeric
+`sample_weeks` (unit: weeks). Categorical labels are inert, and no endpoint or
+event semantics are inferred.
+
+These data are not evidence for the package's present claims. Under the
 [evidence-first validation plan](https://github.com/drejom/landscapeR/blob/main/docs/plans/implementation-plan-stage0-validation.md),
 real-data Stage 2 inference is blocked until the frozen generic Stage 0 ladder
 has passed, ADR 0002 has finalized thresholds, and a separate applicability and
