@@ -14,28 +14,34 @@ GEO <- "data-raw/geo"
 
 source("inst/scripts/gse133642-metadata.R", local = TRUE)
 
-source_path <- Sys.getenv("HAEMDATA_METADATA_RDS", unset = "")
-if (!nzchar(source_path)) {
-  source_path <- tempfile(fileext = ".rds")
-  utils::download.file(SOURCE_URL, source_path, mode = "wb", quiet = TRUE)
+load_source_metadata <- function() {
+  source_path <- Sys.getenv("HAEMDATA_METADATA_RDS", unset = "")
+  if (!nzchar(source_path)) {
+    source_path <- tempfile(fileext = ".rds")
+    on.exit(unlink(source_path), add = TRUE)
+    utils::download.file(SOURCE_URL, source_path, mode = "wb", quiet = TRUE)
+  }
+  observed_sha256 <- digest::digest(
+    source_path,
+    algo = "sha256",
+    file = TRUE
+  )
+  if (!identical(observed_sha256, SOURCE_SHA256)) {
+    stop(sprintf(
+      "haemdata metadata checksum mismatch: expected %s, observed %s",
+      SOURCE_SHA256,
+      observed_sha256
+    ))
+  }
+  readRDS(source_path)
 }
-observed_sha256 <- digest::digest(
-  source_path,
-  algo = "sha256",
-  file = TRUE
-)
-if (!identical(observed_sha256, SOURCE_SHA256)) {
-  stop(sprintf(
-    "haemdata metadata checksum mismatch: expected %s, observed %s",
-    SOURCE_SHA256,
-    observed_sha256
-  ))
-}
-source_metadata <- readRDS(source_path)
+source_metadata <- load_source_metadata()
 
 read_expression_names <- function(path) {
+  con <- gzfile(path, open = "rt")
+  on.exit(close(con))
   names(utils::read.delim(
-    gzfile(path),
+    con,
     nrows = 1L,
     check.names = FALSE
   ))[-1L]
@@ -101,6 +107,16 @@ mapping <- rbind(
   )
 )
 mapping <- validate_gse133642_sample_weeks(mapping)
+layer_order <- match(
+  mapping$prepared_layer,
+  c("mrna_primary_2018", "mrna_supp_2016")
+)
+mapping <- mapping[
+  order(layer_order, mapping$mouse_id, mapping$sample_weeks),
+  ,
+  drop = FALSE
+]
+rownames(mapping) <- NULL
 if (nrow(mapping) != 233L ||
     sum(mapping$prepared_layer == "mrna_primary_2018") != 132L ||
     sum(mapping$prepared_layer == "mrna_supp_2016") != 101L) {

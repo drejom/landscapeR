@@ -88,3 +88,16 @@ performed as separate direct passes rather than omitted.
    multi-modal consequence instead of relying on an ad hoc command.
 
 No findings remain on either axis after the fixes.
+
+## Pull-request review follow-up
+
+All five automated review comments were implemented before merge readiness:
+
+- tests prefer the source-tree mapping helper and fall back to the installed
+  package path, avoiding stale installed code during `devtools::test()`;
+- downloaded source metadata is removed with function-scoped `on.exit()`;
+- gzip header connections are explicitly opened and closed;
+- the packaged mapping is ordered by layer, mouse, and authoritative weeks; and
+- the loader orders both expression matrices and metadata chronologically, while
+  tests and the generated-object audit now check `diff(weeks) > 0` in stored
+  order rather than sorting before the assertion.

@@ -129,6 +129,13 @@ supp_meta <- attach_gse133642_sample_weeks(
   mapping = sample_weeks_mapping
 )
 
+primary_order <- order(primary_meta$mouse_id, primary_meta$sample_weeks)
+primary_meta <- primary_meta[primary_order, , drop = FALSE]
+primary_mat <- primary_mat[, primary_order, drop = FALSE]
+supp_order <- order(supp_meta$mouse_id, supp_meta$sample_weeks)
+supp_meta <- supp_meta[supp_order, , drop = FALSE]
+supp_mat <- supp_mat[, supp_order, drop = FALSE]
+
 se_primary <- SummarizedExperiment(
   assays = list(log2cpm = primary_mat),
   colData = DataFrame(primary_meta)

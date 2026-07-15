@@ -1,9 +1,17 @@
-mapping_script <- system.file(
-    "scripts",
-    "gse133642-metadata.R",
-    package = "landscapeR"
+mapping_script <- testthat::test_path(
+    "..", "..", "inst", "scripts", "gse133642-metadata.R"
 )
-expect_true(nzchar(mapping_script), info = "AML mapping code is installed")
+if (!file.exists(mapping_script)) {
+    mapping_script <- system.file(
+        "scripts",
+        "gse133642-metadata.R",
+        package = "landscapeR"
+    )
+}
+expect_true(
+    nzchar(mapping_script) && file.exists(mapping_script),
+    info = "AML mapping code is available"
+)
 source(mapping_script, local = TRUE)
 
 aml_sample_mapping <- function() {
@@ -124,7 +132,7 @@ test_that("AML source weeks are complete and strictly ordered within mouse", {
         drop = TRUE
     )
     ordered <- tapply(mapping$sample_weeks, subject, function(weeks) {
-        !anyDuplicated(weeks) && all(diff(sort(weeks)) > 0)
+        !anyDuplicated(weeks) && all(diff(weeks) > 0)
     })
 
     expect_equal(length(ordered), 30L)

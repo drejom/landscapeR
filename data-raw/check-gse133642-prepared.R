@@ -44,7 +44,7 @@ for (layer in names(expected_counts)) {
 cd <- as.data.frame(colData(aml))
 design <- aml@sampling_design
 strict_order <- tapply(cd$sample_weeks, cd$mouse_id, function(weeks) {
-  !anyDuplicated(weeks) && all(diff(sort(weeks)) > 0)
+  !anyDuplicated(weeks) && all(diff(weeks) > 0)
 })
 provenance <- metadata(aml)$data_source$sample_weeks
 if (nrow(cd) != 233L ||
