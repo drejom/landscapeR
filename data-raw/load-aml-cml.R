@@ -157,7 +157,7 @@ aml_std <- declare_sampling_design(
 md <- metadata(aml_std)
 md$data_source <- list(
   accession = "GSE133642",
-  paper = "Frankhouser et al. Cancer Res 2020 (PMID 32414754)",
+  paper = "Rockne et al. Cancer Res 2020 (PMID 32414754)",
   organism = "Mus musculus, Cbfb-MYH11 AML",
   layers = c("mrna_primary_2018_log2cpm", "mrna_supp_2016_log2cpm"),
   n_genes = length(shared_genes),
