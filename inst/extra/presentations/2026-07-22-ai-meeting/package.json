@@ -1,0 +1,1 @@
+{"name":"landscaper-ai-meeting-2026-07-22","private":true,"scripts":{"dev":"slidev slides.md --open","build":"slidev build slides.md --base ./ --out dist"},"dependencies":{"@slidev/cli":"52.16.0","@slidev/theme-default":"0.25.0"}}
