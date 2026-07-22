@@ -50,26 +50,42 @@ _Avoid_: PC1/PC2 (too generic — the target biological axis may not be the domi
 A disease-specific target biological axis whose coordinate separates healthy from disease state variables or correlates with disease burden markers.
 
 **metadata-association atlas**:
-A structured, serializable table of associations between every Stage 1 component and every eligible `colData` field. It is computed before component selection and answers which recorded variables each component is *associated with*; it does not infer causation or declare a variable to be a confounder. Identifier fields (for example `mouse_id`) are excluded. Target/nuisance declarations and expected associations are marked as predeclared or discovered so the discovery/confirmation boundary remains explicit; other eligible metadata need no special role to remain visible.
+A structured, serializable table at **omic layer × component × metadata field × association form** grain. It is computed before component selection and answers which recorded variables each layer-specific component coordinate is *associated with*; it does not infer causation or declare a variable to be a confounder. Layer identity is never averaged or pooled away. Identifier fields (for example `mouse_id`) are excluded. Target/nuisance declarations and expected associations are marked as predeclared or discovered so the discovery/confirmation boundary remains explicit; other eligible metadata need no special role to remain visible.
 
 The atlas always preserves **univariate associations** for transparent interpretation. Once nuisance fields are declared, it may additionally report **adjusted associations** (for example, condition after accounting for weeks). Adjusted results are labelled separately and never replace or hide their unadjusted counterparts. The component proposal must retain both rather than collapse them into an opaque composite score.
 
 Only a discovery-cohort atlas may drive `propose_component()` and `confirm_component()`. After confirmation, the target axis and complete state-space definition are frozen. A projected-cohort atlas is validation-only: it evaluates the already selected coordinates and is structurally prohibited from reranking components or changing the `AnalysisSpecification`. For AML, the 132-observation source-paper training cohort is prepared as `primary_2018` and defines the state space; the 101-observation source-paper validation cohort 1 is prepared as `supp_2016` and supplies a hostile projection stress test. Authoritative `sample_weeks` and sequencing run are confounded in the 2016 experiment, so it is not a clean independent replication cohort.
 
-Association assessment must honour the `SamplingDesign` declared on `StateTransitionData` (ADR 0006). Cross-sectional data use independent-observation methods. Longitudinal data use the declared subject-ID and ordered-time columns; adjusted estimates and uncertainty must account for within-subject repeated measures. Subject identifiers are design variables, not association targets. If longitudinal data lack a compatible subject-aware association method, assessment fails explicitly rather than silently treating observations as independent. The atlas records the model and sampling design used.
+Association assessment must honour the `SamplingDesign` declared on `StateTransitionData` (ADR 0006). **Sampling dependence**—independent biological units versus repeated observations within subjects—is separate from target progression semantics. Independent observations may have no progression variable, observed collection/development time, an ordered cross-sectional state, or a continuous severity measure. Repeated data use the declared subject identity and must account for within-subject dependence. Subject identifiers are design variables, not association targets. If repeated data lack a compatible subject-aware association method, assessment fails explicitly rather than silently treating observations as independent. The atlas records the model and sampling design used.
+
+Observed collection time is not pseudotime. Pseudotime is a derived ordering inferred from molecular observations; it requires explicit provenance and cannot silently be treated as measured time or independent confirmation evidence. A binary disease/control cross-section without any progression variable remains a valid contrast analysis, although it cannot support an ordered-progression claim.
 
 **component-selection proposal**:
-A reproducible ranking of Stage 1 components after an analyst declares one target field and any nuisance fields. Other eligible metadata remain visible in the atlas without another role class; identifiers and non-analytical fields are excluded. The proposal recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion. Target/nuisance declarations and whether expectations were predeclared or discovered become part of the `AnalysisSpecification` and provenance.
+A reproducible K=1 ranking of Stage 1 components after an analyst supplies the sole target/nuisance declaration in a draft `AnalysisSpecification`. Other eligible metadata remain visible in the atlas without another role class; identifiers and non-analytical fields are excluded. The proposal recommends, but does not silently choose, a target biological axis. It must not use the downstream Stage 2 quasi-potential as a selection criterion.
+
+For K≥2, the atlas remains valid and fully descriptive at explicit omic-layer grain, but automatic proposal generation currently returns a structured `no_aggregation_strategy` abstention. There is no accepted rule for pooling layer-specific coordinates or effects, and no K≥2 production decomposition strategy is accepted. A future validated layer-response/concordance strategy may authorize K≥2 ranking without changing the atlas grain.
 
 The ranking criterion is declared per-analysis and supports multiple association forms:
-- **continuous association**: Spearman correlation of component scores against a numeric metadata column (e.g. weeks post-infection, developmental day). Use to identify or deprioritise time/age-driven components.
-- **binary group separation**: rank-biserial or point-biserial correlation of component scores against a binary metadata column (e.g. condition CM vs CTL, sex). Use to identify disease or contrast axes.
-- **longitudinal trajectory divergence**: a subject-aware condition-by-time interaction for repeated observations. For AML, report both average CM-versus-CTL separation and divergent trajectories; the interaction is the stronger disease-progression criterion.
-- **cross-sectional ordered-state trend**: association with a predeclared ordering of independent biological states. For diabetes, the discovery ordering is non-diabetic → autoantibody-positive → type 1 diabetes. This is evidence of ordered cross-sectional states, not direct observation of within-person temporal progression.
+- **continuous association**: Spearman correlation of component scores against a numeric metadata column (e.g. weeks post-infection, developmental day), oriented by the target's declared increasing/decreasing direction when it is the target. Use to identify or deprioritise time/age-driven components.
+- **binary group separation**: signed rank-biserial correlation of component scores for the declared comparison versus reference level (e.g. condition CM vs CTL, sex). Use to identify disease or contrast axes.
+- **independent time-course divergence**: for independent observations collected across declared times, standardize each fitted component within the recorded complete-case analysis cohort and fit a score-scale target × observed-time interaction with no subject random effect. Time is mapped from the retained original range to `[0, 1]`, so the interaction is the difference in fitted linear change across that range in component-standard-deviation units. Pooled target separation remains descriptive and cannot substitute for the interaction. Chen PS/OS cultures and Pogona developmental samples are concrete callers; nonlinear trajectories remain unsupported until separately justified.
+- **longitudinal trajectory divergence**: the supported repeated-subject strategy fits the same standardized score-scale target × observed-time fixed effects with subject-specific random intercepts and time slopes. Declared design time enters automatically and is not repeated in `nuisance_fields`; nuisance fields are additional fixed covariates. For AML, report both subject-balanced average CM-versus-CTL separation and divergent trajectories; the interaction is the stronger disease-progression criterion. It is explicitly a linear slope contrast, not a rank interaction or general trajectory claim. The initial strategy supports one subject level and linear time only. Random-slope singularity, non-convergence, nonlinear/crossover structure, additional nesting, or informative-dropout requirements cause abstention rather than a random-intercept or row-independent fallback.
+- **cross-sectional ordered-state assessment**: retain an omnibus rank-based group effect as descriptive evidence and separately report Spearman trend against the predeclared ordering. For diabetes, the discovery ordering is non-diabetic → autoantibody-positive → type 1 diabetes. The directional trend is the hypothesis-conditioned target effect; the omnibus result never substitutes for it. This is evidence of ordered cross-sectional states, not direct observation of within-person temporal progression.
+- **unordered categorical association**: retain an omnibus rank-based effect in the atlas. It is descriptive metadata evidence and cannot silently become a target score because `AnalysisSpecification` target types are binary, ordered, or continuous.
 
 Multiple forms may be declared together; a component may rank high on one and low on another (as in AML: PC1 ranks high on weeks, while the disease axis is expected to capture condition separation and trajectory divergence). Associations with other eligible biological measures such as cKit expression or blast counts remain visible in the same atlas but do not silently enter the selection score.
 
-The proposal is a **formal scored object** (not just a plot): it carries a ranked list of components with their association scores. `plot_components()` visualises this object; tests can assert against it directly.
+Every estimable atlas row retains its effect size, uncertainty interval, raw p-value, and Holm-adjusted p-value. A multiplicity family is all component tests for one fixed omic layer, metadata field, association form, and adjustment set. Proposal ranking uses the predeclared direction-aware target effect and, at evidence tier, its stability; neither raw nor adjusted p-values determine component order or become acceptance thresholds.
+
+**Abstention rather than fallback is the general rule.** With no nuisance fields, a proposal may rank on the unadjusted directional target effect. Once nuisance adjustment is declared, an estimable adjusted target effect is mandatory for ranking; unadjusted evidence remains visible but cannot substitute. Non-identifiability, rank deficiency, insufficient biological units, unsupported sampling design, missing aggregation strategy, or failed stability requirements produce a structured abstention with a machine-readable reason and retained descriptive evidence.
+
+For cross-sectional proposals, the canonical adjusted effect is **residualized rank correlation**. Component coordinates and the direction-encoded target are converted to midranks; continuous/ordered nuisance fields use midranks and unordered nuisance fields use explicit indicators. The component and target midranks are each projected onto the complete declared nuisance basis, then their residual correlation is reported with design-preserving bootstrap uncertainty. This is a linear-projection-adjusted association on the marginal-rank scale: it is not partial Spearman, conditional independence, or a causal effect, and it removes only nuisance structure represented by that basis. Collinearity, zero residual variance, insufficient residual degrees of freedom, or incomplete required fields cause abstention.
+
+Minimum-data handling separates **structural identifiability** from the **supported range**. Structural checks are properties of the realized design—required levels and variation, full-rank model matrix, positive residual degrees of freedom, identifiable random effects, non-singular convergence—and contain no guessed universal sample-size cutoff. Numeric limits for biological-unit count, balance, time density, and missingness are derived and frozen only from synthetic sweeps over recovery and false-selection behavior. Successful model fitting never implies scientific support.
+
+Uncertainty uses **design-preserving resampling**. Independent observations are resampled as whole biological units, preserving discrete target counts when estimating that target. Independent time courses resample within target × observed-time design cells. Repeated designs resample whole subject trajectories within subject-invariant target levels and assign duplicate draws new subject IDs; rows from repeated subjects are never sampled independently. Under ADR 0018, `standard` tier holds the fitted decomposition fixed, while `evidence` tier reruns decomposition, alignment, and proposal assessment. Resample counts are protocol-defined and benchmarked rather than hard-coded as evidence defaults.
+
+The proposal is a **formal scored object** (not just a plot): it carries a ranked list of components with their association scores. Point ranking is fixed by the predeclared primary target effect and is identical across compute tiers. Evidence-tier stability validates the top-ranked proposal or causes abstention; it never reranks or promotes a weaker but more stable component. Arbitrary component sign does not affect rank; the proposal records the orientation multiplier required to follow the target's declared direction. `plot_components()` remains the descriptive coordinate gallery; proposal-specific plots render the scored proposal without making the descriptive plot a second scoring engine.
 
 **Two downstream paths from the proposal object:**
 - *Synthetic controls*: ground truth is known (planted component index is recorded in `SubspaceGroundTruth`). CI asserts `proposal$rank[1] == ground_truth_component` automatically — no human needed.
@@ -80,19 +96,26 @@ The proposal is a **formal scored object** (not just a plot): it carries a ranke
 # Step 1: run Stage 1
 std2 <- decompose(dec(), std)@value
 
-# Step 2: surface all eligible metadata associations
-atlas <- associate_metadata(std2)
+# Step 2: declare the sole target intent for this run
+spec <- analysis_specification(
+    id = "aml-condition",
+    target_field = "condition",
+    target_type = "binary",
+    reference_level = "CTL",
+    comparison_level = "CM"
+)
+# sample_weeks is already structural longitudinal time; it is not redeclared
+# as a nuisance field
+
+# Step 3: surface unadjusted evidence plus separately labelled adjustments
+atlas <- associate_metadata(std2, specification = spec)
 plot(atlas)
 
-# Step 3: analyst declares the target and nuisance fields and inspects proposal
-proposal <- propose_component(
-    atlas,
-    target = "condition",
-    confounders = "sample_weeks"
-)
+# Step 4: proposal consumes the atlas; it does not redeclare or recompute intent
+proposal <- propose_component(atlas)
 plot(proposal)
 
-# Step 4: confirm and proceed (human decision for real data;
+# Step 5: confirm and proceed (human decision for real data;
 #          automated assertion in synthetic control tests)
 aspec <- confirm_component(
     proposal,
@@ -108,7 +131,7 @@ run_pipeline(std2, cfg_with(aspec))
 ```
 
 **bootstrap component alignment**:
-The evidence-tier operation that matches each resampled decomposition to the frozen discovery reference before assessing stability. Raw component indices are not scientific identities: signs may flip, PC order may swap when singular values are close, and near-degenerate components may rotate within a stable subspace. Alignment uses coordinates/loadings and the predeclared orientation anchor rather than downstream Stage 2 topology.
+The evidence-tier K=1 operation that matches each resampled decomposition to the frozen discovery reference before assessing stability. Raw component indices are not scientific identities: signs may flip, PC order may swap when singular values are close, and near-degenerate components may rotate within a stable subspace. Components are globally assigned by maximum absolute loading cosine (using a standard linear-sum assignment implementation), then arbitrary sign is corrected by requiring a positive loading dot product with the matched reference. Greedy or same-index matching is prohibited. Individual axes are not Procrustes-rotated toward the reference because that would erase informative rotational instability; enclosing-subspace stability is measured separately with principal angles. Alignment never uses downstream Stage 2 topology.
 
 **target-axis stability**:
 The frequency with which an equivalent biological axis recurs after bootstrap component alignment. It is reported separately from component-index stability, orientation stability, subspace stability, and proposal rank stability. A target axis may be biologically stable even when its ordinal PC index changes across resamples.
@@ -123,7 +146,7 @@ The neutral, predeclared orientation carried by the target itself. A binary targ
 An optional predeclared biological metadata rule used only when the target declaration does not provide a scientifically meaningful direction. Technical alignment to the discovery-cohort reference is automatic; directional biological claims require either target direction or this anchor and must not use downstream Stage 2 topology to set it.
 
 **metadata declarations**:
-A declaration that separates one target biological variable and any named nuisance variables. All other eligible `colData` fields, including biological measures and QC metrics, remain visible automatically without receiving another role class; identifiers and declared non-analytical fields are ignored. A strong association with undeclared metadata or a nuisance field creates a visible alert and calls for sensitivity analysis, never silent selection, orientation, residualisation, or correction. Missing values in required target/nuisance/orientation fields exclude that biological observation from the analysis cohort and are recorded; other association screens report available-case counts without imputing metadata.
+A declaration that separates one target biological variable and any named nuisance variables. **Role exclusivity** applies within each declaration: target, nuisance, and orientation-anchor fields are mutually exclusive; sampling subject and time fields are distinct. Intrinsic `SamplingDesign` structure and run-specific `AnalysisSpecification` intent remain separate concerns, so design time may be the explicit target of a separate time-focused run but cannot simultaneously be a nuisance. All other eligible `colData` fields, including biological measures and QC metrics, remain visible automatically without receiving another role class; identifiers and declared non-analytical fields are ignored. A strong association with undeclared metadata or a nuisance field creates a visible alert and calls for sensitivity analysis, never silent selection, orientation, residualisation, or correction. Missing values in required target/nuisance/orientation fields exclude that biological observation from the analysis cohort and are recorded; other association screens report available-case counts without imputing metadata.
 
 **target-axis run**:
 One reproducible pipeline run with exactly one target biological axis. Distinct biological questions use distinct named runs, each with its own selection rule, orientation anchor, nuisance declaration, stability assessment, and provenance; a run must not search across targets for the most persuasive landscape. Studies with multiple runs predeclare one primary confirmatory analysis; the rest are exploratory unless a multiplicity plan says otherwise.

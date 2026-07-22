@@ -14,6 +14,9 @@ A Stage 0 control with planted mathematical truth used to test recovery, false p
 **domain-grounded control**:
 A Stage 0 control whose observation structure reflects a planned application, such as AML, *Pogona*, or diabetes layer sizes, noise/count properties, batch patterns, missingness, and sampling design. It tests robustness in realistic conditions but does not replace generic ground-truth recovery evidence.
 
+**biological exemplar**:
+A real experimental dataset used only after the relevant synthetic contract and recovery work to demonstrate operability, diagnostics, face validity, and usability. Without external latent-axis ground truth it cannot establish recovery correctness or tune already-frozen acceptance criteria. Capability evidence therefore follows a three-rung ladder: generic synthetic control → domain-grounded synthetic control → biological exemplar. Implementation completion, synthetic scientific validation, and biological operability remain separate states.
+
 **trajectory archetype**:
 A domain-neutral geometric class in the Stage 0.5 library, such as ordered one-dimensional multistability, single-well/continuous, branching/multi-axis, discordant multi-layer, or out-of-library. Biological interpretations are applied separately after classification. Stage 0.5 may abstain with an uncertain or out-of-library result rather than force the nearest archetype. Its classifier compares a transparent signature-distance baseline with an optional flexible strategy; held-out calibration and abstention performance choose the default. Signatures use only pre-Stage-2 geometry, layer-response, sampling-design, and estimator-independent distribution descriptors.
 
