@@ -160,15 +160,25 @@ association score or ranking.
 ### 4. Component interpretation workflow — #55
 
 **Decision gate first:** write and accept the statistical-strategy ADR covering
-cross-sectional and longitudinal associations, adjustment, biological-unit
-uncertainty, multiplicity, minimum data, and abstention before implementation.
+independent cross-sectional, independent time-course, and repeated-subject
+associations, adjustment, biological-unit
+uncertainty, multiplicity, structural identifiability, empirically derived
+supported ranges, and abstention before implementation. Numeric support limits
+come from synthetic sweeps rather than rule-of-thumb minima. Before acceptance,
+obtain lightweight external expert review with a versioned instrument, preserve
+responses and substantive dissent privately, and resolve or explicitly retain
+all implementation-blocking objections. Feedback is not published or quoted
+without separate permission, and non-response is not agreement.
 
 **Deliverable:** MetadataAssociationAtlas → ComponentProposal → human
 confirmation, with raw and adjusted evidence separately visible and sampling
 design respected.
 
-**Exit:** synthetic truth can assert proposals; real data always requires human
-confirmation; stable-subspace/no-stable-axis is a valid abstention.
+**Exit:** a provisional implementation passes comprehensive generic synthetic
+contract tests; real data always requires human confirmation;
+stable-subspace/no-stable-axis is a valid abstention. Scientific validation and
+biological operability remain separate later rungs: #67 supplies the
+AML-grounded synthetic control and #71 supplies the AML biological exemplar.
 
 ### 5. AML-shaped synthetic control — #67 calibration lane
 

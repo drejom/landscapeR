@@ -1,8 +1,26 @@
 # Proposed specification — SamplingDesign
 
-**Status:** proposed implementation contract for ADR 0006
+**Status:** v1 implemented; v2 accepted in ADR 0006 and pending implementation
 
-## Public interface
+## Pending v2 contract
+
+SamplingDesign v2 separates observation dependence from optional observed
+collection time:
+
+- `dependence`: `"unspecified"`, `"independent"`, or `"repeated"`;
+- `subject_id_col`: required only for repeated observations;
+- `time_col`: optional for independent observations and required for the current
+  repeated-observation capability;
+- `time_unit`: optional when time is declared.
+
+The narrow constructors are `cross_sectional()`,
+`independent_time_course(time, time_unit = NULL)`, and
+`longitudinal(subject_id, time, time_unit = NULL)`. Existing v1
+`cross_sectional`, `longitudinal`, and `unspecified` objects migrate without
+inferring new columns. Until that schema migration lands, the v1 interface below
+remains the implemented behavior.
+
+## Implemented v1 public interface
 
 ```r
 cross_sectional()

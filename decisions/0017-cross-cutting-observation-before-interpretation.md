@@ -107,6 +107,12 @@ Concrete requirements:
 - Evidence reports show every predeclared metric before aggregate pass/fail.
 - No-transition, ineligible, and contradictory outcomes are retained rather
   than smoothed, filtered, or relabelled into a positive result.
+- **Abstention rather than fallback is the general rule:** if a declared
+  adjustment, sampling-design-aware model, cross-layer aggregation, stability
+  requirement, or minimum-data contract is not estimable, the interpretive
+  operation returns a structured abstention with its reason and descriptive
+  precursor. It never substitutes a weaker analysis while preserving the
+  original claim label.
 - A future Shiny application renders package-owned objects and cannot bypass
   these layers.
 
