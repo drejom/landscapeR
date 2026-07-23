@@ -38,7 +38,7 @@ About 65 seconds. Explain that decomposition is outcome-blind but interpretation
 
 About 65 seconds. Known-truth controls answer whether the method recovers what was planted. Domain-grounded simulation adds realistic confounding, noise and sampling. Biological examples show feasibility and interpretation but cannot reveal latent truth. A valid result can be no identifiable coordinate.
 
-## 10. Alignment before implementation
+## 10. LLM alignment before implementation
 
 About 80 seconds. This is the part that differs most from casual vibe coding. We spend a long time establishing shared vocabulary, assumptions, failure conditions and scope before implementation. Matt Pocock's grilling skills influenced the structure, particularly `/grill-me` and `/grill-with-docs`. The project then adds scientific contracts, adversarial consultation, known-truth simulations, explicit abstention, ADRs and provenance. The goal is not simply to generate code faster. It is to leave an inspectable scientific argument that persists after the AI session.
 
@@ -48,4 +48,4 @@ About 45 seconds. Summarize the current boundary. The general architecture exist
 
 ## 12. Pogona experiments
 
-About 45 seconds, optional. These are the real expression matrices received today, not synthetic data and not an analysis result. Together they cover the sex-determining window, early urogenital development, and later gonad differentiation, including the 36 °C sex-reversal condition. Counts and TPM matrices are consolidated locally. Two time-course labels and ten additional gonad samples still need metadata clarification, so no decomposition is shown tonight.
+About 45 seconds, optional. These are the real expression matrices received today, not synthetic data and not an analysis result. One experiment samples days 7 through 17 at 28 °C in ZZ and ZW animals. The second spans stages 1, 2, 4, 6, 12, and 15. Whole embryos are consumed at the early stages because organs are not yet discernible; gonads are dissected later. The 28 °C ZZ and ZW cohorts span all stages, while the 36 °C ZZ cohort covers stages 6, 12, and 15. Counts and TPM matrices are consolidated locally. Two time-course labels and ten additional gonad samples still need metadata clarification, so no decomposition is shown tonight.
