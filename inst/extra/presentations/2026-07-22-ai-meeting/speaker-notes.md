@@ -38,9 +38,9 @@ About 65 seconds. Explain that decomposition is outcome-blind but interpretation
 
 About 65 seconds. Known-truth controls answer whether the method recovers what was planted. Domain-grounded simulation adds realistic confounding, noise and sampling. Biological examples show feasibility and interpretation but cannot reveal latent truth. A valid result can be no identifiable coordinate.
 
-## 10. AI-assisted development
+## 10. Alignment before implementation
 
-About 75 seconds. Focus on principles, not a development diary. AI produces candidate code, tests and arguments. Those outputs are challenged using primary literature, adversarial review and known-truth simulations. Decisions, evidence and limitations remain visible and human-owned.
+About 80 seconds. This is the part that differs most from casual vibe coding. We spend a long time establishing shared vocabulary, assumptions, failure conditions and scope before implementation. Matt Pocock's grilling skills influenced the structure, particularly `/grill-me` and `/grill-with-docs`. The project then adds scientific contracts, adversarial consultation, known-truth simulations, explicit abstention, ADRs and provenance. The goal is not simply to generate code faster. It is to leave an inspectable scientific argument that persists after the AI session.
 
 ## 11. Close
 

@@ -38,6 +38,7 @@ themeConfig:
   <path d="M45 26 C96 17 151 30 216 18 M45 54 C97 66 151 43 216 55 M45 82 C101 73 154 89 216 76" class="subject-line"/>
   <g class="sample"><circle cx="45" cy="26" r="7"/><circle cx="128" cy="24" r="7"/><circle cx="216" cy="18" r="7"/><circle cx="45" cy="54" r="7"/><circle cx="128" cy="52" r="7"/><circle cx="216" cy="55" r="7"/><circle cx="45" cy="82" r="7"/><circle cx="128" cy="80" r="7"/><circle cx="216" cy="76" r="7"/></g>
   <text x="8" y="30">1</text><text x="8" y="58">2</text><text x="8" y="86">3</text>
+  <path d="M78 92 H220 M214 87 L222 92 L214 97" class="guide"/><text x="42" y="95">time</text>
 </svg>
 <h2>AML</h2><strong>Disease progression</strong><p>Repeated measurements within mice across time</p><small>Subject-aware trajectories</small>
 </div>
@@ -61,7 +62,7 @@ themeConfig:
 <div class="matrix-side">
   <div class="matrix-glyph"><span>genes</span><div class="heat-grid">● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●</div><i>samples</i></div>
   <div class="plain-arrow">→</div>
-  <div class="step-copy"><b>Outcome-blind decomposition</b><p>Sex, stage and temperature are not used to fit the axes.</p><small>Known-truth branching control, 160 independent samples and 240 features</small></div>
+  <div class="step-copy"><b>Outcome-blind decomposition</b><p>Sex, stage and temperature are not used to fit the axes.</p><small>Known-truth branching control, 30 independent samples and 240 features</small></div>
 </div>
 <div class="plot-frame"><img src="./assets/branching-state-space-unlabelled.png" alt="Recovered two-dimensional coordinate system from landscapeR synthetic branching data"></div>
 </div>
@@ -105,7 +106,11 @@ themeConfig:
 <div class="loadings-layout">
 <div class="plot-frame"><img src="./assets/branching-loadings.png" alt="Ranked feature loadings on the recovered divergence coordinate"></div>
 <div class="interpret-side">
-  <div class="mini-flow"><span class="axis-mark"></span><b>coordinate</b><i>→</i><span class="gene-mark">A C G T</span><b>ranked genes</b><i>→</i><span class="pathway-mark">●─●<br>╲●╱</span><b>pathways</b></div>
+  <div class="interpret-chain">
+    <div><span class="axis-mark"></span><b>coordinate</b></div><i>↓</i>
+    <div><span class="gene-mark">A C G T</span><b>ranked genes</b></div><i>↓</i>
+    <div><span class="pathway-mark">●─●<br>╲●╱</span><b>pathways and modules</b></div>
+  </div>
   <p>Loadings identify genes that contribute strongly to a coordinate.</p>
   <p>Ranked gene lists can support enrichment, module analysis and comparison with stage-specific expression.</p>
   <div class="caveat amber-caveat">A large loading supports interpretation and candidate generation. It does not establish causality.</div>
@@ -147,15 +152,18 @@ themeConfig:
 
 ---
 
-# AI development follows a scientific governance loop
+# Alignment comes before implementation
 
-<div class="governance">
-<div><strong>Generate</strong><span>Code, tests, alternatives and candidate explanations</span></div><b>→</b>
-<div><strong>Challenge</strong><span>Adversarial review, primary literature and synthetic truth</span></div><b>→</b>
-<div><strong>Decide</strong><span>Recorded rationale, human ownership and visible limitations</span></div>
+<div class="alignment-intro">We spend substantial time establishing shared language, assumptions, failure conditions and scientific boundaries before asking the agent to build.</div>
+<div class="collaboration-flow">
+  <div><span>01</span><strong>Align</strong><small>Vocabulary, intent and scope</small></div><i>→</i>
+  <div><span>02</span><strong>Grill</strong><small>Resolve ambiguity and expose assumptions</small></div><i>→</i>
+  <div><span>03</span><strong>Formalise</strong><small>ADRs, contracts and explicit abstention</small></div><i>→</i>
+  <div><span>04</span><strong>Test</strong><small>Known truth, adversarial review and CI</small></div><i>→</i>
+  <div><span>05</span><strong>Record</strong><small>Durable rationale and provenance</small></div>
 </div>
-<div class="artifact-line"><span><small>DECISIONS</small>Architecture and statistical contracts</span><span><small>EVIDENCE</small>Executable tests and reproducible controls</span><span><small>REVIEW</small>Rationale and limitations beside the code</span></div>
-<div class="bottom">AI output is working material. Claims are constrained by explicit contracts and evidence.</div>
+<div class="skills-reference"><div><small>WORKFLOW INFLUENCE</small><strong>Matt Pocock skills</strong><span><code>/grill-me</code> and <code>/grill-with-docs</code></span></div><div class="url-box">github.com/mattpocock/skills</div></div>
+<div class="bottom">The aim is not faster code generation. It is a scientific argument that remains inspectable after the AI session ends.</div>
 
 ---
 

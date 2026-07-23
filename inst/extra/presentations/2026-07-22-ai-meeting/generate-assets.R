@@ -15,6 +15,7 @@ branch_colours <- c(
     "branch A" = "#45C7D8",
     "branch B" = "#E8A74A"
 )
+landscape_colours <- c("#1B1530", "#4B285F", "#98445F", "#E8784A", "#F4D88A")
 stage_colours <- c(
     "stage 1" = "#D9E1E8",
     "stage 2" = "#AFC6D4",
@@ -50,7 +51,7 @@ save_asset <- function(plot, filename, width, height) {
 # Generate independent destructive samples, embed them in expression space,
 # and recover the first two axes using landscapeR's registered SVD.
 control <- synthetic_branching_control(
-    n_per_stage = 32L,
+    n_per_stage = 6L,
     p = 240L,
     noise_sd = 0.055,
     seed = 220726L
@@ -128,10 +129,7 @@ state_space <- ggplot2::ggplot(
         fill = NULL
     ) +
     deck_theme() +
-    ggplot2::theme(
-        legend.position = "bottom",
-        legend.box = "horizontal"
-    )
+    ggplot2::theme(legend.position = "none")
 save_asset(state_space, "branching-state-space.png", 7.4, 4.8)
 
 landscape <- ggplot2::ggplot(
@@ -153,7 +151,7 @@ landscape <- ggplot2::ggplot(
         colour = "#D9E1E8"
     ) +
     ggplot2::scale_fill_gradientn(
-        colours = c("#172238", "#225F78", "#45C7D8", "#F0D38A"),
+        colours = landscape_colours,
         guide = "none"
     ) +
     ggplot2::labs(

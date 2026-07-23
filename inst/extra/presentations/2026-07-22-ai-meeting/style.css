@@ -110,9 +110,10 @@
 .meta-dot.temp { border: 2px solid var(--amber); }
 
 .loadings-layout { display: grid; grid-template-columns: 57% 43%; gap: 18px; align-items: center; height: 385px; }
-.mini-flow { display: grid; grid-template-columns: 42px 1fr 18px; gap: 6px 10px; align-items: center; margin-bottom: 14px; }
-.mini-flow i { color: var(--cyan); font-style: normal; }
-.mini-flow b { font-size: 11px; }
+.interpret-chain { display: grid; justify-items: start; gap: 3px; margin: 0 0 14px 14px; }
+.interpret-chain > div { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 12px; min-height: 42px; }
+.interpret-chain > i { margin-left: 16px; color: #607482; font-style: normal; line-height: 12px; }
+.interpret-chain b { font-size: 12px; }
 .axis-mark { position: relative; width: 35px; height: 35px; border: 1.5px solid var(--cyan); border-radius: 50%; }
 .axis-mark::after { position: absolute; top: 16px; right: 6px; left: 6px; border-top: 2px solid var(--cyan); content: ""; transform: rotate(-25deg); }
 .gene-mark { color: var(--amber); font: 10px "Fira Code", monospace; letter-spacing: .12em; }
@@ -146,6 +147,24 @@
 .artifact-line { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 25px 16px 0; }
 .artifact-line span { color: #c9d3da; font-size: 10px; }
 .artifact-line small { display: block; margin-bottom: 4px; color: var(--cyan); font: 700 8px "Fira Code", monospace; letter-spacing: .1em; }
+
+.alignment-intro { max-width: 820px; color: #c9d3da; font-size: 15px; line-height: 1.4; }
+.collaboration-flow { display: grid; grid-template-columns: 1fr 20px 1fr 20px 1fr 20px 1fr 20px 1fr; align-items: center; margin-top: 34px; }
+.collaboration-flow > div { min-height: 105px; padding: 11px 8px; border-top: 3px solid var(--cyan); background: #0b1725; }
+.collaboration-flow > div:nth-of-type(2), .collaboration-flow > div:nth-of-type(4) { border-color: #65a6c8; }
+.collaboration-flow > div:last-child { border-color: var(--amber); }
+.collaboration-flow > i { color: #607482; font-style: normal; text-align: center; }
+.collaboration-flow span, .collaboration-flow strong, .collaboration-flow small { display: block; }
+.collaboration-flow span { color: #607482; font: 9px "Fira Code", monospace; }
+.collaboration-flow strong { margin: 6px 0; font-size: 14px; }
+.collaboration-flow small { font-size: 9px; }
+.skills-reference { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 22px; margin-top: 24px; padding: 14px 16px; border: 1px solid #2d5361; background: #0a1825; }
+.skills-reference small, .skills-reference strong, .skills-reference span { display: block; }
+.skills-reference small { color: var(--cyan); font: 8px "Fira Code", monospace; letter-spacing: .12em; }
+.skills-reference strong { margin: 3px 0; font-size: 14px; }
+.skills-reference span { color: var(--muted); font-size: 10px; }
+.skills-reference code { color: var(--amber); }
+.url-box { padding: 9px 12px; border: 1px solid var(--cyan); color: var(--cyan); font: 11px "Fira Code", monospace; }
 
 .closing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 38px; }
 .closing-grid > div { position: relative; padding: 15px 15px 15px 22px; border-top: 1px solid var(--line); }

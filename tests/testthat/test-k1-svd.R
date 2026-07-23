@@ -48,6 +48,13 @@ test_that("developmental branching control carries reproducible known truth", {
         control_1@provenance[[1L]]@implementation,
         "developmental_branching"
     )
+    metadata_df <- as.data.frame(colData(control_1))
+    late <- metadata_df$observed_stage >
+        metadata(control_1)$branching_control$branch_point
+    expect_true(all(table(
+        metadata_df$observed_stage[late],
+        droplevels(metadata_df$terminal_branch[late])
+    ) == 4L))
     expect_equal(
         as.numeric(crossprod(control_1@ground_truth@shared[, 1L],
                              control_1@ground_truth@shared[, 2L])),
