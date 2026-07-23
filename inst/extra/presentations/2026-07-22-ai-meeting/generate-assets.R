@@ -116,8 +116,8 @@ unlabelled_state_space <- ggplot2::ggplot(
         alpha = 0.82
     ) +
     ggplot2::labs(
-        x = "Recovered coordinate 1",
-        y = "Recovered coordinate 2"
+        x = "Recovered component 1",
+        y = "Recovered component 2"
     ) +
     ggplot2::coord_cartesian(
         xlim = x_limits, ylim = y_limits, expand = FALSE
@@ -150,8 +150,8 @@ state_space <- ggplot2::ggplot(
     ggplot2::scale_colour_manual(values = branch_colours) +
     ggplot2::scale_fill_manual(values = stage_colours) +
     ggplot2::labs(
-        x = "Recovered developmental coordinate",
-        y = "Recovered divergence coordinate",
+        x = "Recovered component 1",
+        y = "Recovered component 2",
         fill = NULL
     ) +
     ggplot2::coord_cartesian(
@@ -184,8 +184,8 @@ landscape <- ggplot2::ggplot(
         guide = "none"
     ) +
     ggplot2::labs(
-        x = "Recovered developmental coordinate",
-        y = "Recovered divergence coordinate"
+        x = "Recovered component 1",
+        y = "Recovered component 2"
     ) +
     ggplot2::coord_cartesian(
         xlim = x_limits, ylim = y_limits, expand = FALSE
