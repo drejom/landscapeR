@@ -176,3 +176,27 @@ themeConfig:
 </div>
 <div class="closing-statement">A framework for developmental, disease and other biological state transitions.</div>
 <div class="repo">github.com/drejom/landscapeR</div>
+
+---
+
+<span class="status implemented">REAL MATRICES NOW IN HAND</span>
+# <em>Pogona</em> sampling spans three developmental windows
+
+<div class="pogona-experiments">
+<div class="pogona-card cyan">
+  <small>SEX-DETERMINING WINDOW</small><strong>Days 7 to 17</strong>
+  <svg viewBox="0 0 250 76" aria-hidden="true"><path d="M24 50 C76 38 144 59 225 43"/><path d="M219 39 L227 43 L220 49"/><g><circle cx="35" cy="38" r="5"/><circle cx="72" cy="34" r="5"/><circle cx="109" cy="39" r="5"/><circle cx="146" cy="31" r="5"/><circle cx="183" cy="36" r="5"/><circle cx="220" cy="29" r="5"/></g><text x="25" y="70">7</text><text x="64" y="70">9</text><text x="98" y="70">11</text><text x="136" y="70">13</text><text x="174" y="70">15</text><text x="211" y="70">17</text></svg>
+  <p>28 °C ZZ and ZW</p><b>35 libraries</b><span>Two sample labels require clarification</span>
+</div>
+<div class="pogona-card blue">
+  <small>EARLY MORPHOGENESIS</small><strong>Stages 1, 2 and 4</strong>
+  <svg viewBox="0 0 250 76" aria-hidden="true"><path d="M24 50 C76 38 144 59 225 43"/><path d="M219 39 L227 43 L220 49"/><g><circle cx="48" cy="36" r="7"/><circle cx="124" cy="34" r="7"/><circle cx="205" cy="31" r="7"/></g><text x="39" y="70">S1</text><text x="115" y="70">S2</text><text x="196" y="70">S4</text></svg>
+  <p>Whole urogenital systems, 28 °C ZZ and ZW</p><b>17 libraries</b><span>All matrix columns mapped</span>
+</div>
+<div class="pogona-card amber">
+  <small>GONAD DIFFERENTIATION</small><strong>Stages 6, 12 and 15</strong>
+  <svg viewBox="0 0 250 76" aria-hidden="true"><path d="M24 50 C76 38 144 59 225 43"/><path d="M219 39 L227 43 L220 49"/><g><circle cx="48" cy="36" r="7"/><circle cx="124" cy="34" r="7"/><circle cx="205" cy="31" r="7"/></g><text x="39" y="70">S6</text><text x="111" y="70">S12</text><text x="192" y="70">S15</text></svg>
+  <p>28 °C ZZ and ZW, plus 36 °C ZZ</p><b>70 mapped gonad libraries</b><span>Ten additional gonads need metadata</span>
+</div>
+</div>
+<div class="bottom">Counts and TPM matrices are consolidated and checksum-verified. No decomposition is shown yet.</div>

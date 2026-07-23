@@ -45,3 +45,7 @@ About 80 seconds. This is the part that differs most from casual vibe coding. We
 ## 11. Close
 
 About 45 seconds. Summarize the current boundary. The general architecture exists and the one-dimensional path works. Metadata association and stability are being formalized. Pogona demands a validated two-dimensional branching model and comparison across temperature regimes. Close by inviting the audience to recognize other biological state-transition problems that fit the framework.
+
+## 12. Pogona experiments
+
+About 45 seconds, optional. These are the real expression matrices received today, not synthetic data and not an analysis result. Together they cover the sex-determining window, early urogenital development, and later gonad differentiation, including the 36 °C sex-reversal condition. Counts and TPM matrices are consolidated locally. Two time-course labels and ten additional gonad samples still need metadata clarification, so no decomposition is shown tonight.
