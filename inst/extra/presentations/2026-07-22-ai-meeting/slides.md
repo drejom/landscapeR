@@ -25,28 +25,28 @@ themeConfig:
 
 <div class="design-grid">
 <div class="design-item cyan">
-<svg viewBox="0 0 260 108" role="img" aria-label="Independent embryos sampled across developmental stages">
+<svg viewBox="0 0 260 118" role="img" aria-label="Independent embryos sampled across developmental stages">
   <g class="sample"><circle cx="42" cy="45" r="7"/><circle cx="42" cy="63" r="7"/><circle cx="91" cy="39" r="7"/><circle cx="91" cy="57" r="7"/><circle cx="91" cy="75" r="7"/><circle cx="145" cy="36" r="7"/><circle cx="145" cy="56" r="7"/><circle cx="145" cy="76" r="7"/></g>
   <g class="branch-a"><circle cx="201" cy="32" r="7"/><circle cx="221" cy="32" r="7"/></g><g class="branch-b"><circle cx="201" cy="72" r="7"/><circle cx="221" cy="72" r="7"/></g>
   <text x="24" y="17">independent cohorts</text><text x="182" y="21">later states</text>
-  <path d="M45 94 C96 82 158 102 222 88 M216 84 L224 88 L217 94" class="time-arrow"/><text x="8" y="96">Time</text>
+  <path d="M45 106 C96 94 158 114 222 100 M216 96 L224 100 L217 106" class="time-arrow"/><text x="8" y="108">Time</text>
 </svg>
 <h2><em>Pogona</em></h2><strong>Developmental divergence</strong><p>Independent embryos sampled at observed stages</p><small>Group structure, not tracked embryo paths</small>
 </div>
 <div class="design-item blue">
-<svg viewBox="0 0 260 108" role="img" aria-label="Repeated measurements within subjects">
+<svg viewBox="0 0 260 118" role="img" aria-label="Repeated measurements within subjects">
   <path d="M45 26 C96 17 151 30 216 18 M45 54 C97 66 151 43 216 55 M45 82 C101 73 154 89 216 76" class="subject-line"/>
   <g class="sample"><circle cx="45" cy="26" r="7"/><circle cx="128" cy="24" r="7"/><circle cx="216" cy="18" r="7"/><circle cx="45" cy="54" r="7"/><circle cx="128" cy="52" r="7"/><circle cx="216" cy="55" r="7"/><circle cx="45" cy="82" r="7"/><circle cx="128" cy="80" r="7"/><circle cx="216" cy="76" r="7"/></g>
   <text x="8" y="30">1</text><text x="8" y="58">2</text><text x="8" y="86">3</text>
-  <path d="M45 94 C96 82 158 102 222 88 M216 84 L224 88 L217 94" class="time-arrow"/><text x="8" y="96">Time</text>
+  <path d="M45 106 C96 94 158 114 222 100 M216 96 L224 100 L217 106" class="time-arrow"/><text x="8" y="108">Time</text>
 </svg>
 <h2>AML</h2><strong>Disease progression</strong><p>Repeated measurements within mice across time</p><small>Subject-aware trajectories</small>
 </div>
 <div class="design-item amber">
-<svg viewBox="0 0 260 108" role="img" aria-label="Independent donors sampled across ordered clinical states">
+<svg viewBox="0 0 260 118" role="img" aria-label="Independent donors sampled across ordered clinical states">
   <g class="sample"><circle cx="46" cy="46" r="7"/><circle cx="46" cy="66" r="7"/><circle cx="112" cy="40" r="7"/><circle cx="112" cy="60" r="7"/><circle cx="112" cy="80" r="7"/><circle cx="190" cy="46" r="7"/><circle cx="190" cy="66" r="7"/></g>
   <text x="25" y="18">state 1</text><text x="93" y="18">state 2</text><text x="171" y="18">state 3</text>
-  <path d="M45 94 C96 82 158 102 222 88 M216 84 L224 88 L217 94" class="time-arrow"/><text x="8" y="96">Time</text>
+  <path d="M45 106 C96 94 158 114 222 100 M216 96 L224 100 L217 106" class="time-arrow"/><text x="8" y="108">Time</text>
 </svg>
 <h2>Type 1 diabetes</h2><strong>Ordered clinical states</strong><p>Independent donors sampled across declared states</p><small>Cross-sectional progression structure</small>
 </div>
@@ -62,7 +62,7 @@ themeConfig:
 <div class="matrix-side">
   <div class="matrix-glyph"><span>genes</span><div class="heat-grid">● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●</div><i>samples</i></div>
   <div class="plain-arrow">→</div>
-  <div class="step-copy"><b>Outcome-blind decomposition</b><p>Sex, stage and temperature are not used to fit the axes.</p><small>Known-truth branching control, about five independent samples per stage and 240 features</small></div>
+  <div class="step-copy"><b>Outcome-blind decomposition</b><p>Sex, stage and temperature are not used to fit the axes.</p><small>Known-truth branching control, about four independent animals per visible cluster and 240 features</small></div>
 </div>
 <div class="plot-frame"><img src="./assets/branching-state-space-unlabelled.png" alt="Recovered two-dimensional coordinate system from landscapeR synthetic branching data"></div>
 </div>

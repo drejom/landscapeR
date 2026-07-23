@@ -51,14 +51,30 @@ save_asset <- function(plot, filename, width, height) {
 # Generate independent destructive samples, embed them in expression space,
 # and recover the first two axes using landscapeR's registered SVD.
 control <- synthetic_branching_control(
-    n_per_stage = 5L,
+    n_per_stage = 8L,
     p = 240L,
-    noise_sd = 0.055,
+    noise_sd = 0.035,
+    branch_point = 0.25,
     seed = 220726L
 )
-# Two missing observations make the presentation control resemble the occasional
-# dropout encountered in sparse destructive sampling designs.
-control <- control[, -c(7L, 19L)]
+# Retain four animals per visible stage-by-branch cluster, with two clusters
+# reduced to three to represent occasional dropout.
+sampling <- as.data.frame(colData(control))
+cluster <- interaction(
+    sampling$observed_stage,
+    sampling$terminal_branch,
+    drop = TRUE
+)
+kept_by_cluster <- lapply(
+    split(seq_len(nrow(sampling)), cluster),
+    function(indices) indices[seq_len(min(4L, length(indices)))]
+)
+dropout_clusters <- c(2L, length(kept_by_cluster) - 1L)
+kept_by_cluster[dropout_clusters] <- lapply(
+    kept_by_cluster[dropout_clusters],
+    function(indices) indices[seq_len(3L)]
+)
+control <- control[, sort(unlist(kept_by_cluster, use.names = FALSE))]
 svd_constructor <- get_strategy("Decomposer", "svd")
 decomposed <- suppressWarnings(decompose(
     svd_constructor(list(k_components = 4L)), control
@@ -82,6 +98,10 @@ for (j in seq_len(2L)) {
     recovered[, j] <- recovered[, j] * orientation
 }
 plot_data <- cbind(truth, as.data.frame(recovered))
+x_span <- diff(range(plot_data$developmental))
+y_span <- diff(range(plot_data$divergence))
+x_limits <- range(plot_data$developmental) + c(-0.06, 0.06) * x_span
+y_limits <- range(plot_data$divergence) + c(-0.06, 0.06) * y_span
 
 unlabelled_state_space <- ggplot2::ggplot(
     plot_data,
@@ -98,6 +118,9 @@ unlabelled_state_space <- ggplot2::ggplot(
     ggplot2::labs(
         x = "Recovered coordinate 1",
         y = "Recovered coordinate 2"
+    ) +
+    ggplot2::coord_cartesian(
+        xlim = x_limits, ylim = y_limits, expand = FALSE
     ) +
     deck_theme()
 save_asset(unlabelled_state_space, "branching-state-space-unlabelled.png", 7.4, 4.8)
@@ -131,6 +154,9 @@ state_space <- ggplot2::ggplot(
         y = "Recovered divergence coordinate",
         fill = NULL
     ) +
+    ggplot2::coord_cartesian(
+        xlim = x_limits, ylim = y_limits, expand = FALSE
+    ) +
     deck_theme() +
     ggplot2::theme(legend.position = "none")
 save_asset(state_space, "branching-state-space.png", 7.4, 4.8)
@@ -160,6 +186,9 @@ landscape <- ggplot2::ggplot(
     ggplot2::labs(
         x = "Recovered developmental coordinate",
         y = "Recovered divergence coordinate"
+    ) +
+    ggplot2::coord_cartesian(
+        xlim = x_limits, ylim = y_limits, expand = FALSE
     ) +
     deck_theme()
 save_asset(landscape, "branching-density.png", 7.4, 4.8)
