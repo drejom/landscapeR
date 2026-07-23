@@ -51,11 +51,14 @@ save_asset <- function(plot, filename, width, height) {
 # Generate independent destructive samples, embed them in expression space,
 # and recover the first two axes using landscapeR's registered SVD.
 control <- synthetic_branching_control(
-    n_per_stage = 6L,
+    n_per_stage = 5L,
     p = 240L,
     noise_sd = 0.055,
     seed = 220726L
 )
+# Two missing observations make the presentation control resemble the occasional
+# dropout encountered in sparse destructive sampling designs.
+control <- control[, -c(7L, 19L)]
 svd_constructor <- get_strategy("Decomposer", "svd")
 decomposed <- suppressWarnings(decompose(
     svd_constructor(list(k_components = 4L)), control

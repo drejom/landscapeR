@@ -73,10 +73,11 @@
 .design-item.cyan { border-color: var(--cyan); }
 .design-item.blue { border-color: var(--blue); }
 .design-item.amber { border-color: var(--amber); }
-.design-item svg { width: 100%; height: 95px; margin-bottom: 4px; overflow: visible; }
+.design-item svg { width: 100%; height: 105px; margin-bottom: 4px; overflow: visible; }
 .design-item svg text { fill: #8998a4; font: 11px Inter; }
 .design-item .guide, .design-item .subject-line { fill: none; stroke: #5c6d79; stroke-width: 1.8; }
 .design-item .subject-line { stroke: #6e9bc6; }
+.design-item .time-arrow { fill: none; stroke: #7b8c98; stroke-width: 1.8; }
 .design-item circle { fill: #19293a; stroke-width: 2.3; }
 .design-item .sample circle { stroke: #9db1bf; }
 .design-item .branch-a circle { stroke: var(--cyan); }
@@ -111,13 +112,13 @@
 
 .loadings-layout { display: grid; grid-template-columns: 57% 43%; gap: 18px; align-items: center; height: 385px; }
 .interpret-chain { display: grid; justify-items: start; gap: 3px; margin: 0 0 14px 14px; }
-.interpret-chain > div { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 12px; min-height: 42px; }
-.interpret-chain > i { margin-left: 16px; color: #607482; font-style: normal; line-height: 12px; }
+.interpret-chain > div { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 12px; min-height: 50px; }
+.interpret-chain > i { margin-left: 23px; color: #607482; font-style: normal; line-height: 10px; }
 .interpret-chain b { font-size: 12px; }
-.axis-mark { position: relative; width: 35px; height: 35px; border: 1.5px solid var(--cyan); border-radius: 50%; }
-.axis-mark::after { position: absolute; top: 16px; right: 6px; left: 6px; border-top: 2px solid var(--cyan); content: ""; transform: rotate(-25deg); }
-.gene-mark { color: var(--amber); font: 10px "Fira Code", monospace; letter-spacing: .12em; }
-.pathway-mark { color: var(--cyan); font: 11px/.8 "Fira Code", monospace; }
+.concept-icon { width: 52px; height: 42px; overflow: visible; color: var(--cyan); }
+.concept-icon path { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.concept-icon circle { fill: #07101d; stroke: currentColor; stroke-width: 1.7; }
+.helix-icon { color: var(--amber); }
 
 .analysis-flow { display: grid; grid-template-columns: 1fr 24px 1fr 24px 1fr 24px 1fr 24px 1fr; align-items: center; margin-top: 55px; }
 .analysis-flow > div { min-height: 105px; padding-top: 10px; border-top: 2px solid var(--cyan); }

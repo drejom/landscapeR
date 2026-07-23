@@ -25,28 +25,28 @@ themeConfig:
 
 <div class="design-grid">
 <div class="design-item cyan">
-<svg viewBox="0 0 260 96" role="img" aria-label="Independent embryos sampled across developmental stages">
-  <path d="M24 67 H225" class="guide"/><path d="M219 61 L229 67 L219 73" class="guide"/>
-  <g class="sample"><circle cx="42" cy="57" r="7"/><circle cx="42" cy="75" r="7"/><circle cx="91" cy="51" r="7"/><circle cx="91" cy="69" r="7"/><circle cx="91" cy="87" r="7"/><circle cx="145" cy="48" r="7"/><circle cx="145" cy="68" r="7"/><circle cx="145" cy="88" r="7"/></g>
-  <g class="branch-a"><circle cx="201" cy="42" r="7"/><circle cx="221" cy="42" r="7"/></g><g class="branch-b"><circle cx="201" cy="84" r="7"/><circle cx="221" cy="84" r="7"/></g>
+<svg viewBox="0 0 260 108" role="img" aria-label="Independent embryos sampled across developmental stages">
+  <g class="sample"><circle cx="42" cy="45" r="7"/><circle cx="42" cy="63" r="7"/><circle cx="91" cy="39" r="7"/><circle cx="91" cy="57" r="7"/><circle cx="91" cy="75" r="7"/><circle cx="145" cy="36" r="7"/><circle cx="145" cy="56" r="7"/><circle cx="145" cy="76" r="7"/></g>
+  <g class="branch-a"><circle cx="201" cy="32" r="7"/><circle cx="221" cy="32" r="7"/></g><g class="branch-b"><circle cx="201" cy="72" r="7"/><circle cx="221" cy="72" r="7"/></g>
   <text x="24" y="17">independent cohorts</text><text x="182" y="21">later states</text>
+  <path d="M45 94 C96 82 158 102 222 88 M216 84 L224 88 L217 94" class="time-arrow"/><text x="8" y="96">Time</text>
 </svg>
 <h2><em>Pogona</em></h2><strong>Developmental divergence</strong><p>Independent embryos sampled at observed stages</p><small>Group structure, not tracked embryo paths</small>
 </div>
 <div class="design-item blue">
-<svg viewBox="0 0 260 96" role="img" aria-label="Repeated measurements within subjects">
+<svg viewBox="0 0 260 108" role="img" aria-label="Repeated measurements within subjects">
   <path d="M45 26 C96 17 151 30 216 18 M45 54 C97 66 151 43 216 55 M45 82 C101 73 154 89 216 76" class="subject-line"/>
   <g class="sample"><circle cx="45" cy="26" r="7"/><circle cx="128" cy="24" r="7"/><circle cx="216" cy="18" r="7"/><circle cx="45" cy="54" r="7"/><circle cx="128" cy="52" r="7"/><circle cx="216" cy="55" r="7"/><circle cx="45" cy="82" r="7"/><circle cx="128" cy="80" r="7"/><circle cx="216" cy="76" r="7"/></g>
   <text x="8" y="30">1</text><text x="8" y="58">2</text><text x="8" y="86">3</text>
-  <path d="M78 92 H220 M214 87 L222 92 L214 97" class="guide"/><text x="42" y="95">time</text>
+  <path d="M45 94 C96 82 158 102 222 88 M216 84 L224 88 L217 94" class="time-arrow"/><text x="8" y="96">Time</text>
 </svg>
 <h2>AML</h2><strong>Disease progression</strong><p>Repeated measurements within mice across time</p><small>Subject-aware trajectories</small>
 </div>
 <div class="design-item amber">
-<svg viewBox="0 0 260 96" role="img" aria-label="Independent donors sampled across ordered clinical states">
-  <path d="M24 67 H225" class="guide"/><path d="M219 61 L229 67 L219 73" class="guide"/>
-  <g class="sample"><circle cx="46" cy="56" r="7"/><circle cx="46" cy="76" r="7"/><circle cx="112" cy="50" r="7"/><circle cx="112" cy="70" r="7"/><circle cx="112" cy="90" r="7"/><circle cx="190" cy="56" r="7"/><circle cx="190" cy="76" r="7"/></g>
+<svg viewBox="0 0 260 108" role="img" aria-label="Independent donors sampled across ordered clinical states">
+  <g class="sample"><circle cx="46" cy="46" r="7"/><circle cx="46" cy="66" r="7"/><circle cx="112" cy="40" r="7"/><circle cx="112" cy="60" r="7"/><circle cx="112" cy="80" r="7"/><circle cx="190" cy="46" r="7"/><circle cx="190" cy="66" r="7"/></g>
   <text x="25" y="18">state 1</text><text x="93" y="18">state 2</text><text x="171" y="18">state 3</text>
+  <path d="M45 94 C96 82 158 102 222 88 M216 84 L224 88 L217 94" class="time-arrow"/><text x="8" y="96">Time</text>
 </svg>
 <h2>Type 1 diabetes</h2><strong>Ordered clinical states</strong><p>Independent donors sampled across declared states</p><small>Cross-sectional progression structure</small>
 </div>
@@ -62,7 +62,7 @@ themeConfig:
 <div class="matrix-side">
   <div class="matrix-glyph"><span>genes</span><div class="heat-grid">● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●<br>● ● ● ● ● ●</div><i>samples</i></div>
   <div class="plain-arrow">→</div>
-  <div class="step-copy"><b>Outcome-blind decomposition</b><p>Sex, stage and temperature are not used to fit the axes.</p><small>Known-truth branching control, 30 independent samples and 240 features</small></div>
+  <div class="step-copy"><b>Outcome-blind decomposition</b><p>Sex, stage and temperature are not used to fit the axes.</p><small>Known-truth branching control, about five independent samples per stage and 240 features</small></div>
 </div>
 <div class="plot-frame"><img src="./assets/branching-state-space-unlabelled.png" alt="Recovered two-dimensional coordinate system from landscapeR synthetic branching data"></div>
 </div>
@@ -107,9 +107,9 @@ themeConfig:
 <div class="plot-frame"><img src="./assets/branching-loadings.png" alt="Ranked feature loadings on the recovered divergence coordinate"></div>
 <div class="interpret-side">
   <div class="interpret-chain">
-    <div><span class="axis-mark"></span><b>coordinate</b></div><i>↓</i>
-    <div><span class="gene-mark">A C G T</span><b>ranked genes</b></div><i>↓</i>
-    <div><span class="pathway-mark">●─●<br>╲●╱</span><b>pathways and modules</b></div>
+    <div><svg class="concept-icon landscape-icon" viewBox="0 0 56 44" aria-hidden="true"><path d="M3 34 C12 23 19 42 28 28 C37 14 45 32 53 17 M3 25 C12 14 19 33 28 19 C37 5 45 23 53 8 M8 38 L8 22 M18 39 L18 18 M28 34 L28 14 M38 30 L38 10 M48 25 L48 6"/></svg><b>coordinate landscape</b></div><i>↓</i>
+    <div><svg class="concept-icon helix-icon" viewBox="0 0 56 44" aria-hidden="true"><path d="M12 3 C45 13 45 31 12 41 M44 3 C11 13 11 31 44 41 M18 8 L38 8 M13 16 L43 16 M13 28 L43 28 M18 36 L38 36"/></svg><b>ranked genes</b></div><i>↓</i>
+    <div><svg class="concept-icon network-icon" viewBox="0 0 56 44" aria-hidden="true"><path d="M10 11 L27 7 L45 15 L38 35 L17 37 Z M10 11 L38 35 M27 7 L17 37 M45 15 L17 37"/><circle cx="10" cy="11" r="3"/><circle cx="27" cy="7" r="3"/><circle cx="45" cy="15" r="3"/><circle cx="38" cy="35" r="3"/><circle cx="17" cy="37" r="3"/></svg><b>pathways and modules</b></div>
   </div>
   <p>Loadings identify genes that contribute strongly to a coordinate.</p>
   <p>Ranked gene lists can support enrichment, module analysis and comparison with stage-specific expression.</p>
