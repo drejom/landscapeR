@@ -173,6 +173,143 @@ synthetic_control <- function(n        = 40L,
 }
 
 # ---------------------------------------------------------------------------
+# K=1 destructive-sampling developmental branching control
+# ---------------------------------------------------------------------------
+
+.branching_control_validation_message <- function(n_per_stage, p, noise_sd,
+                                                   branch_point, seed) {
+    if (!.is_whole_number(n_per_stage, 2L))
+        return("n_per_stage must be a single integer greater than or equal to 2")
+    if (!.is_whole_number(p, 2L))
+        return("p must be a single integer greater than or equal to 2")
+    if (!is.numeric(noise_sd) || length(noise_sd) != 1L ||
+        !is.finite(noise_sd) || noise_sd <= 0)
+        return("noise_sd must be a single finite number greater than 0")
+    if (!is.numeric(branch_point) || length(branch_point) != 1L ||
+        !is.finite(branch_point) || branch_point <= 0 || branch_point >= 1)
+        return("branch_point must be a single finite number strictly between 0 and 1")
+    if (!.is_whole_number(seed, 0L, .Machine$integer.max - 1L))
+        return(paste0(
+            "seed must be a single integer between 0 and ",
+            .Machine$integer.max - 1L
+        ))
+    NULL
+}
+
+#' Generate a destructive-sampling developmental branching control
+#'
+#' Generates independent samples at five observed developmental stages. Early
+#' samples occupy a shared trunk; after a declared branch point, samples enter
+#' one of two terminal states. The two-dimensional state geometry is embedded
+#' along two orthonormal feature directions in a single high-dimensional
+#' expression matrix. This is a disclosed visualisation and development
+#' control, not validation evidence for a two-dimensional dynamics estimator.
+#'
+#' @param n_per_stage integer number of independent samples per observed stage
+#' @param p integer number of expression features
+#' @param noise_sd numeric expression noise standard deviation
+#' @param branch_point numeric location of the planted divergence on scaled time
+#' @param seed integer RNG seed for reproducibility
+#' @return single-omic-layer \code{StateTransitionData} with planted two-axis
+#'   \code{SubspaceGroundTruth} and branching metadata
+#' @export
+synthetic_branching_control <- function(n_per_stage = 24L,
+                                        p = 200L,
+                                        noise_sd = 0.08,
+                                        branch_point = 0.42,
+                                        seed = 42L) {
+    validation_message <- .branching_control_validation_message(
+        n_per_stage, p, noise_sd, branch_point, seed
+    )
+    if (!is.null(validation_message))
+        .stop_landscapeR_validation(paste0(
+            "synthetic_branching_control(): ", validation_message
+        ))
+
+    n_per_stage <- as.integer(n_per_stage)
+    p <- as.integer(p)
+    seed <- as.integer(seed)
+    stage_grid <- seq(0, 1, length.out = 5L)
+    n <- n_per_stage * length(stage_grid)
+
+    setup_rng(seed)
+    observed_stage <- rep(stage_grid, each = n_per_stage)
+    terminal_branch <- sample(rep(c("branch A", "branch B"), length.out = n))
+    branch_sign <- ifelse(terminal_branch == "branch A", -1, 1)
+    divergence <- pmax(observed_stage - branch_point, 0) / (1 - branch_point)
+    trunk_coord <- 1.8 * (observed_stage - 0.5) + stats::rnorm(n, sd = 0.055)
+    branch_coord <- 1.25 * branch_sign * divergence^1.2 +
+        stats::rnorm(n, sd = 0.06 + 0.025 * observed_stage)
+    terminal_branch[observed_stage <= branch_point] <- "shared early state"
+
+    v_trunk <- .unit_rnorm(p)
+    v_branch <- .orthogonalize(.unit_rnorm(p), v_trunk)
+    X <- 1.15 * outer(trunk_coord, v_trunk) +
+        1.35 * outer(branch_coord, v_branch) +
+        matrix(stats::rnorm(n * p, sd = noise_sd), nrow = n, ncol = p)
+
+    sample_ids <- paste0("s", seq_len(n))
+    feature_ids <- paste0("g", seq_len(p))
+    expression <- t(X)
+    rownames(expression) <- feature_ids
+    colnames(expression) <- sample_ids
+    experiment <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(expression = expression)
+    )
+    col_df <- S4Vectors::DataFrame(
+        row.names = sample_ids,
+        observed_stage = observed_stage,
+        stage = factor(
+            paste0("stage ", seq_along(stage_grid))[match(observed_stage, stage_grid)],
+            levels = paste0("stage ", seq_along(stage_grid)),
+            ordered = TRUE
+        ),
+        terminal_branch = factor(
+            terminal_branch,
+            levels = c("shared early state", "branch A", "branch B")
+        ),
+        trunk_coord = trunk_coord,
+        branch_coord = branch_coord
+    )
+    truth <- new("SubspaceGroundTruth",
+        shared = cbind(trunk = v_trunk, branch = v_branch),
+        exclusive = list(),
+        angles = numeric(0L)
+    )
+    control_params <- list(
+        n_per_stage = n_per_stage,
+        n = n,
+        p = p,
+        noise_sd = noise_sd,
+        branch_point = branch_point,
+        observed_stages = stage_grid,
+        seed = seed,
+        sampling = "independent_destructive",
+        calibration_only = TRUE,
+        evidence_status = "non_evidentiary_visualisation_control"
+    )
+    std <- StateTransitionData(
+        experiments = list(expression = experiment),
+        colData = col_df,
+        ground_truth = truth,
+        sampling_design = cross_sectional()
+    )
+    md <- metadata(std)
+    md$branching_control <- control_params
+    metadata(std) <- md
+    record_provenance(
+        std,
+        stage = "generate_control",
+        contract = "SyntheticControlGenerator",
+        implementation = "developmental_branching",
+        params = control_params,
+        input_hashes = c(
+            specification = digest::digest(control_params, algo = "sha256")
+        )
+    )
+}
+
+# ---------------------------------------------------------------------------
 # Generic K=1 cross-sectional double-well calibration control
 # ---------------------------------------------------------------------------
 

@@ -27,6 +27,66 @@ test_that("synthetic_control typed-fails invalid public inputs", {
     }
 })
 
+test_that("developmental branching control carries reproducible known truth", {
+    control_1 <- synthetic_branching_control(
+        n_per_stage = 8L, p = 40L, noise_sd = 0.03, seed = 120L
+    )
+    control_2 <- synthetic_branching_control(
+        n_per_stage = 8L, p = 40L, noise_sd = 0.03, seed = 120L
+    )
+
+    expect_identical(control_1, control_2)
+    expect_s4_class(control_1@ground_truth, "SubspaceGroundTruth")
+    expect_equal(dim(control_1@ground_truth@shared), c(40L, 2L))
+    expect_equal(dim(assay(experiments(control_1)[[1L]])), c(40L, 40L))
+    expect_identical(control_1@sampling_design@kind, "cross_sectional")
+    expect_identical(
+        metadata(control_1)$branching_control$sampling,
+        "independent_destructive"
+    )
+    expect_identical(
+        control_1@provenance[[1L]]@implementation,
+        "developmental_branching"
+    )
+    expect_equal(
+        as.numeric(crossprod(control_1@ground_truth@shared[, 1L],
+                             control_1@ground_truth@shared[, 2L])),
+        0,
+        tolerance = 1e-12
+    )
+})
+
+test_that("developmental branching control exposes the planted divergence", {
+    control <- synthetic_branching_control(
+        n_per_stage = 30L, p = 30L, noise_sd = 0.03, seed = 121L
+    )
+    metadata_df <- as.data.frame(colData(control))
+    early <- metadata_df$observed_stage <=
+        metadata(control)$branching_control$branch_point
+    late <- metadata_df$observed_stage == max(metadata_df$observed_stage)
+
+    expect_lt(stats::sd(metadata_df$branch_coord[early]), 0.12)
+    late_branch <- droplevels(metadata_df$terminal_branch[late])
+    expect_gt(
+        abs(diff(tapply(metadata_df$branch_coord[late], late_branch, mean))),
+        2
+    )
+    expect_true(all(metadata_df$terminal_branch[early] == "shared early state"))
+})
+
+test_that("developmental branching control typed-fails invalid public inputs", {
+    invalid_calls <- list(
+        function() synthetic_branching_control(n_per_stage = 1L),
+        function() synthetic_branching_control(p = 1L),
+        function() synthetic_branching_control(noise_sd = 0),
+        function() synthetic_branching_control(branch_point = 1),
+        function() synthetic_branching_control(seed = .Machine$integer.max)
+    )
+
+    for (invalid_call in invalid_calls)
+        expect_error(invalid_call(), class = "landscapeR_validation_error")
+})
+
 test_that("registered svd decomposes one omic layer into the common result contract", {
     expect_true("Decomposer:svd" %in% list_strategies("Decomposer"))
 

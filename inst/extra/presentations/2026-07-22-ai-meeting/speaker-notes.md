@@ -1,53 +1,47 @@
-# Speaker prompts
+# Speaker notes
 
-**Target duration:** approximately 12 minutes. These are prompts, not a script.
+Target duration: 10 to 12 minutes, leaving time for questions.
 
-## 1. landscapeR | 0:45
-- This began with the Pogona analysis we have already discussed.
-- It is becoming a general R package for biological state transitions.
-- Two parts tonight: the scientific idea and the way AI is being used to develop it.
+## 1. landscapeR
 
-## 2. Different study designs | 1:10
-- Pogona: independent embryos at observed developmental stages.
-- AML: repeated blood samples from the same mice.
-- Diabetes: different donors in ordered clinical states.
-- These are not interchangeable versions of a time series.
+About 40 seconds. Introduce landscapeR as a general package for mapping biological state transitions from high-dimensional molecular data. Pogona is the motivating developmental example, not the sole intended application.
 
-## 3. Molecular measurements define a state space | 1:15
-- Each point is one independently sampled embryo in the conceptual example.
-- Thousands of genes are reduced to a few coordinates.
-- Sex and stage do not fit the axes. They are used later for interpretation.
+## 2. Study design
 
-## 4. Occupancy and quasi-potential | 1:20
-- Explain the equation visually, not mathematically.
-- Dense regions become low terrain; sparse regions become high terrain.
-- This is sample occupancy, not literal physical energy.
+About 70 seconds. Contrast three familiar designs. Pogona has destructive sampling of independent embryos across observed developmental stages. The AML work follows the same subjects through time. Type 1 diabetes samples independent donors across ordered clinical states. Emphasize that these designs support different claims and resampling schemes.
 
-## 5. Developmental interpretation | 1:30
-- Pogona motivates a shared early region followed by sex-associated divergence.
-- The picture is conceptual and is not fitted to Pogona data.
-- Stage provides group-level ordering, not tracked individual trajectories.
-- Additional temperature regimes and sex reversal are later extensions.
+## 3. Coordinate system
 
-## 6. Genes and pathways | 1:15
-- A landscape is not enough. We need to connect its coordinates back to genes.
-- Eigengenes are direction-aware gene loadings on the selected coordinate.
-- Enrichment, differential expression and modules support interpretation.
-- They identify candidates but do not alone prove causality.
+About 65 seconds. This is an executable landscapeR synthetic control, not a drawing. The generator creates independent samples at five stages, embeds a two-dimensional branching structure in 240 expression features, and the registered SVD recovers a low-dimensional coordinate system. Labels were withheld while fitting the axes.
 
-## 7. Interpretation workflow | 1:25
-- Show all candidate axes before proposing one.
-- Respect sampling design during association and resampling.
-- Stability can reject an axis. Human confirmation remains explicit.
+## 4. Descriptive landscape
 
-## 8. AI-assisted development | 1:45
-- Separate generation, evaluation and acceptance.
-- AI systems implement, review, challenge methods and research alternatives.
-- Their agreement is not expert consensus.
-- Primary methods, synthetic truth and executable tests determine support.
+About 65 seconds. Explain the equation in plain language. Density becomes height after applying minus log. Frequently occupied states are low; sparse regions are high. State the caveat clearly: destructive cross-sectional samples do not demonstrate that an embryo moved along a plotted route.
 
-## 9. Current scope | 1:20
-- The plot is genuine landscapeR synthetic output, not a biological result.
-- K=1 decomposition and package contracts exist now.
-- Metadata interpretation and stability are next.
-- Pogona needs validated two-dimensional bifurcation methods before formal claims.
+## 5. Metadata
+
+About 60 seconds. Add observed stage and terminal state after decomposition. Stage orders the cohorts. Terminal state interprets the late split. Temperature and genotype would remain explicit variables. The lines are summaries of group means, not tracked trajectories.
+
+## 6. Genes and pathways
+
+About 70 seconds. These bars are the actual feature loadings from the same recovered divergence coordinate. In real data, ranked genes can be examined directly and used for GSEA, modules, or comparison with stage-specific differential expression. This is how the landscape becomes biologically interpretable. Loadings nominate contributors but do not prove causal drivers.
+
+## 7. Current package path
+
+About 55 seconds. Distinguish implemented capability from the two-dimensional example. The one-dimensional double well runs end to end today through public functions: known-truth generation, SVD, density estimation, quasi-potential plotting and provenance. The figure was regenerated for this talk.
+
+## 8. Declared analysis
+
+About 65 seconds. Explain that decomposition is outcome-blind but interpretation is not casual browsing. The biological target, nuisance variables, association and sampling design are declared. Resampling preserves the biological unit. A person records the final decision or abstains.
+
+## 9. Evidence
+
+About 65 seconds. Known-truth controls answer whether the method recovers what was planted. Domain-grounded simulation adds realistic confounding, noise and sampling. Biological examples show feasibility and interpretation but cannot reveal latent truth. A valid result can be no identifiable coordinate.
+
+## 10. AI-assisted development
+
+About 75 seconds. Focus on principles, not a development diary. AI produces candidate code, tests and arguments. Those outputs are challenged using primary literature, adversarial review and known-truth simulations. Decisions, evidence and limitations remain visible and human-owned.
+
+## 11. Close
+
+About 45 seconds. Summarize the current boundary. The general architecture exists and the one-dimensional path works. Metadata association and stability are being formalized. Pogona demands a validated two-dimensional branching model and comparison across temperature regimes. Close by inviting the audience to recognize other biological state-transition problems that fit the framework.
