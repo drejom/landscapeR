@@ -83,6 +83,12 @@ rsconnect/
 data-raw/geo/
 data-raw/*.rds
 
+# Local Pogona expression matrices and source metadata. Rebuild with
+# data-raw/pogona/sync-from-gadi.sh and build-metadata.py.
+data-raw/pogona/*/gene_counts.tsv
+data-raw/pogona/*/gene_tpm.tsv
+data-raw/pogona/source_metadata/
+
 # local agent worktrees / scratch state (never pushed)
 .pi-subagents/
 .claude/

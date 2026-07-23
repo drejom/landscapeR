@@ -53,6 +53,14 @@ std2 <- estimate_dynamics(dynamics_ctor(), std1)@value
 plot_potential(std2)  # critical-point classifications are off by default
 ```
 
+For destructive-sampling developmental designs,
+`synthetic_branching_control()` provides a disclosed two-branch visualisation
+and development control. It is not validation evidence. Reproducible source
+for the July 2026 informal presentation is retained under
+`inst/extra/presentations/2026-07-22-ai-meeting/`; the tracked acquisition
+scripts, normalized metadata, and known metadata conflict for the future
+Pogona analysis are documented in `data-raw/pogona/README.md`.
+
 ## Status
 
 Active development. [`ROADMAP.md`](https://github.com/drejom/landscapeR/blob/main/ROADMAP.md)

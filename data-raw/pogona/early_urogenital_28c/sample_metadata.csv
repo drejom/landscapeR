@@ -1,0 +1,18 @@
+experiment,matrix_sample_id,include,exclusion_reason,genotype,temperature_c,stage,day,tissue,biological_unit,source_group,source_deg_id,metadata_status
+early_urogenital_28c,9520_E1_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,,parsed_from_matrix_id
+early_urogenital_28c,9520_E10_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,,parsed_from_matrix_id
+early_urogenital_28c,9520_E11_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,,parsed_from_matrix_id
+early_urogenital_28c,9520_E14_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,,parsed_from_matrix_id
+early_urogenital_28c,9520_E15_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,,parsed_from_matrix_id
+early_urogenital_28c,9520_E16_S4_ZW,true,,ZW,28,S4,,whole urogenital system,independent destructive sample,ZW_28C_S4,,parsed_from_matrix_id
+early_urogenital_28c,9520_E17_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,,parsed_from_matrix_id
+early_urogenital_28c,9520_E18_S4_ZW,true,,ZW,28,S4,,whole urogenital system,independent destructive sample,ZW_28C_S4,,parsed_from_matrix_id
+early_urogenital_28c,9520_E19_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,,parsed_from_matrix_id
+early_urogenital_28c,9520_E2_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,,parsed_from_matrix_id
+early_urogenital_28c,9520_E3_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,,parsed_from_matrix_id
+early_urogenital_28c,9520_E4_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,,parsed_from_matrix_id
+early_urogenital_28c,9520_E5_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,,parsed_from_matrix_id
+early_urogenital_28c,9520_E6_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,,parsed_from_matrix_id
+early_urogenital_28c,9520_E8_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,,parsed_from_matrix_id
+early_urogenital_28c,9520_E9_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,,parsed_from_matrix_id
+early_urogenital_28c,9559_E11_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,,parsed_from_matrix_id
