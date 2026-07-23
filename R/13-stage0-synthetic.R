@@ -235,7 +235,16 @@ synthetic_branching_control <- function(n_per_stage = 24L,
     setup_rng(seed)
     observed_stage <- rep(stage_grid, each = n_per_stage)
     terminal_branch <- unlist(lapply(stage_grid, function(stage) {
-        sample(rep(c("branch A", "branch B"), length.out = n_per_stage))
+        branch_pool <- rep(
+            c("branch A", "branch B"),
+            each = n_per_stage %/% 2L
+        )
+        if (n_per_stage %% 2L == 1L)
+            branch_pool <- c(
+                branch_pool,
+                sample(c("branch A", "branch B"), size = 1L)
+            )
+        sample(branch_pool)
     }), use.names = FALSE)
     branch_sign <- ifelse(terminal_branch == "branch A", -1, 1)
     divergence <- pmax(observed_stage - branch_point, 0) / (1 - branch_point)

@@ -81,6 +81,21 @@ test_that("developmental branching control exposes the planted divergence", {
     expect_true(all(metadata_df$terminal_branch[early] == "shared early state"))
 })
 
+test_that("developmental branching control does not favor one branch for odd stages", {
+    terminal_imbalances <- vapply(seq_len(20L), function(seed) {
+        control <- synthetic_branching_control(
+            n_per_stage = 5L, p = 2L, seed = seed
+        )
+        metadata_df <- as.data.frame(colData(control))
+        terminal <- metadata_df$observed_stage == max(metadata_df$observed_stage)
+        counts <- table(droplevels(metadata_df$terminal_branch[terminal]))
+        unname(counts[["branch A"]] - counts[["branch B"]])
+    }, numeric(1L))
+
+    expect_true(all(abs(terminal_imbalances) == 1L))
+    expect_setequal(unique(terminal_imbalances), c(-1, 1))
+})
+
 test_that("developmental branching control typed-fails invalid public inputs", {
     invalid_calls <- list(
         function() synthetic_branching_control(n_per_stage = 1L),
