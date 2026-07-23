@@ -1,0 +1,36 @@
+experiment,matrix_sample_id,include,exclusion_reason,genotype,temperature_c,stage,day,tissue,biological_unit,source_group,source_deg_id,metadata_status
+gsd_timecourse_28c,FS42259626,true,,ZW,28,,7,not supplied,independent destructive sample or declared pool,ZW_7,ZW_7_Rep1,matched
+gsd_timecourse_28c,FS42259628,true,,ZZ,28,,7,not supplied,independent destructive sample or declared pool,ZZ_7,ZZ_7_Rep1,matched
+gsd_timecourse_28c,FS42259629,true,,ZW,28,,9,not supplied,independent destructive sample or declared pool,ZW_9,ZW_9_Rep2,matched
+gsd_timecourse_28c,FS42259630,true,,ZW,28,,9,not supplied,independent destructive sample or declared pool,ZW_9,ZW_9_Rep3,matched
+gsd_timecourse_28c,FS42259631,false,group/DEG_ID conflict,ZZ,28,,9,not supplied,independent destructive sample or declared pool,ZZ_9,ZZ_7_Rep2,group_deg_conflict
+gsd_timecourse_28c,FS42259632,true,,ZW,28,,7,not supplied,independent destructive sample or declared pool,ZW_7,ZW_7_Rep2,matched
+gsd_timecourse_28c,FS42260365,true,,ZZ,28,,13,not supplied,independent destructive sample or declared pool,ZZ_13,ZZ_13_Rep1,matched
+gsd_timecourse_28c,FS42260366,true,,ZZ,28,,17,not supplied,independent destructive sample or declared pool,ZZ_17,ZZ_17_Rep4,matched
+gsd_timecourse_28c,FS42260367,true,,ZW,28,,13,not supplied,independent destructive sample or declared pool,ZW_13,ZW_13_Rep2,matched
+gsd_timecourse_28c,FS42260368,true,,ZW,28,,13,not supplied,independent destructive sample or declared pool,ZW_13,ZW_13_Rep3,matched
+gsd_timecourse_28c,FS42260369,true,,ZW,28,,17,not supplied,independent destructive sample or declared pool,ZW_17,ZW_17_Rep3,matched
+gsd_timecourse_28c,FS42260370,true,,ZZ,28,,11,not supplied,independent destructive sample or declared pool,ZZ_11,ZZ_11_Rep2,matched
+gsd_timecourse_28c,FS42260371,true,,ZW,28,,17,not supplied,independent destructive sample or declared pool,ZW_17,ZW_17_Rep4,matched
+gsd_timecourse_28c,FS42260372,true,,ZW,28,,13,not supplied,independent destructive sample or declared pool,ZW_13,ZW_13_Rep4,matched
+gsd_timecourse_28c,FS42260373,true,,ZW,28,,11,not supplied,independent destructive sample or declared pool,ZW_11,ZW_11_Rep4,matched
+gsd_timecourse_28c,FS42260374,true,,ZW,28,,15,not supplied,independent destructive sample or declared pool,ZW_15,ZW_15_Rep1,matched
+gsd_timecourse_28c,FS42260375,true,,ZW,28,,11,not supplied,independent destructive sample or declared pool,ZW_11,ZW_11_Rep1,matched
+gsd_timecourse_28c,FS42260376,true,,ZZ,28,,17,not supplied,independent destructive sample or declared pool,ZZ_17,ZZ_17_Rep1,matched
+gsd_timecourse_28c,FS42260377,true,,ZW,28,,17,not supplied,independent destructive sample or declared pool,ZW_17,ZW_17_Rep1,matched
+gsd_timecourse_28c,FS42260378,true,,ZZ,28,,17,not supplied,independent destructive sample or declared pool,ZZ_17,ZZ_17_Rep2,matched
+gsd_timecourse_28c,FS42260379,true,,ZW,28,,15,not supplied,independent destructive sample or declared pool,ZW_15,ZW_15_Rep2,matched
+gsd_timecourse_28c,FS42260380,true,,ZZ,28,,17,not supplied,independent destructive sample or declared pool,ZZ_17,ZZ_17_Rep3,matched
+gsd_timecourse_28c,FS42260381,true,,ZZ,28,,15,not supplied,independent destructive sample or declared pool,ZZ_15,ZZ_15_Rep1,matched
+gsd_timecourse_28c,FS42260600,true,,ZW,28,,7,not supplied,independent destructive sample or declared pool,ZW_7,ZW_7_Rep3,matched
+gsd_timecourse_28c,FS42260608,false,group/DEG_ID conflict,ZZ,28,,9,not supplied,independent destructive sample or declared pool,ZZ_9,ZZ_7_Rep3,group_deg_conflict
+gsd_timecourse_28c,FS42260616,true,,ZW,28,,9,not supplied,independent destructive sample or declared pool,ZW_9,ZW_9_Rep4,matched
+gsd_timecourse_28c,FS42260624,true,,ZW,28,,9,not supplied,independent destructive sample or declared pool,ZW_9,ZW_9_Rep5,matched
+gsd_timecourse_28c,FS42260632,true,,ZW,28,,11,not supplied,independent destructive sample or declared pool,ZW_11,ZW_11_Rep2,matched
+gsd_timecourse_28c,FS42260640,true,,ZW,28,,11,not supplied,independent destructive sample or declared pool,ZW_11,ZW_11_Rep3,matched
+gsd_timecourse_28c,FS42260648,true,,ZW,28,,15,not supplied,independent destructive sample or declared pool,ZW_15,ZW_15_Rep3,matched
+gsd_timecourse_28c,FS42260656,true,,ZZ,28,,11,not supplied,independent destructive sample or declared pool,ZZ_11,ZZ_11_Rep1,matched
+gsd_timecourse_28c,FS42261918,true,,ZZ,28,,13,not supplied,independent destructive sample or declared pool,ZZ_13,ZZ_13_Rep2,matched
+gsd_timecourse_28c,FS42261919,true,,ZW,28,,17,not supplied,independent destructive sample or declared pool,ZW_17,ZW_17_Rep2,matched
+gsd_timecourse_28c,FS42261920,true,,ZW,28,,13,not supplied,independent destructive sample or declared pool,ZW_13,ZW_13_Rep1,matched
+gsd_timecourse_28c,FS42261921,true,,ZW,28,,9,not supplied,independent destructive sample or declared pool,ZW_9,ZW_9_Rep1,matched
