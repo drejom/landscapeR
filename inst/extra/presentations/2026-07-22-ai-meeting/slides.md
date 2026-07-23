@@ -21,7 +21,7 @@ themeConfig:
 
 ---
 
-# Study design determines what the landscape means
+# Study design sets the interpretation
 
 <div class="design-grid">
 <div class="design-item cyan">
@@ -55,7 +55,7 @@ themeConfig:
 ---
 
 <span class="status implemented">LANDSCAPER SYNTHETIC CONTROL</span>
-# Molecular data define a small coordinate system
+# Molecular data define the coordinate system
 
 <div class="science-split">
 <div class="matrix-side">
@@ -69,7 +69,7 @@ themeConfig:
 ---
 
 <span class="status implemented">SAME SYNTHETIC CONTROL</span>
-# Sample occupancy defines a descriptive landscape
+# Sample density defines a descriptive landscape
 
 <div class="science-split potential-slide">
 <div class="equation-side">
@@ -116,7 +116,7 @@ themeConfig:
 ---
 
 <span class="status implemented">CURRENT IMPLEMENTED OUTPUT</span>
-# A one-dimensional landscape already runs end to end
+# The one-dimensional path runs end to end
 
 <div class="science-split current-output">
 <div class="equation-side">
@@ -147,7 +147,7 @@ themeConfig:
 
 ---
 
-# AI contributes within a scientific governance loop
+# AI development follows a scientific governance loop
 
 <div class="governance">
 <div><strong>Generate</strong><span>Code, tests, alternatives and candidate explanations</span></div><b>→</b>
@@ -168,69 +168,3 @@ themeConfig:
 </div>
 <div class="closing-statement">A framework for developmental, disease and other biological state transitions.</div>
 <div class="repo">github.com/drejom/landscapeR</div>
-
-<style>
-:global(.slidev-layout) {
-  padding: 1.35rem 1.7rem 1.15rem;
-}
-:global(.slidev-layout h1) {
-  font-size: .54rem;
-  margin: 0 0 .5rem;
-}
-:global(.science-split), :global(.loadings-layout) {
-  height: 295px;
-}
-:global(.design-item) {
-  min-height: 275px;
-  padding: .55rem;
-}
-:global(.design-item svg) {
-  height: 72px;
-  margin-bottom: .15rem;
-}
-:global(.design-item p) {
-  margin: .3rem 0;
-}
-:global(.analysis-flow) {
-  margin-top: 2.1rem;
-}
-:global(.evidence-ladder) {
-  margin-top: 1rem;
-}
-:global(.evidence-ladder > div) {
-  min-height: 245px;
-}
-:global(.governance) {
-  margin-top: 2rem;
-}
-:global(.governance > div) {
-  min-height: 105px;
-}
-:global(.artifact-line) {
-  margin-top: 1.1rem;
-}
-:global(.slidev-layout.cover) {
-  display: block;
-  padding: 2.35rem 1.7rem 1.35rem;
-  text-align: left;
-}
-:global(.slidev-layout.cover h1) {
-  font-size: 2.15rem;
-  margin: .18rem 0;
-}
-:global(.slidev-layout.cover h2) {
-  font-size: .88rem;
-}
-:global(.slidev-layout.cover .title-kicker) {
-  font-size: .31rem;
-}
-:global(.slidev-layout.cover .title-example) {
-  font-size: .5rem;
-  margin-top: 1.2rem;
-}
-:global(.slidev-layout.cover .title-meta) {
-  bottom: 1.35rem;
-  left: 1.7rem;
-  font-size: .36rem;
-}
-</style>
