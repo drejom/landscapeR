@@ -186,6 +186,16 @@ test_that("human confirmation produces a confirmed analysis specification", {
         "PC1 carries the unique predeclared binary contrast."
     )
 
+    expect_error(
+        confirm_component(
+            proposal,
+            index = 1L,
+            rationale = "A decision must be supplied explicitly."
+        ),
+        "decision must be 'accept' or 'override'",
+        class = "landscapeR_validation_error"
+    )
+
     overridden <- confirm_component(
         proposal,
         index = 2L,

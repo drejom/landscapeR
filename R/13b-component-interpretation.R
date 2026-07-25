@@ -1338,7 +1338,7 @@ as.data.frame.ComponentAbstention <- function(
 confirm_component <- function(
     proposal,
     index,
-    decision = c("accept", "override"),
+    decision,
     rationale
 ) {
     if (is(proposal, "ComponentAbstention")) {
@@ -1364,7 +1364,8 @@ confirm_component <- function(
             "confirm_component(): index must occur in the proposal ranking"
         )
     }
-    if (!is.character(decision) || length(decision) != 1L ||
+    if (missing(decision) ||
+        !is.character(decision) || length(decision) != 1L ||
         is.na(decision) || !decision %in% c("accept", "override")) {
         .stop_landscapeR_validation(
             "confirm_component(): decision must be 'accept' or 'override'"

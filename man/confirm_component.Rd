@@ -4,12 +4,7 @@
 \alias{confirm_component}
 \title{Confirm a proposed component by explicit human decision}
 \usage{
-confirm_component(
-  proposal,
-  index,
-  decision = c("accept", "override"),
-  rationale
-)
+confirm_component(proposal, index, decision, rationale)
 }
 \arguments{
 \item{proposal}{a \code{ComponentProposal}}
