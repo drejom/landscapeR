@@ -3,9 +3,10 @@
 # Skips entirely when the push touches none of the watched paths.
 #
 # Checks (all blocking):
-#   1. R tests pass         — R/  or tests/  changed
-#   2. ADR coverage         — any new register_strategy() call has a backing ADR
-#   3. Registry compliance  — no if/switch dispatchers, no hardcoded config
+#   1. Roadmap integrity    — roadmap agrees with live GitHub issue state
+#   2. R tests pass         — R/  or tests/  changed
+#   3. ADR coverage         — any new register_strategy() call has a backing ADR
+#   4. Registry compliance  — no if/switch dispatchers, no hardcoded config
 #
 # Add [skip-hooks] to any commit message to bypass (emergencies only).
 
@@ -50,7 +51,29 @@ run_check() {
 
 echo "[pre-push] Checking $(echo "$CHANGED" | wc -l | tr -d ' ') changed file(s)..."
 
-# ── 1. R tests ───────────────────────────────────────────────────────────────
+# ── 1. Roadmap integrity ─────────────────────────────────────────────────────
+check_roadmap() {
+  local open_issues_json
+  open_issues_json=$(mktemp)
+  if ! gh issue list \
+      --repo drejom/landscapeR \
+      --state open \
+      --limit 200 \
+      --json number > "$open_issues_json"; then
+    rm -f "$open_issues_json"
+    return 1
+  fi
+  python3 scripts/check-roadmap.py --open-issues-json "$open_issues_json"
+  local status=$?
+  rm -f "$open_issues_json"
+  return "$status"
+}
+
+RAN=1
+echo "[pre-push] Roadmap integrity"
+run_check "roadmap integrity" check_roadmap
+
+# ── 2. R tests ───────────────────────────────────────────────────────────────
 if needs_check "R/" || needs_check "tests/"; then
   RAN=1
   echo "[pre-push] R tests"
@@ -69,14 +92,14 @@ if needs_check "R/" || needs_check "tests/"; then
   "
 fi
 
-# ── 2. ADR coverage ──────────────────────────────────────────────────────────
+# ── 3. ADR coverage ──────────────────────────────────────────────────────────
 if needs_check "R/" || needs_check "decisions/"; then
   RAN=1
   echo "[pre-push] ADR coverage"
   run_check "ADR coverage" python3 scripts/check-adr-coverage.py
 fi
 
-# ── 3. Registry compliance ───────────────────────────────────────────────────
+# ── 4. Registry compliance ───────────────────────────────────────────────────
 if needs_check "R/"; then
   RAN=1
   echo "[pre-push] registry compliance"
