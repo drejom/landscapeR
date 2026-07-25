@@ -116,7 +116,12 @@ plot_potential <- function(std, colour_by = NULL,
                 rug_df[[colour_by]] <- unlist(lapply(
                     layer_indices,
                     function(layer) {
-                        .component_gallery_metadata(std, layer, colour_by)
+                        .component_gallery_metadata(
+                            std,
+                            layer,
+                            colour_by,
+                            caller = "plot_potential"
+                        )
                     }
                 ), use.names = FALSE)
             }
@@ -198,7 +203,7 @@ plot_potential <- function(std, colour_by = NULL,
                         data = missing_rug,
                         ggplot2::aes(x = x),
                         sides = "b",
-                        colour = "#111111",
+                        colour = unname(palette[["ink"]]),
                         linetype = "dashed",
                         linewidth = 0.7,
                         inherit.aes = FALSE

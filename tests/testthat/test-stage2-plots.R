@@ -72,3 +72,19 @@ test_that("plot_potential errors when Stage 2 is absent", {
     std <- synthetic_control(n = 10L, p = 20L, K = 2L, signal = 30, seed = 1L)
     expect_error(plot_potential(std), "Stage 2 has not been run")
 })
+
+test_that("plot_potential scopes metadata validation to its own caller", {
+    std <- synthetic_control(n = 20L, p = 60L, K = 1L, signal = 20, seed = 3L)
+    std <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "svd")(), std)
+    )@value
+    std <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std
+    )@value
+
+    expect_error(
+        plot_potential(std, colour_by = "not_a_metadata_field"),
+        "^plot_potential\\(\\): colour_by .* was not found",
+        class = "landscapeR_validation_error"
+    )
+})

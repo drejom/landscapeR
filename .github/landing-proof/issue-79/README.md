@@ -23,8 +23,16 @@ the focal red as a claim about biological importance.
 ![A synthetic component trajectory using the continuous palette](continuous-metadata.png)
 
 Continuous metadata use a perceptually ordered, colour-vision-deficiency-aware
-scale. All three figures share the same 100 mm square, minimal publication
+scale. All four figures share the same 100 mm square, minimal publication
 grammar with visible axes and ticks.
+
+## Missing metadata
+
+![A component distribution with three missing metadata observations shown as dashed black rug marks](missing-metadata.png)
+
+Missing metadata remain present in the scientific distribution and are marked
+with a separate dashed black rug plus an explicit count in the caption. They
+cannot be mistaken for a level on the categorical colour scale.
 
 ## Observable contract
 
@@ -33,7 +41,7 @@ grammar with visible axes and ticks.
 | Structural marks | Black, white, and grey |
 | Declared focal binary level | Restrained red |
 | Categorical metadata | Unbounded discrete Viridis scale |
-| Continuous metadata | Sequential Viridis scale |
+| Continuous metadata | Sequential Cividis scale |
 | Missing metadata | Dashed black rug plus explicit caption |
 | Default export | 100 mm square at 450 dpi |
 

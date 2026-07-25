@@ -7,7 +7,6 @@ suppressPackageStartupMessages(
 )
 
 set.seed(79L)
-semantic <- landscapeR_palette("semantic")
 output_dir <- ".github/landing-proof/issue-79"
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -89,6 +88,29 @@ continuous_plot <- ggplot2::ggplot(
   ) +
   theme_landscapeR()
 
+missing_std <- synthetic_control(
+  n = 20L,
+  p = 60L,
+  K = 1L,
+  signal = 20,
+  seed = 79L
+)
+missing_cd <- colData(missing_std)
+missing_cd$planted_group[1:3] <- NA_character_
+colData(missing_std) <- missing_cd
+missing_std <- suppressWarnings(
+  decompose(get_strategy("Decomposer", "svd")(), missing_std)
+)@value
+missing_plot <- plot_components(
+  missing_std,
+  colour_by = "planted_group",
+  n_components = 1L
+) +
+  ggplot2::labs(
+    title = "Missing metadata remain visible",
+    subtitle = NULL
+  )
+
 save_landscapeR_plot(
   binary_plot,
   file.path(output_dir, "binary-contrast.png")
@@ -100,6 +122,10 @@ save_landscapeR_plot(
 save_landscapeR_plot(
   continuous_plot,
   file.path(output_dir, "continuous-metadata.png")
+)
+save_landscapeR_plot(
+  missing_plot,
+  file.path(output_dir, "missing-metadata.png")
 )
 
 cat("Rendered issue #79 publication-theme landing proof.\n")
