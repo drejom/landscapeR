@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# pre-push: mirrors the CI check job, scoped to changed files.
-# Skips entirely when the push touches none of the watched paths.
+# pre-push: mirrors the CI check job.
+# Roadmap integrity always runs; remaining checks are scoped to changed files.
 #
 # Checks (all blocking):
 #   1. Roadmap integrity    — roadmap agrees with live GitHub issue state
