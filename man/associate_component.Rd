@@ -4,11 +4,17 @@
 \name{associate_component}
 \alias{associate_component}
 \alias{associate_component,CrossSectionalBinaryAssociationStrategy,numeric-method}
+\alias{associate_component,CrossSectionalContinuousAssociationStrategy,numeric-method}
+\alias{associate_component,CrossSectionalOrderedAssociationStrategy,numeric-method}
 \title{Compute one component association}
 \usage{
 associate_component(strategy, scores, values)
 
 \S4method{associate_component}{CrossSectionalBinaryAssociationStrategy,numeric}(strategy, scores, values)
+
+\S4method{associate_component}{CrossSectionalContinuousAssociationStrategy,numeric}(strategy, scores, values)
+
+\S4method{associate_component}{CrossSectionalOrderedAssociationStrategy,numeric}(strategy, scores, values)
 }
 \arguments{
 \item{strategy}{an applicable \code{AssociationStrategy} implementation}

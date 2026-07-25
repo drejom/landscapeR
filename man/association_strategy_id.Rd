@@ -4,11 +4,17 @@
 \name{association_strategy_id}
 \alias{association_strategy_id}
 \alias{association_strategy_id,CrossSectionalBinaryAssociationStrategy-method}
+\alias{association_strategy_id,CrossSectionalContinuousAssociationStrategy-method}
+\alias{association_strategy_id,CrossSectionalOrderedAssociationStrategy-method}
 \title{Return an association strategy provenance identifier}
 \usage{
 association_strategy_id(strategy)
 
 \S4method{association_strategy_id}{CrossSectionalBinaryAssociationStrategy}(strategy)
+
+\S4method{association_strategy_id}{CrossSectionalContinuousAssociationStrategy}(strategy)
+
+\S4method{association_strategy_id}{CrossSectionalOrderedAssociationStrategy}(strategy)
 }
 \arguments{
 \item{strategy}{an \code{AssociationStrategy} implementation}

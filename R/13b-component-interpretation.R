@@ -1,12 +1,12 @@
-# Cross-sectional component interpretation (ADR 0020; issue #79)
+# Cross-sectional component interpretation (ADR 0020; issues #79 and #80)
 
 utils::globalVariables(c("metadata_field", "component_label"))
 
 .association_atlas_columns <- c(
     "metadata_field", "component", "component_label", "estimand",
     "estimate", "effect_magnitude", "reference_level", "comparison_level",
-    "n_available", "n_missing", "n_score_ties", "p_value", "q_value",
-    "evidence_status"
+    "n_available", "n_missing", "n_score_ties", "n_target_ties",
+    "p_value", "q_value", "evidence_status"
 )
 
 .association_observation_columns <- c(
@@ -345,12 +345,18 @@ setMethod(
                 )
             )
         }
-        .signed_rank_biserial(
+        effect <- .signed_rank_biserial(
             scores,
             values,
             reference = levels[[1L]],
             comparison = levels[[2L]]
         )
+        if (is.null(effect)) return(NULL)
+        effect$estimand <- "signed-rank-biserial"
+        effect$reference_level <- levels[[1L]]
+        effect$comparison_level <- levels[[2L]]
+        effect$n_target_ties <- NA_integer_
+        effect
     }
 )
 
@@ -377,6 +383,193 @@ register_strategy(
             )
         }
         new("CrossSectionalBinaryAssociationStrategy")
+    }
+)
+
+#' Cross-sectional continuous Spearman association strategy
+#'
+#' @rdname AssociationStrategy-class
+#' @export
+setClass(
+    "CrossSectionalContinuousAssociationStrategy",
+    contains = "AssociationStrategy"
+)
+
+#' @rdname association_applicable
+#' @export
+setMethod(
+    "association_applicable",
+    signature(
+        strategy = "CrossSectionalContinuousAssociationStrategy",
+        data = "StateTransitionData",
+        values = "ANY"
+    ),
+    function(strategy, data, values) {
+        observed <- values[!is.na(values)]
+        identical(data@sampling_design@kind, "cross_sectional") &&
+            is.numeric(values) &&
+            !is.logical(values) &&
+            length(unique(observed)) >= 3L
+    }
+)
+
+#' @rdname associate_component
+#' @export
+setMethod(
+    "associate_component",
+    signature(
+        strategy = "CrossSectionalContinuousAssociationStrategy",
+        scores = "numeric",
+        values = "ANY"
+    ),
+    function(strategy, scores, values) {
+        complete <- is.finite(scores) & !is.na(values) & is.finite(values)
+        complete_scores <- scores[complete]
+        complete_values <- as.numeric(values[complete])
+        if (length(complete_scores) < 3L ||
+            length(unique(complete_scores)) < 2L ||
+            length(unique(complete_values)) < 2L) {
+            return(NULL)
+        }
+        score_ties <- duplicated(complete_scores) |
+            duplicated(complete_scores, fromLast = TRUE)
+        target_ties <- duplicated(complete_values) |
+            duplicated(complete_values, fromLast = TRUE)
+        test <- suppressWarnings(stats::cor.test(
+            complete_scores,
+            complete_values,
+            method = "spearman",
+            exact = FALSE
+        ))
+        list(
+            estimand = "spearman",
+            estimate = unname(test$estimate),
+            reference_level = NA_character_,
+            comparison_level = NA_character_,
+            n_available = length(complete_scores),
+            n_score_ties = sum(score_ties),
+            n_target_ties = sum(target_ties),
+            p_value = unname(test$p.value)
+        )
+    }
+)
+
+#' @rdname association_strategy_id
+#' @export
+setMethod(
+    "association_strategy_id",
+    signature(strategy = "CrossSectionalContinuousAssociationStrategy"),
+    function(strategy) {
+        "cross-sectional-continuous-spearman-v1"
+    }
+)
+
+register_strategy(
+    "AssociationStrategy",
+    "cross_sectional_continuous",
+    function(params = list()) {
+        if (length(params)) {
+            .stop_landscapeR_validation(
+                paste0(
+                    "cross_sectional_continuous association strategy does ",
+                    "not accept parameters"
+                )
+            )
+        }
+        new("CrossSectionalContinuousAssociationStrategy")
+    }
+)
+
+#' Cross-sectional ordered Kendall tau-b association strategy
+#'
+#' @rdname AssociationStrategy-class
+#' @export
+setClass(
+    "CrossSectionalOrderedAssociationStrategy",
+    contains = "AssociationStrategy"
+)
+
+#' @rdname association_applicable
+#' @export
+setMethod(
+    "association_applicable",
+    signature(
+        strategy = "CrossSectionalOrderedAssociationStrategy",
+        data = "StateTransitionData",
+        values = "ANY"
+    ),
+    function(strategy, data, values) {
+        if (!is.ordered(values)) return(FALSE)
+        observed <- droplevels(values[!is.na(values)])
+        identical(data@sampling_design@kind, "cross_sectional") &&
+            nlevels(observed) >= 3L
+    }
+)
+
+#' @rdname associate_component
+#' @export
+setMethod(
+    "associate_component",
+    signature(
+        strategy = "CrossSectionalOrderedAssociationStrategy",
+        scores = "numeric",
+        values = "ANY"
+    ),
+    function(strategy, scores, values) {
+        complete <- is.finite(scores) & !is.na(values)
+        complete_scores <- scores[complete]
+        complete_values <- as.integer(values[complete])
+        if (length(complete_scores) < 3L ||
+            length(unique(complete_scores)) < 2L ||
+            length(unique(complete_values)) < 2L) {
+            return(NULL)
+        }
+        score_ties <- duplicated(complete_scores) |
+            duplicated(complete_scores, fromLast = TRUE)
+        target_ties <- duplicated(complete_values) |
+            duplicated(complete_values, fromLast = TRUE)
+        test <- suppressWarnings(stats::cor.test(
+            complete_scores,
+            complete_values,
+            method = "kendall",
+            exact = FALSE
+        ))
+        list(
+            estimand = "kendall-tau-b",
+            estimate = unname(test$estimate),
+            reference_level = NA_character_,
+            comparison_level = NA_character_,
+            n_available = length(complete_scores),
+            n_score_ties = sum(score_ties),
+            n_target_ties = sum(target_ties),
+            p_value = unname(test$p.value)
+        )
+    }
+)
+
+#' @rdname association_strategy_id
+#' @export
+setMethod(
+    "association_strategy_id",
+    signature(strategy = "CrossSectionalOrderedAssociationStrategy"),
+    function(strategy) {
+        "cross-sectional-ordered-kendall-tau-b-v1"
+    }
+)
+
+register_strategy(
+    "AssociationStrategy",
+    "cross_sectional_ordered",
+    function(params = list()) {
+        if (length(params)) {
+            .stop_landscapeR_validation(
+                paste0(
+                    "cross_sectional_ordered association strategy does not ",
+                    "accept parameters"
+                )
+            )
+        }
+        new("CrossSectionalOrderedAssociationStrategy")
     }
 )
 
@@ -422,10 +615,12 @@ register_strategy(
 
 #' Associate Stage 1 components with eligible metadata
 #'
-#' The issue #79 tracer supports one cross-sectional biological layer and
-#' binary metadata. Factor levels declare reference then comparison; character
-#' or logical levels use deterministic lexical order. Identifier-like fields
-#' and caller-declared non-analytical fields are excluded with reasons.
+#' The cross-sectional tracer supports one biological layer. Binary metadata
+#' use signed rank-biserial association, continuous metadata use Spearman
+#' association, and ordered factors use Kendall tau-b against their declared
+#' level order. Binary factor levels declare reference then comparison;
+#' character or logical levels use deterministic lexical order. Identifier-like
+#' fields and caller-declared non-analytical fields are excluded with reasons.
 #'
 #' @param std a Stage-1-complete `StateTransitionData`
 #' @param non_analytical_fields metadata fields to exclude explicitly
@@ -490,6 +685,7 @@ associate_metadata <- function(
     exclusion_rows <- list()
     association_rows <- list()
     observation_rows <- list()
+    association_strategy_ids <- character()
     coordinate_matrix <- coordinates[[1L]]
     if (!is.matrix(coordinate_matrix) ||
         !is.numeric(coordinate_matrix) ||
@@ -550,7 +746,10 @@ associate_metadata <- function(
             )
             next
         }
-        levels <- .binary_level_order(values)
+        association_strategy_ids <- c(
+            association_strategy_ids,
+            association_strategy_id(strategy)
+        )
 
         field_rows <- lapply(seq_len(ncol(coordinate_matrix)), function(j) {
             scores <- coordinate_matrix[, j]
@@ -560,14 +759,15 @@ associate_metadata <- function(
                 metadata_field = field,
                 component = as.integer(j),
                 component_label = component_labels[[j]],
-                estimand = "signed-rank-biserial",
+                estimand = effect$estimand,
                 estimate = effect$estimate,
                 effect_magnitude = abs(effect$estimate),
-                reference_level = levels[[1L]],
-                comparison_level = levels[[2L]],
+                reference_level = effect$reference_level,
+                comparison_level = effect$comparison_level,
                 n_available = as.integer(effect$n_available),
                 n_missing = as.integer(length(values) - effect$n_available),
                 n_score_ties = as.integer(effect$n_score_ties),
+                n_target_ties = as.integer(effect$n_target_ties),
                 p_value = effect$p_value,
                 q_value = NA_real_,
                 evidence_status = "estimable-exploratory-only",
@@ -609,7 +809,8 @@ associate_metadata <- function(
     } else {
         empty <- lapply(.association_atlas_columns, function(name) {
             if (name %in% c(
-                "component", "n_available", "n_missing", "n_score_ties"
+                "component", "n_available", "n_missing", "n_score_ties",
+                "n_target_ties"
             )) integer() else if (name %in% c(
                 "estimate", "effect_magnitude", "p_value", "q_value"
             )) numeric() else character()
@@ -670,12 +871,7 @@ associate_metadata <- function(
         state_space_digest = state_space_digest,
         compute_tier = "analytic-unadjusted",
         provenance = list(
-            association_strategy = association_strategy_id(
-                get_strategy(
-                    "AssociationStrategy",
-                    "cross_sectional_binary"
-                )()
-            ),
+            association_strategy = sort(unique(association_strategy_ids)),
             package_version = as.character(
                 utils::packageVersion("landscapeR")
             ),

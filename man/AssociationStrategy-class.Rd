@@ -5,6 +5,8 @@
 \name{AssociationStrategy-class}
 \alias{AssociationStrategy-class}
 \alias{CrossSectionalBinaryAssociationStrategy-class}
+\alias{CrossSectionalContinuousAssociationStrategy-class}
+\alias{CrossSectionalOrderedAssociationStrategy-class}
 \title{Virtual class for component-association strategies}
 \description{
 Implementations declare their applicability to a sampling design and

@@ -45,6 +45,21 @@ component_interpretation_fixture <- function() {
     std
 }
 
+continuous_component_interpretation_fixture <- function() {
+    std <- component_interpretation_fixture()
+    colData(std)$severity <- c(1, 2, 2, 4, 5, 6, 7, 8)
+    std
+}
+
+ordered_component_interpretation_fixture <- function() {
+    std <- component_interpretation_fixture()
+    colData(std)$state <- ordered(
+        c("early", "early", "middle", "middle", "late", "late", "late", "end"),
+        levels = c("early", "middle", "late", "end")
+    )
+    std
+}
+
 test_that("cross-sectional binary metadata produces a typed association atlas", {
     atlas <- associate_metadata(
         component_interpretation_fixture(),
@@ -91,6 +106,60 @@ test_that("cross-sectional binary metadata produces a typed association atlas", 
     exclusions <- atlas_exclusions(atlas)
     expect_identical(exclusions$metadata_field, "mouse_id")
     expect_identical(exclusions$reason, "declared-non-analytical")
+})
+
+test_that("continuous metadata uses Spearman association with visible ties", {
+    atlas <- associate_metadata(
+        continuous_component_interpretation_fixture(),
+        non_analytical_fields = "mouse_id",
+        dataset_id = "continuous-control"
+    )
+
+    severity <- atlas_associations(atlas)
+    severity <- severity[
+        severity$metadata_field == "severity",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(severity$component, c(1L, 2L))
+    expect_identical(severity$estimand, rep("spearman", 2L))
+    expect_equal(severity$estimate[[1L]], 0.994029797388005)
+    expect_identical(severity$n_available, rep(8L, 2L))
+    expect_identical(severity$n_missing, rep(0L, 2L))
+    expect_identical(severity$n_target_ties, rep(2L, 2L))
+    expect_true(all(is.na(severity$reference_level)))
+    expect_true(all(is.na(severity$comparison_level)))
+    expect_true(
+        "cross-sectional-continuous-spearman-v1" %in%
+            atlas_provenance(atlas)$association_strategy
+    )
+})
+
+test_that("ordered metadata uses Kendall tau-b with declared level order", {
+    atlas <- associate_metadata(
+        ordered_component_interpretation_fixture(),
+        non_analytical_fields = "mouse_id",
+        dataset_id = "ordered-control"
+    )
+
+    state <- atlas_associations(atlas)
+    state <- state[
+        state$metadata_field == "state",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(state$component, c(1L, 2L))
+    expect_identical(state$estimand, rep("kendall-tau-b", 2L))
+    expect_equal(state$estimate[[1L]], 0.9063269671749657)
+    expect_identical(state$n_target_ties, rep(7L, 2L))
+    expect_true(all(is.na(state$reference_level)))
+    expect_true(all(is.na(state$comparison_level)))
+    expect_true(
+        "cross-sectional-ordered-kendall-tau-b-v1" %in%
+            atlas_provenance(atlas)$association_strategy
+    )
 })
 
 test_that("component proposal ranks only by sign-invariant biological effect", {

@@ -19,8 +19,10 @@ deterministic input-digest identifier}
 a validated \code{MetadataAssociationAtlas}
 }
 \description{
-The issue #79 tracer supports one cross-sectional biological layer and
-binary metadata. Factor levels declare reference then comparison; character
-or logical levels use deterministic lexical order. Identifier-like fields
-and caller-declared non-analytical fields are excluded with reasons.
+The cross-sectional tracer supports one biological layer. Binary metadata
+use signed rank-biserial association, continuous metadata use Spearman
+association, and ordered factors use Kendall tau-b against their declared
+level order. Binary factor levels declare reference then comparison;
+character or logical levels use deterministic lexical order. Identifier-like
+fields and caller-declared non-analytical fields are excluded with reasons.
 }
