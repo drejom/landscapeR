@@ -1,0 +1,206 @@
+test_that("theme_landscapeR provides the square publication grammar", {
+    theme <- theme_landscapeR()
+
+    expect_s3_class(theme, "theme")
+    expect_identical(theme$aspect.ratio, 1)
+    expect_s3_class(theme$panel.grid.major, "element_blank")
+    expect_s3_class(theme$panel.grid.minor, "element_blank")
+    expect_s3_class(theme$axis.line, "element_line")
+    expect_s3_class(theme$axis.ticks, "element_line")
+    expect_identical(theme$text$family, "Helvetica")
+})
+
+test_that("landscapeR palettes have stable semantic roles", {
+    semantic <- landscapeR_palette("semantic")
+    binary <- landscapeR_palette("binary")
+    categorical <- landscapeR_palette("categorical")
+
+    expect_identical(
+        semantic,
+        c(
+            ink = "#111111",
+            focal = "#C43C39",
+            nuisance = "#8A8A8A",
+            missing = "#EFEFEF",
+            negative = "#356A88"
+        )
+    )
+    expect_identical(binary, c(reference = "#111111", focal = "#C43C39"))
+    expect_length(categorical, 8L)
+    expect_length(landscapeR_palette("categorical", n = 9L), 9L)
+    expect_error(
+        landscapeR_palette("binary", n = 3L),
+        "only for the categorical palette"
+    )
+})
+
+test_that("landscapeR colour and fill scales match declared data roles", {
+    expect_s3_class(
+        scale_colour_landscapeR(
+            "binary",
+            reference_level = "CTL",
+            focal_level = "CM"
+        ),
+        "ScaleDiscrete"
+    )
+    expect_s3_class(
+        scale_fill_landscapeR("categorical"),
+        "ScaleDiscrete"
+    )
+    expect_s3_class(
+        scale_colour_landscapeR("continuous"),
+        "ScaleContinuous"
+    )
+    expect_s3_class(
+        scale_fill_landscapeR("diverging"),
+        "ScaleContinuous"
+    )
+    continuous_override <- scale_colour_landscapeR(
+        "continuous",
+        na.value = "pink",
+        direction = 1
+    )
+    expect_identical(continuous_override$na.value, "pink")
+    expect_identical(
+        continuous_override$palette(c(0, 1)),
+        c("#00204D", "#FFEA46")
+    )
+    binary_override <- scale_colour_landscapeR(
+        "binary",
+        reference_level = "control",
+        focal_level = "treatment",
+        values = c(control = "green", treatment = "blue")
+    )
+    expect_identical(
+        binary_override$palette(2L),
+        c(control = "green", treatment = "blue")
+    )
+})
+
+test_that("binary scales name the declared focal level independently of order", {
+    data <- data.frame(
+        group = factor(c("CM", "CTL"), levels = c("CM", "CTL")),
+        x = 1:2,
+        y = 1:2
+    )
+    plot <- ggplot2::ggplot(
+        data,
+        ggplot2::aes(x, y, colour = group)
+    ) +
+        ggplot2::geom_point() +
+        scale_colour_landscapeR(
+            "binary",
+            reference_level = "CTL",
+            focal_level = "CM"
+        )
+
+    colours <- ggplot2::ggplot_build(plot)$data[[1L]]$colour
+    expect_identical(colours, c("#C43C39", "#111111"))
+    expect_error(
+        scale_colour_landscapeR("binary"),
+        "reference_level and focal_level"
+    )
+})
+
+test_that("categorical scales render more than eight levels", {
+    data <- data.frame(
+        group = factor(sprintf("mouse_%02d", 1:9)),
+        x = 1:9,
+        y = 1:9
+    )
+    plot <- ggplot2::ggplot(
+        data,
+        ggplot2::aes(x, y, colour = group)
+    ) +
+        ggplot2::geom_point() +
+        scale_colour_landscapeR("categorical")
+
+    expect_no_error(ggplot2::ggplot_build(plot))
+    expect_length(unique(ggplot2::ggplot_build(plot)$data[[1L]]$colour), 9L)
+})
+
+test_that("save_landscapeR_plot defaults to a 100 mm square", {
+    path <- tempfile(fileext = ".png")
+    on.exit(unlink(path), add = TRUE)
+
+    returned <- save_landscapeR_plot(
+        ggplot2::ggplot(data.frame(x = 1:3, y = 1:3),
+                        ggplot2::aes(x, y)) +
+            ggplot2::geom_point(),
+        path
+    )
+
+    expect_identical(returned, normalizePath(path))
+    expect_true(file.exists(path))
+
+    header <- readBin(path, what = "raw", n = 24L)
+    uint32 <- function(bytes) {
+        sum(as.integer(bytes) * 256^(3:0))
+    }
+    width_mm <- uint32(header[17:20]) / 450 * 25.4
+    height_mm <- uint32(header[21:24]) / 450 * 25.4
+    expect_equal(width_mm, 100, tolerance = 25.4 / 450)
+    expect_equal(height_mm, 100, tolerance = 25.4 / 450)
+})
+
+test_that("existing scientific plots use the landscapeR theme", {
+    std <- synthetic_control(
+        n = 20L, p = 60L, K = 1L, signal = 20, seed = 1L
+    )
+    plot <- plot_spectrum(std, n_sv = 5L)
+
+    expect_identical(plot$theme$aspect.ratio, 1)
+    expect_s3_class(plot$theme$panel.grid.major, "element_blank")
+    expect_s3_class(plot$theme$axis.line, "element_line")
+})
+
+test_that("component galleries mark and label missing metadata explicitly", {
+    std <- synthetic_control(
+        n = 20L, p = 60L, K = 1L, signal = 20, seed = 1L
+    )
+    cd <- colData(std)
+    cd$planted_group[1L] <- NA_character_
+    colData(std) <- cd
+    std <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "svd")(), std)
+    )@value
+
+    plot <- plot_components(std, colour_by = "planted_group")
+
+    expect_match(plot$labels$caption, "Dashed rug.*missing")
+    expect_true(any(vapply(
+        plot$layers,
+        function(layer) {
+            inherits(layer$geom, "GeomRug") &&
+                identical(layer$aes_params$linetype, "dashed")
+        },
+        logical(1L)
+    )))
+})
+
+test_that("potential plots mark and label missing metadata explicitly", {
+    std <- synthetic_control(
+        n = 20L, p = 60L, K = 1L, signal = 20, seed = 2L
+    )
+    cd <- colData(std)
+    cd$planted_group[1L] <- NA_character_
+    colData(std) <- cd
+    std <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "svd")(), std)
+    )@value
+    std <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std
+    )@value
+
+    plot <- plot_potential(std, colour_by = "planted_group")
+
+    expect_match(plot$labels$caption, "Dashed rug.*missing")
+    expect_true(any(vapply(
+        plot$layers,
+        function(layer) {
+            inherits(layer$geom, "GeomRug") &&
+                identical(layer$aes_params$linetype, "dashed")
+        },
+        logical(1L)
+    )))
+})

@@ -135,20 +135,34 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             ) +
             ggplot2::geom_rug(colour = "grey35", alpha = 0.45, sides = "b")
     } else if (is.numeric(meta_col)) {
+        observed <- df[!is.na(df$metadata_value), , drop = FALSE]
+        missing <- df[is.na(df$metadata_value), , drop = FALSE]
         p <- p +
             ggplot2::geom_density(
                 fill = "grey85", colour = "grey35", alpha = 0.55,
                 linewidth = 0.5
             ) +
             ggplot2::geom_rug(
+                data = observed,
                 ggplot2::aes(colour = .data[["metadata_value"]]),
                 alpha = 0.75,
                 sides = "b"
             ) +
-            ggplot2::scale_colour_viridis_c(na.value = "grey70")
+            scale_colour_landscapeR("continuous")
+        if (nrow(missing)) {
+            p <- p + ggplot2::geom_rug(
+                data = missing,
+                colour = "#111111",
+                linetype = "dashed",
+                linewidth = 0.7,
+                sides = "b"
+            )
+        }
     } else {
+        observed <- df[!is.na(df$metadata_value), , drop = FALSE]
+        missing <- df[is.na(df$metadata_value), , drop = FALSE]
         p <- ggplot2::ggplot(
-            df,
+            observed,
             ggplot2::aes(
                 x = coord,
                 fill = .data[["metadata_value"]],
@@ -157,8 +171,29 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         ) +
             ggplot2::geom_density(alpha = 0.35, linewidth = 0.5) +
             ggplot2::geom_rug(alpha = 0.55, sides = "b") +
-            ggplot2::scale_fill_viridis_d(na.value = "grey70") +
-            ggplot2::scale_colour_viridis_d(na.value = "grey70")
+            scale_fill_landscapeR("categorical") +
+            scale_colour_landscapeR("categorical")
+        if (nrow(missing)) {
+            p <- p + ggplot2::geom_rug(
+                data = missing,
+                ggplot2::aes(x = coord),
+                inherit.aes = FALSE,
+                colour = "#111111",
+                linetype = "dashed",
+                linewidth = 0.7,
+                sides = "b"
+            )
+        }
+    }
+
+    caption <- if (!is.null(meta_col) && anyNA(meta_col)) {
+        sprintf(
+            "Dashed rug marks %d observation(s) with missing %s",
+            sum(is.na(meta_col)),
+            colour_by
+        )
+    } else {
+        NULL
     }
 
     p +
@@ -173,9 +208,10 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             x = "Coordinate",
             y = "Density",
             fill = colour_by,
-            colour = colour_by
+            colour = colour_by,
+            caption = caption
         ) +
-        ggplot2::theme_bw(base_size = 10) +
+        theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 }
 
@@ -303,7 +339,7 @@ plot_spectrum <- function(std, n_sv = 20L) {
         ggplot2::annotate("text", x = n_sv * 0.7, y = bbp,
                            label = sprintf("BBP = %.1f", bbp),
                            vjust = -0.5, colour = "grey40", size = 3.2) +
-        ggplot2::scale_colour_brewer(palette = "Dark2") +
+        scale_colour_landscapeR("categorical") +
         ggplot2::labs(
             title   = "Singular value spectrum per layer",
             subtitle = sprintf("n = %d, p = %d, %d layers", n, p, length(expt_list)),
@@ -311,7 +347,7 @@ plot_spectrum <- function(std, n_sv = 20L) {
             y       = "Singular value",
             colour  = "Layer"
         ) +
-        ggplot2::theme_bw(base_size = 11)
+        theme_landscapeR()
 }
 
 # ---------------------------------------------------------------------------
@@ -418,11 +454,11 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
             y        = sprintf("Component %d coordinate", plot_idx),
             colour   = colour_by
         ) +
-        ggplot2::theme_bw(base_size = 11) +
+        theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 
     if (!is.null(colour_by) && colour_by %in% colnames(df))
-        p <- p + ggplot2::scale_colour_brewer(palette = "Set1", na.value = "grey70")
+        p <- p + scale_colour_landscapeR("categorical")
 
     p
 }
