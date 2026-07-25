@@ -1,4 +1,4 @@
-# Proposed specification — SamplingDesign
+# SamplingDesign specification
 
 **Status:** v1 implemented; v2 accepted in ADR 0006 and pending implementation
 

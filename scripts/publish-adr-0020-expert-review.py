@@ -325,6 +325,9 @@ def api_request(method: str, path: str, key: str, payload: dict) -> dict:
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"Tally API returned HTTP {error.code}: {detail}") from error
+    except (urllib.error.URLError, TimeoutError) as error:
+        reason = getattr(error, "reason", error)
+        raise RuntimeError(f"Tally API request failed: {reason}") from error
 
 
 def write_manifest(path: Path, response: dict, questionnaire: dict, blocks: list[dict]) -> None:

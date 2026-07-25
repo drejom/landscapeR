@@ -1,0 +1,202 @@
+:root {
+  --bg: #07101d;
+  --panel: #0d1928;
+  --line: #253344;
+  --text: #eaf1f5;
+  --muted: #aebac5;
+  --cyan: #45c7d8;
+  --blue: #5d91d8;
+  --amber: #e8a74a;
+}
+
+* { box-sizing: border-box; }
+
+.slidev-layout {
+  position: relative;
+  padding: 42px 52px 34px;
+  background: radial-gradient(circle at 85% 10%, #10263b 0, transparent 30%), var(--bg);
+  color: var(--text);
+  font-family: Inter, Helvetica, Arial, sans-serif;
+}
+
+.slidev-layout h1 {
+  max-width: 900px;
+  margin: 0 0 22px;
+  color: var(--text);
+  font-size: 34px;
+  font-weight: 680;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.slidev-layout h2 { margin: 5px 0 2px; font-size: 19px; }
+.slidev-layout p { color: #c9d3da; line-height: 1.4; }
+.slidev-layout small { color: var(--muted); line-height: 1.35; }
+
+.slidev-layout.cover {
+  display: block;
+  padding: 82px 52px 42px;
+  text-align: left;
+}
+
+.slidev-layout.cover h1 {
+  margin: 8px 0;
+  font-size: 76px;
+  letter-spacing: -0.06em;
+}
+
+.slidev-layout.cover h2 {
+  max-width: 760px;
+  color: #ced9df;
+  font-size: 27px;
+  font-weight: 450;
+}
+
+.title-kicker,
+.status {
+  color: var(--cyan);
+  font-family: "Fira Code", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.title-example { margin-top: 36px; color: var(--amber); font-size: 16px; }
+.title-meta { position: absolute; bottom: 42px; left: 52px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.status { position: absolute; top: 22px; right: 52px; padding: 7px 10px; border: 1px solid #2d5361; border-radius: 3px; background: #0b1e2b; }
+.bottom { position: absolute; right: 52px; bottom: 20px; left: 52px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.citation { position: absolute; right: 52px; bottom: 17px; color: #82909b; font-size: 9px; }
+.repo { position: absolute; right: 52px; bottom: 18px; color: var(--cyan); font-family: "Fira Code", monospace; font-size: 10px; }
+
+.design-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.design-item { min-height: 350px; padding: 15px; border-top: 3px solid; background: linear-gradient(180deg, #0d1a29, #091421); }
+.design-item.cyan { border-color: var(--cyan); }
+.design-item.blue { border-color: var(--blue); }
+.design-item.amber { border-color: var(--amber); }
+.design-item svg { width: 100%; height: 105px; margin-bottom: 4px; overflow: visible; }
+.design-item svg text { fill: #8998a4; font: 11px Inter; }
+.design-item .guide, .design-item .subject-line { fill: none; stroke: #5c6d79; stroke-width: 1.8; }
+.design-item .subject-line { stroke: #6e9bc6; }
+.design-item .time-arrow { fill: none; stroke: #7b8c98; stroke-width: 1.8; }
+.design-item circle { fill: #19293a; stroke-width: 2.3; }
+.design-item .sample circle { stroke: #9db1bf; }
+.design-item .branch-a circle { stroke: var(--cyan); }
+.design-item .branch-b circle { stroke: var(--amber); }
+.design-item strong { font-size: 14px; }
+.design-item p { margin: 8px 0; font-size: 12px; }
+.design-item small { display: block; font-size: 10px; }
+
+.science-split { display: grid; grid-template-columns: 40% 60%; gap: 18px; align-items: center; height: 385px; }
+.plot-frame { display: flex; align-items: center; justify-content: center; height: 100%; overflow: hidden; }
+.plot-frame img { width: 100%; height: 100%; object-fit: contain; }
+.matrix-side { display: grid; grid-template-columns: 120px 34px 1fr; align-items: center; gap: 8px; }
+.matrix-glyph { position: relative; }
+.matrix-glyph span { position: absolute; top: 46px; left: -27px; transform: rotate(-90deg); color: var(--muted); font-size: 10px; }
+.matrix-glyph i { display: block; color: var(--muted); font-size: 10px; font-style: normal; text-align: center; }
+.heat-grid { padding: 12px; border: 1px solid #315169; background: linear-gradient(135deg, #193044, #0a1724); color: var(--cyan); font: 11px/1.25 "Fira Code", monospace; letter-spacing: 0.14em; }
+.plain-arrow { color: var(--cyan); font-size: 25px; }
+.step-copy b, .equation-side strong { font-size: 17px; }
+.step-copy p, .equation-side p { margin: 8px 0; font-size: 13px; }
+.step-copy small, .equation-side small { display: block; margin-top: 12px; font-size: 10px; }
+.equation-side, .metadata-side, .interpret-side { padding-right: 12px; }
+.equation { margin-bottom: 20px; color: var(--cyan); font: 25px "Fira Code", monospace; }
+.caveat { margin-top: 16px; padding: 10px 12px; border-left: 3px solid var(--cyan); background: #0b1a28; color: #b9c5cd; font-size: 11px; line-height: 1.4; }
+.amber-caveat { border-color: var(--amber); }
+.metadata-side > div { position: relative; margin: 14px 0; padding-left: 24px; }
+.metadata-side strong { font-size: 14px; }
+.metadata-side p, .interpret-side p { margin: 3px 0; font-size: 11px; }
+.meta-dot { position: absolute; top: 4px; left: 0; width: 10px; height: 10px; border-radius: 50%; }
+.meta-dot.stage { background: var(--blue); }
+.meta-dot.sex { background: var(--cyan); box-shadow: 0 0 0 3px rgba(232,167,74,.35); }
+.meta-dot.temp { border: 2px solid var(--amber); }
+
+.loadings-layout { display: grid; grid-template-columns: 57% 43%; gap: 18px; align-items: center; height: 385px; }
+.interpret-chain { display: grid; justify-items: start; gap: 3px; margin: 0 0 14px 14px; }
+.interpret-chain > div { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 12px; min-height: 50px; }
+.interpret-chain > i { margin-left: 23px; color: #607482; font-style: normal; line-height: 10px; }
+.interpret-chain b { font-size: 12px; }
+.concept-icon { width: 52px; height: 42px; overflow: visible; color: var(--cyan); }
+.concept-icon path { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.concept-icon circle { fill: #07101d; stroke: currentColor; stroke-width: 1.7; }
+.helix-icon { color: var(--amber); }
+
+.analysis-flow { display: grid; grid-template-columns: 1fr 24px 1fr 24px 1fr 24px 1fr 24px 1fr; align-items: center; margin-top: 55px; }
+.analysis-flow > div { min-height: 105px; padding-top: 10px; border-top: 2px solid var(--cyan); }
+.analysis-flow > div span { display: block; color: var(--cyan); font: 9px "Fira Code", monospace; }
+.analysis-flow strong { display: block; margin: 6px 0; font-size: 14px; }
+.analysis-flow small { display: block; font-size: 9px; }
+.analysis-flow i { color: #607482; font-style: normal; text-align: center; }
+.rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 28px; }
+.rules div { padding: 10px; border-left: 2px solid var(--amber); background: #0b1725; color: #c9d3da; font-size: 11px; }
+
+.evidence-ladder { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 25px; }
+.evidence-ladder > div { min-height: 280px; padding: 16px; border-top: 3px solid var(--cyan); background: #0b1725; }
+.evidence-ladder > div:nth-child(2) { border-color: #65a6c8; }
+.evidence-ladder > div:nth-child(3) { border-color: var(--amber); }
+.evidence-ladder span { color: #42586a; font: 700 28px "Fira Code", monospace; }
+.evidence-ladder strong { display: block; margin: 12px 0; font-size: 15px; }
+.evidence-ladder p { font-size: 12px; }
+.evidence-ladder small { font-size: 10px; }
+
+.governance { display: grid; grid-template-columns: 1fr 34px 1fr 34px 1fr; align-items: center; margin: 55px 16px 0; }
+.governance > div { min-height: 120px; padding: 15px; border-top: 3px solid var(--cyan); background: #0b1725; }
+.governance > div:last-child { border-color: var(--amber); }
+.governance > b { color: #607482; text-align: center; }
+.governance strong, .governance span { display: block; }
+.governance strong { font-size: 16px; }
+.governance span { margin-top: 8px; color: var(--muted); font-size: 11px; }
+.artifact-line { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 25px 16px 0; }
+.artifact-line span { color: #c9d3da; font-size: 10px; }
+.artifact-line small { display: block; margin-bottom: 4px; color: var(--cyan); font: 700 8px "Fira Code", monospace; letter-spacing: .1em; }
+
+.alignment-intro { max-width: 820px; color: #c9d3da; font-size: 15px; line-height: 1.4; }
+.collaboration-flow { display: grid; grid-template-columns: 1fr 20px 1fr 20px 1fr 20px 1fr 20px 1fr; align-items: center; margin-top: 34px; }
+.collaboration-flow > div { min-height: 105px; padding: 11px 8px; border-top: 3px solid var(--cyan); background: #0b1725; }
+.collaboration-flow > div:nth-of-type(2), .collaboration-flow > div:nth-of-type(4) { border-color: #65a6c8; }
+.collaboration-flow > div:last-child { border-color: var(--amber); }
+.collaboration-flow > i { color: #607482; font-style: normal; text-align: center; }
+.collaboration-flow span, .collaboration-flow strong, .collaboration-flow small { display: block; }
+.collaboration-flow span { color: #607482; font: 9px "Fira Code", monospace; }
+.collaboration-flow strong { margin: 6px 0; font-size: 14px; }
+.collaboration-flow small { font-size: 9px; }
+.skills-reference { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 22px; margin-top: 24px; padding: 14px 16px; border: 1px solid #2d5361; background: #0a1825; }
+.skills-reference small, .skills-reference strong, .skills-reference span { display: block; }
+.skills-reference small { color: var(--cyan); font: 8px "Fira Code", monospace; letter-spacing: .12em; }
+.skills-reference strong { margin: 3px 0; font-size: 14px; }
+.skills-reference span { color: var(--muted); font-size: 10px; }
+.skills-reference code { color: var(--amber); }
+.url-box { padding: 9px 12px; border: 1px solid var(--cyan); color: var(--cyan); font: 11px "Fira Code", monospace; }
+
+.closing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 38px; }
+.closing-grid > div { position: relative; padding: 15px 15px 15px 22px; border-top: 1px solid var(--line); }
+.closing-grid strong { font-size: 15px; }
+.closing-grid p { font-size: 11px; }
+.done-dot, .next-dot, .later-dot { position: absolute; top: 19px; left: 0; width: 8px; height: 8px; border-radius: 50%; }
+.done-dot { background: var(--cyan); }
+.next-dot { background: var(--blue); }
+.later-dot { border: 2px solid var(--amber); }
+.closing-statement { max-width: 650px; margin: 48px 0 0 22px; color: #d9e3e8; font-size: 20px; }
+
+.pogona-two-experiments { display: grid; grid-template-columns: 35% 65%; gap: 18px; margin-top: 26px; }
+.pogona-timecourse, .pogona-stage-series { min-height: 340px; padding: 16px; border-top: 3px solid var(--cyan); background: #0b1725; }
+.pogona-stage-series { border-color: var(--amber); }
+.pogona-timecourse small, .pogona-stage-series small { display: block; color: #728795; font: 8px "Fira Code", monospace; letter-spacing: .1em; }
+.pogona-timecourse > strong, .pogona-stage-series > strong { display: block; min-height: 42px; margin: 8px 0 18px; font-size: 15px; }
+.pogona-timecourse > b, .pogona-stage-series > b { display: block; margin-top: 25px; font-size: 13px; }
+.pogona-timecourse > span, .pogona-stage-series > span { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; }
+.cohort-label { margin-top: 13px; color: #b8c4cc; font-size: 10px; }
+.day-track { display: grid; grid-template-columns: repeat(6, 1fr); align-items: center; margin: 4px 5px 0; border-top: 1.5px solid #607482; }
+.day-track i { width: 11px; height: 11px; margin: -6px auto 0; border: 2px solid var(--cyan); border-radius: 50%; background: #102235; }
+.day-track.zz i { border-color: var(--blue); }
+.day-labels { display: grid; grid-template-columns: repeat(6, 1fr); margin: 5px 5px 0; color: #82919c; font-size: 9px; text-align: center; }
+.material-bands { display: grid; grid-template-columns: 3fr 3fr; margin: 4px 0 9px 100px; text-align: center; }
+.material-bands span { padding: 4px; background: #102437; color: #a9b6bf; font-size: 9px; }
+.material-bands span:last-child { background: #2a2030; }
+.design-matrix { display: grid; grid-template-columns: 100px repeat(6, 1fr); align-items: center; gap: 9px 7px; }
+.design-matrix b { color: #82919c; font-size: 9px; text-align: center; }
+.design-matrix strong { color: #cbd4da; font-size: 10px; }
+.design-matrix i { width: 13px; height: 13px; margin: auto; border: 2px solid; border-radius: 50%; background: #102235; }
+.design-matrix .zw { border-color: var(--cyan); }
+.design-matrix .zz { border-color: var(--blue); }
+.design-matrix .hot { border-color: var(--amber); }
+.design-matrix .empty { border-color: #263848; background: transparent; opacity: .35; }

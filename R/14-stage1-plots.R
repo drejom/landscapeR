@@ -135,20 +135,34 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             ) +
             ggplot2::geom_rug(colour = "grey35", alpha = 0.45, sides = "b")
     } else if (is.numeric(meta_col)) {
+        observed <- df[!is.na(df$metadata_value), , drop = FALSE]
+        missing <- df[is.na(df$metadata_value), , drop = FALSE]
         p <- p +
             ggplot2::geom_density(
                 fill = "grey85", colour = "grey35", alpha = 0.55,
                 linewidth = 0.5
             ) +
             ggplot2::geom_rug(
+                data = observed,
                 ggplot2::aes(colour = .data[["metadata_value"]]),
                 alpha = 0.75,
                 sides = "b"
             ) +
-            ggplot2::scale_colour_viridis_c(na.value = "grey70")
+            scale_colour_landscapeR("continuous")
+        if (nrow(missing)) {
+            p <- p + ggplot2::geom_rug(
+                data = missing,
+                colour = "#111111",
+                linetype = "dashed",
+                linewidth = 0.7,
+                sides = "b"
+            )
+        }
     } else {
+        observed <- df[!is.na(df$metadata_value), , drop = FALSE]
+        missing <- df[is.na(df$metadata_value), , drop = FALSE]
         p <- ggplot2::ggplot(
-            df,
+            observed,
             ggplot2::aes(
                 x = coord,
                 fill = .data[["metadata_value"]],
@@ -157,8 +171,29 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         ) +
             ggplot2::geom_density(alpha = 0.35, linewidth = 0.5) +
             ggplot2::geom_rug(alpha = 0.55, sides = "b") +
-            ggplot2::scale_fill_viridis_d(na.value = "grey70") +
-            ggplot2::scale_colour_viridis_d(na.value = "grey70")
+            scale_fill_landscapeR("categorical") +
+            scale_colour_landscapeR("categorical")
+        if (nrow(missing)) {
+            p <- p + ggplot2::geom_rug(
+                data = missing,
+                ggplot2::aes(x = coord),
+                inherit.aes = FALSE,
+                colour = "#111111",
+                linetype = "dashed",
+                linewidth = 0.7,
+                sides = "b"
+            )
+        }
+    }
+
+    caption <- if (!is.null(meta_col) && anyNA(meta_col)) {
+        sprintf(
+            "Dashed rug marks %d observation(s) with missing %s",
+            sum(is.na(meta_col)),
+            colour_by
+        )
+    } else {
+        NULL
     }
 
     p +
@@ -173,18 +208,28 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             x = "Coordinate",
             y = "Density",
             fill = colour_by,
-            colour = colour_by
+            colour = colour_by,
+            caption = caption
         ) +
-        ggplot2::theme_bw(base_size = 10) +
+        theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 }
 
-.component_gallery_metadata <- function(std, layer, colour_by) {
+.component_gallery_metadata <- function(
+    std,
+    layer,
+    colour_by,
+    caller = "plot_components"
+) {
     if (is.null(colour_by)) return(NULL)
+    prefix <- paste0(caller, "(): ")
     if (!is.character(colour_by) || length(colour_by) != 1L ||
         is.na(colour_by) || !nzchar(colour_by)) {
         .stop_landscapeR_validation(
-            "plot_components(): colour_by must be NULL or one non-empty column name"
+            paste0(
+                prefix,
+                "colour_by must be NULL or one non-empty column name"
+            )
         )
     }
 
@@ -192,13 +237,15 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     field_idx <- which(names(cd_s4) == colour_by)
     if (!length(field_idx)) {
         .stop_landscapeR_validation(sprintf(
-            "plot_components(): colour_by '%s' was not found in MAE-level colData",
+            "%scolour_by '%s' was not found in MAE-level colData",
+            prefix,
             colour_by
         ))
     }
     if (length(field_idx) > 1L) {
         .stop_landscapeR_validation(sprintf(
-            "plot_components(): colour_by '%s' is ambiguous in MAE-level colData",
+            "%scolour_by '%s' is ambiguous in MAE-level colData",
+            prefix,
             colour_by
         ))
     }
@@ -214,9 +261,10 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     if (anyNA(map_idx)) {
         .stop_landscapeR_validation(sprintf(
             paste0(
-                "plot_components(): missing canonical sample mapping for layer ",
+                "%smissing canonical sample mapping for layer ",
                 "'%s' observation '%s'"
             ),
+            prefix,
             layer_name,
             assay_samples[[which(is.na(map_idx))[[1L]]]]
         ))
@@ -226,9 +274,10 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     if (any(ambiguous)) {
         .stop_landscapeR_validation(sprintf(
             paste0(
-                "plot_components(): ambiguous canonical sample mapping for layer ",
+                "%sambiguous canonical sample mapping for layer ",
                 "'%s' observation '%s'"
             ),
+            prefix,
             layer_name,
             assay_samples[[which(ambiguous)[[1L]]]]
         ))
@@ -238,13 +287,17 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     primary_rows <- rownames(cd)
     if (anyDuplicated(primary_rows) > 0L) {
         .stop_landscapeR_validation(
-            "plot_components(): MAE-level colData has ambiguous primary sample IDs"
+            paste0(
+                prefix,
+                "MAE-level colData has ambiguous primary sample IDs"
+            )
         )
     }
     cd_idx <- match(primary, primary_rows)
     if (anyNA(cd_idx)) {
         .stop_landscapeR_validation(sprintf(
-            "plot_components(): MAE-level colData is missing primary sample '%s'",
+            "%sMAE-level colData is missing primary sample '%s'",
+            prefix,
             primary[[which(is.na(cd_idx))[[1L]]]]
         ))
     }
@@ -303,7 +356,7 @@ plot_spectrum <- function(std, n_sv = 20L) {
         ggplot2::annotate("text", x = n_sv * 0.7, y = bbp,
                            label = sprintf("BBP = %.1f", bbp),
                            vjust = -0.5, colour = "grey40", size = 3.2) +
-        ggplot2::scale_colour_brewer(palette = "Dark2") +
+        scale_colour_landscapeR("categorical") +
         ggplot2::labs(
             title   = "Singular value spectrum per layer",
             subtitle = sprintf("n = %d, p = %d, %d layers", n, p, length(expt_list)),
@@ -311,7 +364,7 @@ plot_spectrum <- function(std, n_sv = 20L) {
             y       = "Singular value",
             colour  = "Layer"
         ) +
-        ggplot2::theme_bw(base_size = 11)
+        theme_landscapeR()
 }
 
 # ---------------------------------------------------------------------------
@@ -354,9 +407,6 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
     n_layers  <- length(dr_coords_k(s1))
     layer_nms <- names(experiments(std))
 
-    # Per-experiment colData (correct sample count per layer)
-    expt_list <- as.list(experiments(std))
-
     # Effective component index: clip to minimum k across all layers and warn once.
     k_min    <- min(vapply(dr_coords_k(s1), ncol, integer(1L)))
     plot_idx <- min(comp_idx, k_min)
@@ -369,16 +419,20 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         k_avail <- ncol(cmat)
         j       <- min(comp_idx, k_avail)
         coord   <- cmat[, j]
-        # Use per-experiment colData so row count matches coord length
-        cd_i <- as.data.frame(colData(expt_list[[i]]))
         df <- data.frame(
             sample = seq_along(coord),
             layer  = layer_nms[i],
             coord  = coord,
             stringsAsFactors = FALSE
         )
-        if (!is.null(colour_by) && colour_by %in% colnames(cd_i))
-            df[[colour_by]] <- cd_i[[colour_by]]
+        if (!is.null(colour_by)) {
+            df[[colour_by]] <- .component_gallery_metadata(
+                std,
+                i,
+                colour_by,
+                caller = "plot_decomposition"
+            )
+        }
         df
     })
     df <- do.call(rbind, rows)
@@ -401,13 +455,11 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
     df$sample_ord <- ave(df$coord, df$layer,
                          FUN = function(x) rank(x, ties.method = "first"))
 
-    aes_base <- if (!is.null(colour_by) && colour_by %in% colnames(df))
-        ggplot2::aes(x = sample_ord, y = coord, colour = .data[[colour_by]])
-    else
+    palette <- landscapeR_palette("semantic")
+    p <- ggplot2::ggplot(
+        df,
         ggplot2::aes(x = sample_ord, y = coord)
-
-    p <- ggplot2::ggplot(df, aes_base) +
-        ggplot2::geom_point(size = 2, alpha = 0.75) +
+    ) +
         ggplot2::geom_hline(yintercept = 0, linetype = "dotted", colour = "grey60") +
         ggplot2::facet_wrap(~ layer, scales = "free_x") +
         ggplot2::labs(
@@ -418,11 +470,50 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
             y        = sprintf("Component %d coordinate", plot_idx),
             colour   = colour_by
         ) +
-        ggplot2::theme_bw(base_size = 11) +
+        theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 
-    if (!is.null(colour_by) && colour_by %in% colnames(df))
-        p <- p + ggplot2::scale_colour_brewer(palette = "Set1", na.value = "grey70")
+    if (is.null(colour_by)) {
+        return(p + ggplot2::geom_point(size = 2, alpha = 0.75))
+    }
+
+    observed <- df[!is.na(df[[colour_by]]), , drop = FALSE]
+    missing <- df[is.na(df[[colour_by]]), , drop = FALSE]
+    p <- p +
+        ggplot2::geom_point(
+            data = observed,
+            ggplot2::aes(colour = .data[[colour_by]]),
+            size = 2,
+            alpha = 0.75
+        )
+    if (is.numeric(df[[colour_by]])) {
+        p <- p + scale_colour_landscapeR(
+            "continuous",
+            name = colour_by
+        )
+    } else {
+        p <- p + scale_colour_landscapeR(
+            "categorical",
+            name = colour_by
+        )
+    }
+    if (nrow(missing)) {
+        p <- p +
+            ggplot2::geom_point(
+                data = missing,
+                shape = 4,
+                colour = unname(palette[["ink"]]),
+                size = 2.4,
+                stroke = 0.7
+            ) +
+            ggplot2::labs(
+                caption = sprintf(
+                    "Cross marks %d observation(s) with missing %s",
+                    nrow(missing),
+                    colour_by
+                )
+            )
+    }
 
     p
 }

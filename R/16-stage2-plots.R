@@ -92,34 +92,51 @@ plot_potential <- function(std, colour_by = NULL,
         comp <- s2$params$component %||% 1L
         if (length(dr_coords_k(s1))) {
             if (isTRUE(s2$params$pool_layers)) {
-                rug_x <- unlist(lapply(dr_coords_k(s1), function(m) drop(m[, comp])))
+                layer_indices <- seq_along(dr_coords_k(s1))
+                rug_x <- unlist(lapply(
+                    dr_coords_k(s1),
+                    function(m) drop(m[, comp])
+                ))
             } else {
                 layer_idx <- s2$params$layer %||% 1L
+                layer_indices <- layer_idx
                 rug_x <- drop(dr_coords_k(s1)[[layer_idx]][, comp])
             }
         } else if (length(dr_coords(s1))) {
             warning("Using coords fallback for rug positions (coords_k empty)")
+            layer_indices <- 1L
             rug_x <- dr_coords(s1)[[1L]]
         } else {
             warning("No coordinate data available for rug")
             rug_x <- NULL
         }
         if (!is.null(rug_x)) {
-            cd_rug <- as.data.frame(colData(as.list(experiments(std))[[1L]]))
             rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
-            if (!is.null(colour_by) && colour_by %in% colnames(cd_rug))
-                rug_df[[colour_by]] <- cd_rug[[colour_by]]
+            if (!is.null(colour_by)) {
+                rug_df[[colour_by]] <- unlist(lapply(
+                    layer_indices,
+                    function(layer) {
+                        .component_gallery_metadata(
+                            std,
+                            layer,
+                            colour_by,
+                            caller = "plot_potential"
+                        )
+                    }
+                ), use.names = FALSE)
+            }
         }
     }
 
+    palette <- landscapeR_palette("semantic")
     p <- ggplot2::ggplot(curve_df, ggplot2::aes(x = x, y = U)) +
-        ggplot2::geom_line(linewidth = 1, colour = "#2166AC") +
+        ggplot2::geom_line(linewidth = 1, colour = unname(palette[["ink"]])) +
         ggplot2::labs(
             title = "Quasi-potential landscape  U(x) = -log p(x)",
             x = "State-transition coordinate",
             y = "U(x)"
         ) +
-        ggplot2::theme_bw(base_size = 11) +
+        theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 
     if (isTRUE(show_critical_points)) {
@@ -128,7 +145,7 @@ plot_potential <- function(std, colour_by = NULL,
                 data = cp_df,
                 ggplot2::aes(shape = type),
                 size = 4,
-                colour = "#D6604D"
+                colour = unname(palette[["ink"]])
             ) +
             ggplot2::scale_shape_manual(
                 values = c(well = 25, barrier = 24),
@@ -146,21 +163,62 @@ plot_potential <- function(std, colour_by = NULL,
         p <- p + ggplot2::geom_segment(
             data = seg_df,
             ggplot2::aes(x = x, xend = xend, y = y, yend = yend),
-            linetype = "dotted", colour = "#D6604D", linewidth = 0.7,
+            linetype = "dotted",
+            colour = unname(palette[["nuisance"]]), linewidth = 0.7,
             inherit.aes = FALSE)
     }
 
     # Sample rug
     if (!is.null(rug_df)) {
         if (!is.null(colour_by) && colour_by %in% colnames(rug_df)) {
+            observed_rug <- rug_df[
+                !is.na(rug_df[[colour_by]]),
+                ,
+                drop = FALSE
+            ]
+            missing_rug <- rug_df[
+                is.na(rug_df[[colour_by]]),
+                ,
+                drop = FALSE
+            ]
             p <- p +
                 ggplot2::geom_rug(
-                    data = rug_df,
+                    data = observed_rug,
                     ggplot2::aes(x = x, colour = .data[[colour_by]]),
-                    sides = "b", alpha = 0.6, inherit.aes = FALSE) +
-                ggplot2::scale_colour_brewer(palette = "Set1",
-                                              na.value = "grey70",
-                                              name = colour_by)
+                    sides = "b", alpha = 0.6, inherit.aes = FALSE)
+            if (is.numeric(rug_df[[colour_by]])) {
+                p <- p + scale_colour_landscapeR(
+                    "continuous",
+                    name = colour_by
+                )
+            } else {
+                p <- p + scale_colour_landscapeR(
+                    "categorical",
+                    name = colour_by
+                )
+            }
+            if (nrow(missing_rug)) {
+                p <- p +
+                    ggplot2::geom_rug(
+                        data = missing_rug,
+                        ggplot2::aes(x = x),
+                        sides = "b",
+                        colour = unname(palette[["ink"]]),
+                        linetype = "dashed",
+                        linewidth = 0.7,
+                        inherit.aes = FALSE
+                    ) +
+                    ggplot2::labs(
+                        caption = sprintf(
+                            paste0(
+                                "Dashed rug marks %d observation(s) ",
+                                "with missing %s"
+                            ),
+                            nrow(missing_rug),
+                            colour_by
+                        )
+                    )
+            }
         } else {
             p <- p +
                 ggplot2::geom_rug(

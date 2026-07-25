@@ -111,6 +111,31 @@ graphics, inspired by tidyomics.
   opportunistically when implementing or repairing the owning module, with
   tests preserving behaviour.
 
+### Publication visual grammar
+
+- `theme_landscapeR()` is the canonical package theme. It builds on
+  `ggplot2::theme_minimal()`, uses Helvetica by default, retains visible black
+  axis lines and ticks, removes decorative grids, and defaults to a square
+  panel.
+- Standalone package figures default to a 100 mm × 100 mm device. Raster
+  output defaults to 450 dpi; editable vector output remains supported.
+- Black, white, and grey carry structure. Restrained red (`#C43C39`) is reserved
+  for the declared focal target, treatment contrast, nominated result, or
+  matched assignment; it is not reused as a generic warning colour.
+- Individual repeated-subject trajectories remain neutral when condition is the
+  scientific contrast. Subject identity is expressed by connected paths,
+  direct labels, shape, or facets before assigning each subject a colour.
+- Signed quantities use an accessible blue–white–red diverging scale.
+  Multi-category fields use the package's discrete Viridis palette only when
+  category identity matters; the scale remains defined beyond eight levels,
+  although shape, facets, or direct labels should be preferred when colour
+  becomes crowded. Continuous fields use a
+  perceptually ordered, colour-vision-robust Cividis scale.
+- Missing, unmatched, ineligible, and abstention states use explicit symbols,
+  shapes, line styles, or labels and are never communicated by colour alone.
+- Plot functions return ordinary ggplot objects. Users retain full control over
+  dimensions, themes, scales, and composition after construction.
+
 ### Staging
 
 The complete ergonomic interface is deliberately deferred until the scientific
