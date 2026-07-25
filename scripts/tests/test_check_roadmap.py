@@ -173,6 +173,37 @@ class RoadmapCheckerCliTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("generated or uncategorized", result.stderr)
 
+    def test_allows_versioned_review_markdown_and_json(self) -> None:
+        reviews = self.repo / "docs" / "reviews"
+        reviews.mkdir()
+        (reviews / "questionnaire.md").write_text("# Review\n", encoding="utf-8")
+        (reviews / "questionnaire.json").write_text("{}\n", encoding="utf-8")
+
+        result = self._run()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_allows_primary_source_research_markdown(self) -> None:
+        research = self.repo / "docs" / "research"
+        research.mkdir()
+        (research / "method-note.md").write_text(
+            "# Primary-source method note\n", encoding="utf-8"
+        )
+
+        result = self._run()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_rejects_json_outside_review_instruments(self) -> None:
+        plans = self.repo / "docs" / "plans"
+        plans.mkdir()
+        (plans / "generated.json").write_text("{}\n", encoding="utf-8")
+
+        result = self._run()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("generated or uncategorized", result.stderr)
+
     def test_ignores_hidden_operating_system_files(self) -> None:
         (self.repo / "docs" / ".DS_Store").write_text("metadata", encoding="utf-8")
 

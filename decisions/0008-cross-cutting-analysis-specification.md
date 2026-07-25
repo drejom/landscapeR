@@ -74,6 +74,24 @@ records the proposal digest, whether the recommendation was accepted or
 overridden, and the analyst rationale. A versioned migration is required; no
 legacy/null fallback may silently discard target intent.
 
+**Amendment (2026-07-15): role exclusivity.** Within one declaration, target,
+nuisance, and orientation-anchor fields are mutually exclusive; sampling
+subject and time fields are likewise distinct. Intrinsic collection structure
+and run-specific analysis intent are separate concerns: longitudinal time may
+be an explicit target in a time-focused run, but it cannot simultaneously be a
+nuisance field. Derived eligibility in the metadata atlas is not another
+semantic role.
+
+**Amendment (2026-07-15): one owner for target intent.**
+`AnalysisSpecification` is the sole target-intent object for component
+interpretation. `associate_metadata()` receives the draft specification so it
+can preserve all unadjusted associations while adding separately labelled
+adjustments authorized by the declared nuisance fields. `propose_component()`
+consumes that atlas and does not accept a second `binary_target()` object or
+string-based target/confounder arguments. Confirmation advances the same
+specification lifecycle. This prevents target direction, nuisance declarations,
+claim intent, and proposal identity from diverging across parallel objects.
+
 **Amendment (2026-07-13): guard claims, not scientific function calls.** The
 curated runner and evidence assembler use the specification to determine claim
 eligibility, but low-level pure functions remain public and composable. An

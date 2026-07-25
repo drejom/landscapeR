@@ -49,7 +49,7 @@ __pycache__/
 # pkgdown site generated output
 _site/
 # Legacy docs/ destination: source docs are limited to README.md plus
-# agents/, specs/, plans/, and archive/. Never recommit generated site output.
+# agents/, specs/, plans/, research/, reviews/, and archive/. Never recommit generated site output.
 docs/*.html
 docs/*.js
 docs/*.xml

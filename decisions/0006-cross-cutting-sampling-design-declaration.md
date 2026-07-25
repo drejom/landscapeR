@@ -66,6 +66,26 @@ use the declared subject/time structure before it may report directional or
 timing quantities. Legacy objects migrate to an explicit unspecified state that
 Stage 2 rejects until the user declares the design.
 
+**Amendment (2026-07-15): separate dependence from observed time.** The
+initial `cross_sectional`/`longitudinal` kind conflates whether biological units
+are independent with whether collection time exists. Two concrete callers show
+the distinction: Chen endothelial RNA-seq (GSE103672) and *Pogona* developmental
+series have independent biological observations at observed times, whereas AML
+has repeated observations within mice. `SamplingDesign` v2 therefore records
+`dependence = independent | repeated`, an optional observed `time_col`, and a
+`subject_id_col` required only for repeated observations. Narrow constructors
+represent only current callers: `cross_sectional()`,
+`independent_time_course(time)`, and `longitudinal(subject_id, time)`.
+
+Sampling dependence remains orthogonal to target progression semantics. An
+independent cohort may support a binary contrast, ordered state, continuous
+severity measure, or observed-time target; none is implied merely by declaring
+independence. Pseudotime is a derived analysis artifact, not observed collection
+time. Existing v1 cross-sectional, longitudinal, and unspecified declarations
+migrate without guessing. More complex crossover, nested, dropout, or
+repeated-without-time designs remain unsupported until a concrete caller and
+separate decision exist.
+
 **Withdrawn amendment (2026-07-13): optional event/censoring declaration.**
 The proposal to add event-status and event-time fields was not implemented and
 is withdrawn as speculative generality. The current longitudinal contract names
@@ -76,7 +96,8 @@ caller, verified source protocol, and a separate decision when that need exists.
 
 ## Consequences
 
-- A schema-version bump and migration are required before implementation.
+- SamplingDesign v2 requires a schema-version bump and explicit migration from
+  every v1 kind before the #55 association strategies are implemented.
 - Synthetic constructors can declare their known design automatically; real
   data require one explicit user declaration.
 - Cross-sectional Stage 2 output is labelled as distributional
