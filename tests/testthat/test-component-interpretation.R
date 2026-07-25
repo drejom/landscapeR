@@ -162,6 +162,50 @@ test_that("ordered metadata uses Kendall tau-b with declared level order", {
     )
 })
 
+test_that("draft analysis specification is the sole proposal intent", {
+    specification <- analysis_specification(
+        id = "binary-with-batch",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment",
+        nuisance_fields = "batch"
+    )
+    std <- component_interpretation_fixture()
+    colData(std)$batch <- rep(c("batch_1", "batch_2"), times = 4L)
+
+    atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    proposal <- propose_component(atlas)
+
+    expect_identical(proposal@target_field, "condition")
+    expect_identical(
+        atlas_provenance(atlas)$analysis_specification_digest,
+        canonical_digest(specification)
+    )
+    expect_identical(
+        proposal_provenance(proposal)$analysis_specification_digest,
+        canonical_digest(specification)
+    )
+    expect_identical(
+        atlas_provenance(atlas)$nuisance_fields,
+        "batch"
+    )
+
+    confirmed <- confirm_component(
+        proposal,
+        index = proposal@recommended_component,
+        decision = "accept",
+        rationale = "Accepted the predeclared target under its nuisance design."
+    )
+    expect_identical(confirmed@id, "binary-with-batch")
+    expect_identical(confirmed@nuisance_fields, "batch")
+    expect_identical(confirmed@claim_intent, "exploratory")
+})
+
 test_that("component proposal ranks only by sign-invariant biological effect", {
     atlas <- associate_metadata(
         component_interpretation_fixture(),

@@ -4,12 +4,13 @@
 \alias{propose_component}
 \title{Nominate a component from a metadata-association atlas}
 \usage{
-propose_component(atlas, target)
+propose_component(atlas, target = NULL)
 }
 \arguments{
 \item{atlas}{a \code{MetadataAssociationAtlas}}
 
-\item{target}{one binary metadata field present in the atlas}
+\item{target}{optional metadata field present in the atlas; omitted when the
+source atlas carries a draft \code{AnalysisSpecification}}
 }
 \value{
 a versioned exploratory \code{ComponentProposal}, or a

@@ -4,10 +4,18 @@
 \alias{associate_metadata}
 \title{Associate Stage 1 components with eligible metadata}
 \usage{
-associate_metadata(std, non_analytical_fields = character(), dataset_id = NULL)
+associate_metadata(
+  std,
+  specification = NULL,
+  non_analytical_fields = character(),
+  dataset_id = NULL
+)
 }
 \arguments{
 \item{std}{a Stage-1-complete \code{StateTransitionData}}
+
+\item{specification}{optional draft \code{AnalysisSpecification} owning target
+and nuisance intent for this run}
 
 \item{non_analytical_fields}{metadata fields to exclude explicitly}
 

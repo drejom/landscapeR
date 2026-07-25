@@ -623,6 +623,8 @@ register_strategy(
 #' fields and caller-declared non-analytical fields are excluded with reasons.
 #'
 #' @param std a Stage-1-complete `StateTransitionData`
+#' @param specification optional draft `AnalysisSpecification` owning target
+#'   and nuisance intent for this run
 #' @param non_analytical_fields metadata fields to exclude explicitly
 #' @param dataset_id optional stable dataset identifier used in confirmed
 #'   analysis IDs; defaults to `metadata(std)$dataset_id` when present, then a
@@ -632,6 +634,7 @@ register_strategy(
 #' @export
 associate_metadata <- function(
     std,
+    specification = NULL,
     non_analytical_fields = character(),
     dataset_id = NULL
 ) {
@@ -649,6 +652,36 @@ associate_metadata <- function(
     if (!identical(std@sampling_design@kind, "cross_sectional")) {
         .stop_landscapeR_validation(
             "associate_metadata(): issue #79 requires a cross-sectional design"
+        )
+    }
+    specification_provenance <- list()
+    if (!is.null(specification)) {
+        if (!is(specification, "AnalysisSpecification") ||
+            !identical(specification@lifecycle, "draft")) {
+            .stop_landscapeR_validation(
+                paste0(
+                    "associate_metadata(): specification must be a draft ",
+                    "AnalysisSpecification"
+                )
+            )
+        }
+        specification_error <- .validate_analysis_specification_data(
+            specification,
+            std
+        )
+        if (!identical(specification_error, TRUE)) {
+            .stop_landscapeR_validation(paste0(
+                "associate_metadata(): ",
+                specification_error
+            ))
+        }
+        specification_provenance <- list(
+            analysis_specification_id = specification@id,
+            analysis_specification_digest = canonical_digest(specification),
+            target_field = specification@target_field,
+            target_type = specification@target_type,
+            nuisance_fields = specification@nuisance_fields,
+            claim_intent = specification@claim_intent
         )
     }
     coordinates <- dr_coords_k(stage1)
@@ -870,7 +903,7 @@ associate_metadata <- function(
         input_digest = input_digest,
         state_space_digest = state_space_digest,
         compute_tier = "analytic-unadjusted",
-        provenance = list(
+        provenance = c(list(
             association_strategy = sort(unique(association_strategy_ids)),
             package_version = as.character(
                 utils::packageVersion("landscapeR")
@@ -880,7 +913,7 @@ associate_metadata <- function(
             input_digest = input_digest,
             state_space_digest = state_space_digest,
             dataset_id = dataset_id
-        ),
+        ), specification_provenance),
         evidence_status = "estimable-exploratory-only"
     )
     validObject(atlas)
@@ -1308,21 +1341,38 @@ setValidity("ComponentProposal", function(object) {
 #' q-values, singular values, and plots do not participate.
 #'
 #' @param atlas a `MetadataAssociationAtlas`
-#' @param target one binary metadata field present in the atlas
+#' @param target optional metadata field present in the atlas; omitted when the
+#'   source atlas carries a draft `AnalysisSpecification`
 #'
 #' @return a versioned exploratory `ComponentProposal`, or a
 #'   `ComponentAbstention` when the largest effect is tied
 #' @export
-propose_component <- function(atlas, target) {
+propose_component <- function(atlas, target = NULL) {
     if (!is(atlas, "MetadataAssociationAtlas")) {
         .stop_landscapeR_validation(
             "propose_component(): atlas must be a MetadataAssociationAtlas"
         )
     }
+    declared_target <- atlas@provenance$target_field
+    if (is.null(target) && .is_scalar_nonempty_text(declared_target)) {
+        target <- declared_target
+    } else if (!is.null(target) &&
+        .is_scalar_nonempty_text(declared_target) &&
+        !identical(target, declared_target)) {
+        .stop_landscapeR_validation(
+            paste0(
+                "propose_component(): target is owned by the source ",
+                "AnalysisSpecification and cannot be redeclared"
+            )
+        )
+    }
     if (!is.character(target) || length(target) != 1L ||
         is.na(target) || !nzchar(target)) {
         .stop_landscapeR_validation(
-            "propose_component(): target must be one non-empty field name"
+            paste0(
+                "propose_component(): source atlas must carry target intent ",
+                "or target must be one non-empty field name"
+            )
         )
     }
     target_rows <- atlas@associations[
@@ -1581,15 +1631,27 @@ confirm_component <- function(
         ))
     }
 
-    analysis_specification(
-        id = sprintf(
+    declared_specification <- .is_scalar_nonempty_text(
+        proposal@provenance$analysis_specification_digest
+    )
+    specification_id <- if (declared_specification) {
+        proposal@provenance$analysis_specification_id
+    } else {
+        sprintf(
             "%s_%s_PC%d",
             proposal@provenance$dataset_id,
             proposal@target_field,
             index
-        ),
+        )
+    }
+    analysis_specification(
+        id = specification_id,
         target_field = proposal@target_field,
-        target_type = "binary",
+        target_type = if (declared_specification) {
+            proposal@provenance$target_type
+        } else {
+            "binary"
+        },
         reference_level = proposal@reference_level,
         comparison_level = proposal@comparison_level,
         lifecycle = "confirmed",
@@ -1601,7 +1663,16 @@ confirm_component <- function(
             "overridden"
         },
         analyst_rationale = rationale,
-        claim_intent = "exploratory"
+        nuisance_fields = if (declared_specification) {
+            proposal@provenance$nuisance_fields
+        } else {
+            character()
+        },
+        claim_intent = if (declared_specification) {
+            proposal@provenance$claim_intent
+        } else {
+            "exploratory"
+        }
     )
 }
 
