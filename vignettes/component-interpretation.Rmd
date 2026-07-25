@@ -1,0 +1,146 @@
+---
+title: "Cross-sectional binary component interpretation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Cross-sectional binary component interpretation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 4,
+  fig.height = 4,
+  dpi = 120
+)
+library(landscapeR)
+```
+
+This workflow is the first complete interpretation path in `landscapeR`. It
+supports one molecular layer, independent cross-sectional biological samples,
+and a binary biological target. Every result remains exploratory.
+
+The workflow deliberately separates four actions:
+
+1. `associate_metadata()` calculates and stores eligible associations.
+2. `plot()` renders the stored evidence without changing it.
+3. `propose_component()` ranks only by absolute signed rank-biserial effect.
+4. `confirm_component()` records a separate human decision and rationale.
+
+## Synthetic worked example
+
+The example uses planted synthetic truth to demonstrate software behavior. It
+is not biological evidence and does not calibrate a universal decision rule.
+
+```{r data}
+primary <- sprintf("sample_%02d", 1:8)
+assay_ids <- sprintf("rna_%02d", 1:8)
+std <- StateTransitionData(
+  experiments = list(
+    rna = SummarizedExperiment::SummarizedExperiment(
+      assays = list(logcounts = matrix(
+        seq_len(32L),
+        nrow = 4L,
+        dimnames = list(sprintf("gene_%02d", 1:4), assay_ids)
+      ))
+    )
+  ),
+  colData = S4Vectors::DataFrame(
+    condition = factor(
+      rep(c("control", "treatment"), each = 4L),
+      levels = c("control", "treatment")
+    ),
+    mouse_id = sprintf("mouse_%02d", 1:8),
+    row.names = primary
+  ),
+  sampleMap = S4Vectors::DataFrame(
+    assay = factor(rep("rna", 8L), levels = "rna"),
+    primary = primary,
+    colname = assay_ids
+  )
+)
+std <- declare_sampling_design(std, cross_sectional())
+std_metadata <- S4Vectors::metadata(std)
+std_metadata$stage1 <- DecompositionResult(
+  V_star = c(1, 0, 0, 0),
+  sigma = 1,
+  coords = list(1:8),
+  V_k = diag(4)[, 1:2, drop = FALSE],
+  sigma_k = matrix(c(2, 1), nrow = 1L),
+  coords_k = list(cbind(
+    PC1 = 1:8,
+    PC2 = rep(c(-1, 1), 4L)
+  )),
+  k = 2L
+)
+S4Vectors::metadata(std) <- std_metadata
+```
+
+## Build and inspect the atlas
+
+```{r atlas}
+atlas <- associate_metadata(
+  std,
+  non_analytical_fields = "mouse_id",
+  dataset_id = "synthetic-binary-control"
+)
+atlas_associations(atlas)
+head(atlas_observations(atlas))
+atlas_exclusions(atlas)
+atlas_provenance(atlas)
+plot(atlas)
+```
+
+Binary factor levels define reference then comparison. Character and logical
+targets use deterministic lexical order. Identifier-like fields and declared
+non-analytical fields are excluded with recorded reasons. Missing values use
+available cases, and the tidy association table records available counts,
+missing counts, and tied score counts.
+
+The atlas is a versioned `MetadataAssociationAtlas`. Its digest binds the
+canonical metadata and sample mapping, raw typed distributions, frozen Stage 1
+state space, computation tier, strategy, package version, and sampling design.
+
+## Produce an exploratory proposal
+
+```{r proposal}
+proposal <- propose_component(atlas, target = "condition")
+proposal_ranking(proposal)
+proposal_provenance(proposal)
+plot(proposal)
+```
+
+The proposal consumes stored atlas rows. It does not use p-values, singular
+values, stability, or a plot to rerank components. An exact top-effect tie
+returns a typed `ComponentAbstention` instead of choosing a component by index.
+
+## Record human confirmation
+
+```{r confirmation}
+confirmed <- confirm_component(
+  proposal,
+  index = proposal@recommended_component,
+  decision = "accept",
+  rationale = paste(
+    "Accepted the unique effect-first component in this synthetic",
+    "implementation example."
+  )
+)
+confirmed
+canonical_digest(confirmed)
+```
+
+`confirm_component()` is the enforced transition to a confirmed
+`AnalysisSpecification`. Acceptance must use the recommended component. A
+different ranked component requires `decision = "override"` and remains
+explicit in the specification. An abstention cannot be confirmed.
+
+## Current boundary
+
+This implementation does not yet cover adjusted associations, continuous or
+ordered targets, longitudinal sampling, repeated subjects, multiple molecular
+layers, or stability-calibrated evidence. Those require separate registered
+strategies and validation. A real-data confirmation is a recorded human
+judgement, not proof that the selected coordinate is biologically true.

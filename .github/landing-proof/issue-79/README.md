@@ -1,15 +1,36 @@
 # Issue #79 publication visual grammar
 
 **Claim status:** implementation proof only. These deterministic synthetic
-figures demonstrate the visual API that precedes #79; they do not rank,
-confirm, or validate a biological axis.
+figures demonstrate the visual API and complete binary interpretation path.
+They do not validate a biological axis or establish a calibrated selection
+rule.
+
+## Metadata association atlas
+
+![Raw component distributions for every eligible component and binary metadata field](association-atlas.png)
+
+The atlas displays only raw distributions stored as typed evidence by
+`associate_metadata()`. The direction, overlap, and ambiguity of each binary
+contrast remain visible without relying on colour. Supporting p-values do not
+alter the display.
+
+## Exploratory component proposal
+
+![Effect-first component proposal with the unique nominated component marked by a red diamond](component-proposal.png)
+
+The proposal consumes the atlas without refitting. A red diamond marks the
+unique effect-first nomination by colour and shape. The proposal remains
+exploratory and cannot become an `AnalysisSpecification` until a person calls
+`confirm_component()` with an explicit decision and non-empty rationale.
 
 ## Declared binary contrast
 
 ![A control and treatment time course using black and focal red](binary-contrast.png)
 
-The caller explicitly declares the reference and focal levels. Factor order
-does not decide which group receives the restrained red highlight.
+For this palette demonstration, the caller explicitly declares the reference
+and focal levels, so factor order does not decide which group receives the
+restrained red highlight. In the association workflow, binary factor order
+deterministically declares reference then comparison.
 
 ## Repeated biological units
 
@@ -49,5 +70,5 @@ cannot be mistaken for a level on the categorical colour scale.
 
 ```sh
 Rscript scripts/render-issue-79-theme-proof.R
-Rscript -e 'devtools::test(filter = "plot-theme")'
+Rscript -e 'devtools::test(filter = "plot-theme|component-interpretation")'
 ```

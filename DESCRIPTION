@@ -40,6 +40,7 @@ Suggests:
     pomp,
     ranger,
     testthat (>= 3.0.0),
+    pkgload,
     knitr,
     rmarkdown,
     pkgdown
@@ -63,6 +64,7 @@ Collate:
     '12a-stage1-svd.R'
     '13-stage0-synthetic.R'
     '13a-plot-theme.R'
+    '13b-component-interpretation.R'
     '14-stage1-plots.R'
     '15-stage2-kde.R'
     '16-stage2-plots.R'

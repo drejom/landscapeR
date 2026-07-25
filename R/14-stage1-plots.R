@@ -222,86 +222,13 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     caller = "plot_components"
 ) {
     if (is.null(colour_by)) return(NULL)
-    prefix <- paste0(caller, "(): ")
-    if (!is.character(colour_by) || length(colour_by) != 1L ||
-        is.na(colour_by) || !nzchar(colour_by)) {
-        .stop_landscapeR_validation(
-            paste0(
-                prefix,
-                "colour_by must be NULL or one non-empty column name"
-            )
-        )
-    }
-
-    cd_s4 <- colData(std)
-    field_idx <- which(names(cd_s4) == colour_by)
-    if (!length(field_idx)) {
-        .stop_landscapeR_validation(sprintf(
-            "%scolour_by '%s' was not found in MAE-level colData",
-            prefix,
-            colour_by
-        ))
-    }
-    if (length(field_idx) > 1L) {
-        .stop_landscapeR_validation(sprintf(
-            "%scolour_by '%s' is ambiguous in MAE-level colData",
-            prefix,
-            colour_by
-        ))
-    }
-    cd <- as.data.frame(cd_s4)
-
-    expt_list <- as.list(experiments(std))
-    layer_name <- names(expt_list)[[layer]]
-    assay_samples <- colnames(expt_list[[layer]])
-    sm <- as.data.frame(sampleMap(std), stringsAsFactors = FALSE)
-    layer_map <- sm[as.character(sm$assay) == layer_name, , drop = FALSE]
-    mapped_samples <- as.character(layer_map$colname)
-    map_idx <- match(assay_samples, mapped_samples)
-    if (anyNA(map_idx)) {
-        .stop_landscapeR_validation(sprintf(
-            paste0(
-                "%smissing canonical sample mapping for layer ",
-                "'%s' observation '%s'"
-            ),
-            prefix,
-            layer_name,
-            assay_samples[[which(is.na(map_idx))[[1L]]]]
-        ))
-    }
-    duplicate_samples <- unique(mapped_samples[duplicated(mapped_samples)])
-    ambiguous <- assay_samples %in% duplicate_samples
-    if (any(ambiguous)) {
-        .stop_landscapeR_validation(sprintf(
-            paste0(
-                "%sambiguous canonical sample mapping for layer ",
-                "'%s' observation '%s'"
-            ),
-            prefix,
-            layer_name,
-            assay_samples[[which(ambiguous)[[1L]]]]
-        ))
-    }
-
-    primary <- as.character(layer_map$primary[map_idx])
-    primary_rows <- rownames(cd)
-    if (anyDuplicated(primary_rows) > 0L) {
-        .stop_landscapeR_validation(
-            paste0(
-                prefix,
-                "MAE-level colData has ambiguous primary sample IDs"
-            )
-        )
-    }
-    cd_idx <- match(primary, primary_rows)
-    if (anyNA(cd_idx)) {
-        .stop_landscapeR_validation(sprintf(
-            "%sMAE-level colData is missing primary sample '%s'",
-            prefix,
-            primary[[which(is.na(cd_idx))[[1L]]]]
-        ))
-    }
-    cd[[field_idx]][cd_idx]
+    .aligned_component_metadata(
+        std,
+        layer,
+        colour_by,
+        caller = caller,
+        field_label = "colour_by"
+    )
 }
 
 # ---------------------------------------------------------------------------
