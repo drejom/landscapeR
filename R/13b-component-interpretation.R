@@ -6,6 +6,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
     "metadata_field", "component", "component_label", "estimand",
     "estimate", "effect_magnitude", "reference_level", "comparison_level",
     "n_available", "n_missing", "n_score_ties", "n_target_ties",
+    "evidence_variant", "nuisance_fields", "design_digest", "diagnostic",
     "p_value", "q_value", "evidence_status"
 )
 
@@ -613,6 +614,141 @@ register_strategy(
     )
 }
 
+.adjusted_rank_score_effect <- function(
+    std,
+    scores,
+    target_values,
+    specification
+) {
+    nuisance_values <- lapply(
+        specification@nuisance_fields,
+        function(field) {
+            .aligned_component_metadata(
+                std,
+                1L,
+                field,
+                caller = "associate_metadata"
+            )
+        }
+    )
+    names(nuisance_values) <- specification@nuisance_fields
+    complete <- is.finite(scores) & !is.na(target_values)
+    for (values in nuisance_values) {
+        complete <- complete & !is.na(values)
+        if (is.numeric(values)) {
+            complete <- complete & is.finite(values)
+        }
+    }
+    complete_scores <- scores[complete]
+    complete_target <- target_values[complete]
+    if (length(complete_scores) < 3L) return(NULL)
+
+    nuisance_frame <- as.data.frame(lapply(
+        nuisance_values,
+        function(values) {
+            values <- values[complete]
+            if (is.numeric(values) || is.ordered(values)) {
+                rank(values, ties.method = "average")
+            } else {
+                factor(values)
+            }
+        }
+    ), stringsAsFactors = FALSE)
+    design <- stats::model.matrix(~ ., data = nuisance_frame)
+    target_numeric <- if (identical(specification@target_type, "binary")) {
+        match(
+            as.character(complete_target),
+            c(specification@reference_level, specification@comparison_level)
+        )
+    } else if (identical(specification@target_type, "ordered")) {
+        match(
+            as.character(complete_target),
+            specification@ordered_levels
+        )
+    } else {
+        as.numeric(complete_target)
+    }
+    score_rank <- rank(complete_scores, ties.method = "average")
+    target_rank <- rank(target_numeric, ties.method = "average")
+    score_ties <- duplicated(complete_scores) |
+        duplicated(complete_scores, fromLast = TRUE)
+    target_ties <- duplicated(target_numeric) |
+        duplicated(target_numeric, fromLast = TRUE)
+    design_digest <- digest::digest(
+        list(
+            nuisance_fields = specification@nuisance_fields,
+            design = unname(design),
+            design_columns = colnames(design),
+            complete_indices = which(complete)
+        ),
+        algo = "sha256",
+        serialize = TRUE
+    )
+    estimand <- if (identical(specification@target_type, "binary")) {
+        "adjusted-rank-score-contrast"
+    } else {
+        "adjusted-rank-score-association"
+    }
+    adjustment_result <- function(
+        estimate,
+        p_value,
+        diagnostic,
+        evidence_status
+    ) {
+        list(
+            estimand = estimand,
+            estimate = estimate,
+            reference_level = if (identical(
+                specification@target_type,
+                "binary"
+            )) specification@reference_level else NA_character_,
+            comparison_level = if (identical(
+                specification@target_type,
+                "binary"
+            )) specification@comparison_level else NA_character_,
+            n_available = length(complete_scores),
+            n_score_ties = sum(score_ties),
+            n_target_ties = sum(target_ties),
+            p_value = p_value,
+            design_digest = design_digest,
+            diagnostic = diagnostic,
+            evidence_status = evidence_status
+        )
+    }
+    design_rank <- qr(design)$rank
+    target_augmented_rank <- qr(cbind(design, target_rank))$rank
+    if (design_rank < ncol(design) ||
+        identical(target_augmented_rank, design_rank)) {
+        return(adjustment_result(
+            estimate = NA_real_,
+            p_value = NA_real_,
+            diagnostic = "non-identifiable-design",
+            evidence_status = "adjustment-abstention"
+        ))
+    }
+
+    score_residual <- stats::lm.fit(design, score_rank)$residuals
+    target_residual <- stats::lm.fit(design, target_rank)$residuals
+    if (!is.finite(stats::var(score_residual)) ||
+        !is.finite(stats::var(target_residual)) ||
+        stats::var(score_residual) == 0 ||
+        stats::var(target_residual) == 0) {
+        return(adjustment_result(
+            estimate = NA_real_,
+            p_value = NA_real_,
+            diagnostic = "non-identifiable-design",
+            evidence_status = "adjustment-abstention"
+        ))
+    }
+    test <- stats::cor.test(score_residual, target_residual)
+    adjustment_result(
+        estimate = unname(test$estimate),
+        p_value = unname(test$p.value),
+        diagnostic = "",
+        evidence_status = "estimable-exploratory-only"
+    )
+}
+
 #' Associate Stage 1 components with eligible metadata
 #'
 #' The cross-sectional tracer supports one biological layer. Binary metadata
@@ -801,6 +937,10 @@ associate_metadata <- function(
                 n_missing = as.integer(length(values) - effect$n_available),
                 n_score_ties = as.integer(effect$n_score_ties),
                 n_target_ties = as.integer(effect$n_target_ties),
+                evidence_variant = "unadjusted",
+                nuisance_fields = "",
+                design_digest = NA_character_,
+                diagnostic = "",
                 p_value = effect$p_value,
                 q_value = NA_real_,
                 evidence_status = "estimable-exploratory-only",
@@ -815,6 +955,59 @@ associate_metadata <- function(
                 method = "BH"
             )
             association_rows[[length(association_rows) + 1L]] <- field_table
+            if (!is.null(specification) &&
+                identical(field, specification@target_field) &&
+                length(specification@nuisance_fields)) {
+                adjusted_rows <- lapply(
+                    seq_len(ncol(coordinate_matrix)),
+                    function(j) {
+                        effect <- .adjusted_rank_score_effect(
+                            std,
+                            coordinate_matrix[, j],
+                            values,
+                            specification
+                        )
+                        if (is.null(effect)) return(NULL)
+                        data.frame(
+                            metadata_field = field,
+                            component = as.integer(j),
+                            component_label = component_labels[[j]],
+                            estimand = effect$estimand,
+                            estimate = effect$estimate,
+                            effect_magnitude = abs(effect$estimate),
+                            reference_level = effect$reference_level,
+                            comparison_level = effect$comparison_level,
+                            n_available = as.integer(effect$n_available),
+                            n_missing = as.integer(
+                                length(values) - effect$n_available
+                            ),
+                            n_score_ties = as.integer(effect$n_score_ties),
+                            n_target_ties = as.integer(effect$n_target_ties),
+                            evidence_variant = "adjusted",
+                            nuisance_fields = paste(
+                                specification@nuisance_fields,
+                                collapse = " + "
+                            ),
+                            design_digest = effect$design_digest,
+                            diagnostic = effect$diagnostic,
+                            p_value = effect$p_value,
+                            q_value = NA_real_,
+                            evidence_status = effect$evidence_status,
+                            stringsAsFactors = FALSE
+                        )
+                    }
+                )
+                adjusted_rows <- Filter(Negate(is.null), adjusted_rows)
+                if (length(adjusted_rows)) {
+                    adjusted_table <- do.call(rbind, adjusted_rows)
+                    adjusted_table$q_value <- stats::p.adjust(
+                        adjusted_table$p_value,
+                        method = "BH"
+                    )
+                    association_rows[[length(association_rows) + 1L]] <-
+                        adjusted_table
+                }
+            }
             field_observations <- lapply(
                 seq_len(ncol(coordinate_matrix)),
                 function(j) {
@@ -1045,7 +1238,8 @@ setValidity("ComponentAbstention", function(object) {
     }
     valid_reasons <- c(
         "effect-magnitude-tie",
-        "no-eligible-association"
+        "no-eligible-association",
+        "non-identifiable-design"
     )
     if (length(object@reason) != 1L ||
         !object@reason %in% valid_reasons) {
@@ -1059,10 +1253,19 @@ setValidity("ComponentAbstention", function(object) {
         object@reason,
         "no-eligible-association"
     ) && !length(object@candidate_components)
-    if ((!tie_candidates_valid && !empty_candidates_valid) ||
+    design_candidates_valid <- identical(
+        object@reason,
+        "non-identifiable-design"
+    ) && length(object@candidate_components) >= 1L
+    if ((!tie_candidates_valid &&
+            !empty_candidates_valid &&
+            !design_candidates_valid) ||
         anyNA(object@candidate_components) ||
         any(object@candidate_components < 1L)) {
-        errors <- c(errors, "candidate_components must contain a tie")
+        errors <- c(
+            errors,
+            "candidate_components are inconsistent with abstention reason"
+        )
     }
     required <- c(
         "component", "estimate", "effect_magnitude", "proposal_rank"
@@ -1380,6 +1583,32 @@ propose_component <- function(atlas, target = NULL) {
         ,
         drop = FALSE
     ]
+    if (length(atlas@provenance$nuisance_fields) &&
+        any(target_rows$evidence_variant == "adjusted")) {
+        target_rows <- target_rows[
+            target_rows$evidence_variant == "adjusted",
+            ,
+            drop = FALSE
+        ]
+    } else {
+        target_rows <- target_rows[
+            target_rows$evidence_variant == "unadjusted",
+            ,
+            drop = FALSE
+        ]
+    }
+    if (nrow(target_rows) &&
+        !any(is.finite(target_rows$effect_magnitude))) {
+        ranking <- target_rows
+        ranking$proposal_rank <- seq_len(nrow(ranking))
+        return(.new_component_abstention(
+            atlas = atlas,
+            target = target,
+            reason = target_rows$diagnostic[[1L]],
+            ranking = ranking,
+            candidate_components = as.integer(target_rows$component)
+        ))
+    }
     if (!nrow(target_rows)) {
         ranking <- target_rows
         ranking$proposal_rank <- integer()

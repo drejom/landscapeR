@@ -179,6 +179,36 @@ test_that("draft analysis specification is the sole proposal intent", {
         specification = specification,
         non_analytical_fields = "mouse_id"
     )
+    condition <- atlas_associations(atlas)
+    condition <- condition[
+        condition$metadata_field == "condition",
+        ,
+        drop = FALSE
+    ]
+    unadjusted <- condition[
+        condition$evidence_variant == "unadjusted",
+        ,
+        drop = FALSE
+    ]
+    adjusted <- condition[
+        condition$evidence_variant == "adjusted",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(unadjusted$component, c(1L, 2L))
+    expect_identical(adjusted$component, c(1L, 2L))
+    expect_identical(
+        adjusted$estimand,
+        rep("adjusted-rank-score-contrast", 2L)
+    )
+    expect_identical(
+        adjusted$nuisance_fields,
+        rep("batch", 2L)
+    )
+    expect_equal(adjusted$estimate[[1L]], 0.894427190999916)
+    expect_true(all(grepl("^[[:xdigit:]]{64}$", adjusted$design_digest)))
+
     proposal <- propose_component(atlas)
 
     expect_identical(proposal@target_field, "condition")
@@ -204,6 +234,50 @@ test_that("draft analysis specification is the sole proposal intent", {
     expect_identical(confirmed@id, "binary-with-batch")
     expect_identical(confirmed@nuisance_fields, "batch")
     expect_identical(confirmed@claim_intent, "exploratory")
+})
+
+test_that("target-confounded adjustment abstains without replacing raw evidence", {
+    std <- component_interpretation_fixture()
+    colData(std)$batch <- colData(std)$condition
+    specification <- analysis_specification(
+        id = "confounded-binary",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment",
+        nuisance_fields = "batch"
+    )
+
+    atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    condition <- atlas_associations(atlas)
+    condition <- condition[
+        condition$metadata_field == "condition",
+        ,
+        drop = FALSE
+    ]
+    raw <- condition[condition$evidence_variant == "unadjusted", , drop = FALSE]
+    adjusted <- condition[
+        condition$evidence_variant == "adjusted",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(raw$component, c(1L, 2L))
+    expect_true(all(is.finite(raw$estimate)))
+    expect_identical(adjusted$component, c(1L, 2L))
+    expect_true(all(is.na(adjusted$estimate)))
+    expect_identical(
+        adjusted$diagnostic,
+        rep("non-identifiable-design", 2L)
+    )
+
+    abstention <- propose_component(atlas)
+    expect_s4_class(abstention, "ComponentAbstention")
+    expect_identical(abstention@reason, "non-identifiable-design")
 })
 
 test_that("component proposal ranks only by sign-invariant biological effect", {
