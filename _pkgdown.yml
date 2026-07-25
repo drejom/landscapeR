@@ -23,6 +23,10 @@ navbar:
       href: https://github.com/drejom/landscapeR
 
 articles:
+  - title: Workflows
+    navbar: Workflows
+    contents:
+      - component-interpretation
   - title: Evidence
     navbar: Evidence
     contents:

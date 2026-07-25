@@ -128,4 +128,71 @@ save_landscapeR_plot(
   file.path(output_dir, "missing-metadata.png")
 )
 
-cat("Rendered issue #79 publication-theme landing proof.\n")
+interpretation_primary <- sprintf("sample_%02d", 1:8)
+interpretation_assay <- sprintf("rna_%02d", 1:8)
+interpretation_std <- StateTransitionData(
+  experiments = list(
+    rna = SummarizedExperiment::SummarizedExperiment(
+      assays = list(logcounts = matrix(
+        seq_len(32L),
+        nrow = 4L,
+        dimnames = list(
+          sprintf("gene_%02d", 1:4),
+          interpretation_assay
+        )
+      ))
+    )
+  ),
+  colData = S4Vectors::DataFrame(
+    condition = factor(
+      rep(c("control", "treatment"), each = 4L),
+      levels = c("control", "treatment")
+    ),
+    mouse_id = sprintf("mouse_%02d", 1:8),
+    row.names = interpretation_primary
+  ),
+  sampleMap = S4Vectors::DataFrame(
+    assay = factor(rep("rna", 8L), levels = "rna"),
+    primary = interpretation_primary,
+    colname = interpretation_assay
+  )
+)
+interpretation_std <- declare_sampling_design(
+  interpretation_std,
+  cross_sectional()
+)
+interpretation_metadata <- S4Vectors::metadata(interpretation_std)
+interpretation_metadata$stage1 <- DecompositionResult(
+  V_star = c(1, 0, 0, 0),
+  sigma = 1,
+  coords = list(1:8),
+  V_k = diag(4)[, 1:2, drop = FALSE],
+  sigma_k = matrix(c(2, 1), nrow = 1L),
+  coords_k = list(cbind(
+    PC1 = 1:8,
+    PC2 = rep(c(-1, 1), 4L)
+  )),
+  k = 2L
+)
+S4Vectors::metadata(interpretation_std) <- interpretation_metadata
+interpretation_atlas <- associate_metadata(
+  interpretation_std,
+  non_analytical_fields = "mouse_id",
+  dataset_id = "synthetic-binary-control"
+)
+interpretation_proposal <- propose_component(
+  interpretation_atlas,
+  target = "condition"
+)
+stopifnot(methods::is(interpretation_proposal, "ComponentProposal"))
+
+save_landscapeR_plot(
+  plot(interpretation_atlas),
+  file.path(output_dir, "association-atlas.png")
+)
+save_landscapeR_plot(
+  plot(interpretation_proposal),
+  file.path(output_dir, "component-proposal.png")
+)
+
+cat("Rendered issue #79 component-interpretation landing proof.\n")
