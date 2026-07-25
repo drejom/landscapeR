@@ -8,7 +8,7 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#55 — component interpretation workflow**.
+**Next task after this change lands:** **#79 — cross-sectional binary component interpretation**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -159,13 +159,22 @@ association score or ranking.
 
 ### 4. Component interpretation workflow — #55
 
-**Decision gate first:** write and accept the statistical-strategy ADR covering
-cross-sectional and longitudinal associations, adjustment, biological-unit
-uncertainty, multiplicity, minimum data, and abstention before implementation.
+**Decision gate complete:** ADR 0020 is accepted. It governs cross-sectional
+and longitudinal associations, adjustment, biological-unit uncertainty,
+multiplicity, minimum data, abstention, axis identifiability, visual decision
+surfaces, and the explicit human-confirmation boundary.
 
 **Deliverable:** MetadataAssociationAtlas → ComponentProposal → human
 confirmation, with raw and adjusted evidence separately visible and sampling
 design respected.
+
+**Implementation slices:** #79 establishes the cross-sectional binary tracer
+path; #80, #81, and #82 then add adjusted/general cross-sectional, independent
+destructive-time-course, and repeated-subject interpretation respectively;
+#83 integrates evidence-tier axis identifiability across the completed paths.
+The reusable publication visual grammar and 100 mm export helper are the
+cross-cutting visual prefactor for #79; they expose later decision surfaces
+consistently but do not themselves satisfy #79's scientific exit.
 
 **Exit:** synthetic truth can assert proposals; real data always requires human
 confirmation; stable-subspace/no-stable-axis is a valid abstention.
@@ -210,8 +219,8 @@ claim.
 ## Named parallel lanes
 
 - #53 and #54 may run while #61 is implemented.
-- The #55 statistical ADR may be drafted during those tasks, but association
-  code waits for its acceptance and the v2 lifecycle seam.
+- ADR 0020 is accepted and the #61 v2 lifecycle seam is complete; #55
+  association implementation may proceed.
 - #60 may locate/verify cKit, blast, or flow metadata at any time; it is useful
   atlas enrichment but does not block the primary target/time analysis.
 - #57 starts only if #51 or #67 exposes the next real reusable repetition seam;
@@ -331,7 +340,7 @@ bodies may state dependencies but do not change this ordering.
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
 | [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete |
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
-| [#55](https://github.com/drejom/landscapeR/issues/55) | Exploratory AML Stage 1 interpretation | active — next |
+| [#55](https://github.com/drejom/landscapeR/issues/55) | Exploratory AML Stage 1 interpretation | active — parent lane |
 | [#56](https://github.com/drejom/landscapeR/issues/56) | Productisation/Shiny | parked |
 | [#57](https://github.com/drejom/landscapeR/issues/57) | Conditional infrastructure | conditional |
 | [#58](https://github.com/drejom/landscapeR/issues/58) | Productisation/tidy interface | parked |
@@ -346,6 +355,11 @@ bodies may state dependencies but do not change this ordering.
 | [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
+| [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | active — next |
+| [#80](https://github.com/drejom/landscapeR/issues/80) | Exploratory AML Stage 1 interpretation — #55 slice | active — blocked by #79 |
+| [#81](https://github.com/drejom/landscapeR/issues/81) | Exploratory AML Stage 1 interpretation — #55 slice | active — blocked by #79 |
+| [#82](https://github.com/drejom/landscapeR/issues/82) | Exploratory AML Stage 1 interpretation — #55 slice | active — blocked by #79 |
+| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | active — blocked by #80–#82 |
 <!-- issue-map:end -->
 
 ---
@@ -364,6 +378,7 @@ plans.
 | 2026-07-14 | AnalysisSpecification v2 lifecycle | #61 complete; target intent retained through confirmation |
 | 2026-07-14 | AML observation-time and cohort lineage | #53 complete; exact source weeks and corrected 2018/2016 roles |
 | 2026-07-15 | Descriptive component gallery | #54 complete on merge; canonical metadata colour without private ranking |
+| 2026-07-24 | Component-interpretation statistical strategy | ADR 0020 accepted; #55 implementation gate open |
 
 ---
 

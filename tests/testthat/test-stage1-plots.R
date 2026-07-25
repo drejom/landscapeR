@@ -116,6 +116,26 @@ component_gallery_fixture <- function() {
     std
 }
 
+test_that("plot_decomposition renders continuous metadata and marks missing values", {
+    std <- component_gallery_fixture()
+    cd <- colData(std)
+    cd$sample_weeks[1L] <- NA_real_
+    colData(std) <- cd
+
+    p <- plot_decomposition(std, colour_by = "sample_weeks")
+
+    expect_s3_class(p$scales$get_scales("colour"), "ScaleContinuous")
+    expect_match(p$labels$caption, "Cross marks 1 observation")
+    expect_true(any(vapply(
+        p$layers,
+        function(layer) {
+            inherits(layer$geom, "GeomPoint") &&
+                identical(layer$aes_params$shape, 4)
+        },
+        logical(1L)
+    )))
+})
+
 test_that("plot_components canonically aligns categorical MAE metadata", {
     std <- component_gallery_fixture()
     p <- plot_components(std, colour_by = "condition", n_components = 3L)

@@ -53,6 +53,14 @@ std2 <- estimate_dynamics(dynamics_ctor(), std1)@value
 plot_potential(std2)  # critical-point classifications are off by default
 ```
 
+Package plots use the same publication visual grammar: quiet black, white, and
+grey structure; red only for the declared focal contrast; visible missing-data
+marks; and explicit categorical or continuous scales. The public helpers are
+`theme_landscapeR()`, `scale_colour_landscapeR()`,
+`scale_fill_landscapeR()`, and `save_landscapeR_plot()`. The save helper
+defaults to a 100 mm square, 450 dpi figure; pass explicit dimensions when a
+journal layout requires another aspect ratio.
+
 For destructive-sampling developmental designs,
 `synthetic_branching_control()` provides a disclosed two-branch visualisation
 and development control. It is not validation evidence. Reproducible source
