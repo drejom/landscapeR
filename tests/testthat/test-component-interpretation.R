@@ -382,6 +382,44 @@ test_that("component interpretation rejects malformed layer and coordinate input
     )
 })
 
+test_that("binary association uses the registered AssociationStrategy contract", {
+    expect_true(
+        "AssociationStrategy:cross_sectional_binary" %in%
+            list_strategies("AssociationStrategy")
+    )
+    strategy <- get_strategy(
+        "AssociationStrategy",
+        "cross_sectional_binary"
+    )()
+    expect_s4_class(strategy, "AssociationStrategy")
+
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+    expect_identical(
+        atlas_provenance(atlas)$association_strategy,
+        "cross-sectional-binary-signed-rank-biserial-v1"
+    )
+})
+
+test_that("coordinate rows must match selected-layer observations", {
+    std <- component_interpretation_fixture()
+    md <- metadata(std)
+    md$stage1@coords_k <- list(matrix(
+        seq_len(18L),
+        nrow = 9L,
+        dimnames = list(NULL, c("PC1", "PC2"))
+    ))
+    metadata(std) <- md
+
+    expect_error(
+        associate_metadata(std),
+        "coordinate rows.*layer observations",
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("a genuine null produces a typed no-identifiable-result abstention", {
     std <- component_interpretation_fixture()
     md <- metadata(std)

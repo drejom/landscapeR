@@ -184,6 +184,52 @@ setGeneric(".decompose_impl",
     function(strategy, data, ...) standardGeneric(".decompose_impl"))
 
 # ---------------------------------------------------------------------------
+# Stage 1 — Component interpretation
+# ---------------------------------------------------------------------------
+
+#' Virtual class for component-association strategies
+#'
+#' Implementations declare their applicability to a sampling design and
+#' metadata variable, compute one component association, and expose a stable
+#' strategy identifier for provenance. Implementations are discovered through
+#' the package strategy registry under the `"AssociationStrategy"` contract.
+#'
+#' @export
+setClass("AssociationStrategy", representation("VIRTUAL"))
+
+#' Test whether an association strategy applies
+#'
+#' @param strategy an `AssociationStrategy` implementation
+#' @param data a `StateTransitionData` object
+#' @param values aligned metadata values
+#' @return one logical value
+#' @export
+setGeneric("association_applicable",
+    function(strategy, data, values) {
+        standardGeneric("association_applicable")
+    })
+
+#' Compute one component association
+#'
+#' @param strategy an applicable `AssociationStrategy` implementation
+#' @param scores one numeric component-score vector
+#' @param values aligned metadata values
+#' @return a normalized association result list
+#' @export
+setGeneric("associate_component",
+    function(strategy, scores, values) {
+        standardGeneric("associate_component")
+    })
+
+#' Return an association strategy provenance identifier
+#'
+#' @param strategy an `AssociationStrategy` implementation
+#' @return one stable non-empty character identifier
+#' @export
+setGeneric("association_strategy_id",
+    function(strategy) standardGeneric("association_strategy_id"))
+
+# ---------------------------------------------------------------------------
 # Stage 2 — Dynamics estimation
 # ---------------------------------------------------------------------------
 

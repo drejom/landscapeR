@@ -104,7 +104,8 @@ excluded with reasons. Unadjusted associations always remain visible.
 The v1 association family is:
 
 - binary target: signed rank-biserial association, oriented from the declared
-  reference level to comparison level;
+  reference level to comparison level, registered as
+  `AssociationStrategy:cross_sectional_binary`;
 - continuous target: Spearman association using average midranks;
 - ordered categorical target: Kendall's tau-b using declared level order;
 - unordered multilevel field: descriptive omnibus rank evidence only, ineligible

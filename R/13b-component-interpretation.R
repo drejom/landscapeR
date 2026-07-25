@@ -302,28 +302,94 @@ setValidity("MetadataAssociationAtlas", function(object) {
     )
 }
 
-.component_association_strategies <- list(
-    cross_sectional_binary = list(
-        id = "cross-sectional-binary-signed-rank-biserial-v1",
-        applicable = function(std, values) {
-            identical(std@sampling_design@kind, "cross_sectional") &&
-                !is.null(.binary_level_order(values))
-        },
-        associate = function(scores, values, levels) {
-            .signed_rank_biserial(
-                scores,
-                values,
-                reference = levels[[1L]],
-                comparison = levels[[2L]]
+#' Cross-sectional binary rank-biserial association strategy
+#'
+#' @rdname AssociationStrategy-class
+#' @export
+setClass(
+    "CrossSectionalBinaryAssociationStrategy",
+    contains = "AssociationStrategy"
+)
+
+#' @rdname association_applicable
+#' @export
+setMethod(
+    "association_applicable",
+    signature(
+        strategy = "CrossSectionalBinaryAssociationStrategy",
+        data = "StateTransitionData",
+        values = "ANY"
+    ),
+    function(strategy, data, values) {
+        identical(data@sampling_design@kind, "cross_sectional") &&
+            !is.null(.binary_level_order(values))
+    }
+)
+
+#' @rdname associate_component
+#' @export
+setMethod(
+    "associate_component",
+    signature(
+        strategy = "CrossSectionalBinaryAssociationStrategy",
+        scores = "numeric",
+        values = "ANY"
+    ),
+    function(strategy, scores, values) {
+        levels <- .binary_level_order(values)
+        if (is.null(levels)) {
+            .stop_landscapeR_validation(
+                paste0(
+                    "associate_component(): cross-sectional binary ",
+                    "strategy requires exactly two observed levels"
+                )
             )
         }
-    )
+        .signed_rank_biserial(
+            scores,
+            values,
+            reference = levels[[1L]],
+            comparison = levels[[2L]]
+        )
+    }
+)
+
+#' @rdname association_strategy_id
+#' @export
+setMethod(
+    "association_strategy_id",
+    signature(strategy = "CrossSectionalBinaryAssociationStrategy"),
+    function(strategy) {
+        "cross-sectional-binary-signed-rank-biserial-v1"
+    }
+)
+
+register_strategy(
+    "AssociationStrategy",
+    "cross_sectional_binary",
+    function(params = list()) {
+        if (length(params)) {
+            .stop_landscapeR_validation(
+                paste0(
+                    "cross_sectional_binary association strategy does not ",
+                    "accept parameters"
+                )
+            )
+        }
+        new("CrossSectionalBinaryAssociationStrategy")
+    }
 )
 
 .resolve_component_association_strategy <- function(std, values) {
+    keys <- list_strategies("AssociationStrategy")
+    strategy_names <- sub("^AssociationStrategy:", "", keys)
+    strategies <- lapply(
+        sort(strategy_names),
+        function(name) get_strategy("AssociationStrategy", name)()
+    )
     applicable <- Filter(
-        function(strategy) strategy$applicable(std, values),
-        .component_association_strategies
+        function(strategy) association_applicable(strategy, std, values),
+        strategies
     )
     if (length(applicable) != 1L) return(NULL)
     applicable[[1L]]
@@ -436,6 +502,17 @@ associate_metadata <- function(
             )
         )
     }
+    layer_observations <- ncol(as.list(experiments(std))[[1L]])
+    if (nrow(coordinate_matrix) != layer_observations) {
+        .stop_landscapeR_validation(sprintf(
+            paste0(
+                "associate_metadata(): coordinate rows (%d) must equal ",
+                "selected-layer observations (%d)"
+            ),
+            nrow(coordinate_matrix),
+            layer_observations
+        ))
+    }
     component_labels <- colnames(coordinate_matrix)
     if (is.null(component_labels)) {
         component_labels <- paste0("PC", seq_len(ncol(coordinate_matrix)))
@@ -477,7 +554,7 @@ associate_metadata <- function(
 
         field_rows <- lapply(seq_len(ncol(coordinate_matrix)), function(j) {
             scores <- coordinate_matrix[, j]
-            effect <- strategy$associate(scores, values, levels)
+            effect <- associate_component(strategy, scores, values)
             if (is.null(effect)) return(NULL)
             data.frame(
                 metadata_field = field,
@@ -593,9 +670,12 @@ associate_metadata <- function(
         state_space_digest = state_space_digest,
         compute_tier = "analytic-unadjusted",
         provenance = list(
-            association_strategy =
-                .component_association_strategies$
-                    cross_sectional_binary$id,
+            association_strategy = association_strategy_id(
+                get_strategy(
+                    "AssociationStrategy",
+                    "cross_sectional_binary"
+                )()
+            ),
             package_version = as.character(
                 utils::packageVersion("landscapeR")
             ),
