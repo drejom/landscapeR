@@ -80,6 +80,18 @@ each evidence protocol predeclares them from accuracy/runtime benchmarks. All
 artifacts record their tier. Tiers may change uncertainty depth and runtime but
 must not change the point estimator, target hypothesis, or input cohort.
 
+### 2026-07-15 amendment — design-preserving resampling
+
+The biological resampling unit follows `SamplingDesign`; there is no generic row
+bootstrap. Independent no-time analyses resample whole biological observations
+and preserve discrete target-level counts for target uncertainty. Independent
+time courses resample observations within target × observed-time design cells.
+Repeated analyses resample whole subject trajectories within subject-invariant
+target levels, retain every row/time for a sampled subject, and assign duplicate
+draws new subject IDs. This policy applies both to fixed-decomposition
+`standard` uncertainty and full-pipeline `evidence` stability. Resample counts
+remain protocol-specific and empirically benchmarked.
+
 ### Execution boundary
 
 - Reusable package functions may use `future.apply` for independent repeated

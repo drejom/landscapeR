@@ -24,7 +24,14 @@ NEXT_TASK = re.compile(
 )
 LOCAL_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]*)\)")
 ALLOWED_STATE_PREFIXES = ("active", "queued", "conditional", "parked", "complete")
-ALLOWED_DOCS_AREAS = {"agents", "archive", "plans", "specs"}
+ALLOWED_DOCS_AREAS = {
+    "agents": {".md"},
+    "archive": {".md"},
+    "plans": {".md"},
+    "research": {".md"},
+    "reviews": {".md", ".json"},
+    "specs": {".md"},
+}
 
 
 def fail(message: str) -> int:
@@ -88,7 +95,8 @@ def check_docs_layout(docs_root: Path) -> None:
         relative = path.relative_to(docs_root)
         if relative == Path("README.md"):
             continue
-        if relative.parts[0] not in ALLOWED_DOCS_AREAS or path.suffix != ".md":
+        area = relative.parts[0]
+        if area not in ALLOWED_DOCS_AREAS or path.suffix not in ALLOWED_DOCS_AREAS[area]:
             raise ValueError(
                 f"generated or uncategorized file under source docs: {path}"
             )
