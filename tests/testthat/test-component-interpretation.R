@@ -355,6 +355,33 @@ test_that("available-case and tied-score diagnostics remain visible", {
     expect_identical(condition$n_score_ties, c(0L, 7L))
 })
 
+test_that("component interpretation rejects malformed layer and coordinate inputs", {
+    std <- component_interpretation_fixture()
+
+    expect_error(
+        landscapeR:::.aligned_component_metadata(
+            std,
+            layer = 2L,
+            field = "condition",
+            caller = "test"
+        ),
+        class = "landscapeR_validation_error"
+    )
+
+    md <- metadata(std)
+    md$stage1@coords_k <- list(matrix(
+        c(1:15, Inf),
+        nrow = 8L,
+        dimnames = list(NULL, c("PC1", "PC2"))
+    ))
+    metadata(std) <- md
+    expect_error(
+        associate_metadata(std),
+        "finite numeric matrix",
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("a genuine null produces a typed no-identifiable-result abstention", {
     std <- component_interpretation_fixture()
     md <- metadata(std)

@@ -155,6 +155,23 @@ setValidity("MetadataAssociationAtlas", function(object) {
         )
     }
 
+    experiments_list <- as.list(experiments(std))
+    if (length(layer) != 1L || is.na(layer) || !is.numeric(layer) ||
+        !is.finite(layer) || layer != as.integer(layer) ||
+        layer < 1L || layer > length(experiments_list)) {
+        .stop_landscapeR_validation(
+            paste0(prefix, "layer must be one in-range integer index")
+        )
+    }
+    layer <- as.integer(layer)
+    experiment_names <- names(experiments_list)
+    if (is.null(experiment_names) ||
+        !.is_scalar_nonempty_text(experiment_names[[layer]])) {
+        .stop_landscapeR_validation(
+            paste0(prefix, "selected layer must have a non-empty name")
+        )
+    }
+
     cd_s4 <- colData(std)
     field_idx <- which(names(cd_s4) == field)
     if (!length(field_idx)) {
@@ -175,8 +192,7 @@ setValidity("MetadataAssociationAtlas", function(object) {
     }
     cd <- as.data.frame(cd_s4)
 
-    experiments_list <- as.list(experiments(std))
-    layer_name <- names(experiments_list)[[layer]]
+    layer_name <- experiment_names[[layer]]
     assay_samples <- colnames(experiments_list[[layer]])
     mapping <- as.data.frame(sampleMap(std), stringsAsFactors = FALSE)
     layer_map <- mapping[
@@ -405,14 +421,21 @@ associate_metadata <- function(
         metadata_fields,
         ignore.case = TRUE
     )
-    exclusions <- data.frame(
-        metadata_field = character(),
-        reason = character(),
-        stringsAsFactors = FALSE
-    )
+    exclusion_rows <- list()
     association_rows <- list()
     observation_rows <- list()
     coordinate_matrix <- coordinates[[1L]]
+    if (!is.matrix(coordinate_matrix) ||
+        !is.numeric(coordinate_matrix) ||
+        !length(coordinate_matrix) ||
+        any(!is.finite(coordinate_matrix))) {
+        .stop_landscapeR_validation(
+            paste0(
+                "associate_metadata(): Stage 1 coords_k[[1]] must be a ",
+                "non-empty finite numeric matrix"
+            )
+        )
+    }
     component_labels <- colnames(coordinate_matrix)
     if (is.null(component_labels)) {
         component_labels <- paste0("PC", seq_len(ncol(coordinate_matrix)))
@@ -420,24 +443,18 @@ associate_metadata <- function(
 
     for (field in metadata_fields) {
         if (field %in% non_analytical_fields) {
-            exclusions <- rbind(
-                exclusions,
-                data.frame(
-                    metadata_field = field,
-                    reason = "declared-non-analytical",
-                    stringsAsFactors = FALSE
-                )
+            exclusion_rows[[length(exclusion_rows) + 1L]] <- data.frame(
+                metadata_field = field,
+                reason = "declared-non-analytical",
+                stringsAsFactors = FALSE
             )
             next
         }
         if (identifier_fields[[match(field, metadata_fields)]]) {
-            exclusions <- rbind(
-                exclusions,
-                data.frame(
-                    metadata_field = field,
-                    reason = "identifier-field",
-                    stringsAsFactors = FALSE
-                )
+            exclusion_rows[[length(exclusion_rows) + 1L]] <- data.frame(
+                metadata_field = field,
+                reason = "identifier-field",
+                stringsAsFactors = FALSE
             )
             next
         }
@@ -449,13 +466,10 @@ associate_metadata <- function(
         )
         strategy <- .resolve_component_association_strategy(std, values)
         if (is.null(strategy)) {
-            exclusions <- rbind(
-                exclusions,
-                data.frame(
-                    metadata_field = field,
-                    reason = "unsupported-non-binary-field",
-                    stringsAsFactors = FALSE
-                )
+            exclusion_rows[[length(exclusion_rows) + 1L]] <- data.frame(
+                metadata_field = field,
+                reason = "unsupported-non-binary-field",
+                stringsAsFactors = FALSE
             )
             next
         }
@@ -538,6 +552,15 @@ associate_metadata <- function(
             metadata_value = character(),
             score = numeric(),
             available = logical(),
+            stringsAsFactors = FALSE
+        )
+    }
+    exclusions <- if (length(exclusion_rows)) {
+        do.call(rbind, exclusion_rows)
+    } else {
+        data.frame(
+            metadata_field = character(),
+            reason = character(),
             stringsAsFactors = FALSE
         )
     }
