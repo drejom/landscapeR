@@ -145,7 +145,8 @@ coefficient.
 
 The concrete v1 engines are:
 
-- independent strategy: `stats::lm()` on
+- independent strategy: `stats::lm()` with explicit treatment contrasts and
+  `na.action = na.fail` on
   `score_std ~ target * time_scaled + nuisance_terms`, registered as
   `AssociationStrategy:independent_time_course_linear`;
 - repeated-subject strategy: `lme4::lmer()` on

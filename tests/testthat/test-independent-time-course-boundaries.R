@@ -68,7 +68,96 @@ test_that("time model records standardized orientation and engine controls", {
         expect_gt(model$unadjusted$design_rank, 0L)
         expect_gt(model$unadjusted$residual_df, 0L)
     }
-    expect_identical(atlas_provenance(atlas)$model_engine, "stats::lm.fit")
+    provenance <- atlas_provenance(atlas)
+    expect_identical(provenance$model_engine, "stats::lm")
+    expect_identical(provenance$model_na_action, "stats::na.fail")
+    expect_true(nzchar(provenance$model_engine_version))
+    expect_true(nzchar(provenance$model_formula_digest))
+    expect_identical(
+        provenance$model_contrasts$target,
+        "contr.treatment(2, base = 1)"
+    )
+})
+
+test_that("time interaction is invariant to global contrast options", {
+    std <- independent_time_course_fixture()
+    specification <- independent_time_course_specification("batch")
+    original <- options("contrasts")
+    on.exit(options(original), add = TRUE)
+
+    treatment_atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "sample_id"
+    )
+    options(contrasts = c("contr.sum", "contr.poly"))
+    sum_atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "sample_id"
+    )
+
+    expect_identical(
+        atlas_associations(treatment_atlas)$estimate,
+        atlas_associations(sum_atlas)$estimate
+    )
+    expect_identical(
+        atlas_provenance(treatment_atlas)$time_course_display_lines,
+        atlas_provenance(sum_atlas)$time_course_display_lines
+    )
+})
+
+test_that("adjusted proposals display adjusted trajectory evidence", {
+    atlas <- associate_metadata(
+        independent_time_course_fixture(),
+        specification = independent_time_course_specification("batch"),
+        non_analytical_fields = "sample_id"
+    )
+
+    expect_identical(
+        atlas_provenance(atlas)$display_trajectory_variant,
+        "time-course-adjusted"
+    )
+    expect_s3_class(plot(propose_component(atlas)), "ggplot")
+})
+
+test_that("bootstrap refits preserve the observed orientation", {
+    atlas <- associate_metadata(
+        independent_time_course_fixture(include_nuisance = FALSE),
+        specification = independent_time_course_specification(),
+        non_analytical_fields = "sample_id",
+        n_resamples = 39L,
+        seed = 8112L
+    )
+    model <- atlas_provenance(atlas)$time_course_models[[1L]]
+    bootstrap <- model$unadjusted_uncertainty$bootstrap_estimates
+    bootstrap <- bootstrap[is.finite(bootstrap) & bootstrap != 0]
+
+    expect_true(length(bootstrap) > 0L)
+    expect_true(model$orientation_multiplier %in% c(-1, 1))
+    expect_true(all(sign(bootstrap) == sign(model$unadjusted$estimate)))
+})
+
+test_that("numerically difficult designs return evidence rather than errors", {
+    std <- independent_time_course_fixture()
+    colData(std)$almost_time <- colData(std)$day +
+        seq_len(nrow(colData(std))) * 1e-14
+
+    expect_no_error(
+        atlas <- associate_metadata(
+            std,
+            specification = independent_time_course_specification(
+                "almost_time"
+            ),
+            non_analytical_fields = c("sample_id", "batch")
+        )
+    )
+    evidence <- atlas_associations(atlas)
+    diagnostics <- evidence$diagnostic[evidence$proposal_eligible]
+    expect_true(all(
+        diagnostics == "" |
+            grepl("^non-identifiable-design:", diagnostics)
+    ))
 })
 
 test_that("missing time cells remain explicit in stored and plotted evidence", {

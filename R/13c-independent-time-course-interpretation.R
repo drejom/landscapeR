@@ -62,8 +62,13 @@ setMethod(
             reference_level = strategy@reference_level,
             comparison_level = strategy@comparison_level
         )
-        if (!identical(result$status, "estimable")) return(NULL)
-        list(
+        association <- list(
+            status = result$status,
+            diagnostic = result$diagnostic,
+            model_result = result
+        )
+        if (!identical(result$status, "estimable")) return(association)
+        c(association, list(
             estimand = "standardized-condition-time-interaction",
             estimate = result$estimate,
             reference_level = strategy@reference_level,
@@ -73,9 +78,8 @@ setMethod(
             n_target_ties = result$n_target_ties,
             p_value = result$p_value,
             cohort_digest = result$cohort_digest,
-            design_digest = result$design_digest,
-            model_result = result
-        )
+            design_digest = result$design_digest
+        ))
     }
 )
 
@@ -150,7 +154,15 @@ register_strategy(
         if (is.factor(values)) return(values)
         factor(values)
     }), stringsAsFactors = FALSE)
-    matrix <- stats::model.matrix(~ ., data = frame)
+    factor_fields <- names(frame)[vapply(frame, is.factor, logical(1L))]
+    contrasts <- stats::setNames(lapply(factor_fields, function(field) {
+        stats::contr.treatment(nlevels(frame[[field]]), base = 1L)
+    }), factor_fields)
+    matrix <- stats::model.matrix(
+        ~ .,
+        data = frame,
+        contrasts.arg = contrasts
+    )
     matrix[, colnames(matrix) != "(Intercept)", drop = FALSE]
 }
 
@@ -173,7 +185,10 @@ register_strategy(
     }
     base <- stats::model.matrix(
         base_formula,
-        data = data.frame(target = target, scaled_time = scaled_time)
+        data = data.frame(target = target, scaled_time = scaled_time),
+        contrasts.arg = list(
+            target = stats::contr.treatment(2L, base = 1L)
+        )
     )
     nuisance <- .time_nuisance_matrix(nuisance_values)
     if (!length(nuisance_values)) return(base)
@@ -226,7 +241,8 @@ register_strategy(
     scores,
     target,
     reference_level,
-    comparison_level
+    comparison_level,
+    multiplier = NULL
 ) {
     score_sd <- stats::sd(scores)
     if (!is.finite(score_sd) || score_sd == 0) {
@@ -241,7 +257,9 @@ register_strategy(
     difference <- mean(
         standardized[target == comparison_level]
     ) - mean(standardized[target == reference_level])
-    multiplier <- if (is.finite(difference) && difference < 0) -1 else 1
+    if (is.null(multiplier)) {
+        multiplier <- if (is.finite(difference) && difference < 0) -1 else 1
+    }
     list(
         status = "",
         multiplier = multiplier,
@@ -255,7 +273,8 @@ register_strategy(
     observed_time,
     nuisance_values,
     reference_level,
-    comparison_level
+    comparison_level,
+    orientation_multiplier = NULL
 ) {
     n <- length(scores)
     if (length(target) != n ||
@@ -278,7 +297,8 @@ register_strategy(
         scores,
         target,
         reference_level,
-        comparison_level
+        comparison_level,
+        multiplier = orientation_multiplier
     )
     if (nzchar(orientation$status)) {
         structural <- orientation$status
@@ -359,10 +379,42 @@ register_strategy(
         ))
     }
     response <- orientation$standardized_scores
-    fit <- stats::lm.fit(design, response)
+    fit <- tryCatch(
+        stats::lm(
+            response ~ design - 1,
+            na.action = stats::na.fail,
+            singular.ok = FALSE
+        ),
+        error = function(error) error
+    )
     residual_df <- n - ncol(design)
-    sigma_squared <- sum(fit$residuals^2) / residual_df
-    covariance <- sigma_squared * solve(crossprod(design))
+    covariance <- if (inherits(fit, "error")) {
+        fit
+    } else {
+        tryCatch(stats::vcov(fit), error = function(error) error)
+    }
+    if (inherits(covariance, "error") ||
+        any(!is.finite(covariance))) {
+        return(list(
+            status = "non-identifiable-design",
+            diagnostic = "numerical-model-failure",
+            estimate = NA_real_,
+            p_value = NA_real_,
+            n_available = n,
+            n_score_ties = NA_integer_,
+            n_target_ties = NA_integer_,
+            cohort_digest = cohort_digest,
+            design_digest = design_digest,
+            design_rank = as.integer(design_rank),
+            residual_df = as.integer(residual_df),
+            orientation_multiplier = orientation$multiplier,
+            standardized_scores = response,
+            coefficients = numeric(),
+            scaled_time = scaled_time
+        ))
+    }
+    names(fit$coefficients) <- colnames(design)
+    dimnames(covariance) <- list(colnames(design), colnames(design))
     interaction_index <- grep(
         "^target.*:scaled_time$",
         colnames(design)
@@ -424,7 +476,7 @@ register_strategy(
             colnames(design)
         ),
         scaled_time = scaled_time,
-        residual_sd = sqrt(sigma_squared)
+        residual_sd = summary(fit)$sigma
     )
 }
 
@@ -470,7 +522,8 @@ register_strategy(
     nuisance_values,
     reference_level,
     comparison_level,
-    plan
+    plan,
+    orientation_multiplier
 ) {
     estimates <- vapply(plan$indices, function(index) {
         result <- .fit_independent_time_course(
@@ -479,7 +532,8 @@ register_strategy(
             observed_time[index],
             lapply(nuisance_values, `[`, index),
             reference_level,
-            comparison_level
+            comparison_level,
+            orientation_multiplier = orientation_multiplier
         )
         if (identical(result$status, "estimable")) {
             result$estimate
@@ -496,6 +550,7 @@ register_strategy(
     } else {
         "not-requested"
     }
+    summary$bootstrap_estimates <- estimates
     summary
 }
 
@@ -758,6 +813,22 @@ register_strategy(
         }),
         specification@nuisance_fields
     )
+    all_sample_ids <- names(target)
+    analysis_complete <- .time_required_complete(
+        target,
+        observed_time,
+        nuisance_values
+    )
+    analysis_cohort <- all_sample_ids[analysis_complete]
+    excluded_cohort <- all_sample_ids[!analysis_complete]
+    target <- target[analysis_complete]
+    observed_time <- observed_time[analysis_complete]
+    nuisance_values <- lapply(nuisance_values, `[`, analysis_complete)
+    coordinate_matrix <- coordinate_matrix[
+        analysis_complete,
+        ,
+        drop = FALSE
+    ]
     reference_level <- specification@reference_level
     comparison_level <- specification@comparison_level
     plan <- .time_course_resampling_plan(
@@ -791,18 +862,7 @@ register_strategy(
             scores,
             target
         )
-        unadjusted <- if (is.null(unadjusted_effect)) {
-            .fit_independent_time_course(
-                scores,
-                target,
-                observed_time,
-                list(),
-                reference_level,
-                comparison_level
-            )
-        } else {
-            unadjusted_effect$model_result
-        }
+        unadjusted <- unadjusted_effect$model_result
         unadjusted_uncertainty <- .time_course_uncertainty(
             scores,
             target,
@@ -810,7 +870,8 @@ register_strategy(
             list(),
             reference_level,
             comparison_level,
-            plan
+            plan,
+            orientation_multiplier = unadjusted$orientation_multiplier
         )
         rows[[length(rows) + 1L]] <- .time_course_pooled_row(
             component,
@@ -842,18 +903,7 @@ register_strategy(
                 scores,
                 target
             )
-            adjusted <- if (is.null(adjusted_effect)) {
-                .fit_independent_time_course(
-                    scores,
-                    target,
-                    observed_time,
-                    nuisance_values,
-                    reference_level,
-                    comparison_level
-                )
-            } else {
-                adjusted_effect$model_result
-            }
+            adjusted <- adjusted_effect$model_result
             adjusted_uncertainty <- .time_course_uncertainty(
                 scores,
                 target,
@@ -861,7 +911,8 @@ register_strategy(
                 nuisance_values,
                 reference_level,
                 comparison_level,
-                plan
+                plan,
+                orientation_multiplier = adjusted$orientation_multiplier
             )
             rows[[length(rows) + 1L]] <- .time_course_association_row(
                 component,
@@ -900,8 +951,9 @@ register_strategy(
                 is.finite(observed_time),
             stringsAsFactors = FALSE
         )
+        primary_model <- if (length(nuisance_values)) adjusted else unadjusted
         display_lines[[component]] <- .time_course_display_lines(
-            unadjusted,
+            primary_model,
             component,
             component_labels[[component]],
             reference_level,
@@ -1071,7 +1123,15 @@ register_strategy(
             time_range = c(time_min, time_max),
             time_transform =
                 "(time - min(time)) / (max(time) - min(time))",
-            model_engine = "stats::lm.fit",
+            model_engine = "stats::lm",
+            model_engine_version = as.character(
+                utils::packageVersion("stats")
+            ),
+            model_na_action = "stats::na.fail",
+            model_contrasts = list(
+                target = "contr.treatment(2, base = 1)",
+                nuisance_factors = "contr.treatment(nlevels, base = 1)"
+            ),
             model_formula_unadjusted =
                 "standardized_score ~ condition * scaled_time",
             model_formula_adjusted = paste(
@@ -1082,8 +1142,34 @@ register_strategy(
                     ""
                 }
             ),
+            model_formula_digest = digest::digest(
+                list(
+                    unadjusted =
+                        "standardized_score ~ condition * scaled_time",
+                    adjusted = paste(
+                        "standardized_score ~ condition * scaled_time",
+                        if (length(nuisance_values)) {
+                            paste(
+                                "+",
+                                paste(names(nuisance_values), collapse = " + ")
+                            )
+                        } else {
+                            ""
+                        }
+                    ),
+                    contrasts = list(
+                        target = "contr.treatment(2, base = 1)",
+                        nuisance_factors =
+                            "contr.treatment(nlevels, base = 1)"
+                    )
+                ),
+                algo = "sha256",
+                serialize = TRUE
+            ),
             primary_evidence_variant = primary_variant,
-            analysis_cohort = names(target),
+            display_trajectory_variant = primary_variant,
+            analysis_cohort = analysis_cohort,
+            analysis_cohort_exclusions = excluded_cohort,
             time_course_models = model_records,
             time_course_observations = data.frame(
                 primary_sample = names(target),
@@ -1336,6 +1422,14 @@ register_strategy(
     cells$label_y <- score_range[[1L]] +
         label_offset[cells$condition]
     cells$label <- paste0("n=", cells$count)
+    trajectory_note <- if (identical(
+        provenance$display_trajectory_variant,
+        "time-course-adjusted"
+    )) {
+        "adjusted lines use reference/zero nuisance values;"
+    } else {
+        "unadjusted lines;"
+    }
     effect_summary <- provenance$time_course_effect_summary
     interval_text <- ifelse(
         is.finite(effect_summary$effect_conf_low) &
@@ -1462,10 +1556,11 @@ register_strategy(
             colour = "Condition",
             fill = "Condition",
             shape = "Condition",
-            caption = paste(
+            caption = paste(strwrap(paste(
                 "Counts show independent biological samples per design cell;",
+                trajectory_note,
                 "lines cannot select or confirm a component"
-            )
+            ), width = 80L), collapse = "\n")
         ) +
         theme_landscapeR()
 }

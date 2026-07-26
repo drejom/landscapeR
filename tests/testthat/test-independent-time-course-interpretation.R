@@ -20,7 +20,7 @@ test_that("independent time course fits the declared standardized interaction", 
         atlas_provenance(atlas)$time_transform,
         "(time - min(time)) / (max(time) - min(time))"
     )
-    expect_identical(atlas_provenance(atlas)$model_engine, "stats::lm.fit")
+    expect_identical(atlas_provenance(atlas)$model_engine, "stats::lm")
     expect_match(
         atlas_provenance(atlas)$model_formula_adjusted,
         "condition \\* scaled_time"
@@ -266,7 +266,7 @@ test_that("a singly replicated overlapping cell causes design abstention", {
     expect_s4_class(propose_component(atlas), "ComponentAbstention")
 })
 
-test_that("missing required nuisance values never change the cohort silently", {
+test_that("missing required nuisance values define one visible common cohort", {
     std <- independent_time_course_fixture()
     colData(std)$batch[[1L]] <- NA
     atlas <- associate_metadata(
@@ -287,16 +287,22 @@ test_that("missing required nuisance values never change the cohort silently", {
     ]
 
     expect_true(all(is.finite(unadjusted$estimate)))
-    expect_true(all(is.na(adjusted$estimate)))
-    expect_true(all(grepl(
-        "unexpected-missing-required-values",
-        adjusted$diagnostic
-    )))
+    expect_true(all(is.finite(adjusted$estimate)))
+    expected_cohort <- rownames(colData(std))[-1L]
     expect_identical(
         atlas_provenance(atlas)$analysis_cohort,
-        rownames(colData(std))
+        expected_cohort
     )
-    expect_s4_class(propose_component(atlas), "ComponentAbstention")
+    expect_identical(
+        atlas_provenance(atlas)$analysis_cohort_exclusions,
+        rownames(colData(std))[[1L]]
+    )
+    expect_true(all(unadjusted$n_available == length(expected_cohort)))
+    expect_identical(
+        unique(unadjusted$cohort_digest),
+        unique(adjusted$cohort_digest)
+    )
+    expect_s4_class(propose_component(atlas), "ComponentProposal")
 })
 
 test_that("target-confounded nuisance design preserves raw model evidence", {
