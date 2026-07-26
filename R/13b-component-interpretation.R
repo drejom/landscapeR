@@ -1162,6 +1162,18 @@ associate_metadata <- function(
             exchangeability = exchangeability
         ))
     }
+    if (identical(std@sampling_design@kind, "longitudinal")) {
+        return(.associate_repeated_time_course(
+            std = std,
+            stage1 = stage1,
+            specification = specification,
+            non_analytical_fields = non_analytical_fields,
+            dataset_id = dataset_id,
+            n_resamples = n_resamples,
+            seed = seed,
+            exchangeability = exchangeability
+        ))
+    }
     if (!identical(std@sampling_design@kind, "cross_sectional")) {
         .stop_landscapeR_validation(
             paste0(
@@ -1757,7 +1769,8 @@ atlas_digest <- function(atlas) {
 #' @slot version schema version, currently `"1.0.0"`
 #' @slot method permutation method or `"none"`
 #' @slot status computation status
-#' @slot n_requested,n_completed requested and completed permutations
+#' @slot n_requested,n_completed,n_failures requested, completed, and failed
+#'   permutations
 #' @slot observed_max_effect observed maximum absolute target effect
 #' @slot null_max_effect maximum absolute effect from each null search
 #' @slot search_aware_p_value finite-sample corrected search-aware p-value
@@ -1774,6 +1787,7 @@ setClass("PermutationEvidence",
         status = "character",
         n_requested = "integer",
         n_completed = "integer",
+        n_failures = "integer",
         observed_max_effect = "numeric",
         null_max_effect = "numeric",
         search_aware_p_value = "numeric",
@@ -1788,6 +1802,7 @@ setClass("PermutationEvidence",
         status = "not-requested",
         n_requested = 0L,
         n_completed = 0L,
+        n_failures = 0L,
         observed_max_effect = NA_real_,
         null_max_effect = numeric(),
         search_aware_p_value = NA_real_,
@@ -1801,7 +1816,7 @@ setClass("PermutationEvidence",
 setValidity("PermutationEvidence", function(object) {
     errors <- character()
     statuses <- c(
-        "not-requested", "complete", "not-identifiable",
+        "not-requested", "complete", "partial", "not-identifiable",
         "insufficient-support"
     )
     if (!identical(object@version, "1.0.0")) {
@@ -1812,13 +1827,16 @@ setValidity("PermutationEvidence", function(object) {
     }
     if (length(object@n_requested) != 1L ||
         length(object@n_completed) != 1L ||
+        length(object@n_failures) != 1L ||
         object@n_requested < 0L ||
-        object@n_completed < 0L) {
+        object@n_completed < 0L ||
+        object@n_failures < 0L) {
         errors <- c(errors, "permutation counts must be non-negative scalars")
     }
     if (identical(object@status, "complete")) {
         if (object@n_requested < 1L ||
             !identical(object@n_completed, object@n_requested) ||
+            object@n_failures != 0L ||
             length(object@null_max_effect) != object@n_completed ||
             any(!is.finite(object@null_max_effect)) ||
             !is.finite(object@observed_max_effect) ||
@@ -1828,8 +1846,25 @@ setValidity("PermutationEvidence", function(object) {
             !.is_sha256_digest(object@cohort_digest)) {
             errors <- c(errors, "complete permutation evidence is malformed")
         }
+    } else if (identical(object@status, "partial")) {
+        if (object@n_requested < 1L ||
+            object@n_completed < 1L ||
+            object@n_failures < 1L ||
+            object@n_completed + object@n_failures != object@n_requested ||
+            length(object@null_max_effect) != object@n_requested ||
+            sum(is.finite(object@null_max_effect)) != object@n_completed ||
+            sum(is.na(object@null_max_effect)) != object@n_failures ||
+            !is.finite(object@observed_max_effect) ||
+            !is.finite(object@search_aware_p_value) ||
+            object@search_aware_p_value < 0 ||
+            object@search_aware_p_value > 1 ||
+            !.is_sha256_digest(object@cohort_digest) ||
+            !.is_scalar_nonempty_text(object@diagnostic)) {
+            errors <- c(errors, "partial permutation evidence is malformed")
+        }
     } else if (length(object@null_max_effect) ||
         object@n_completed != 0L ||
+        object@n_failures != 0L ||
         !is.na(object@search_aware_p_value)) {
         errors <- c(errors, "incomplete evidence must not contain null results")
     }
@@ -1845,6 +1880,7 @@ setValidity("PermutationEvidence", function(object) {
     status = "not-requested",
     n_requested = 0L,
     n_completed = 0L,
+    n_failures = 0L,
     observed_max_effect = NA_real_,
     null_max_effect = numeric(),
     search_aware_p_value = NA_real_,
@@ -1860,6 +1896,7 @@ setValidity("PermutationEvidence", function(object) {
         status = status,
         n_requested = as.integer(n_requested),
         n_completed = as.integer(n_completed),
+        n_failures = as.integer(n_failures),
         observed_max_effect = as.numeric(observed_max_effect),
         null_max_effect = as.numeric(null_max_effect),
         search_aware_p_value = as.numeric(search_aware_p_value),
@@ -2383,6 +2420,15 @@ setValidity("ComponentProposal", function(object) {
             seed
         ))
     }
+    if (identical(atlas@sampling_design@kind, "longitudinal")) {
+        return(.compute_repeated_time_permutation_evidence(
+            atlas,
+            target,
+            ranking,
+            n_permutations,
+            seed
+        ))
+    }
     if (n_permutations == 0L) {
         return(.new_permutation_evidence())
     }
@@ -2656,7 +2702,14 @@ propose_component <- function(
         ranking <- target_rows
         ranking$proposal_rank <- seq_len(nrow(ranking))
         reason <- target_rows$diagnostic[[1L]]
-        if (grepl("^non-identifiable-design", reason)) {
+        if (grepl(
+            paste0(
+                "^(non-identifiable-design|",
+                "singular-random-effects-covariance|",
+                "non-convergent-mixed-model)"
+            ),
+            reason
+        )) {
             reason <- "non-identifiable-design"
         }
         return(.new_component_abstention(
@@ -2698,9 +2751,11 @@ propose_component <- function(
         atlas_digest
     )
     evidence_status <- "estimable-exploratory-only"
-    top_candidates <- as.integer(ranking$component[
+    top_candidate_rows <- is.finite(ranking$effect_magnitude) &
         ranking$effect_magnitude == ranking$effect_magnitude[[1L]]
-    ])
+    top_candidates <- as.integer(
+        ranking$component[top_candidate_rows]
+    )
     if (length(top_candidates) > 1L) {
         return(.new_component_abstention(
             atlas = atlas,
@@ -2850,12 +2905,14 @@ plot.PermutationEvidence <- function(x, y, ...) {
     if (!is(x, "PermutationEvidence")) {
         stop("plot.PermutationEvidence(): x must be PermutationEvidence")
     }
-    data <- data.frame(max_effect = x@null_max_effect)
+    data <- data.frame(
+        max_effect = x@null_max_effect[is.finite(x@null_max_effect)]
+    )
     plot <- ggplot2::ggplot(
         data,
         ggplot2::aes(x = .data[["max_effect"]])
     )
-    if (identical(x@status, "complete")) {
+    if (x@status %in% c("complete", "partial")) {
         plot <- plot +
             ggplot2::geom_histogram(
                 bins = min(30L, max(5L, floor(sqrt(x@n_completed)))),
@@ -2887,10 +2944,18 @@ plot.PermutationEvidence <- function(x, y, ...) {
             ),
             x = "Maximum absolute target effect",
             y = "Permutation count",
-            caption = if (identical(x@status, "complete")) {
-                sprintf(
-                    "Observed maximum in red; search-aware p = %.3f",
-                    x@search_aware_p_value
+            caption = if (x@status %in% c("complete", "partial")) {
+                paste(
+                    sprintf(
+                        "Observed maximum in red; search-aware p = %.3f.",
+                        x@search_aware_p_value
+                    ),
+                    sprintf(
+                        "%d of %d requested null refits completed; %d failed.",
+                        x@n_completed,
+                        x@n_requested,
+                        x@n_failures
+                    )
                 )
             } else {
                 "No search-aware p-value was fabricated"
@@ -3060,6 +3125,23 @@ plot.ComponentAbstention <- function(x, y, ...) {
         diagnostic <- unique(x@ranking$diagnostic)
         diagnostic <- diagnostic[nzchar(diagnostic)]
         return(.plot_independent_time_course(
+            observations = x@observations,
+            provenance = x@provenance,
+            ranking = x@ranking,
+            title = sprintf(
+                "No component nominated for %s",
+                x@target_field
+            ),
+            subtitle = paste(
+                c(x@reason, diagnostic),
+                collapse = " | "
+            )
+        ))
+    }
+    if (identical(x@provenance$sampling_design, "longitudinal")) {
+        diagnostic <- unique(x@ranking$diagnostic)
+        diagnostic <- diagnostic[nzchar(diagnostic)]
+        return(.plot_repeated_time_course(
             observations = x@observations,
             provenance = x@provenance,
             ranking = x@ranking,
@@ -3344,6 +3426,12 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             provenance = x@provenance
         ))
     }
+    if (identical(x@sampling_design@kind, "longitudinal")) {
+        return(.plot_repeated_time_course(
+            observations = x@observations,
+            provenance = x@provenance
+        ))
+    }
     data <- atlas_observations(x)
     diagnostics <- atlas_associations(x)
     diagnostics <- unique(diagnostics[
@@ -3490,6 +3578,19 @@ plot.ComponentProposal <- function(x, y, ...) {
         "independent_time_course"
     )) {
         return(.plot_independent_time_course(
+            observations = x@observations,
+            provenance = x@provenance,
+            ranking = x@ranking,
+            title = sprintf(
+                "Component ranking for %s across observed time",
+                x@target_field
+            ),
+            subtitle =
+                "Ranked by the prespecified condition-by-time interaction"
+        ))
+    }
+    if (identical(x@provenance$sampling_design, "longitudinal")) {
+        return(.plot_repeated_time_course(
             observations = x@observations,
             provenance = x@provenance,
             ranking = x@ranking,

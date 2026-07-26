@@ -191,9 +191,9 @@ independent_time_course <- function(
 #' Declare a longitudinal sampling design
 #'
 #' Identifies the `colData` columns carrying subject identity and ordered
-#' measurement time.  A future longitudinal `DynamicsEstimator` will consume
-#' these columns; cross-sectional estimators will reject this design at the
-#' capability gate.
+#' measurement time. Repeated-subject association strategies consume these
+#' columns; cross-sectional estimators reject this design at the capability
+#' gate.
 #'
 #' Column existence and distinctness are checked here.  Subject IDs and time
 #' values are validated by \code{\link{declare_sampling_design}} against the
@@ -205,22 +205,49 @@ independent_time_course <- function(
 #' @return a validated \code{SamplingDesign} object
 #' @export
 longitudinal <- function(subject_id, time, time_unit = character(0L)) {
-    if (!is.character(subject_id) || length(subject_id) != 1L || nchar(subject_id) == 0L)
-        stop("longitudinal(): subject_id must be a single non-empty character string")
-    if (!is.character(time) || length(time) != 1L || nchar(time) == 0L)
-        stop("longitudinal(): time must be a single non-empty character string")
-    if (identical(subject_id, time))
-        stop("longitudinal(): subject_id and time must be distinct column names")
+    if (!is.character(subject_id) || length(subject_id) != 1L ||
+        is.na(subject_id) || !nzchar(subject_id)) {
+        .stop_landscapeR_validation(
+            paste0(
+                "longitudinal(): subject_id must be a single non-empty ",
+                "character string"
+            )
+        )
+    }
+    if (!is.character(time) || length(time) != 1L ||
+        is.na(time) || !nzchar(time)) {
+        .stop_landscapeR_validation(
+            paste0(
+                "longitudinal(): time must be a single non-empty ",
+                "character string"
+            )
+        )
+    }
+    if (identical(subject_id, time)) {
+        .stop_landscapeR_validation(
+            "longitudinal(): subject_id and time must be distinct column names"
+        )
+    }
+    if (length(time_unit) > 1L ||
+        (length(time_unit) == 1L &&
+            (!is.character(time_unit) ||
+                is.na(time_unit) ||
+                !nzchar(time_unit)))) {
+        .stop_landscapeR_validation(
+            paste0(
+                "longitudinal(): time_unit must be empty or one non-empty ",
+                "character string"
+            )
+        )
+    }
 
-    obj <- new("SamplingDesign",
-        version        = "1.0.0",
-        kind           = "longitudinal",
+    obj <- new(
+        "SamplingDesign",
+        version = "1.0.0",
+        kind = "longitudinal",
         subject_id_col = subject_id,
-        time_col       = time,
-        time_unit      = if (length(time_unit) == 1L && nchar(time_unit) > 0L)
-                             time_unit
-                         else
-                             character(0L)
+        time_col = time,
+        time_unit = time_unit
     )
     validObject(obj)
     obj

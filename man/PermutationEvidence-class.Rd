@@ -18,7 +18,8 @@ permutation. It cannot alter point ranking.
 
 \item{\code{status}}{computation status}
 
-\item{\code{n_requested,n_completed}}{requested and completed permutations}
+\item{\code{n_requested,n_completed,n_failures}}{requested, completed, and failed
+permutations}
 
 \item{\code{observed_max_effect}}{observed maximum absolute target effect}
 

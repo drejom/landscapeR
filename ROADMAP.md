@@ -8,7 +8,7 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#82 — repeated-subject time-course interpretation**.
+**Next task after this change lands:** **#83 — integrated axis-identifiability evidence**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -66,7 +66,8 @@ There is no calendar promise. Scientific gates, not dates, advance milestones.
 - No K=1 acceptance thresholds or supported sample range are final.
 - Cross-sectional component interpretation supports binary, continuous, ordered,
   unordered-descriptive, nuisance-adjusted, resampled, and search-aware
-  permutation evidence; independent and repeated time-course paths remain open.
+  permutation evidence. Independent destructive and repeated-subject
+  time-course paths are implemented through registered strategies.
 - Prepared AML time/cohort lineage is corrected by #53; generated objects
   remain local because raw GEO data are not tracked.
 - The descriptive component gallery is corrected by #54 on merge; the
@@ -358,9 +359,9 @@ bodies may state dependencies but do not change this ordering.
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
 | [#80](https://github.com/drejom/landscapeR/issues/80) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
-| [#81](https://github.com/drejom/landscapeR/issues/81) | Exploratory AML Stage 1 interpretation — #55 slice | complete on merge |
-| [#82](https://github.com/drejom/landscapeR/issues/82) | Exploratory AML Stage 1 interpretation — #55 slice | active — next |
-| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | active — blocked by #82 |
+| [#81](https://github.com/drejom/landscapeR/issues/81) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
+| [#82](https://github.com/drejom/landscapeR/issues/82) | Exploratory AML Stage 1 interpretation — #55 slice | complete on merge |
+| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | active — next |
 <!-- issue-map:end -->
 
 ---
@@ -379,6 +380,7 @@ plans.
 | 2026-07-14 | AnalysisSpecification v2 lifecycle | #61 complete; target intent retained through confirmation |
 | 2026-07-14 | AML observation-time and cohort lineage | #53 complete; exact source weeks and corrected 2018/2016 roles |
 | 2026-07-25 | Independent destructive-time-course interpretation | #81 complete on merge; registered fixed-effects strategy, design-preserving evidence, and typed abstention |
+| 2026-07-26 | Repeated-subject time-course interpretation | #82 complete on merge; registered correlated random-slope strategy, whole-trajectory evidence, and typed abstention |
 | 2026-07-15 | Descriptive component gallery | #54 complete on merge; canonical metadata colour without private ranking |
 | 2026-07-24 | Component-interpretation statistical strategy | ADR 0020 accepted; #55 implementation gate open |
 | 2026-07-25 | General cross-sectional component interpretation | #80 complete; continuous, ordered, adjusted, resampled, and search-aware evidence landed |

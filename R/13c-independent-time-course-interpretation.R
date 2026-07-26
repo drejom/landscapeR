@@ -575,10 +575,12 @@ register_strategy(
     model_records,
     primary_variant
 ) {
-    uncertainty_field <- if (identical(
-        primary_variant,
-        "time-course-adjusted"
-    )) {
+    adjusted_variants <- c(
+        "adjusted",
+        "time-course-adjusted",
+        "repeated-time-course-adjusted"
+    )
+    uncertainty_field <- if (primary_variant %in% adjusted_variants) {
         "adjusted_uncertainty"
     } else {
         "unadjusted_uncertainty"
@@ -687,7 +689,8 @@ register_strategy(
     reference_level,
     comparison_level,
     nuisance_fields = character(),
-    proposal_eligible = TRUE
+    proposal_eligible = TRUE,
+    diagnostic_prefix = "non-identifiable-design:"
 ) {
     estimable <- identical(result$status, "estimable")
     data.frame(
@@ -715,7 +718,7 @@ register_strategy(
             ""
         } else {
             paste0(
-                "non-identifiable-design:",
+                diagnostic_prefix,
                 result$diagnostic %||% "unknown"
             )
         },

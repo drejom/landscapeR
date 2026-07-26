@@ -151,7 +151,8 @@ The concrete v1 engines are:
   `AssociationStrategy:independent_time_course_linear`;
 - repeated-subject strategy: `lme4::lmer()` on
   `score_std ~ target * time_scaled + nuisance_terms +
-  (1 + time_scaled | subject)`.
+  (1 + time_scaled | subject)`, registered as
+  `AssociationStrategy:repeated_time_course_lmer`.
 
 The independent model is ordinary least squares, not an undefined robust
 estimator. The repeated model uses the correlated random-intercept/random-slope
