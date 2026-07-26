@@ -12,13 +12,15 @@ permutation. It cannot alter point ranking.
 \section{Slots}{
 
 \describe{
-\item{\code{version}}{schema version, currently \code{"1.0.0"}}
+\item{\code{version}}{schema version. Version \code{"1.0.0"} remains readable; new
+evidence uses \code{"1.1.0"} to distinguish partial null-search results.}
 
 \item{\code{method}}{permutation method or \code{"none"}}
 
 \item{\code{status}}{computation status}
 
-\item{\code{n_requested,n_completed}}{requested and completed permutations}
+\item{\code{n_requested,n_completed}}{requested and completed permutations. Failed
+permutations are retained as \code{n_requested - n_completed}.}
 
 \item{\code{observed_max_effect}}{observed maximum absolute target effect}
 

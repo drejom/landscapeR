@@ -18,9 +18,9 @@ a validated \code{SamplingDesign} object
 }
 \description{
 Identifies the \code{colData} columns carrying subject identity and ordered
-measurement time.  A future longitudinal \code{DynamicsEstimator} will consume
-these columns; cross-sectional estimators will reject this design at the
-capability gate.
+measurement time. Repeated-subject association strategies consume these
+columns; cross-sectional estimators reject this design at the capability
+gate.
 }
 \details{
 Column existence and distinctness are checked here.  Subject IDs and time

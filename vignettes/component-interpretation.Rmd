@@ -304,12 +304,131 @@ This declaration is distinct from two other designs:
 - ordered cross-sectional states express a declared ordering, not elapsed
   observed time or within-subject change.
 
+## Repeated-subject time courses
+
+Repeated measurements declare both the subject identifier and observed study
+time. The registered strategy estimates the standardized condition-by-time
+interaction with correlated subject-specific random intercepts and time slopes:
+`score_std ~ condition * time_scaled + nuisance_terms +
+(1 + time_scaled | subject)`.
+
+```{r repeated-subject-time-course}
+subject_id <- rep(sprintf("mouse_%02d", 1:16), each = 4L)
+subject_index <- rep(1:16, each = 4L)
+repeated_time <- rep(0:3, times = 16L)
+repeated_condition <- factor(
+  rep(rep(c("control", "treatment"), each = 8L), each = 4L),
+  levels = c("control", "treatment")
+)
+subject_offset <- 0.12 * sin(subject_index)
+subject_slope <- 0.06 * ((subject_index - 1L) %% 8L - 3.5)
+repeated_pc1 <- subject_offset +
+  (0.5 + subject_slope) * repeated_time +
+  1.4 * (repeated_condition == "treatment") * repeated_time +
+  0.05 * sin(seq_along(repeated_time))
+repeated_pc2 <- 0.1 * cos(subject_index) +
+  (0.8 - subject_slope) * repeated_time +
+  0.05 * cos(seq_along(repeated_time))
+repeated_primary <- sprintf("repeated_sample_%03d", seq_along(repeated_time))
+repeated_assay <- sprintf("repeated_rna_%03d", seq_along(repeated_time))
+
+repeated_data <- StateTransitionData(
+  experiments = list(
+    rna = SummarizedExperiment::SummarizedExperiment(
+      assays = list(logcounts = matrix(
+        seq_len(5L * length(repeated_time)),
+        nrow = 5L,
+        dimnames = list(sprintf("gene_%02d", 1:5), repeated_assay)
+      ))
+    )
+  ),
+  colData = S4Vectors::DataFrame(
+    condition = repeated_condition,
+    day = repeated_time,
+    mouse_id = subject_id,
+    batch = factor(ifelse(subject_index %% 2L, "run_1", "run_2")),
+    row.names = repeated_primary
+  ),
+  sampleMap = S4Vectors::DataFrame(
+    assay = factor(
+      rep("rna", length(repeated_time)),
+      levels = "rna"
+    ),
+    primary = repeated_primary,
+    colname = repeated_assay
+  )
+)
+repeated_data <- declare_sampling_design(
+  repeated_data,
+  longitudinal(
+    subject_id = "mouse_id",
+    time = "day",
+    time_unit = "days"
+  )
+)
+repeated_metadata <- S4Vectors::metadata(repeated_data)
+repeated_metadata$stage1 <- DecompositionResult(
+  V_star = c(1, 0, 0, 0, 0),
+  sigma = 1,
+  coords = list(repeated_pc1),
+  V_k = diag(5)[, 1:2, drop = FALSE],
+  sigma_k = matrix(c(2, 1), nrow = 1L),
+  coords_k = list(cbind(
+    PC1 = repeated_pc1,
+    PC2 = repeated_pc2
+  )),
+  k = 2L
+)
+S4Vectors::metadata(repeated_data) <- repeated_metadata
+
+repeated_specification <- analysis_specification(
+  id = "synthetic-repeated-divergence",
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "control",
+  comparison_level = "treatment",
+  nuisance_fields = "batch"
+)
+repeated_atlas <- associate_metadata(
+  repeated_data,
+  specification = repeated_specification,
+  non_analytical_fields = "mouse_id",
+  dataset_id = "synthetic-repeated-time-course",
+  n_resamples = 49L,
+  seed = 8202L
+)
+repeated_proposal <- propose_component(
+  repeated_atlas,
+  n_permutations = 49L,
+  seed = 8203L
+)
+plot(repeated_atlas)
+plot(repeated_proposal)
+```
+
+The complete subject trajectory is the inferential and resampling unit.
+Bootstrap draws occur within condition and receive fresh subject identifiers,
+so a duplicated draw remains one trajectory rather than pseudoreplicated
+observations. Permutation reassigns condition only at subject level and keeps
+observed times fixed. Missing required observations exclude the complete
+subject trajectory from a model; the recorded study-time range is not silently
+contracted.
+
+At least three usable observed times per subject, independent between-subject
+replication in each condition, and a full-rank fixed-effects design are
+required. Singular random-effects covariance and optimizer non-convergence are
+distinct typed abstentions with native diagnostics. Neither outcome triggers a
+random-intercept-only or independent-observation fallback. Individual
+trajectories, condition-level fitted divergence, sampling support, dropout,
+uncertainty, fit failures, and abstention remain visible in the canonical
+plots.
+
 ## Current boundary
 
 These paths do not reinterpret destructive time courses as longitudinal
-subjects, support repeated-subject models, combine molecular layers, or claim
-axis stability. Repeated-subject support requires a separate registered
-strategy; stability claims require later calibration. Bootstrap intervals here
-quantify association uncertainty while holding the fitted Stage 1 basis fixed.
-A real-data confirmation is a documented analyst decision, not proof that the
-selected coordinate is biologically true.
+subjects, combine molecular layers, or claim axis stability. Bootstrap
+intervals quantify association uncertainty while holding the fitted Stage 1
+basis fixed. The current repeated-subject strategy is linear and frequentist;
+nonlinear, marginal, robust, or Bayesian trajectory models require separately
+registered strategies. A real-data confirmation is a documented analyst
+decision, not proof that the selected coordinate is biologically true.

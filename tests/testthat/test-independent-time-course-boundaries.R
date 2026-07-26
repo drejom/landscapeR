@@ -198,15 +198,22 @@ test_that("repeated observations are never treated as destructive samples", {
     std <- independent_time_course_fixture(include_nuisance = FALSE)
     std@sampling_design <- longitudinal("sample_id", "day", "days")
 
-    expect_error(
-        associate_metadata(
-            std,
-            specification = independent_time_course_specification(),
-            non_analytical_fields = "sample_id"
-        ),
-        "must be declared with independent_time_course",
-        class = "landscapeR_validation_error"
+    atlas <- associate_metadata(
+        std,
+        specification = independent_time_course_specification(),
+        non_analytical_fields = "sample_id"
     )
+    effects <- atlas_associations(atlas)
+
+    expect_identical(
+        atlas_provenance(atlas)$association_strategy,
+        "repeated-time-course-lmer-v1"
+    )
+    expect_true(all(
+        grepl("fewer-than-three-observations", effects$diagnostic) |
+            effects$evidence_variant == "pooled-descriptive"
+    ))
+    expect_s4_class(propose_component(atlas), "ComponentAbstention")
 })
 
 test_that("non-binary destructive-time targets return typed abstention", {

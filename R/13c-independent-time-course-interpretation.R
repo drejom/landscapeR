@@ -575,10 +575,12 @@ register_strategy(
     model_records,
     primary_variant
 ) {
-    uncertainty_field <- if (identical(
-        primary_variant,
-        "time-course-adjusted"
-    )) {
+    adjusted_variants <- c(
+        "adjusted",
+        "time-course-adjusted",
+        "repeated-time-course-adjusted"
+    )
+    uncertainty_field <- if (primary_variant %in% adjusted_variants) {
         "adjusted_uncertainty"
     } else {
         "unadjusted_uncertainty"
@@ -687,7 +689,8 @@ register_strategy(
     reference_level,
     comparison_level,
     nuisance_fields = character(),
-    proposal_eligible = TRUE
+    proposal_eligible = TRUE,
+    diagnostic_prefix = "non-identifiable-design:"
 ) {
     estimable <- identical(result$status, "estimable")
     data.frame(
@@ -715,7 +718,7 @@ register_strategy(
             ""
         } else {
             paste0(
-                "non-identifiable-design:",
+                diagnostic_prefix,
                 result$diagnostic %||% "unknown"
             )
         },
@@ -738,14 +741,29 @@ register_strategy(
     scores,
     target,
     reference_level,
-    comparison_level
+    comparison_level,
+    non_estimable_diagnostic = ""
 ) {
-    effect <- .signed_rank_biserial(
-        scores,
-        target,
-        reference_level,
-        comparison_level
-    )
+    effect <- NULL
+    if (length(scores) == length(target)) {
+        effect <- .signed_rank_biserial(
+            scores,
+            target,
+            reference_level,
+            comparison_level
+        )
+    }
+    estimable <- !is.null(effect) &&
+        is.finite(effect$estimate)
+    if (!estimable) {
+        effect <- list(
+            estimate = NA_real_,
+            n_available = 0L,
+            n_score_ties = NA_integer_,
+            p_value = NA_real_
+        )
+        scores <- rep(NA_real_, length(target))
+    }
     data.frame(
         metadata_field = "condition",
         component = as.integer(component),
@@ -767,7 +785,18 @@ register_strategy(
             is.finite(scores) & !is.na(target)
         ),
         design_digest = NA_character_,
-        diagnostic = "descriptive-only-not-trajectory-evidence",
+        diagnostic = if (estimable) {
+            "descriptive-only-not-trajectory-evidence"
+        } else {
+            paste0(
+                "descriptive-only-component-not-estimable",
+                if (nzchar(non_estimable_diagnostic)) {
+                    paste0(": ", non_estimable_diagnostic)
+                } else {
+                    ""
+                }
+            )
+        },
         p_value = effect$p_value,
         q_value = NA_real_,
         effect_conf_low = NA_real_,
@@ -776,7 +805,11 @@ register_strategy(
         resample_failures = 0L,
         resampling_method = "not-requested",
         resampling_plan_digest = NA_character_,
-        evidence_status = "estimable-exploratory-only",
+        evidence_status = if (estimable) {
+            "estimable-exploratory-only"
+        } else {
+            "not-estimable"
+        },
         stringsAsFactors = FALSE
     )
 }
