@@ -219,6 +219,69 @@ test_that("all failed null refits retain the requested denominator", {
     expect_true(all(is.na(evidence@null_max_effect)))
 })
 
+test_that("constant components remain typed throughout the public workflow", {
+    std <- repeated_time_course_fixture()
+    md <- metadata(std)
+    md$stage1@coords_k[[1L]][, "PC2"] <- 1
+    metadata(std) <- md
+
+    atlas <- expect_no_error(associate_metadata(
+        std,
+        specification = repeated_time_course_specification(),
+        non_analytical_fields = c("mouse_id", "batch")
+    ))
+    associations <- atlas_associations(atlas)
+    constant_rows <- associations$component == 2L
+    constant_observations <- atlas@observations$component == 2L
+
+    expect_true(all(is.na(associations$estimate[constant_rows])))
+    expect_true(all(grepl(
+        "component-not-estimable|zero-component-variance",
+        associations$diagnostic[constant_rows]
+    )))
+    expect_identical(
+        sum(constant_observations),
+        nrow(colData(std))
+    )
+    expect_true(all(
+        !atlas@observations$available[constant_observations]
+    ))
+})
+
+test_that("permutation evidence uses the finite proposal search set", {
+    std <- repeated_time_course_fixture()
+    md <- metadata(std)
+    md$stage1@coords_k[[1L]][, "PC2"] <- 1
+    metadata(std) <- md
+    atlas <- associate_metadata(
+        std,
+        specification = repeated_time_course_specification(),
+        non_analytical_fields = c("mouse_id", "batch")
+    )
+
+    proposal <- expect_no_error(propose_component(
+        atlas,
+        n_permutations = 5L,
+        seed = 8218L
+    ))
+    evidence <- proposal@permutation_evidence
+    ranking <- proposal_ranking(proposal)
+    finite_effects <- ranking$effect_magnitude[
+        ranking$proposal_eligible &
+            is.finite(ranking$effect_magnitude)
+    ]
+
+    expect_s4_class(proposal, "ComponentProposal")
+    expect_identical(proposal@recommended_component, 1L)
+    expect_equal(evidence@observed_max_effect, max(finite_effects))
+    expect_true(is.finite(evidence@search_aware_p_value))
+    expect_gt(evidence@n_completed, 0L)
+    expect_true(any(
+        ranking$component == 2L &
+            !is.finite(ranking$effect_magnitude)
+    ))
+})
+
 test_that("invalid exchangeability yields typed permutation abstention", {
     atlas <- associate_metadata(
         repeated_time_course_fixture(),

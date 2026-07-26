@@ -987,7 +987,8 @@ register_strategy(
             unadjusted$standardized_scores,
             target,
             reference_level,
-            comparison_level
+            comparison_level,
+            unadjusted$diagnostic %||% ""
         )
         rows[[length(rows) + 1L]] <- .time_course_association_row(
             component,
@@ -1040,6 +1041,9 @@ register_strategy(
             )
         }
         standardized <- unadjusted$standardized_scores
+        if (length(standardized) != length(scores)) {
+            standardized <- rep(NA_real_, length(scores))
+        }
         observations[[component]] <- data.frame(
             metadata_field = specification@target_field,
             component = as.integer(component),
@@ -1382,12 +1386,41 @@ register_strategy(
             diagnostic = "exchangeability-not-identifiable"
         ))
     }
+    eligible_ranking <- ranking[
+        ranking$proposal_eligible &
+            is.finite(ranking$effect_magnitude),
+        ,
+        drop = FALSE
+    ]
+    if (!nrow(eligible_ranking)) {
+        return(.new_permutation_evidence(
+            status = "not-identifiable",
+            n_requested = n_permutations,
+            seed = seed,
+            diagnostic = "no-estimable-proposal-candidates"
+        ))
+    }
+    eligible_components <- sort(unique(eligible_ranking$component))
+    observed_max_effect <- max(eligible_ranking$effect_magnitude)
     observations <- atlas@observations[
         atlas@observations$metadata_field == target,
         ,
         drop = FALSE
     ]
+    observations <- observations[
+        observations$component %in% eligible_components,
+        ,
+        drop = FALSE
+    ]
     components <- sort(unique(observations$component))
+    if (!identical(components, eligible_components)) {
+        return(.new_permutation_evidence(
+            status = "not-identifiable",
+            n_requested = n_permutations,
+            seed = seed,
+            diagnostic = "missing-eligible-component-observations"
+        ))
+    }
     first <- observations[
         observations$component == components[[1L]],
         ,
@@ -1484,11 +1517,11 @@ register_strategy(
         status = status,
         n_requested = n_permutations,
         n_completed = n_completed,
-        observed_max_effect = max(ranking$effect_magnitude),
+        observed_max_effect = observed_max_effect,
         null_max_effect = null_max,
         search_aware_p_value = (
             1 + sum(
-                null_max >= max(ranking$effect_magnitude),
+                null_max >= observed_max_effect,
                 na.rm = TRUE
             )
         ) / (n_permutations + 1),
