@@ -338,8 +338,14 @@ setValidity("AssociationAbstention", function(object) {
     if (!.is_scalar_nonempty_text(object@target_field)) {
         errors <- c(errors, "target_field must be one non-empty name")
     }
-    if (!identical(object@reason, "inappropriate-target-type")) {
-        errors <- c(errors, "reason must be 'inappropriate-target-type'")
+    if (!object@reason %in% c(
+        "inappropriate-target-type",
+        "non-identifiable-design"
+    )) {
+        errors <- c(errors, paste(
+            "reason must be 'inappropriate-target-type' or",
+            "'non-identifiable-design'"
+        ))
     }
     if (!.is_scalar_nonempty_text(object@diagnostic)) {
         errors <- c(errors, "diagnostic must be one non-empty string")
@@ -838,7 +844,8 @@ register_strategy(
     std,
     stage1,
     specification,
-    diagnostic
+    diagnostic,
+    reason = "inappropriate-target-type"
 ) {
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
@@ -855,7 +862,7 @@ register_strategy(
         list(
             version = "1.0.0",
             target_field = specification@target_field,
-            reason = "inappropriate-target-type",
+            reason = reason,
             diagnostic = diagnostic,
             sampling_design = std@sampling_design,
             input_digest = input_digest,
@@ -870,7 +877,7 @@ register_strategy(
         "AssociationAbstention",
         version = "1.0.0",
         target_field = specification@target_field,
-        reason = "inappropriate-target-type",
+        reason = reason,
         diagnostic = diagnostic,
         sampling_design = std@sampling_design,
         input_digest = input_digest,

@@ -829,7 +829,8 @@ register_strategy(
             paste(
                 "non-identifiable-design:",
                 "no complete cases for target, observed time, and nuisance"
-            )
+            ),
+            reason = "non-identifiable-design"
         ))
     }
     target <- target[analysis_complete]

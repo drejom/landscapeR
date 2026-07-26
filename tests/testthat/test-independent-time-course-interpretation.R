@@ -316,6 +316,7 @@ test_that("an empty complete-case cohort returns typed abstention", {
     )
 
     expect_s4_class(abstention, "AssociationAbstention")
+    expect_identical(abstention@reason, "non-identifiable-design")
     expect_match(
         association_abstention_diagnostic(abstention),
         "non-identifiable-design: no complete cases"
