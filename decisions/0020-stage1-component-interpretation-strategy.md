@@ -106,8 +106,10 @@ The v1 association family is:
 - binary target: signed rank-biserial association, oriented from the declared
   reference level to comparison level, registered as
   `AssociationStrategy:cross_sectional_binary`;
-- continuous target: Spearman association using average midranks;
-- ordered categorical target: Kendall's tau-b using declared level order;
+- continuous target: Spearman association using average midranks, registered
+  as `AssociationStrategy:cross_sectional_continuous`;
+- ordered categorical target: Kendall's tau-b using declared level order,
+  registered as `AssociationStrategy:cross_sectional_ordered`;
 - unordered multilevel field: descriptive omnibus rank evidence only, ineligible
   to drive v1 component selection;
 - ordered states with meaningful unequal numerical spacing: explicitly scored

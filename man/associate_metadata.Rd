@@ -4,23 +4,49 @@
 \alias{associate_metadata}
 \title{Associate Stage 1 components with eligible metadata}
 \usage{
-associate_metadata(std, non_analytical_fields = character(), dataset_id = NULL)
+associate_metadata(
+  std,
+  specification = NULL,
+  non_analytical_fields = character(),
+  dataset_id = NULL,
+  n_resamples = 0L,
+  seed = 1L,
+  exchangeability = c("independent", "not_identifiable")
+)
 }
 \arguments{
 \item{std}{a Stage-1-complete \code{StateTransitionData}}
+
+\item{specification}{optional draft \code{AnalysisSpecification} owning target
+and nuisance intent for this run}
 
 \item{non_analytical_fields}{metadata fields to exclude explicitly}
 
 \item{dataset_id}{optional stable dataset identifier used in confirmed
 analysis IDs; defaults to \code{metadata(std)$dataset_id} when present, then a
 deterministic input-digest identifier}
+
+\item{n_resamples}{number of design-preserving association bootstraps; zero
+retains point/descriptive evidence only}
+
+\item{seed}{deterministic bootstrap seed}
+
+\item{exchangeability}{whether independent biological-unit exchangeability
+is defensible for permutation; \code{"not_identifiable"} preserves point
+evidence but prohibits a search-aware p-value}
 }
 \value{
-a validated \code{MetadataAssociationAtlas}
+a validated \code{MetadataAssociationAtlas}, or an
+\code{AssociationAbstention} when declared target type and observed metadata
+are incompatible
 }
 \description{
-The issue #79 tracer supports one cross-sectional biological layer and
-binary metadata. Factor levels declare reference then comparison; character
-or logical levels use deterministic lexical order. Identifier-like fields
-and caller-declared non-analytical fields are excluded with reasons.
+The cross-sectional tracer supports one biological layer. Binary metadata
+use signed rank-biserial association, continuous metadata use Spearman
+association, and ordered factors use Kendall tau-b against their declared
+level order. Unordered multilevel factors retain descriptive Kruskal-Wallis
+epsilon-squared evidence but cannot nominate a component. Binary factor
+levels declare reference then comparison; character or logical levels use
+deterministic lexical order. Identifier-like fields and caller-declared
+non-analytical fields are excluded from target association with reasons.
 }

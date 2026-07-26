@@ -1,17 +1,22 @@
-# Cross-sectional component interpretation (ADR 0020; issue #79)
+# Cross-sectional component interpretation (ADR 0020; issues #79 and #80)
 
 utils::globalVariables(c("metadata_field", "component_label"))
 
 .association_atlas_columns <- c(
     "metadata_field", "component", "component_label", "estimand",
     "estimate", "effect_magnitude", "reference_level", "comparison_level",
-    "n_available", "n_missing", "n_score_ties", "p_value", "q_value",
+    "n_available", "n_missing", "n_score_ties", "n_target_ties",
+    "evidence_variant", "proposal_eligible", "nuisance_fields",
+    "cohort_digest", "design_digest", "diagnostic", "p_value", "q_value",
+    "effect_conf_low", "effect_conf_high", "n_resamples",
+    "resample_failures", "resampling_method", "resampling_plan_digest",
     "evidence_status"
 )
 
 .association_observation_columns <- c(
     "metadata_field", "component", "component_label", "sample_index",
-    "primary_sample", "metadata_value", "score", "available"
+    "primary_sample", "metadata_type", "metadata_value", "metadata_numeric",
+    "score", "atom_count", "available"
 )
 
 .is_sha256_digest <- function(x) {
@@ -21,6 +26,142 @@ utils::globalVariables(c("metadata_field", "component_label"))
 
 .is_scalar_nonempty_text <- function(x) {
     length(x) == 1L && !is.na(x) && nzchar(x)
+}
+
+.association_cohort_digest <- function(primary_sample, complete) {
+    digest::digest(
+        as.character(primary_sample[complete]),
+        algo = "sha256",
+        serialize = TRUE
+    )
+}
+
+.monotonicity_diagnostic <- function(scores, values) {
+    if (!is.numeric(values) && !is.ordered(values)) {
+        return("")
+    }
+    complete <- is.finite(scores) & !is.na(values)
+    if (is.numeric(values)) {
+        complete <- complete & is.finite(values)
+    }
+    scores <- scores[complete]
+    values <- values[complete]
+    if (length(scores) < 3L) return("")
+    groups <- if (is.ordered(values)) {
+        factor(values, levels = levels(values), ordered = TRUE)
+    } else {
+        values
+    }
+    medians <- tapply(scores, groups, stats::median)
+    changes <- diff(as.numeric(medians))
+    changes <- changes[is.finite(changes) & changes != 0]
+    if (any(changes > 0) && any(changes < 0)) {
+        "possible-nonmonotone-association"
+    } else {
+        ""
+    }
+}
+
+.association_resampling_plan <- function(
+    values,
+    nuisance_values,
+    n_resamples,
+    seed
+) {
+    if (n_resamples == 0L) {
+        return(list(indices = list(), digest = NA_character_))
+    }
+    complete <- !is.na(values)
+    if (is.numeric(values)) complete <- complete & is.finite(values)
+    for (nuisance in nuisance_values) {
+        complete <- complete & !is.na(nuisance)
+        if (is.numeric(nuisance)) {
+            complete <- complete & is.finite(nuisance)
+        }
+    }
+    strata_fields <- list()
+    if (!is.numeric(values) || is.ordered(values)) {
+        strata_fields$target <- as.character(values)
+    }
+    for (field in names(nuisance_values)) {
+        nuisance <- nuisance_values[[field]]
+        if (!is.numeric(nuisance) || is.ordered(nuisance)) {
+            strata_fields[[field]] <- as.character(nuisance)
+        }
+    }
+    complete_indices <- which(complete)
+    strata <- if (length(strata_fields)) {
+        interaction(
+            lapply(strata_fields, `[`, complete),
+            drop = TRUE,
+            lex.order = TRUE
+        )
+    } else {
+        factor(rep("all", length(complete_indices)))
+    }
+    strata_indices <- split(complete_indices, strata, drop = TRUE)
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (had_seed) {
+        previous_seed <- get(".Random.seed", envir = .GlobalEnv)
+    }
+    on.exit({
+        if (had_seed) {
+            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
+        } else if (exists(
+            ".Random.seed",
+            envir = .GlobalEnv,
+            inherits = FALSE
+        )) {
+            rm(".Random.seed", envir = .GlobalEnv)
+        }
+    }, add = TRUE)
+    set.seed(seed)
+    indices <- replicate(n_resamples, {
+        unlist(lapply(strata_indices, function(index) {
+            sample(index, length(index), replace = TRUE)
+        }), use.names = FALSE)
+    }, simplify = FALSE)
+    list(
+        indices = indices,
+        digest = digest::digest(
+            list(seed = seed, strata = strata_indices, indices = indices),
+            algo = "sha256",
+            serialize = TRUE
+        )
+    )
+}
+
+.resampling_summary <- function(estimates, plan) {
+    finite <- estimates[is.finite(estimates)]
+    n_resamples <- length(estimates)
+    if (!n_resamples) {
+        return(list(
+            effect_conf_low = NA_real_,
+            effect_conf_high = NA_real_,
+            n_resamples = 0L,
+            resample_failures = 0L,
+            resampling_method = "not-requested",
+            resampling_plan_digest = NA_character_
+        ))
+    }
+    interval <- if (length(finite)) {
+        stats::quantile(
+            finite,
+            probs = c(0.025, 0.975),
+            names = FALSE,
+            type = 6
+        )
+    } else {
+        c(NA_real_, NA_real_)
+    }
+    list(
+        effect_conf_low = interval[[1L]],
+        effect_conf_high = interval[[2L]],
+        n_resamples = as.integer(n_resamples),
+        resample_failures = as.integer(n_resamples - length(finite)),
+        resampling_method = "stratified-biological-unit-bootstrap",
+        resampling_plan_digest = plan$digest
+    )
 }
 
 #' Component-by-metadata association evidence
@@ -118,8 +259,14 @@ setValidity("MetadataAssociationAtlas", function(object) {
     if (!.is_sha256_digest(object@state_space_digest)) {
         errors <- c(errors, "state_space_digest must be one SHA-256 digest")
     }
-    if (!identical(object@compute_tier, "analytic-unadjusted")) {
-        errors <- c(errors, "compute_tier must be 'analytic-unadjusted'")
+    allowed_compute_tiers <- c(
+        "analytic-unadjusted",
+        "analytic-adjusted",
+        "standard-resampled"
+    )
+    if (length(object@compute_tier) != 1L ||
+        !object@compute_tier %in% allowed_compute_tiers) {
+        errors <- c(errors, "compute_tier is not supported")
     }
     required_provenance <- c(
         "association_strategy", "package_version", "sampling_design",
@@ -127,6 +274,80 @@ setValidity("MetadataAssociationAtlas", function(object) {
     )
     if (!all(required_provenance %in% names(object@provenance))) {
         errors <- c(errors, "provenance is missing required fields")
+    }
+    if (!identical(
+        object@evidence_status,
+        "estimable-exploratory-only"
+    )) {
+        errors <- c(
+            errors,
+            "evidence_status must be 'estimable-exploratory-only'"
+        )
+    }
+    if (length(errors)) errors else TRUE
+})
+
+#' Typed abstention before metadata association
+#'
+#' Returned when a declared target type is incompatible with the observed
+#' metadata. No association, substitution, or component ranking is performed.
+#'
+#' @slot version schema version, currently `"1.0.0"`
+#' @slot target_field declared target field
+#' @slot reason machine-readable abstention reason
+#' @slot diagnostic data-dependent validation diagnostic
+#' @slot sampling_design declared biological sampling design
+#' @slot input_digest,state_space_digest bound input digests
+#' @slot provenance specification and package provenance
+#' @slot digest canonical abstention digest
+#' @slot evidence_status support tier
+#'
+#' @export
+setClass("AssociationAbstention",
+    representation(
+        version = "character",
+        target_field = "character",
+        reason = "character",
+        diagnostic = "character",
+        sampling_design = "SamplingDesign",
+        input_digest = "character",
+        state_space_digest = "character",
+        provenance = "list",
+        digest = "character",
+        evidence_status = "character"
+    ),
+    prototype = prototype(
+        version = "1.0.0",
+        target_field = character(),
+        reason = character(),
+        diagnostic = character(),
+        sampling_design = new("SamplingDesign"),
+        input_digest = character(),
+        state_space_digest = character(),
+        provenance = list(),
+        digest = character(),
+        evidence_status = "estimable-exploratory-only"
+    )
+)
+
+setValidity("AssociationAbstention", function(object) {
+    errors <- character()
+    if (!identical(object@version, "1.0.0")) {
+        errors <- c(errors, "version must be '1.0.0'")
+    }
+    if (!.is_scalar_nonempty_text(object@target_field)) {
+        errors <- c(errors, "target_field must be one non-empty name")
+    }
+    if (!identical(object@reason, "inappropriate-target-type")) {
+        errors <- c(errors, "reason must be 'inappropriate-target-type'")
+    }
+    if (!.is_scalar_nonempty_text(object@diagnostic)) {
+        errors <- c(errors, "diagnostic must be one non-empty string")
+    }
+    if (!.is_sha256_digest(object@input_digest) ||
+        !.is_sha256_digest(object@state_space_digest) ||
+        !.is_sha256_digest(object@digest)) {
+        errors <- c(errors, "abstention digests must be SHA-256 values")
     }
     if (!identical(
         object@evidence_status,
@@ -345,12 +566,18 @@ setMethod(
                 )
             )
         }
-        .signed_rank_biserial(
+        effect <- .signed_rank_biserial(
             scores,
             values,
             reference = levels[[1L]],
             comparison = levels[[2L]]
         )
+        if (is.null(effect)) return(NULL)
+        effect$estimand <- "signed-rank-biserial"
+        effect$reference_level <- levels[[1L]]
+        effect$comparison_level <- levels[[2L]]
+        effect$n_target_ties <- NA_integer_
+        effect
     }
 )
 
@@ -377,6 +604,193 @@ register_strategy(
             )
         }
         new("CrossSectionalBinaryAssociationStrategy")
+    }
+)
+
+#' Cross-sectional continuous Spearman association strategy
+#'
+#' @rdname AssociationStrategy-class
+#' @export
+setClass(
+    "CrossSectionalContinuousAssociationStrategy",
+    contains = "AssociationStrategy"
+)
+
+#' @rdname association_applicable
+#' @export
+setMethod(
+    "association_applicable",
+    signature(
+        strategy = "CrossSectionalContinuousAssociationStrategy",
+        data = "StateTransitionData",
+        values = "ANY"
+    ),
+    function(strategy, data, values) {
+        observed <- values[!is.na(values)]
+        identical(data@sampling_design@kind, "cross_sectional") &&
+            is.numeric(values) &&
+            !is.logical(values) &&
+            length(unique(observed)) >= 3L
+    }
+)
+
+#' @rdname associate_component
+#' @export
+setMethod(
+    "associate_component",
+    signature(
+        strategy = "CrossSectionalContinuousAssociationStrategy",
+        scores = "numeric",
+        values = "ANY"
+    ),
+    function(strategy, scores, values) {
+        complete <- is.finite(scores) & !is.na(values) & is.finite(values)
+        complete_scores <- scores[complete]
+        complete_values <- as.numeric(values[complete])
+        if (length(complete_scores) < 3L ||
+            length(unique(complete_scores)) < 2L ||
+            length(unique(complete_values)) < 2L) {
+            return(NULL)
+        }
+        score_ties <- duplicated(complete_scores) |
+            duplicated(complete_scores, fromLast = TRUE)
+        target_ties <- duplicated(complete_values) |
+            duplicated(complete_values, fromLast = TRUE)
+        test <- suppressWarnings(stats::cor.test(
+            complete_scores,
+            complete_values,
+            method = "spearman",
+            exact = FALSE
+        ))
+        list(
+            estimand = "spearman",
+            estimate = unname(test$estimate),
+            reference_level = NA_character_,
+            comparison_level = NA_character_,
+            n_available = length(complete_scores),
+            n_score_ties = sum(score_ties),
+            n_target_ties = sum(target_ties),
+            p_value = unname(test$p.value)
+        )
+    }
+)
+
+#' @rdname association_strategy_id
+#' @export
+setMethod(
+    "association_strategy_id",
+    signature(strategy = "CrossSectionalContinuousAssociationStrategy"),
+    function(strategy) {
+        "cross-sectional-continuous-spearman-v1"
+    }
+)
+
+register_strategy(
+    "AssociationStrategy",
+    "cross_sectional_continuous",
+    function(params = list()) {
+        if (length(params)) {
+            .stop_landscapeR_validation(
+                paste0(
+                    "cross_sectional_continuous association strategy does ",
+                    "not accept parameters"
+                )
+            )
+        }
+        new("CrossSectionalContinuousAssociationStrategy")
+    }
+)
+
+#' Cross-sectional ordered Kendall tau-b association strategy
+#'
+#' @rdname AssociationStrategy-class
+#' @export
+setClass(
+    "CrossSectionalOrderedAssociationStrategy",
+    contains = "AssociationStrategy"
+)
+
+#' @rdname association_applicable
+#' @export
+setMethod(
+    "association_applicable",
+    signature(
+        strategy = "CrossSectionalOrderedAssociationStrategy",
+        data = "StateTransitionData",
+        values = "ANY"
+    ),
+    function(strategy, data, values) {
+        if (!is.ordered(values)) return(FALSE)
+        observed <- droplevels(values[!is.na(values)])
+        identical(data@sampling_design@kind, "cross_sectional") &&
+            nlevels(observed) >= 3L
+    }
+)
+
+#' @rdname associate_component
+#' @export
+setMethod(
+    "associate_component",
+    signature(
+        strategy = "CrossSectionalOrderedAssociationStrategy",
+        scores = "numeric",
+        values = "ANY"
+    ),
+    function(strategy, scores, values) {
+        complete <- is.finite(scores) & !is.na(values)
+        complete_scores <- scores[complete]
+        complete_values <- as.integer(values[complete])
+        if (length(complete_scores) < 3L ||
+            length(unique(complete_scores)) < 2L ||
+            length(unique(complete_values)) < 2L) {
+            return(NULL)
+        }
+        score_ties <- duplicated(complete_scores) |
+            duplicated(complete_scores, fromLast = TRUE)
+        target_ties <- duplicated(complete_values) |
+            duplicated(complete_values, fromLast = TRUE)
+        test <- suppressWarnings(stats::cor.test(
+            complete_scores,
+            complete_values,
+            method = "kendall",
+            exact = FALSE
+        ))
+        list(
+            estimand = "kendall-tau-b",
+            estimate = unname(test$estimate),
+            reference_level = NA_character_,
+            comparison_level = NA_character_,
+            n_available = length(complete_scores),
+            n_score_ties = sum(score_ties),
+            n_target_ties = sum(target_ties),
+            p_value = unname(test$p.value)
+        )
+    }
+)
+
+#' @rdname association_strategy_id
+#' @export
+setMethod(
+    "association_strategy_id",
+    signature(strategy = "CrossSectionalOrderedAssociationStrategy"),
+    function(strategy) {
+        "cross-sectional-ordered-kendall-tau-b-v1"
+    }
+)
+
+register_strategy(
+    "AssociationStrategy",
+    "cross_sectional_ordered",
+    function(params = list()) {
+        if (length(params)) {
+            .stop_landscapeR_validation(
+                paste0(
+                    "cross_sectional_ordered association strategy does not ",
+                    "accept parameters"
+                )
+            )
+        }
+        new("CrossSectionalOrderedAssociationStrategy")
     }
 )
 
@@ -420,31 +834,303 @@ register_strategy(
     )
 }
 
+.new_association_abstention <- function(
+    std,
+    stage1,
+    specification,
+    diagnostic
+) {
+    input_digest <- .atlas_input_digest(std)
+    state_space_digest <- .atlas_state_space_digest(stage1)
+    provenance <- list(
+        analysis_specification_id = specification@id,
+        analysis_specification_digest = canonical_digest(specification),
+        target_type = specification@target_type,
+        package_version = as.character(utils::packageVersion("landscapeR")),
+        sampling_design = std@sampling_design@kind,
+        input_digest = input_digest,
+        state_space_digest = state_space_digest
+    )
+    digest_value <- digest::digest(
+        list(
+            version = "1.0.0",
+            target_field = specification@target_field,
+            reason = "inappropriate-target-type",
+            diagnostic = diagnostic,
+            sampling_design = std@sampling_design,
+            input_digest = input_digest,
+            state_space_digest = state_space_digest,
+            provenance = provenance,
+            evidence_status = "estimable-exploratory-only"
+        ),
+        algo = "sha256",
+        serialize = TRUE
+    )
+    abstention <- new(
+        "AssociationAbstention",
+        version = "1.0.0",
+        target_field = specification@target_field,
+        reason = "inappropriate-target-type",
+        diagnostic = diagnostic,
+        sampling_design = std@sampling_design,
+        input_digest = input_digest,
+        state_space_digest = state_space_digest,
+        provenance = provenance,
+        digest = digest_value,
+        evidence_status = "estimable-exploratory-only"
+    )
+    validObject(abstention)
+    abstention
+}
+
+.adjusted_rank_score_effect <- function(
+    std,
+    scores,
+    target_values,
+    specification
+) {
+    nuisance_values <- lapply(
+        specification@nuisance_fields,
+        function(field) {
+            .aligned_component_metadata(
+                std,
+                1L,
+                field,
+                caller = "associate_metadata"
+            )
+        }
+    )
+    names(nuisance_values) <- specification@nuisance_fields
+    complete <- is.finite(scores) & !is.na(target_values)
+    for (values in nuisance_values) {
+        complete <- complete & !is.na(values)
+        if (is.numeric(values)) {
+            complete <- complete & is.finite(values)
+        }
+    }
+    complete_scores <- scores[complete]
+    complete_target <- target_values[complete]
+    if (length(complete_scores) < 3L) return(NULL)
+
+    design <- .nuisance_design(nuisance_values, complete)
+    target_numeric <- .target_numeric_values(
+        complete_target,
+        specification@target_type,
+        specification@reference_level,
+        specification@comparison_level,
+        specification@ordered_levels
+    )
+    score_rank <- rank(complete_scores, ties.method = "average")
+    target_rank <- rank(target_numeric, ties.method = "average")
+    score_ties <- duplicated(complete_scores) |
+        duplicated(complete_scores, fromLast = TRUE)
+    target_ties <- duplicated(target_numeric) |
+        duplicated(target_numeric, fromLast = TRUE)
+    design_digest <- digest::digest(
+        list(
+            nuisance_fields = specification@nuisance_fields,
+            design = unname(design),
+            design_columns = colnames(design),
+            complete_indices = which(complete)
+        ),
+        algo = "sha256",
+        serialize = TRUE
+    )
+    estimand <- if (identical(specification@target_type, "binary")) {
+        "adjusted-rank-score-contrast"
+    } else {
+        "adjusted-rank-score-association"
+    }
+    adjustment_result <- function(
+        estimate,
+        p_value,
+        diagnostic,
+        evidence_status
+    ) {
+        list(
+            estimand = estimand,
+            estimate = estimate,
+            reference_level = if (identical(
+                specification@target_type,
+                "binary"
+            )) specification@reference_level else NA_character_,
+            comparison_level = if (identical(
+                specification@target_type,
+                "binary"
+            )) specification@comparison_level else NA_character_,
+            n_available = length(complete_scores),
+            n_score_ties = sum(score_ties),
+            n_target_ties = sum(target_ties),
+            p_value = p_value,
+            cohort_digest = .association_cohort_digest(
+                names(target_values),
+                complete
+            ),
+            design_digest = design_digest,
+            diagnostic = diagnostic,
+            evidence_status = evidence_status
+        )
+    }
+    design_rank <- qr(design)$rank
+    target_augmented_rank <- qr(cbind(design, target_rank))$rank
+    if (design_rank < ncol(design) ||
+        identical(target_augmented_rank, design_rank)) {
+        return(adjustment_result(
+            estimate = NA_real_,
+            p_value = NA_real_,
+            diagnostic = "non-identifiable-design",
+            evidence_status = "adjustment-abstention"
+        ))
+    }
+
+    score_residual <- stats::lm.fit(design, score_rank)$residuals
+    target_residual <- stats::lm.fit(design, target_rank)$residuals
+    if (!is.finite(stats::var(score_residual)) ||
+        !is.finite(stats::var(target_residual)) ||
+        stats::var(score_residual) == 0 ||
+        stats::var(target_residual) == 0) {
+        return(adjustment_result(
+            estimate = NA_real_,
+            p_value = NA_real_,
+            diagnostic = "non-identifiable-design",
+            evidence_status = "adjustment-abstention"
+        ))
+    }
+    test <- stats::cor.test(score_residual, target_residual)
+    adjustment_result(
+        estimate = unname(test$estimate),
+        p_value = unname(test$p.value),
+        diagnostic = "",
+        evidence_status = "estimable-exploratory-only"
+    )
+}
+
+.adjusted_resampled_estimate <- function(
+    scores,
+    target_values,
+    nuisance_values,
+    specification
+) {
+    if (length(scores) < 3L) return(NA_real_)
+    design <- .nuisance_design(
+        nuisance_values,
+        rep(TRUE, length(scores))
+    )
+    target_numeric <- .target_numeric_values(
+        target_values,
+        specification@target_type,
+        specification@reference_level,
+        specification@comparison_level,
+        specification@ordered_levels
+    )
+    score_rank <- rank(scores, ties.method = "average")
+    target_rank <- rank(target_numeric, ties.method = "average")
+    if (qr(design)$rank < ncol(design) ||
+        qr(cbind(design, target_rank))$rank == qr(design)$rank) {
+        return(NA_real_)
+    }
+    score_residual <- stats::lm.fit(design, score_rank)$residuals
+    target_residual <- stats::lm.fit(design, target_rank)$residuals
+    if (stats::var(score_residual) == 0 ||
+        stats::var(target_residual) == 0) {
+        return(NA_real_)
+    }
+    stats::cor(score_residual, target_residual)
+}
+
+.unordered_rank_effect <- function(scores, values) {
+    complete <- is.finite(scores) & !is.na(values)
+    complete_scores <- scores[complete]
+    complete_values <- droplevels(values[complete])
+    n_groups <- nlevels(complete_values)
+    if (length(complete_scores) <= n_groups || n_groups < 2L) {
+        return(NULL)
+    }
+    test <- stats::kruskal.test(complete_scores, complete_values)
+    epsilon_squared <- max(
+        0,
+        (unname(test$statistic) - n_groups + 1) /
+            (length(complete_scores) - n_groups)
+    )
+    score_ties <- duplicated(complete_scores) |
+        duplicated(complete_scores, fromLast = TRUE)
+    target_ties <- duplicated(complete_values) |
+        duplicated(complete_values, fromLast = TRUE)
+    list(
+        estimand = "kruskal-wallis-epsilon-squared",
+        estimate = epsilon_squared,
+        reference_level = NA_character_,
+        comparison_level = NA_character_,
+        n_available = length(complete_scores),
+        n_score_ties = sum(score_ties),
+        n_target_ties = sum(target_ties),
+        p_value = unname(test$p.value),
+        cohort_digest = .association_cohort_digest(
+            names(values),
+            complete
+        )
+    )
+}
+
 #' Associate Stage 1 components with eligible metadata
 #'
-#' The issue #79 tracer supports one cross-sectional biological layer and
-#' binary metadata. Factor levels declare reference then comparison; character
-#' or logical levels use deterministic lexical order. Identifier-like fields
-#' and caller-declared non-analytical fields are excluded with reasons.
+#' The cross-sectional tracer supports one biological layer. Binary metadata
+#' use signed rank-biserial association, continuous metadata use Spearman
+#' association, and ordered factors use Kendall tau-b against their declared
+#' level order. Unordered multilevel factors retain descriptive Kruskal-Wallis
+#' epsilon-squared evidence but cannot nominate a component. Binary factor
+#' levels declare reference then comparison; character or logical levels use
+#' deterministic lexical order. Identifier-like fields and caller-declared
+#' non-analytical fields are excluded from target association with reasons.
 #'
 #' @param std a Stage-1-complete `StateTransitionData`
+#' @param specification optional draft `AnalysisSpecification` owning target
+#'   and nuisance intent for this run
 #' @param non_analytical_fields metadata fields to exclude explicitly
 #' @param dataset_id optional stable dataset identifier used in confirmed
 #'   analysis IDs; defaults to `metadata(std)$dataset_id` when present, then a
 #'   deterministic input-digest identifier
+#' @param n_resamples number of design-preserving association bootstraps; zero
+#'   retains point/descriptive evidence only
+#' @param seed deterministic bootstrap seed
+#' @param exchangeability whether independent biological-unit exchangeability
+#'   is defensible for permutation; `"not_identifiable"` preserves point
+#'   evidence but prohibits a search-aware p-value
 #'
-#' @return a validated `MetadataAssociationAtlas`
+#' @return a validated `MetadataAssociationAtlas`, or an
+#'   `AssociationAbstention` when declared target type and observed metadata
+#'   are incompatible
 #' @export
 associate_metadata <- function(
     std,
+    specification = NULL,
     non_analytical_fields = character(),
-    dataset_id = NULL
+    dataset_id = NULL,
+    n_resamples = 0L,
+    seed = 1L,
+    exchangeability = c("independent", "not_identifiable")
 ) {
     if (!is(std, "StateTransitionData")) {
         .stop_landscapeR_validation(
             "associate_metadata(): std must be a StateTransitionData object"
         )
     }
+    if (length(n_resamples) != 1L ||
+        is.na(n_resamples) ||
+        n_resamples < 0 ||
+        n_resamples != as.integer(n_resamples)) {
+        .stop_landscapeR_validation(
+            "associate_metadata(): n_resamples must be one non-negative integer"
+        )
+    }
+    n_resamples <- as.integer(n_resamples)
+    if (length(seed) != 1L || is.na(seed) || seed != as.integer(seed)) {
+        .stop_landscapeR_validation(
+            "associate_metadata(): seed must be one integer"
+        )
+    }
+    seed <- as.integer(seed)
+    exchangeability <- match.arg(exchangeability)
     stage1 <- metadata(std)$stage1
     if (is.null(stage1)) {
         .stop_landscapeR_validation(
@@ -454,6 +1140,66 @@ associate_metadata <- function(
     if (!identical(std@sampling_design@kind, "cross_sectional")) {
         .stop_landscapeR_validation(
             "associate_metadata(): issue #79 requires a cross-sectional design"
+        )
+    }
+    specification_provenance <- list()
+    if (!is.null(specification)) {
+        if (!is(specification, "AnalysisSpecification") ||
+            !identical(specification@lifecycle, "draft")) {
+            .stop_landscapeR_validation(
+                paste0(
+                    "associate_metadata(): specification must be a draft ",
+                    "AnalysisSpecification"
+                )
+            )
+        }
+        specification_error <- .validate_analysis_specification_data(
+            specification,
+            std
+        )
+        if (!identical(specification_error, TRUE)) {
+            inappropriate_target <- grepl(
+                paste(
+                    "^observed target values must equal",
+                    "|^continuous target must be"
+                ),
+                specification_error
+            )
+            if (inappropriate_target) {
+                return(.new_association_abstention(
+                    std,
+                    stage1,
+                    specification,
+                    specification_error
+                ))
+            }
+            .stop_landscapeR_validation(
+                paste0("associate_metadata(): ", specification_error)
+            )
+        }
+        specification_provenance <- list(
+            analysis_specification_id = specification@id,
+            analysis_specification_digest = canonical_digest(specification),
+            target_field = specification@target_field,
+            target_type = specification@target_type,
+            reference_level = specification@reference_level,
+            comparison_level = specification@comparison_level,
+            ordered_levels = specification@ordered_levels,
+            continuous_direction = specification@continuous_direction,
+            nuisance_fields = specification@nuisance_fields,
+            nuisance_values = stats::setNames(
+                lapply(specification@nuisance_fields, function(field) {
+                    .aligned_component_metadata(
+                        std,
+                        1L,
+                        field,
+                        caller = "associate_metadata"
+                    )
+                }),
+                specification@nuisance_fields
+            ),
+            orientation_anchor = specification@orientation_anchor,
+            claim_intent = specification@claim_intent
         )
     }
     coordinates <- dr_coords_k(stage1)
@@ -490,6 +1236,7 @@ associate_metadata <- function(
     exclusion_rows <- list()
     association_rows <- list()
     observation_rows <- list()
+    association_strategy_ids <- character()
     coordinate_matrix <- coordinates[[1L]]
     if (!is.matrix(coordinate_matrix) ||
         !is.numeric(coordinate_matrix) ||
@@ -541,8 +1288,23 @@ associate_metadata <- function(
             field,
             caller = "associate_metadata"
         )
+        if (
+            !is.null(specification) &&
+            identical(field, specification@target_field) &&
+            identical(specification@target_type, "ordered")
+        ) {
+            ordered_values <- ordered(
+                as.character(values),
+                levels = specification@ordered_levels
+            )
+            names(ordered_values) <- names(values)
+            values <- ordered_values
+        }
         strategy <- .resolve_component_association_strategy(std, values)
-        if (is.null(strategy)) {
+        descriptive_unordered <- is.factor(values) &&
+            !is.ordered(values) &&
+            nlevels(droplevels(values[!is.na(values)])) > 2L
+        if (is.null(strategy) && !descriptive_unordered) {
             exclusion_rows[[length(exclusion_rows) + 1L]] <- data.frame(
                 metadata_field = field,
                 reason = "unsupported-non-binary-field",
@@ -550,26 +1312,91 @@ associate_metadata <- function(
             )
             next
         }
-        levels <- .binary_level_order(values)
+        if (!is.null(strategy)) {
+            association_strategy_ids <- c(
+                association_strategy_ids,
+                association_strategy_id(strategy)
+            )
+        }
+        field_nuisance_values <- if (
+            !is.null(specification) &&
+            identical(field, specification@target_field)
+        ) {
+            specification_provenance$nuisance_values
+        } else {
+            list()
+        }
+        resampling_plan <- .association_resampling_plan(
+            values,
+            field_nuisance_values,
+            n_resamples,
+            seed + match(field, metadata_fields) - 1L
+        )
 
         field_rows <- lapply(seq_len(ncol(coordinate_matrix)), function(j) {
             scores <- coordinate_matrix[, j]
-            effect <- associate_component(strategy, scores, values)
+            effect <- if (descriptive_unordered) {
+                .unordered_rank_effect(scores, values)
+            } else {
+                associate_component(strategy, scores, values)
+            }
             if (is.null(effect)) return(NULL)
+            complete <- is.finite(scores) & !is.na(values)
+            resampled_estimates <- vapply(
+                resampling_plan$indices,
+                function(index) {
+                    resampled <- if (descriptive_unordered) {
+                        .unordered_rank_effect(
+                            scores[index],
+                            values[index]
+                        )
+                    } else {
+                        associate_component(
+                            strategy,
+                            scores[index],
+                            values[index]
+                        )
+                    }
+                    if (is.null(resampled)) NA_real_ else resampled$estimate
+                },
+                numeric(1L)
+            )
+            uncertainty <- .resampling_summary(
+                resampled_estimates,
+                resampling_plan
+            )
             data.frame(
                 metadata_field = field,
                 component = as.integer(j),
                 component_label = component_labels[[j]],
-                estimand = "signed-rank-biserial",
+                estimand = effect$estimand,
                 estimate = effect$estimate,
                 effect_magnitude = abs(effect$estimate),
-                reference_level = levels[[1L]],
-                comparison_level = levels[[2L]],
+                reference_level = effect$reference_level,
+                comparison_level = effect$comparison_level,
                 n_available = as.integer(effect$n_available),
                 n_missing = as.integer(length(values) - effect$n_available),
                 n_score_ties = as.integer(effect$n_score_ties),
+                n_target_ties = as.integer(effect$n_target_ties),
+                evidence_variant = "unadjusted",
+                proposal_eligible = !descriptive_unordered,
+                nuisance_fields = "",
+                cohort_digest = if (!is.null(effect$cohort_digest)) {
+                    effect$cohort_digest
+                } else {
+                    .association_cohort_digest(names(values), complete)
+                },
+                design_digest = NA_character_,
+                diagnostic = .monotonicity_diagnostic(scores, values),
                 p_value = effect$p_value,
                 q_value = NA_real_,
+                effect_conf_low = uncertainty$effect_conf_low,
+                effect_conf_high = uncertainty$effect_conf_high,
+                n_resamples = uncertainty$n_resamples,
+                resample_failures = uncertainty$resample_failures,
+                resampling_method = uncertainty$resampling_method,
+                resampling_plan_digest =
+                    uncertainty$resampling_plan_digest,
                 evidence_status = "estimable-exploratory-only",
                 stringsAsFactors = FALSE
             )
@@ -582,19 +1409,133 @@ associate_metadata <- function(
                 method = "BH"
             )
             association_rows[[length(association_rows) + 1L]] <- field_table
+            if (!is.null(specification) &&
+                identical(field, specification@target_field) &&
+                length(specification@nuisance_fields)) {
+                adjusted_rows <- lapply(
+                    seq_len(ncol(coordinate_matrix)),
+                    function(j) {
+                        effect <- .adjusted_rank_score_effect(
+                            std,
+                            coordinate_matrix[, j],
+                            values,
+                            specification
+                        )
+                        if (is.null(effect)) return(NULL)
+                        resampled_estimates <- vapply(
+                            resampling_plan$indices,
+                            function(index) {
+                                .adjusted_resampled_estimate(
+                                    coordinate_matrix[index, j],
+                                    values[index],
+                                    lapply(
+                                        field_nuisance_values,
+                                        `[`,
+                                        index
+                                    ),
+                                    specification
+                                )
+                            },
+                            numeric(1L)
+                        )
+                        uncertainty <- .resampling_summary(
+                            resampled_estimates,
+                            resampling_plan
+                        )
+                        data.frame(
+                            metadata_field = field,
+                            component = as.integer(j),
+                            component_label = component_labels[[j]],
+                            estimand = effect$estimand,
+                            estimate = effect$estimate,
+                            effect_magnitude = abs(effect$estimate),
+                            reference_level = effect$reference_level,
+                            comparison_level = effect$comparison_level,
+                            n_available = as.integer(effect$n_available),
+                            n_missing = as.integer(
+                                length(values) - effect$n_available
+                            ),
+                            n_score_ties = as.integer(effect$n_score_ties),
+                            n_target_ties = as.integer(effect$n_target_ties),
+                            evidence_variant = "adjusted",
+                            proposal_eligible = TRUE,
+                            nuisance_fields = paste(
+                                specification@nuisance_fields,
+                                collapse = " + "
+                            ),
+                            cohort_digest = effect$cohort_digest,
+                            design_digest = effect$design_digest,
+                            diagnostic = effect$diagnostic,
+                            p_value = effect$p_value,
+                            q_value = NA_real_,
+                            effect_conf_low = uncertainty$effect_conf_low,
+                            effect_conf_high = uncertainty$effect_conf_high,
+                            n_resamples = uncertainty$n_resamples,
+                            resample_failures =
+                                uncertainty$resample_failures,
+                            resampling_method =
+                                uncertainty$resampling_method,
+                            resampling_plan_digest =
+                                uncertainty$resampling_plan_digest,
+                            evidence_status = effect$evidence_status,
+                            stringsAsFactors = FALSE
+                        )
+                    }
+                )
+                adjusted_rows <- Filter(Negate(is.null), adjusted_rows)
+                if (length(adjusted_rows)) {
+                    adjusted_table <- do.call(rbind, adjusted_rows)
+                    adjusted_table$q_value <- stats::p.adjust(
+                        adjusted_table$p_value,
+                        method = "BH"
+                    )
+                    association_rows[[length(association_rows) + 1L]] <-
+                        adjusted_table
+                }
+            }
             field_observations <- lapply(
                 seq_len(ncol(coordinate_matrix)),
                 function(j) {
                     scores <- coordinate_matrix[, j]
+                    metadata_type <- if (is.ordered(values)) {
+                        "ordered"
+                    } else if (is.numeric(values) && !is.logical(values)) {
+                        "continuous"
+                    } else {
+                        "categorical"
+                    }
+                    metadata_numeric <- if (is.ordered(values)) {
+                        as.numeric(values)
+                    } else if (identical(metadata_type, "continuous")) {
+                        as.numeric(values)
+                    } else {
+                        rep(NA_real_, length(values))
+                    }
                     data.frame(
                         metadata_field = field,
                         component = as.integer(j),
                         component_label = component_labels[[j]],
                         sample_index = seq_along(scores),
                         primary_sample = names(values),
+                        metadata_type = metadata_type,
                         metadata_value = as.character(values),
+                        metadata_numeric = metadata_numeric,
                         score = as.numeric(scores),
-                        available = is.finite(scores) & !is.na(values),
+                        atom_count = as.integer(ave(
+                            rep.int(1L, length(scores)),
+                            paste(
+                                as.character(values),
+                                sprintf("%.17g", scores),
+                                sep = "\r"
+                            ),
+                            FUN = length
+                        )),
+                        available = is.finite(scores) &
+                            !is.na(values) &
+                            (
+                                !identical(metadata_type, "continuous") |
+                                    is.finite(metadata_numeric)
+                            ),
                         stringsAsFactors = FALSE
                     )
                 }
@@ -609,10 +1550,18 @@ associate_metadata <- function(
     } else {
         empty <- lapply(.association_atlas_columns, function(name) {
             if (name %in% c(
-                "component", "n_available", "n_missing", "n_score_ties"
+                "component", "n_available", "n_missing", "n_score_ties",
+                "n_target_ties"
             )) integer() else if (name %in% c(
-                "estimate", "effect_magnitude", "p_value", "q_value"
-            )) numeric() else character()
+                "estimate", "effect_magnitude", "p_value", "q_value",
+                "effect_conf_low", "effect_conf_high"
+            )) numeric() else if (identical(name, "proposal_eligible")) {
+                logical()
+            } else if (name %in% c(
+                "n_resamples", "resample_failures"
+            )) {
+                integer()
+            } else character()
         })
         names(empty) <- .association_atlas_columns
         as.data.frame(empty, stringsAsFactors = FALSE)
@@ -626,8 +1575,11 @@ associate_metadata <- function(
             component_label = character(),
             sample_index = integer(),
             primary_sample = character(),
+            metadata_type = character(),
             metadata_value = character(),
+            metadata_numeric = numeric(),
             score = numeric(),
+            atom_count = integer(),
             available = logical(),
             stringsAsFactors = FALSE
         )
@@ -668,14 +1620,18 @@ associate_metadata <- function(
         sampling_design = std@sampling_design,
         input_digest = input_digest,
         state_space_digest = state_space_digest,
-        compute_tier = "analytic-unadjusted",
-        provenance = list(
-            association_strategy = association_strategy_id(
-                get_strategy(
-                    "AssociationStrategy",
-                    "cross_sectional_binary"
-                )()
-            ),
+        compute_tier = if (n_resamples > 0L) {
+            "standard-resampled"
+        } else if (
+            !is.null(specification) &&
+            length(specification@nuisance_fields)
+        ) {
+            "analytic-adjusted"
+        } else {
+            "analytic-unadjusted"
+        },
+        provenance = c(list(
+            association_strategy = sort(unique(association_strategy_ids)),
             package_version = as.character(
                 utils::packageVersion("landscapeR")
             ),
@@ -683,8 +1639,9 @@ associate_metadata <- function(
             layer = names(as.list(experiments(std)))[[1L]],
             input_digest = input_digest,
             state_space_digest = state_space_digest,
-            dataset_id = dataset_id
-        ),
+            dataset_id = dataset_id,
+            exchangeability = exchangeability
+        ), specification_provenance),
         evidence_status = "estimable-exploratory-only"
     )
     validObject(atlas)
@@ -762,6 +1719,130 @@ atlas_digest <- function(atlas) {
     .metadata_atlas_digest(atlas)
 }
 
+#' Search-aware permutation evidence
+#'
+#' A typed record of the maximum absolute target effect obtained after
+#' repeating the complete eligible-component search under each null
+#' permutation. It cannot alter point ranking.
+#'
+#' @slot version schema version, currently `"1.0.0"`
+#' @slot method permutation method or `"none"`
+#' @slot status computation status
+#' @slot n_requested,n_completed requested and completed permutations
+#' @slot observed_max_effect observed maximum absolute target effect
+#' @slot null_max_effect maximum absolute effect from each null search
+#' @slot search_aware_p_value finite-sample corrected search-aware p-value
+#' @slot seed deterministic permutation seed
+#' @slot cohort_digest complete analysis-cohort digest
+#' @slot design_digest nuisance-design digest when adjusted
+#' @slot diagnostic machine-readable diagnostic
+#'
+#' @export
+setClass("PermutationEvidence",
+    representation(
+        version = "character",
+        method = "character",
+        status = "character",
+        n_requested = "integer",
+        n_completed = "integer",
+        observed_max_effect = "numeric",
+        null_max_effect = "numeric",
+        search_aware_p_value = "numeric",
+        seed = "integer",
+        cohort_digest = "character",
+        design_digest = "character",
+        diagnostic = "character"
+    ),
+    prototype = prototype(
+        version = "1.0.0",
+        method = "none",
+        status = "not-requested",
+        n_requested = 0L,
+        n_completed = 0L,
+        observed_max_effect = NA_real_,
+        null_max_effect = numeric(),
+        search_aware_p_value = NA_real_,
+        seed = NA_integer_,
+        cohort_digest = NA_character_,
+        design_digest = NA_character_,
+        diagnostic = ""
+    )
+)
+
+setValidity("PermutationEvidence", function(object) {
+    errors <- character()
+    statuses <- c(
+        "not-requested", "complete", "not-identifiable",
+        "insufficient-support"
+    )
+    if (!identical(object@version, "1.0.0")) {
+        errors <- c(errors, "version must be '1.0.0'")
+    }
+    if (length(object@status) != 1L || !object@status %in% statuses) {
+        errors <- c(errors, "status is not supported")
+    }
+    if (length(object@n_requested) != 1L ||
+        length(object@n_completed) != 1L ||
+        object@n_requested < 0L ||
+        object@n_completed < 0L) {
+        errors <- c(errors, "permutation counts must be non-negative scalars")
+    }
+    if (identical(object@status, "complete")) {
+        if (object@n_requested < 1L ||
+            !identical(object@n_completed, object@n_requested) ||
+            length(object@null_max_effect) != object@n_completed ||
+            any(!is.finite(object@null_max_effect)) ||
+            !is.finite(object@observed_max_effect) ||
+            !is.finite(object@search_aware_p_value) ||
+            object@search_aware_p_value < 0 ||
+            object@search_aware_p_value > 1 ||
+            !.is_sha256_digest(object@cohort_digest)) {
+            errors <- c(errors, "complete permutation evidence is malformed")
+        }
+    } else if (length(object@null_max_effect) ||
+        object@n_completed != 0L ||
+        !is.na(object@search_aware_p_value)) {
+        errors <- c(errors, "incomplete evidence must not contain null results")
+    }
+    if (object@status %in% c("not-identifiable", "insufficient-support") &&
+        !.is_scalar_nonempty_text(object@diagnostic)) {
+        errors <- c(errors, "incomplete evidence requires a diagnostic")
+    }
+    if (length(errors)) errors else TRUE
+})
+
+.new_permutation_evidence <- function(
+    method = "none",
+    status = "not-requested",
+    n_requested = 0L,
+    n_completed = 0L,
+    observed_max_effect = NA_real_,
+    null_max_effect = numeric(),
+    search_aware_p_value = NA_real_,
+    seed = NA_integer_,
+    cohort_digest = NA_character_,
+    design_digest = NA_character_,
+    diagnostic = ""
+) {
+    evidence <- new(
+        "PermutationEvidence",
+        version = "1.0.0",
+        method = method,
+        status = status,
+        n_requested = as.integer(n_requested),
+        n_completed = as.integer(n_completed),
+        observed_max_effect = as.numeric(observed_max_effect),
+        null_max_effect = as.numeric(null_max_effect),
+        search_aware_p_value = as.numeric(search_aware_p_value),
+        seed = as.integer(seed),
+        cohort_digest = as.character(cohort_digest),
+        design_digest = as.character(design_digest),
+        diagnostic = diagnostic
+    )
+    validObject(evidence)
+    evidence
+}
+
 #' Explicit abstention from component nomination
 #'
 #' An abstention preserves the ranked exploratory evidence and records why no
@@ -773,6 +1854,7 @@ atlas_digest <- function(atlas) {
 #' @slot candidate_components tied candidate component indices
 #' @slot ranking effect-first component ranking
 #' @slot observations target-specific raw component distributions
+#' @slot permutation_evidence typed search-aware null evidence
 #' @slot atlas_digest digest of the complete source atlas
 #' @slot provenance complete inherited and proposal-step provenance
 #' @slot digest digest of the abstention payload
@@ -787,6 +1869,7 @@ setClass("ComponentAbstention",
         candidate_components = "integer",
         ranking = "data.frame",
         observations = "data.frame",
+        permutation_evidence = "PermutationEvidence",
         atlas_digest = "character",
         provenance = "list",
         digest = "character",
@@ -799,6 +1882,7 @@ setClass("ComponentAbstention",
         candidate_components = integer(),
         ranking = data.frame(),
         observations = data.frame(),
+        permutation_evidence = new("PermutationEvidence"),
         atlas_digest = character(0L),
         provenance = list(),
         digest = character(0L),
@@ -816,7 +1900,10 @@ setValidity("ComponentAbstention", function(object) {
     }
     valid_reasons <- c(
         "effect-magnitude-tie",
-        "no-eligible-association"
+        "no-eligible-association",
+        "non-identifiable-design",
+        "permutation-not-identifiable",
+        "insufficient-resampling-support"
     )
     if (length(object@reason) != 1L ||
         !object@reason %in% valid_reasons) {
@@ -830,10 +1917,24 @@ setValidity("ComponentAbstention", function(object) {
         object@reason,
         "no-eligible-association"
     ) && !length(object@candidate_components)
-    if ((!tie_candidates_valid && !empty_candidates_valid) ||
+    design_candidates_valid <- identical(
+        object@reason,
+        "non-identifiable-design"
+    ) && length(object@candidate_components) >= 1L
+    permutation_candidates_valid <- object@reason %in% c(
+        "permutation-not-identifiable",
+        "insufficient-resampling-support"
+    ) && length(object@candidate_components) >= 1L
+    if ((!tie_candidates_valid &&
+            !empty_candidates_valid &&
+            !design_candidates_valid &&
+            !permutation_candidates_valid) ||
         anyNA(object@candidate_components) ||
         any(object@candidate_components < 1L)) {
-        errors <- c(errors, "candidate_components must contain a tie")
+        errors <- c(
+            errors,
+            "candidate_components are inconsistent with abstention reason"
+        )
     }
     required <- c(
         "component", "estimate", "effect_magnitude", "proposal_rank"
@@ -881,6 +1982,7 @@ setValidity("ComponentAbstention", function(object) {
 #' @slot reference_level,comparison_level deterministic target orientation
 #' @slot ranking effect-first component ranking
 #' @slot observations target-specific raw component distributions
+#' @slot permutation_evidence typed search-aware null evidence
 #' @slot recommended_component unique top-ranked component
 #' @slot atlas_digest digest of the complete source atlas
 #' @slot provenance complete inherited and proposal-step provenance
@@ -896,6 +1998,7 @@ setClass("ComponentProposal",
         comparison_level = "character",
         ranking = "data.frame",
         observations = "data.frame",
+        permutation_evidence = "PermutationEvidence",
         recommended_component = "integer",
         atlas_digest = "character",
         provenance = "list",
@@ -909,6 +2012,7 @@ setClass("ComponentProposal",
         comparison_level = character(0L),
         ranking = data.frame(),
         observations = data.frame(),
+        permutation_evidence = new("PermutationEvidence"),
         recommended_component = integer(0L),
         atlas_digest = character(0L),
         provenance = list(),
@@ -925,9 +2029,12 @@ setValidity("ComponentProposal", function(object) {
     if (!.is_scalar_nonempty_text(object@target_field)) {
         errors <- c(errors, "target_field must be one non-empty name")
     }
-    if (!.is_scalar_nonempty_text(object@reference_level) ||
-        !.is_scalar_nonempty_text(object@comparison_level) ||
-        identical(object@reference_level, object@comparison_level)) {
+    binary_target <- is.null(object@provenance$target_type) ||
+        identical(object@provenance$target_type, "binary")
+    if (binary_target &&
+        (!.is_scalar_nonempty_text(object@reference_level) ||
+            !.is_scalar_nonempty_text(object@comparison_level) ||
+            identical(object@reference_level, object@comparison_level))) {
         errors <- c(errors, "proposal requires distinct target levels")
     }
     required <- c(
@@ -997,6 +2104,7 @@ setValidity("ComponentProposal", function(object) {
     comparison_level,
     ranking,
     observations,
+    permutation_evidence,
     recommended_component,
     atlas_digest,
     provenance,
@@ -1010,6 +2118,7 @@ setValidity("ComponentProposal", function(object) {
             comparison_level = comparison_level,
             ranking = ranking,
             observations = observations,
+            permutation_evidence = permutation_evidence,
             recommended_component = recommended_component,
             atlas_digest = atlas_digest,
             provenance = provenance,
@@ -1026,6 +2135,7 @@ setValidity("ComponentProposal", function(object) {
     candidate_components,
     ranking,
     observations,
+    permutation_evidence,
     atlas_digest,
     provenance,
     evidence_status
@@ -1038,6 +2148,7 @@ setValidity("ComponentProposal", function(object) {
             candidate_components = candidate_components,
             ranking = ranking,
             observations = observations,
+            permutation_evidence = permutation_evidence,
             atlas_digest = atlas_digest,
             provenance = provenance,
             evidence_status = evidence_status
@@ -1064,7 +2175,8 @@ setValidity("ComponentProposal", function(object) {
     target,
     reason,
     ranking,
-    candidate_components
+    candidate_components,
+    permutation_evidence = .new_permutation_evidence()
 ) {
     atlas_digest <- .metadata_atlas_digest(atlas)
     observations <- atlas@observations[
@@ -1084,6 +2196,7 @@ setValidity("ComponentProposal", function(object) {
         candidate_components = candidate_components,
         ranking = ranking,
         observations = observations,
+        permutation_evidence = permutation_evidence,
         atlas_digest = atlas_digest,
         provenance = provenance,
         evidence_status = evidence_status
@@ -1096,6 +2209,7 @@ setValidity("ComponentProposal", function(object) {
         candidate_components = as.integer(candidate_components),
         ranking = ranking,
         observations = observations,
+        permutation_evidence = permutation_evidence,
         atlas_digest = atlas_digest,
         provenance = provenance,
         digest = digest_value,
@@ -1105,6 +2219,304 @@ setValidity("ComponentProposal", function(object) {
     abstention
 }
 
+.permutation_target_values <- function(atlas, target, observations) {
+    values <- observations$metadata_value
+    target_type <- atlas@provenance$target_type
+    if (identical(target_type, "binary")) {
+        return(factor(
+            values,
+            levels = c(
+                atlas@provenance$reference_level,
+                atlas@provenance$comparison_level
+            )
+        ))
+    }
+    if (identical(target_type, "ordered")) {
+        return(ordered(
+            values,
+            levels = atlas@provenance$ordered_levels
+        ))
+    }
+    if (identical(target_type, "continuous")) {
+        return(observations$metadata_numeric)
+    }
+    NULL
+}
+
+.permuted_target_effect <- function(atlas, scores, values) {
+    target_type <- atlas@provenance$target_type
+    if (identical(target_type, "binary")) {
+        effect <- .signed_rank_biserial(
+            scores,
+            values,
+            atlas@provenance$reference_level,
+            atlas@provenance$comparison_level
+        )
+        return(if (is.null(effect)) NA_real_ else effect$estimate)
+    }
+    if (identical(target_type, "continuous")) {
+        return(stats::cor(
+            rank(scores, ties.method = "average"),
+            rank(values, ties.method = "average")
+        ))
+    }
+    if (identical(target_type, "ordered")) {
+        return(stats::cor(
+            scores,
+            as.integer(values),
+            method = "kendall"
+        ))
+    }
+    NA_real_
+}
+
+.permutation_indices <- function(n_observations, n_permutations, seed) {
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (had_seed) {
+        previous_seed <- get(".Random.seed", envir = .GlobalEnv)
+    }
+    on.exit({
+        if (had_seed) {
+            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
+        } else if (exists(
+            ".Random.seed",
+            envir = .GlobalEnv,
+            inherits = FALSE
+        )) {
+            rm(".Random.seed", envir = .GlobalEnv)
+        }
+    }, add = TRUE)
+    set.seed(seed)
+    replicate(
+        n_permutations,
+        sample.int(n_observations),
+        simplify = FALSE
+    )
+}
+
+.permutation_supports_resolution <- function(values, n_permutations) {
+    counts <- as.numeric(table(values, useNA = "no"))
+    log_arrangements <- lgamma(sum(counts) + 1) -
+        sum(lgamma(counts + 1))
+    log(n_permutations + 1) <= log_arrangements
+}
+
+.target_numeric_values <- function(
+    values,
+    target_type,
+    reference_level = character(),
+    comparison_level = character(),
+    ordered_levels = character()
+) {
+    if (identical(target_type, "binary")) {
+        return(match(
+            as.character(values),
+            c(reference_level, comparison_level)
+        ))
+    }
+    if (identical(target_type, "ordered")) {
+        return(match(as.character(values), ordered_levels))
+    }
+    as.numeric(values)
+}
+
+.nuisance_design <- function(nuisance_values, complete) {
+    nuisance_frame <- as.data.frame(lapply(
+        nuisance_values,
+        function(values) {
+            values <- values[complete]
+            if (is.numeric(values) || is.ordered(values)) {
+                rank(values, ties.method = "average")
+            } else {
+                factor(values)
+            }
+        }
+    ), stringsAsFactors = FALSE)
+    stats::model.matrix(~ ., data = nuisance_frame)
+}
+
+.compute_permutation_evidence <- function(
+    atlas,
+    target,
+    ranking,
+    n_permutations,
+    seed
+) {
+    if (n_permutations == 0L) {
+        return(.new_permutation_evidence())
+    }
+    if (!.is_scalar_nonempty_text(
+        atlas@provenance$analysis_specification_digest
+    )) {
+        return(.new_permutation_evidence(
+            status = "not-identifiable",
+            n_requested = n_permutations,
+            seed = seed,
+            diagnostic = "missing-declared-target-intent"
+        ))
+    }
+    if (!identical(
+        atlas@provenance$exchangeability,
+        "independent"
+    )) {
+        return(.new_permutation_evidence(
+            status = "not-identifiable",
+            n_requested = n_permutations,
+            seed = seed,
+            diagnostic = "exchangeability-not-identifiable"
+        ))
+    }
+    target_observations <- atlas@observations[
+        atlas@observations$metadata_field == target,
+        ,
+        drop = FALSE
+    ]
+    components <- sort(unique(target_observations$component))
+    first <- target_observations[
+        target_observations$component == components[[1L]],
+        ,
+        drop = FALSE
+    ]
+    first <- first[order(first$sample_index), , drop = FALSE]
+    values <- .permutation_target_values(atlas, target, first)
+    if (is.null(values)) {
+        return(.new_permutation_evidence(
+            status = "not-identifiable",
+            n_requested = n_permutations,
+            seed = seed,
+            diagnostic = "unsupported-declared-target-type"
+        ))
+    }
+    complete <- first$available & !is.na(values)
+    nuisance_values <- atlas@provenance$nuisance_values
+    if (length(atlas@provenance$nuisance_fields)) {
+        if (!is.list(nuisance_values) ||
+            !identical(
+                names(nuisance_values),
+                atlas@provenance$nuisance_fields
+            )) {
+            return(.new_permutation_evidence(
+                status = "not-identifiable",
+                n_requested = n_permutations,
+                seed = seed,
+                diagnostic = "missing-nuisance-permutation-data"
+            ))
+        }
+        for (nuisance in nuisance_values) {
+            complete <- complete & !is.na(nuisance)
+            if (is.numeric(nuisance)) {
+                complete <- complete & is.finite(nuisance)
+            }
+        }
+    }
+    complete_values <- values[complete]
+    cohort_digest <- .association_cohort_digest(
+        first$primary_sample,
+        complete
+    )
+    if (!.permutation_supports_resolution(
+        complete_values,
+        n_permutations
+    )) {
+        return(.new_permutation_evidence(
+            status = "insufficient-support",
+            n_requested = n_permutations,
+            seed = seed,
+            cohort_digest = cohort_digest,
+            diagnostic = "insufficient-distinct-rearrangements"
+        ))
+    }
+    permutation_plan <- .permutation_indices(
+        sum(complete),
+        n_permutations,
+        seed
+    )
+    score_matrix <- vapply(components, function(component) {
+        component_rows <- target_observations[
+            target_observations$component == component,
+            ,
+            drop = FALSE
+        ]
+        component_rows <- component_rows[
+            order(component_rows$sample_index),
+            ,
+            drop = FALSE
+        ]
+        component_rows$score[complete]
+    }, numeric(sum(complete)))
+
+    if (!length(atlas@provenance$nuisance_fields)) {
+        null_max <- vapply(permutation_plan, function(indices) {
+            effects <- apply(score_matrix, 2L, function(scores) {
+                .permuted_target_effect(
+                    atlas,
+                    scores,
+                    complete_values[indices]
+                )
+            })
+            max(abs(effects), na.rm = TRUE)
+        }, numeric(1L))
+        method <- "label-permutation"
+        design_digest <- NA_character_
+    } else {
+        design <- .nuisance_design(nuisance_values, complete)
+        if (qr(design)$rank < ncol(design)) {
+            return(.new_permutation_evidence(
+                status = "not-identifiable",
+                n_requested = n_permutations,
+                seed = seed,
+                cohort_digest = cohort_digest,
+                diagnostic = "non-identifiable-permutation-design"
+            ))
+        }
+        target_numeric <- .target_numeric_values(
+            complete_values,
+            atlas@provenance$target_type,
+            atlas@provenance$reference_level,
+            atlas@provenance$comparison_level,
+            atlas@provenance$ordered_levels
+        )
+        target_rank <- rank(target_numeric, ties.method = "average")
+        target_residual <- stats::lm.fit(design, target_rank)$residuals
+        score_models <- lapply(seq_len(ncol(score_matrix)), function(j) {
+            score_rank <- rank(
+                score_matrix[, j],
+                ties.method = "average"
+            )
+            fit <- stats::lm.fit(design, score_rank)
+            list(fitted = fit$fitted.values, residuals = fit$residuals)
+        })
+        null_max <- vapply(permutation_plan, function(indices) {
+            effects <- vapply(score_models, function(model) {
+                reconstructed <- model$fitted + model$residuals[indices]
+                reconstructed_residual <- stats::lm.fit(
+                    design,
+                    reconstructed
+                )$residuals
+                stats::cor(reconstructed_residual, target_residual)
+            }, numeric(1L))
+            max(abs(effects), na.rm = TRUE)
+        }, numeric(1L))
+        method <- "nuisance-only-residual-permutation"
+        design_digest <- unique(ranking$design_digest)[[1L]]
+    }
+    observed <- max(ranking$effect_magnitude)
+    .new_permutation_evidence(
+        method = method,
+        status = "complete",
+        n_requested = n_permutations,
+        n_completed = n_permutations,
+        observed_max_effect = observed,
+        null_max_effect = null_max,
+        search_aware_p_value = (
+            1 + sum(null_max >= observed)
+        ) / (n_permutations + 1),
+        seed = seed,
+        cohort_digest = cohort_digest,
+        design_digest = design_digest
+    )
+}
+
 #' Nominate a component from a metadata-association atlas
 #'
 #' Components are ordered only by decreasing absolute biological-effect
@@ -1112,28 +2524,97 @@ setValidity("ComponentProposal", function(object) {
 #' q-values, singular values, and plots do not participate.
 #'
 #' @param atlas a `MetadataAssociationAtlas`
-#' @param target one binary metadata field present in the atlas
+#' @param target optional metadata field present in the atlas; omitted when the
+#'   source atlas carries a draft `AnalysisSpecification`
+#' @param n_permutations number of complete-search null permutations; zero
+#'   retains point/descriptive evidence only
+#' @param seed deterministic permutation seed
 #'
 #' @return a versioned exploratory `ComponentProposal`, or a
 #'   `ComponentAbstention` when the largest effect is tied
 #' @export
-propose_component <- function(atlas, target) {
+propose_component <- function(
+    atlas,
+    target = NULL,
+    n_permutations = 0L,
+    seed = 1L
+) {
     if (!is(atlas, "MetadataAssociationAtlas")) {
         .stop_landscapeR_validation(
             "propose_component(): atlas must be a MetadataAssociationAtlas"
         )
     }
+    if (length(n_permutations) != 1L ||
+        is.na(n_permutations) ||
+        n_permutations < 0 ||
+        n_permutations != as.integer(n_permutations)) {
+        .stop_landscapeR_validation(
+            "propose_component(): n_permutations must be one non-negative integer"
+        )
+    }
+    n_permutations <- as.integer(n_permutations)
+    if (length(seed) != 1L ||
+        is.na(seed) ||
+        seed != as.integer(seed)) {
+        .stop_landscapeR_validation(
+            "propose_component(): seed must be one integer"
+        )
+    }
+    seed <- as.integer(seed)
+    declared_target <- atlas@provenance$target_field
+    if (is.null(target) && .is_scalar_nonempty_text(declared_target)) {
+        target <- declared_target
+    } else if (!is.null(target) &&
+        .is_scalar_nonempty_text(declared_target) &&
+        !identical(target, declared_target)) {
+        .stop_landscapeR_validation(
+            paste0(
+                "propose_component(): target is owned by the source ",
+                "AnalysisSpecification and cannot be redeclared"
+            )
+        )
+    }
     if (!is.character(target) || length(target) != 1L ||
         is.na(target) || !nzchar(target)) {
         .stop_landscapeR_validation(
-            "propose_component(): target must be one non-empty field name"
+            paste0(
+                "propose_component(): source atlas must carry target intent ",
+                "or target must be one non-empty field name"
+            )
         )
     }
     target_rows <- atlas@associations[
-        atlas@associations$metadata_field == target,
+        atlas@associations$metadata_field == target &
+            atlas@associations$proposal_eligible,
         ,
         drop = FALSE
     ]
+    if (length(atlas@provenance$nuisance_fields) &&
+        any(target_rows$evidence_variant == "adjusted")) {
+        target_rows <- target_rows[
+            target_rows$evidence_variant == "adjusted",
+            ,
+            drop = FALSE
+        ]
+    } else {
+        target_rows <- target_rows[
+            target_rows$evidence_variant == "unadjusted",
+            ,
+            drop = FALSE
+        ]
+    }
+    if (nrow(target_rows) &&
+        !any(is.finite(target_rows$effect_magnitude))) {
+        ranking <- target_rows
+        ranking$proposal_rank <- seq_len(nrow(ranking))
+        return(.new_component_abstention(
+            atlas = atlas,
+            target = target,
+            reason = target_rows$diagnostic[[1L]],
+            ranking = ranking,
+            candidate_components = as.integer(target_rows$component)
+        ))
+    }
     if (!nrow(target_rows)) {
         ranking <- target_rows
         ranking$proposal_rank <- integer()
@@ -1177,12 +2658,40 @@ propose_component <- function(atlas, target) {
             candidate_components = top_candidates
         ))
     }
+    permutation_evidence <- .compute_permutation_evidence(
+        atlas,
+        target,
+        ranking,
+        n_permutations,
+        seed
+    )
+    if (identical(permutation_evidence@status, "not-identifiable")) {
+        return(.new_component_abstention(
+            atlas = atlas,
+            target = target,
+            reason = "permutation-not-identifiable",
+            ranking = ranking,
+            candidate_components = as.integer(ranking$component),
+            permutation_evidence = permutation_evidence
+        ))
+    }
+    if (identical(permutation_evidence@status, "insufficient-support")) {
+        return(.new_component_abstention(
+            atlas = atlas,
+            target = target,
+            reason = "insufficient-resampling-support",
+            ranking = ranking,
+            candidate_components = as.integer(ranking$component),
+            permutation_evidence = permutation_evidence
+        ))
+    }
     proposal_digest_value <- .component_proposal_digest(
         target_field = target,
         reference_level = ranking$reference_level[[1L]],
         comparison_level = ranking$comparison_level[[1L]],
         ranking = ranking,
         observations = observations,
+        permutation_evidence = permutation_evidence,
         recommended_component = recommended,
         atlas_digest = atlas_digest,
         provenance = provenance,
@@ -1196,6 +2705,7 @@ propose_component <- function(atlas, target) {
         comparison_level = ranking$comparison_level[[1L]],
         ranking = ranking,
         observations = observations,
+        permutation_evidence = permutation_evidence,
         recommended_component = recommended,
         atlas_digest = atlas_digest,
         provenance = provenance,
@@ -1256,6 +2766,87 @@ proposal_provenance <- function(proposal) {
     proposal@provenance
 }
 
+#' Extract search-aware permutation evidence from a proposal
+#'
+#' @param proposal a `ComponentProposal`
+#' @return a `PermutationEvidence`
+#' @export
+proposal_permutation_evidence <- function(proposal) {
+    if (!is(proposal, "ComponentProposal")) {
+        stop(
+            paste0(
+                "proposal_permutation_evidence(): proposal must be a ",
+                "ComponentProposal"
+            )
+        )
+    }
+    proposal@permutation_evidence
+}
+
+#' Plot search-aware permutation evidence
+#'
+#' Shows the null distribution of the maximum absolute target effect across
+#' the complete eligible-component search. The observed maximum is marked in
+#' red and cannot alter the point ranking.
+#'
+#' @param x a `PermutationEvidence`
+#' @param y ignored
+#' @param ... ignored
+#' @return a `ggplot` object
+#' @export
+plot.PermutationEvidence <- function(x, y, ...) {
+    if (!is(x, "PermutationEvidence")) {
+        stop("plot.PermutationEvidence(): x must be PermutationEvidence")
+    }
+    data <- data.frame(max_effect = x@null_max_effect)
+    plot <- ggplot2::ggplot(
+        data,
+        ggplot2::aes(x = .data[["max_effect"]])
+    )
+    if (identical(x@status, "complete")) {
+        plot <- plot +
+            ggplot2::geom_histogram(
+                bins = min(30L, max(5L, floor(sqrt(x@n_completed)))),
+                boundary = 0,
+                colour = "#111111",
+                fill = "#D9D9D9",
+                linewidth = 0.4
+            ) +
+            ggplot2::geom_vline(
+                xintercept = x@observed_max_effect,
+                colour = "#B2182B",
+                linewidth = 0.8
+            )
+    } else {
+        plot <- plot + ggplot2::annotate(
+            "text",
+            x = 0,
+            y = 0,
+            label = x@diagnostic,
+            colour = "#B2182B"
+        )
+    }
+    plot +
+        ggplot2::labs(
+            title = "Search-aware permutation evidence",
+            subtitle = paste(
+                "Null maximum across the complete component search;",
+                x@status
+            ),
+            x = "Maximum absolute target effect",
+            y = "Permutation count",
+            caption = if (identical(x@status, "complete")) {
+                sprintf(
+                    "Observed maximum in red; search-aware p = %.3f",
+                    x@search_aware_p_value
+                )
+            } else {
+                "No search-aware p-value was fabricated"
+            }
+        ) +
+        theme_landscapeR()
+}
+
 #' @export
 as.data.frame.ComponentProposal <- function(
     x,
@@ -1311,6 +2902,23 @@ abstention_provenance <- function(abstention) {
     abstention@provenance
 }
 
+#' Extract permutation evidence from a component abstention
+#'
+#' @param abstention a `ComponentAbstention`
+#' @return a `PermutationEvidence`
+#' @export
+abstention_permutation_evidence <- function(abstention) {
+    if (!is(abstention, "ComponentAbstention")) {
+        stop(
+            paste0(
+                "abstention_permutation_evidence(): abstention must be a ",
+                "ComponentAbstention"
+            )
+        )
+    }
+    abstention@permutation_evidence
+}
+
 #' @export
 as.data.frame.ComponentAbstention <- function(
     x,
@@ -1319,6 +2927,132 @@ as.data.frame.ComponentAbstention <- function(
     ...
 ) {
     abstention_ranking(x)
+}
+
+#' Extract the diagnostic from an association abstention
+#'
+#' @param abstention an `AssociationAbstention`
+#' @return one machine-readable diagnostic string
+#' @export
+association_abstention_diagnostic <- function(abstention) {
+    if (!is(abstention, "AssociationAbstention")) {
+        stop(
+            paste0(
+                "association_abstention_diagnostic(): abstention must be an ",
+                "AssociationAbstention"
+            )
+        )
+    }
+    abstention@diagnostic
+}
+
+#' Plot an association abstention
+#'
+#' @param x an `AssociationAbstention`
+#' @param y ignored
+#' @param ... ignored
+#' @return a `ggplot` object
+#' @export
+plot.AssociationAbstention <- function(x, y, ...) {
+    if (!is(x, "AssociationAbstention")) {
+        stop("plot.AssociationAbstention(): x must be AssociationAbstention")
+    }
+    ggplot2::ggplot(data.frame(x = 0, y = 0)) +
+        ggplot2::geom_blank(ggplot2::aes(
+            x = .data[["x"]],
+            y = .data[["y"]]
+        )) +
+        ggplot2::annotate(
+            "text",
+            x = 0,
+            y = 0,
+            label = x@diagnostic,
+            colour = "#111111",
+            size = 3.4
+        ) +
+        ggplot2::labs(
+            title = sprintf(
+                "Association abstained for %s",
+                x@target_field
+            ),
+            subtitle = x@reason,
+            x = NULL,
+            y = NULL,
+            caption = "No target type or association was substituted"
+        ) +
+        theme_landscapeR() +
+        ggplot2::theme(
+            plot.subtitle = ggplot2::element_text(colour = "#B2182B")
+        )
+}
+
+#' Plot a component-nomination abstention
+#'
+#' Displays retained finite effect evidence when available and the
+#' machine-readable reason that prevents nomination. The plot never marks or
+#' promotes an alternative component.
+#'
+#' @param x a `ComponentAbstention`
+#' @param y ignored
+#' @param ... ignored
+#' @return a `ggplot` object
+#' @export
+plot.ComponentAbstention <- function(x, y, ...) {
+    if (!is(x, "ComponentAbstention")) {
+        stop("plot.ComponentAbstention(): x must be ComponentAbstention")
+    }
+    ranking <- abstention_ranking(x)
+    finite <- ranking[
+        is.finite(ranking$effect_magnitude),
+        ,
+        drop = FALSE
+    ]
+    if (nrow(finite)) {
+        plot <- ggplot2::ggplot(
+            finite,
+            ggplot2::aes(
+                x = stats::reorder(
+                    .data[["component_label"]],
+                    .data[["proposal_rank"]]
+                ),
+                y = .data[["effect_magnitude"]]
+            )
+        ) +
+            ggplot2::geom_col(
+                width = 0.62,
+                colour = "#111111",
+                fill = "#D9D9D9",
+                linewidth = 0.45
+            )
+    } else {
+        plot <- ggplot2::ggplot(data.frame(x = 0, y = 0)) +
+            ggplot2::geom_blank(ggplot2::aes(
+                x = .data[["x"]],
+                y = .data[["y"]]
+            )) +
+            ggplot2::annotate(
+                "text",
+                x = 0,
+                y = 0,
+                label = "No estimable adjusted effect",
+                colour = "#111111"
+            )
+    }
+    plot +
+        ggplot2::labs(
+            title = sprintf("No component nominated for %s", x@target_field),
+            subtitle = x@reason,
+            x = "Recovered component",
+            y = "Absolute target effect",
+            caption = paste(
+                "Evidence is retained; no runner-up is promoted and",
+                "human confirmation is unavailable"
+            )
+        ) +
+        theme_landscapeR() +
+        ggplot2::theme(
+            plot.subtitle = ggplot2::element_text(colour = "#B2182B")
+        )
 }
 
 #' Confirm a proposed component by explicit human decision
@@ -1341,9 +3075,10 @@ confirm_component <- function(
     decision,
     rationale
 ) {
-    if (is(proposal, "ComponentAbstention")) {
+    if (is(proposal, "ComponentAbstention") ||
+        is(proposal, "AssociationAbstention")) {
         .stop_landscapeR_validation(
-            "confirm_component(): cannot confirm a component abstention"
+            "confirm_component(): cannot confirm an abstention"
         )
     }
     if (!is(proposal, "ComponentProposal")) {
@@ -1385,17 +3120,48 @@ confirm_component <- function(
         ))
     }
 
-    analysis_specification(
-        id = sprintf(
+    declared_specification <- .is_scalar_nonempty_text(
+        proposal@provenance$analysis_specification_digest
+    )
+    specification_id <- if (declared_specification) {
+        proposal@provenance$analysis_specification_id
+    } else {
+        sprintf(
             "%s_%s_PC%d",
             proposal@provenance$dataset_id,
             proposal@target_field,
             index
-        ),
+        )
+    }
+    target_type <- if (declared_specification) {
+        proposal@provenance$target_type
+    } else {
+        "binary"
+    }
+    analysis_specification(
+        id = specification_id,
         target_field = proposal@target_field,
-        target_type = "binary",
-        reference_level = proposal@reference_level,
-        comparison_level = proposal@comparison_level,
+        target_type = target_type,
+        reference_level = if (identical(target_type, "binary")) {
+            proposal@reference_level
+        } else {
+            NULL
+        },
+        comparison_level = if (identical(target_type, "binary")) {
+            proposal@comparison_level
+        } else {
+            NULL
+        },
+        ordered_levels = if (identical(target_type, "ordered")) {
+            proposal@provenance$ordered_levels
+        } else {
+            character()
+        },
+        continuous_direction = if (identical(target_type, "continuous")) {
+            proposal@provenance$continuous_direction
+        } else {
+            NULL
+        },
         lifecycle = "confirmed",
         selected_component = index,
         proposal_digest = proposal@digest,
@@ -1405,8 +3171,83 @@ confirm_component <- function(
             "overridden"
         },
         analyst_rationale = rationale,
-        claim_intent = "exploratory"
+        nuisance_fields = if (declared_specification) {
+            proposal@provenance$nuisance_fields
+        } else {
+            character()
+        },
+        orientation_anchor = if (
+            declared_specification &&
+            .is_scalar_nonempty_text(
+                proposal@provenance$orientation_anchor
+            )
+        ) {
+            proposal@provenance$orientation_anchor
+        } else {
+            NULL
+        },
+        claim_intent = if (declared_specification) {
+            proposal@provenance$claim_intent
+        } else {
+            "exploratory"
+        }
     )
+}
+
+.monotone_fit_data <- function(data) {
+    numeric <- data[
+        data$available &
+            data$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    if (!nrow(numeric)) {
+        numeric$monotone_fitted <- numeric$score
+        return(numeric)
+    }
+    groups <- interaction(
+        numeric$metadata_field,
+        numeric$component_label,
+        drop = TRUE,
+        lex.order = TRUE
+    )
+    fitted <- lapply(split(numeric, groups, drop = TRUE), function(group) {
+        collapsed <- stats::aggregate(
+            group$score,
+            list(metadata_numeric = group$metadata_numeric),
+            stats::median
+        )
+        names(collapsed)[[2L]] <- "score"
+        collapsed <- collapsed[
+            order(collapsed$metadata_numeric),
+            ,
+            drop = FALSE
+        ]
+        increasing <- stats::isoreg(
+            collapsed$metadata_numeric,
+            collapsed$score
+        )$yf
+        decreasing <- -stats::isoreg(
+            collapsed$metadata_numeric,
+            -collapsed$score
+        )$yf
+        monotone <- if (
+            sum((collapsed$score - increasing)^2) <=
+                sum((collapsed$score - decreasing)^2)
+        ) {
+            increasing
+        } else {
+            decreasing
+        }
+        data.frame(
+            metadata_field = group$metadata_field[[1L]],
+            component_label = group$component_label[[1L]],
+            metadata_numeric = collapsed$metadata_numeric,
+            monotone_fitted = monotone,
+            stringsAsFactors = FALSE
+        )
+    })
+    do.call(rbind, fitted)
 }
 
 #' Plot a metadata-association atlas
@@ -1423,16 +3264,42 @@ confirm_component <- function(
 #' @export
 plot.MetadataAssociationAtlas <- function(x, y, ...) {
     data <- atlas_observations(x)
+    diagnostics <- atlas_associations(x)
+    diagnostics <- unique(diagnostics[
+        diagnostics$evidence_variant == "unadjusted" &
+            diagnostics$diagnostic == "possible-nonmonotone-association",
+        c("metadata_field", "component_label", "diagnostic"),
+        drop = FALSE
+    ])
     available <- data[data$available, , drop = FALSE]
-    ggplot2::ggplot(
-        data,
-        ggplot2::aes(
+    categorical <- available[
+        available$metadata_type == "categorical",
+        ,
+        drop = FALSE
+    ]
+    numeric <- available[
+        available$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    monotone <- .monotone_fit_data(data)
+    max_atom_count <- if (nrow(available)) {
+        max(available$atom_count)
+    } else {
+        1L
+    }
+    atom_guide <- if (any(available$atom_count > 1L)) {
+        ggplot2::waiver()
+    } else {
+        "none"
+    }
+    ggplot2::ggplot(data) +
+        ggplot2::geom_boxplot(
+            data = categorical,
+            mapping = ggplot2::aes(
             x = .data[["metadata_value"]],
             y = .data[["score"]]
-        )
-    ) +
-        ggplot2::geom_boxplot(
-            data = available,
+            ),
             width = 0.5,
             outlier.shape = NA,
             colour = "#111111",
@@ -1440,9 +3307,13 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             linewidth = 0.45
         ) +
         ggplot2::geom_point(
-            data = available,
+            data = categorical,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_value"]],
+                y = .data[["score"]],
+                size = .data[["atom_count"]]
+            ),
             shape = 21,
-            size = 1.8,
             stroke = 0.45,
             colour = "#111111",
             fill = "#FFFFFF",
@@ -1452,6 +3323,58 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
                 seed = 79L
             )
         ) +
+        ggplot2::geom_point(
+            data = numeric,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["score"]],
+                size = .data[["atom_count"]]
+            ),
+            shape = 21,
+            stroke = 0.45,
+            colour = "#111111",
+            fill = "#FFFFFF"
+        ) +
+        ggplot2::geom_line(
+            data = monotone,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["monotone_fitted"]]
+            ),
+            colour = "#111111",
+            linewidth = 0.6
+        ) +
+        ggplot2::geom_smooth(
+            data = numeric,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["score"]]
+            ),
+            method = "loess",
+            formula = y ~ x,
+            se = FALSE,
+            colour = "#B2182B",
+            linewidth = 0.7
+        ) +
+        ggplot2::geom_text(
+            data = diagnostics,
+            mapping = ggplot2::aes(
+                x = -Inf,
+                y = Inf,
+                label = "\u25b3 non-monotone"
+            ),
+            hjust = -0.05,
+            vjust = 1.2,
+            colour = "#B2182B",
+            size = 3,
+            inherit.aes = FALSE
+        ) +
+        ggplot2::scale_size_continuous(
+            name = "Coincident observations",
+            range = c(1.8, 4),
+            limits = c(1, max(2L, max_atom_count)),
+            guide = atom_guide
+        ) +
         ggplot2::facet_grid(
             rows = ggplot2::vars(metadata_field),
             cols = ggplot2::vars(component_label),
@@ -1460,10 +3383,10 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
         ggplot2::labs(
             title = "Metadata association atlas",
             subtitle = paste(
-                "Raw component distributions;",
+                "Raw observations with monotone and flexible fits;",
                 "exploratory evidence only"
             ),
-            x = "Target level",
+            x = "Metadata value",
             y = "Component score"
         ) +
         theme_landscapeR()
@@ -1483,10 +3406,31 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
 plot.ComponentProposal <- function(x, y, ...) {
     data <- proposal_observations(x)
     available <- data[data$available, , drop = FALSE]
+    categorical <- available[
+        available$metadata_type == "categorical",
+        ,
+        drop = FALSE
+    ]
+    numeric <- available[
+        available$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    monotone <- .monotone_fit_data(data)
+    max_atom_count <- if (nrow(available)) {
+        max(available$atom_count)
+    } else {
+        1L
+    }
+    atom_guide <- if (any(available$atom_count > 1L)) {
+        ggplot2::waiver()
+    } else {
+        "none"
+    }
     ranking <- proposal_ranking(x)
     facet_labels <- stats::setNames(
         sprintf(
-            "%s  |  rank %d  |  |r| = %.2f",
+            "%s  |  rank %d  |  |effect| = %.2f",
             ranking$component_label,
             ranking$proposal_rank,
             ranking$effect_magnitude
@@ -1500,22 +3444,51 @@ plot.ComponentProposal <- function(x, y, ...) {
     ]
     marker_range <- diff(range(recommended_data$score))
     if (!is.finite(marker_range) || marker_range == 0) marker_range <- 1
-    marker <- data.frame(
-        component_label = unique(recommended_data$component_label),
-        metadata_value = x@comparison_level,
-        score = max(recommended_data$score) + 0.12 * marker_range,
-        stringsAsFactors = FALSE
-    )
-
-    ggplot2::ggplot(
-        data,
-        ggplot2::aes(
-            x = .data[["metadata_value"]],
-            y = .data[["score"]]
+    categorical_marker <- if (nrow(categorical)) {
+        data.frame(
+            component_label = unique(recommended_data$component_label),
+            metadata_value = if (.is_scalar_nonempty_text(
+                x@comparison_level
+            )) {
+                x@comparison_level
+            } else {
+                recommended_data$metadata_value[[1L]]
+            },
+            score = max(recommended_data$score) + 0.12 * marker_range,
+            stringsAsFactors = FALSE
         )
-    ) +
+    } else {
+        data.frame(
+            component_label = character(),
+            metadata_value = character(),
+            score = numeric()
+        )
+    }
+    numeric_marker <- if (nrow(numeric)) {
+        data.frame(
+            component_label = unique(recommended_data$component_label),
+            metadata_numeric = max(
+                recommended_data$metadata_numeric,
+                na.rm = TRUE
+            ),
+            score = max(recommended_data$score) + 0.12 * marker_range,
+            stringsAsFactors = FALSE
+        )
+    } else {
+        data.frame(
+            component_label = character(),
+            metadata_numeric = numeric(),
+            score = numeric()
+        )
+    }
+
+    ggplot2::ggplot(data) +
         ggplot2::geom_boxplot(
-            data = available,
+            data = categorical,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_value"]],
+                y = .data[["score"]]
+            ),
             width = 0.5,
             outlier.shape = NA,
             colour = "#111111",
@@ -1523,9 +3496,13 @@ plot.ComponentProposal <- function(x, y, ...) {
             linewidth = 0.45
         ) +
         ggplot2::geom_point(
-            data = available,
+            data = categorical,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_value"]],
+                y = .data[["score"]],
+                size = .data[["atom_count"]]
+            ),
             shape = 21,
-            size = 1.8,
             stroke = 0.45,
             colour = "#111111",
             fill = "#FFFFFF",
@@ -1536,8 +3513,41 @@ plot.ComponentProposal <- function(x, y, ...) {
             )
         ) +
         ggplot2::geom_point(
-            data = marker,
-            ggplot2::aes(
+            data = numeric,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["score"]],
+                size = .data[["atom_count"]]
+            ),
+            shape = 21,
+            stroke = 0.45,
+            colour = "#111111",
+            fill = "#FFFFFF"
+        ) +
+        ggplot2::geom_line(
+            data = monotone,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["monotone_fitted"]]
+            ),
+            colour = "#111111",
+            linewidth = 0.6
+        ) +
+        ggplot2::geom_smooth(
+            data = numeric,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["score"]]
+            ),
+            method = "loess",
+            formula = y ~ x,
+            se = FALSE,
+            colour = "#B2182B",
+            linewidth = 0.7
+        ) +
+        ggplot2::geom_point(
+            data = categorical_marker,
+            mapping = ggplot2::aes(
                 x = .data[["metadata_value"]],
                 y = .data[["score"]]
             ),
@@ -1547,6 +3557,25 @@ plot.ComponentProposal <- function(x, y, ...) {
             stroke = 0.65,
             colour = "#111111",
             fill = "#C61A2A"
+        ) +
+        ggplot2::geom_point(
+            data = numeric_marker,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["score"]]
+            ),
+            inherit.aes = FALSE,
+            shape = 23,
+            size = 3.2,
+            stroke = 0.65,
+            colour = "#111111",
+            fill = "#C61A2A"
+        ) +
+        ggplot2::scale_size_continuous(
+            name = "Coincident observations",
+            range = c(1.8, 4),
+            limits = c(1, max(2L, max_atom_count)),
+            guide = atom_guide
         ) +
         ggplot2::facet_wrap(
             ggplot2::vars(component_label),
@@ -1562,10 +3591,10 @@ plot.ComponentProposal <- function(x, y, ...) {
                 x@target_field
             ),
             subtitle = paste(
-                "Raw target distributions;",
+                "Raw target observations;",
                 "ranked by absolute biological effect only"
             ),
-            x = "Target level",
+            x = "Target value",
             y = "Component score",
             caption = paste(
                 "The red diamond marks the proposed component;",

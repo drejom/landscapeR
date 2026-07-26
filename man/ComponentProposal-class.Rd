@@ -21,6 +21,8 @@ A proposal is a ranked, digest-bound view of one predeclared target in a
 
 \item{\code{observations}}{target-specific raw component distributions}
 
+\item{\code{permutation_evidence}}{typed search-aware null evidence}
+
 \item{\code{recommended_component}}{unique top-ranked component}
 
 \item{\code{atlas_digest}}{digest of the complete source atlas}

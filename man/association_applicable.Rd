@@ -4,11 +4,17 @@
 \name{association_applicable}
 \alias{association_applicable}
 \alias{association_applicable,CrossSectionalBinaryAssociationStrategy,StateTransitionData-method}
+\alias{association_applicable,CrossSectionalContinuousAssociationStrategy,StateTransitionData-method}
+\alias{association_applicable,CrossSectionalOrderedAssociationStrategy,StateTransitionData-method}
 \title{Test whether an association strategy applies}
 \usage{
 association_applicable(strategy, data, values)
 
 \S4method{association_applicable}{CrossSectionalBinaryAssociationStrategy,StateTransitionData}(strategy, data, values)
+
+\S4method{association_applicable}{CrossSectionalContinuousAssociationStrategy,StateTransitionData}(strategy, data, values)
+
+\S4method{association_applicable}{CrossSectionalOrderedAssociationStrategy,StateTransitionData}(strategy, data, values)
 }
 \arguments{
 \item{strategy}{an \code{AssociationStrategy} implementation}

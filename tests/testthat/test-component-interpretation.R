@@ -45,6 +45,40 @@ component_interpretation_fixture <- function() {
     std
 }
 
+continuous_component_interpretation_fixture <- function() {
+    std <- component_interpretation_fixture()
+    colData(std)$severity <- c(1, 2, 2, 4, 5, 6, 7, 8)
+    std
+}
+
+ordered_component_interpretation_fixture <- function() {
+    std <- component_interpretation_fixture()
+    colData(std)$state <- ordered(
+        c("early", "early", "middle", "middle", "late", "late", "late", "end"),
+        levels = c("early", "middle", "late", "end")
+    )
+    std
+}
+
+unordered_component_interpretation_fixture <- function() {
+    std <- component_interpretation_fixture()
+    colData(std)$subtype <- factor(
+        rep(c("alpha", "beta", "gamma", "delta"), each = 2L)
+    )
+    std
+}
+
+nonmonotone_component_interpretation_fixture <- function() {
+    std <- continuous_component_interpretation_fixture()
+    md <- metadata(std)
+    md$stage1@coords_k[[1L]] <- cbind(
+        PC1 = c(4, 3, 2, 1, 1, 2, 3, 4),
+        PC2 = seq_len(8L)
+    )
+    metadata(std) <- md
+    std
+}
+
 test_that("cross-sectional binary metadata produces a typed association atlas", {
     atlas <- associate_metadata(
         component_interpretation_fixture(),
@@ -93,6 +127,412 @@ test_that("cross-sectional binary metadata produces a typed association atlas", 
     expect_identical(exclusions$reason, "declared-non-analytical")
 })
 
+test_that("continuous metadata uses Spearman association with visible ties", {
+    atlas <- associate_metadata(
+        continuous_component_interpretation_fixture(),
+        non_analytical_fields = "mouse_id",
+        dataset_id = "continuous-control"
+    )
+
+    severity <- atlas_associations(atlas)
+    severity <- severity[
+        severity$metadata_field == "severity",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(severity$component, c(1L, 2L))
+    expect_identical(severity$estimand, rep("spearman", 2L))
+    expect_equal(severity$estimate[[1L]], 0.994029797388005)
+    expect_identical(severity$n_available, rep(8L, 2L))
+    expect_identical(severity$n_missing, rep(0L, 2L))
+    expect_identical(severity$n_target_ties, rep(2L, 2L))
+    expect_true(all(is.na(severity$reference_level)))
+    expect_true(all(is.na(severity$comparison_level)))
+    expect_true(
+        "cross-sectional-continuous-spearman-v1" %in%
+            atlas_provenance(atlas)$association_strategy
+    )
+})
+
+test_that("inappropriate declared target type returns a typed abstention", {
+    specification <- analysis_specification(
+        id = "invalid-continuous-target",
+        target_field = "condition",
+        target_type = "continuous",
+        continuous_direction = "increasing"
+    )
+
+    abstention <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+
+    expect_s4_class(abstention, "AssociationAbstention")
+    expect_identical(abstention@reason, "inappropriate-target-type")
+    expect_match(
+        association_abstention_diagnostic(abstention),
+        "continuous target must be finite numeric"
+    )
+    expect_s3_class(plot(abstention), "ggplot")
+    restored <- unserialize(serialize(abstention, NULL))
+    expect_identical(restored@digest, abstention@digest)
+})
+
+test_that("ordered metadata uses Kendall tau-b with declared level order", {
+    atlas <- associate_metadata(
+        ordered_component_interpretation_fixture(),
+        non_analytical_fields = "mouse_id",
+        dataset_id = "ordered-control"
+    )
+
+    state <- atlas_associations(atlas)
+    state <- state[
+        state$metadata_field == "state",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(state$component, c(1L, 2L))
+    expect_identical(state$estimand, rep("kendall-tau-b", 2L))
+    expect_equal(state$estimate[[1L]], 0.9063269671749657)
+    expect_identical(state$n_target_ties, rep(7L, 2L))
+    expect_true(all(is.na(state$reference_level)))
+    expect_true(all(is.na(state$comparison_level)))
+    expect_true(
+        "cross-sectional-ordered-kendall-tau-b-v1" %in%
+            atlas_provenance(atlas)$association_strategy
+    )
+})
+
+test_that("declared ordered semantics override the metadata storage class", {
+    std <- ordered_component_interpretation_fixture()
+    colData(std)$state <- as.character(colData(std)$state)
+    specification <- analysis_specification(
+        id = "character-ordered-target",
+        target_field = "state",
+        target_type = "ordered",
+        ordered_levels = c("early", "middle", "late", "end")
+    )
+
+    atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    state <- atlas_associations(atlas)
+    state <- state[
+        state$metadata_field == "state",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(state$estimand, rep("kendall-tau-b", 2L))
+    expect_true(
+        "cross-sectional-ordered-kendall-tau-b-v1" %in%
+            atlas_provenance(atlas)$association_strategy
+    )
+})
+
+test_that("unordered multilevel metadata remains descriptive only", {
+    atlas <- associate_metadata(
+        unordered_component_interpretation_fixture(),
+        non_analytical_fields = "mouse_id",
+        dataset_id = "unordered-control"
+    )
+    subtype <- atlas_associations(atlas)
+    subtype <- subtype[
+        subtype$metadata_field == "subtype",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(subtype$component, c(1L, 2L))
+    expect_identical(
+        subtype$estimand,
+        rep("kruskal-wallis-epsilon-squared", 2L)
+    )
+    expect_true(all(is.finite(subtype$estimate)))
+    expect_true(all(subtype$effect_magnitude >= 0))
+    expect_true(all(!subtype$proposal_eligible))
+    expect_false(
+        "subtype" %in% atlas_exclusions(atlas)$metadata_field
+    )
+
+    abstention <- propose_component(atlas, target = "subtype")
+    expect_s4_class(abstention, "ComponentAbstention")
+    expect_identical(abstention@reason, "no-eligible-association")
+})
+
+test_that("association uncertainty resamples independent biological units", {
+    specification <- analysis_specification(
+        id = "bootstrap-with-batch",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment",
+        nuisance_fields = "batch"
+    )
+    std <- component_interpretation_fixture()
+    colData(std)$batch <- rep(c("batch_1", "batch_2"), times = 4L)
+
+    atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id",
+        n_resamples = 19L,
+        seed = 7001L
+    )
+    evidence <- atlas_associations(atlas)
+    condition <- evidence[
+        evidence$metadata_field == "condition",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(atlas@compute_tier, "standard-resampled")
+    expect_identical(condition$n_resamples, rep(19L, 4L))
+    expect_identical(condition$resample_failures, rep(0L, 4L))
+    expect_identical(
+        condition$resampling_method,
+        rep("stratified-biological-unit-bootstrap", 4L)
+    )
+    expect_true(all(is.finite(condition$effect_conf_low)))
+    expect_true(all(is.finite(condition$effect_conf_high)))
+    expect_true(all(
+        condition$effect_conf_low <= condition$effect_conf_high
+    ))
+    expect_true(all(grepl(
+        "^[[:xdigit:]]{64}$",
+        condition$resampling_plan_digest
+    )))
+
+    repeated <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id",
+        n_resamples = 19L,
+        seed = 7001L
+    )
+    expect_identical(
+        atlas_associations(repeated),
+        atlas_associations(atlas)
+    )
+})
+
+test_that("non-monotone warning remains visual and cannot rerank", {
+    specification <- analysis_specification(
+        id = "nonmonotone-severity",
+        target_field = "severity",
+        target_type = "continuous",
+        continuous_direction = "increasing"
+    )
+    atlas <- associate_metadata(
+        nonmonotone_component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    severity <- atlas_associations(atlas)
+    severity <- severity[
+        severity$metadata_field == "severity",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(
+        severity$diagnostic,
+        c("possible-nonmonotone-association", "")
+    )
+    proposal <- propose_component(atlas)
+    expect_s4_class(proposal, "ComponentProposal")
+    expect_identical(proposal@recommended_component, 2L)
+
+    atlas_plot <- plot(atlas)
+    diagnostics <- unlist(lapply(
+        atlas_plot$layers,
+        function(layer) layer$data$diagnostic
+    ))
+    expect_true("possible-nonmonotone-association" %in% diagnostics)
+})
+
+test_that("continuous and ordered specifications can nominate components", {
+    continuous_specification <- analysis_specification(
+        id = "continuous-proposal",
+        target_field = "severity",
+        target_type = "continuous",
+        continuous_direction = "increasing"
+    )
+    continuous_atlas <- associate_metadata(
+        continuous_component_interpretation_fixture(),
+        specification = continuous_specification,
+        non_analytical_fields = "mouse_id"
+    )
+    continuous_proposal <- propose_component(continuous_atlas)
+    expect_s4_class(continuous_proposal, "ComponentProposal")
+    continuous_confirmed <- confirm_component(
+        continuous_proposal,
+        index = continuous_proposal@recommended_component,
+        decision = "accept",
+        rationale = "Confirm the synthetic continuous lifecycle."
+    )
+    expect_identical(continuous_confirmed@target_type, "continuous")
+    expect_identical(
+        continuous_confirmed@continuous_direction,
+        "increasing"
+    )
+
+    ordered_specification <- analysis_specification(
+        id = "ordered-proposal",
+        target_field = "state",
+        target_type = "ordered",
+        ordered_levels = c("early", "middle", "late", "end")
+    )
+    ordered_atlas <- associate_metadata(
+        ordered_component_interpretation_fixture(),
+        specification = ordered_specification,
+        non_analytical_fields = "mouse_id"
+    )
+    ordered_proposal <- propose_component(ordered_atlas)
+    expect_s4_class(ordered_proposal, "ComponentProposal")
+    ordered_confirmed <- confirm_component(
+        ordered_proposal,
+        index = ordered_proposal@recommended_component,
+        decision = "accept",
+        rationale = "Confirm the synthetic ordered lifecycle."
+    )
+    expect_identical(ordered_confirmed@target_type, "ordered")
+    expect_identical(
+        ordered_confirmed@ordered_levels,
+        c("early", "middle", "late", "end")
+    )
+})
+
+test_that("draft analysis specification is the sole proposal intent", {
+    specification <- analysis_specification(
+        id = "binary-with-batch",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment",
+        nuisance_fields = "batch"
+    )
+    std <- component_interpretation_fixture()
+    colData(std)$batch <- rep(c("batch_1", "batch_2"), times = 4L)
+
+    atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    condition <- atlas_associations(atlas)
+    condition <- condition[
+        condition$metadata_field == "condition",
+        ,
+        drop = FALSE
+    ]
+    unadjusted <- condition[
+        condition$evidence_variant == "unadjusted",
+        ,
+        drop = FALSE
+    ]
+    adjusted <- condition[
+        condition$evidence_variant == "adjusted",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(unadjusted$component, c(1L, 2L))
+    expect_identical(adjusted$component, c(1L, 2L))
+    expect_identical(
+        adjusted$estimand,
+        rep("adjusted-rank-score-contrast", 2L)
+    )
+    expect_identical(
+        adjusted$nuisance_fields,
+        rep("batch", 2L)
+    )
+    expect_equal(adjusted$estimate[[1L]], 0.894427190999916)
+    expect_true(all(grepl("^[[:xdigit:]]{64}$", adjusted$design_digest)))
+    expect_true(all(grepl("^[[:xdigit:]]{64}$", adjusted$cohort_digest)))
+    expect_identical(
+        length(unique(adjusted$cohort_digest)),
+        1L
+    )
+    expect_true(all(unadjusted$proposal_eligible))
+
+    proposal <- propose_component(atlas)
+
+    expect_identical(proposal@target_field, "condition")
+    expect_identical(
+        atlas_provenance(atlas)$analysis_specification_digest,
+        canonical_digest(specification)
+    )
+    expect_identical(
+        proposal_provenance(proposal)$analysis_specification_digest,
+        canonical_digest(specification)
+    )
+    expect_identical(
+        atlas_provenance(atlas)$nuisance_fields,
+        "batch"
+    )
+
+    confirmed <- confirm_component(
+        proposal,
+        index = proposal@recommended_component,
+        decision = "accept",
+        rationale = "Accepted the predeclared target under its nuisance design."
+    )
+    expect_identical(confirmed@id, "binary-with-batch")
+    expect_identical(confirmed@nuisance_fields, "batch")
+    expect_identical(confirmed@claim_intent, "exploratory")
+})
+
+test_that("target-confounded adjustment abstains without replacing raw evidence", {
+    std <- component_interpretation_fixture()
+    colData(std)$batch <- colData(std)$condition
+    specification <- analysis_specification(
+        id = "confounded-binary",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment",
+        nuisance_fields = "batch"
+    )
+
+    atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    condition <- atlas_associations(atlas)
+    condition <- condition[
+        condition$metadata_field == "condition",
+        ,
+        drop = FALSE
+    ]
+    raw <- condition[condition$evidence_variant == "unadjusted", , drop = FALSE]
+    adjusted <- condition[
+        condition$evidence_variant == "adjusted",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(raw$component, c(1L, 2L))
+    expect_true(all(is.finite(raw$estimate)))
+    expect_identical(adjusted$component, c(1L, 2L))
+    expect_true(all(is.na(adjusted$estimate)))
+    expect_identical(
+        adjusted$diagnostic,
+        rep("non-identifiable-design", 2L)
+    )
+
+    abstention <- propose_component(atlas)
+    expect_s4_class(abstention, "ComponentAbstention")
+    expect_identical(abstention@reason, "non-identifiable-design")
+    expect_s3_class(plot(abstention), "ggplot")
+})
+
 test_that("component proposal ranks only by sign-invariant biological effect", {
     atlas <- associate_metadata(
         component_interpretation_fixture(),
@@ -122,6 +562,142 @@ test_that("component proposal ranks only by sign-invariant biological effect", {
     altered@associations$q_value <- c(0.9, 2e-12)
     still_effect_first <- propose_component(altered, target = "condition")
     expect_identical(still_effect_first@recommended_component, 1L)
+})
+
+test_that("unadjusted permutation repeats the complete component search", {
+    specification <- analysis_specification(
+        id = "binary-permutation",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment"
+    )
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+
+    proposal <- propose_component(
+        atlas,
+        n_permutations = 19L,
+        seed = 8001L
+    )
+    evidence <- proposal_permutation_evidence(proposal)
+
+    expect_s4_class(evidence, "PermutationEvidence")
+    expect_identical(evidence@method, "label-permutation")
+    expect_identical(evidence@n_requested, 19L)
+    expect_identical(evidence@n_completed, 19L)
+    expect_length(evidence@null_max_effect, 19L)
+    expect_true(all(is.finite(evidence@null_max_effect)))
+    expect_equal(evidence@observed_max_effect, 1)
+    expect_equal(
+        evidence@search_aware_p_value,
+        (1 + sum(evidence@null_max_effect >= 1)) / 20
+    )
+    expect_identical(proposal@recommended_component, 1L)
+    expect_s3_class(plot(evidence), "ggplot")
+
+    repeated <- propose_component(
+        atlas,
+        n_permutations = 19L,
+        seed = 8001L
+    )
+    expect_identical(
+        proposal_permutation_evidence(repeated),
+        evidence
+    )
+})
+
+test_that("adjusted permutation uses nuisance-only score residuals", {
+    specification <- analysis_specification(
+        id = "adjusted-permutation",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment",
+        nuisance_fields = "batch"
+    )
+    std <- component_interpretation_fixture()
+    colData(std)$batch <- rep(c("batch_1", "batch_2"), times = 4L)
+    atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+
+    proposal <- propose_component(
+        atlas,
+        n_permutations = 19L,
+        seed = 8002L
+    )
+    evidence <- proposal_permutation_evidence(proposal)
+
+    expect_s4_class(evidence, "PermutationEvidence")
+    expect_identical(
+        evidence@method,
+        "nuisance-only-residual-permutation"
+    )
+    expect_identical(evidence@n_completed, 19L)
+    expect_true(all(is.finite(evidence@null_max_effect)))
+    expect_true(grepl("^[[:xdigit:]]{64}$", evidence@design_digest))
+    expect_true(grepl("^[[:xdigit:]]{64}$", evidence@cohort_digest))
+})
+
+test_that("permutation without declared exchangeability intent abstains", {
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+
+    abstention <- propose_component(
+        atlas,
+        target = "condition",
+        n_permutations = 19L,
+        seed = 8003L
+    )
+
+    expect_s4_class(abstention, "ComponentAbstention")
+    expect_identical(abstention@reason, "permutation-not-identifiable")
+    expect_identical(
+        abstention_permutation_evidence(abstention)@diagnostic,
+        "missing-declared-target-intent"
+    )
+    expect_identical(
+        abstention_ranking(abstention)$component,
+        c(1L, 2L)
+    )
+    expect_s3_class(plot(abstention), "ggplot")
+})
+
+test_that("declared invalid exchangeability returns a typed abstention", {
+    specification <- analysis_specification(
+        id = "invalid-exchangeability",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment"
+    )
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id",
+        exchangeability = "not_identifiable"
+    )
+
+    abstention <- propose_component(
+        atlas,
+        n_permutations = 19L,
+        seed = 8005L
+    )
+
+    expect_s4_class(abstention, "ComponentAbstention")
+    expect_identical(abstention@reason, "permutation-not-identifiable")
+    expect_identical(
+        abstention_permutation_evidence(abstention)@diagnostic,
+        "exchangeability-not-identifiable"
+    )
 })
 
 test_that("component proposal abstains when the largest effects are tied", {
@@ -286,12 +862,129 @@ test_that("interpretation evidence has tidy accessors and ggplot views", {
     )))
 })
 
-test_that("atlas and proposal survive serialization without refitting", {
+test_that("continuous atlas plot exposes monotone and flexible fits", {
     atlas <- associate_metadata(
-        component_interpretation_fixture(),
+        continuous_component_interpretation_fixture(),
         non_analytical_fields = "mouse_id"
     )
-    proposal <- propose_component(atlas, target = "condition")
+    atlas_plot <- plot(atlas)
+    severity <- atlas_observations(atlas)
+    severity <- severity[
+        severity$metadata_field == "severity",
+        ,
+        drop = FALSE
+    ]
+
+    expect_equal(
+        severity$metadata_numeric[severity$component == 1L],
+        c(1, 2, 2, 4, 5, 6, 7, 8)
+    )
+    smooth_layers <- vapply(
+        atlas_plot$layers,
+        function(layer) inherits(layer$geom, "GeomSmooth"),
+        logical(1L)
+    )
+    monotone_layers <- vapply(
+        atlas_plot$layers,
+        function(layer) {
+            inherits(layer$geom, "GeomLine") &&
+                "monotone_fitted" %in% names(layer$data)
+        },
+        logical(1L)
+    )
+    expect_identical(sum(smooth_layers), 1L)
+    expect_identical(sum(monotone_layers), 1L)
+    expect_identical(
+        unname(vapply(
+            atlas_plot$layers[smooth_layers],
+            function(layer) layer$stat_params$method,
+            character(1L)
+        )),
+        "loess"
+    )
+})
+
+test_that("coincident continuous observations expose atom mass", {
+    std <- continuous_component_interpretation_fixture()
+    md <- metadata(std)
+    md$stage1@coords_k[[1L]][1:2, 1L] <- 1
+    colData(std)$severity[1:2] <- 1
+    metadata(std) <- md
+
+    atlas <- associate_metadata(
+        std,
+        non_analytical_fields = "mouse_id"
+    )
+    observations <- atlas_observations(atlas)
+    atom <- observations[
+        observations$metadata_field == "severity" &
+            observations$component == 1L &
+            observations$sample_index %in% 1:2,
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(atom$atom_count, c(2L, 2L))
+    numeric_points <- Filter(
+        function(layer) {
+            inherits(layer$geom, "GeomPoint") &&
+                !is.null(layer$mapping$size)
+        },
+        plot(atlas)$layers
+    )
+    expect_true(length(numeric_points) >= 1L)
+})
+
+test_that("continuous proposal plot preserves the numeric decision surface", {
+    specification <- analysis_specification(
+        id = "continuous-plot",
+        target_field = "severity",
+        target_type = "continuous",
+        continuous_direction = "increasing"
+    )
+    atlas <- associate_metadata(
+        continuous_component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    proposal_plot <- plot(propose_component(atlas))
+    smooth_layers <- vapply(
+        proposal_plot$layers,
+        function(layer) inherits(layer$geom, "GeomSmooth"),
+        logical(1L)
+    )
+
+    expect_identical(sum(smooth_layers), 1L)
+    expect_true(any(vapply(
+        proposal_plot$layers,
+        function(layer) {
+            identical(layer$geom_params$shape, 23) ||
+                identical(layer$aes_params$shape, 23)
+        },
+        logical(1L)
+    )))
+})
+
+test_that("atlas and proposal survive serialization without refitting", {
+    specification <- analysis_specification(
+        id = "serialized-permutation",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment"
+    )
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id",
+        n_resamples = 9L,
+        seed = 7002L
+    )
+    proposal <- propose_component(
+        atlas,
+        n_permutations = 9L,
+        seed = 8004L
+    )
     tied_atlas <- atlas
     tied_atlas@associations$effect_magnitude <- c(0.5, 0.5)
     tied_atlas@associations$estimate <- c(0.5, -0.5)
@@ -322,6 +1015,10 @@ test_that("atlas and proposal survive serialization without refitting", {
     expect_identical(
         proposal_digest(restored$proposal),
         proposal_digest(proposal)
+    )
+    expect_identical(
+        proposal_permutation_evidence(restored$proposal),
+        proposal_permutation_evidence(proposal)
     )
     expect_s3_class(plot(restored$atlas), "ggplot")
     expect_s3_class(plot(restored$proposal), "ggplot")
@@ -363,6 +1060,33 @@ test_that("available-case and tied-score diagnostics remain visible", {
     expect_identical(condition$n_available, c(7L, 7L))
     expect_identical(condition$n_missing, c(1L, 1L))
     expect_identical(condition$n_score_ties, c(0L, 7L))
+})
+
+test_that("non-finite continuous targets are unavailable everywhere", {
+    std <- continuous_component_interpretation_fixture()
+    colData(std)$severity[[8L]] <- Inf
+
+    atlas <- associate_metadata(
+        std,
+        non_analytical_fields = "mouse_id"
+    )
+    severity <- atlas_associations(atlas)
+    severity <- severity[
+        severity$metadata_field == "severity",
+        ,
+        drop = FALSE
+    ]
+    observations <- atlas_observations(atlas)
+    observations <- observations[
+        observations$metadata_field == "severity" &
+            observations$sample_index == 8L,
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(severity$n_available, c(7L, 7L))
+    expect_identical(severity$n_missing, c(1L, 1L))
+    expect_false(any(observations$available))
 })
 
 test_that("component interpretation rejects malformed layer and coordinate inputs", {

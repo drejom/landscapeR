@@ -229,19 +229,25 @@ claims become available. Real AML analyses do not supply calibration evidence.
 # Step 1: run Stage 1
 std2 <- decompose(dec(), std)@value
 
-# Step 2: surface all eligible metadata associations
-atlas <- associate_metadata(std2)
+# Step 2: declare the sole target and nuisance intent for this run
+specification <- analysis_specification(
+    id = "aml-condition",
+    target_field = "condition",
+    target_type = "binary",
+    reference_level = "CTL",
+    comparison_level = "CM",
+    nuisance_fields = "sequencing_run"
+)
+
+# Step 3: surface all eligible metadata associations and declared adjustments
+atlas <- associate_metadata(std2, specification = specification)
 plot(atlas)
 
-# Step 3: analyst declares the target and nuisance fields and inspects proposal
-proposal <- propose_component(
-    atlas,
-    target = "condition",
-    nuisance_fields = "sample_weeks"
-)
+# Step 4: proposal consumes the atlas without redeclaring target intent
+proposal <- propose_component(atlas)
 plot(proposal)
 
-# Step 4: confirm and proceed (human decision for real data;
+# Step 5: confirm and proceed (human decision for real data;
 #          automated assertion in synthetic control tests)
 aspec <- confirm_component(
     proposal,
