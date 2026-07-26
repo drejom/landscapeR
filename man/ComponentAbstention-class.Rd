@@ -11,7 +11,8 @@ unique component could be nominated. It cannot be confirmed.
 \section{Slots}{
 
 \describe{
-\item{\code{version}}{schema version, currently \code{"1.0.0"}}
+\item{\code{version}}{schema version. Version \code{"1.0.0"} remains readable; new
+model-specific abstentions use \code{"1.1.0"}.}
 
 \item{\code{target_field}}{nominated binary metadata field}
 

@@ -218,6 +218,25 @@ register_strategy(
     ))
 }
 
+.repeated_model_contrasts <- function(frame, nuisance_fields = character()) {
+    factor_nuisance <- nuisance_fields[vapply(
+        nuisance_fields,
+        function(field) is.factor(frame[[field]]),
+        logical(1L)
+    )]
+    c(
+        list(
+            target = stats::contr.treatment(
+                nlevels(frame$target),
+                base = 1L
+            )
+        ),
+        stats::setNames(lapply(factor_nuisance, function(field) {
+            stats::contr.treatment(nlevels(frame[[field]]), base = 1L)
+        }), factor_nuisance)
+    )
+}
+
 .landscapeR_lmer <- function(...) {
     lme4::lmer(...)
 }
@@ -279,15 +298,25 @@ register_strategy(
         reference_level,
         comparison_level
     )
+    contrasts <- .repeated_model_contrasts(
+        frame,
+        names(nuisance_values)
+    )
     fixed <- stats::model.matrix(
         .repeated_fixed_formula(names(nuisance_values)),
         data = frame,
-        contrasts.arg = list(
-            target = stats::contr.treatment(2L, base = 1L)
-        )
+        contrasts.arg = contrasts
     )
     if (qr(fixed)$rank < ncol(fixed)) {
         return("non-identifiable-design: rank-deficient-fixed-effect-design")
+    }
+    if (length(unique(subject)) <= qr(fixed)$rank) {
+        return(
+            paste0(
+                "non-identifiable-design: ",
+                "insufficient-biological-units-for-model-rank"
+            )
+        )
     }
     ""
 }
@@ -383,12 +412,14 @@ register_strategy(
         reference_level,
         comparison_level
     )
+    contrasts <- .repeated_model_contrasts(
+        frame,
+        names(nuisance_values)
+    )
     fixed <- stats::model.matrix(
         .repeated_fixed_formula(names(nuisance_values)),
         data = frame,
-        contrasts.arg = list(
-            target = stats::contr.treatment(2L, base = 1L)
-        )
+        contrasts.arg = contrasts
     )
     design_digest <- digest::digest(
         list(
@@ -418,9 +449,7 @@ register_strategy(
                 data = frame,
                 REML = FALSE,
                 na.action = stats::na.fail,
-                contrasts = list(
-                    target = stats::contr.treatment(2L, base = 1L)
-                ),
+                contrasts = contrasts,
                 control = control
             ),
             warning = function(warning) {
@@ -1294,10 +1323,36 @@ register_strategy(
         }
     }, add = TRUE)
     set.seed(seed)
-    lapply(seq_len(n_permutations), function(i) {
-        permuted <- sample(subject_condition, length(subject_condition))
-        stats::setNames(permuted, names(subject_condition))[subject]
-    })
+    levels <- if (is.factor(target)) {
+        levels(target)
+    } else {
+        unique(subject_condition)
+    }
+    comparison_subjects <- names(subject_condition)[
+        subject_condition == levels[[2L]]
+    ]
+    comparison_count <- length(comparison_subjects)
+    observed_key <- paste(sort(comparison_subjects), collapse = "\r")
+    allocations <- list()
+    seen <- new.env(hash = TRUE, parent = emptyenv())
+    while (length(allocations) < n_permutations) {
+        selected <- sort(sample(
+            names(subject_condition),
+            comparison_count,
+            replace = FALSE
+        ))
+        key <- paste(selected, collapse = "\r")
+        if (identical(key, observed_key) ||
+            exists(key, envir = seen, inherits = FALSE)) {
+            next
+        }
+        assign(key, TRUE, envir = seen)
+        permuted <- rep(levels[[1L]], length(subject_condition))
+        names(permuted) <- names(subject_condition)
+        permuted[selected] <- levels[[2L]]
+        allocations[[length(allocations) + 1L]] <- permuted[subject]
+    }
+    allocations
 }
 
 .compute_repeated_time_permutation_evidence <- function(

@@ -198,6 +198,14 @@ test_that("singular and non-convergent models remain distinct failures", {
         "singular-random-effects-covariance",
         singular_effects$diagnostic
     )))
+    expect_identical(
+        propose_component(singular_atlas)@reason,
+        "singular-model"
+    )
+    expect_identical(
+        propose_component(singular_atlas)@version,
+        "1.1.0"
+    )
 
     testthat::local_mocked_bindings(
         .landscapeR_lmer = function(...) {
@@ -223,7 +231,7 @@ test_that("singular and non-convergent models remain distinct failures", {
     nonconvergent_abstention <- propose_component(nonconvergent_atlas)
     expect_identical(
         nonconvergent_abstention@reason,
-        "non-identifiable-design"
+        "non-convergent-model"
     )
     expect_identical(
         plot(nonconvergent_abstention)$labels$subtitle,

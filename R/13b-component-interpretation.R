@@ -1924,7 +1924,8 @@ setValidity("PermutationEvidence", function(object) {
 #' An abstention preserves the ranked exploratory evidence and records why no
 #' unique component could be nominated. It cannot be confirmed.
 #'
-#' @slot version schema version, currently `"1.0.0"`
+#' @slot version schema version. Version `"1.0.0"` remains readable; new
+#'   model-specific abstentions use `"1.1.0"`.
 #' @slot target_field nominated binary metadata field
 #' @slot reason machine-readable abstention reason
 #' @slot candidate_components tied candidate component indices
@@ -1968,8 +1969,8 @@ setClass("ComponentAbstention",
 
 setValidity("ComponentAbstention", function(object) {
     errors <- character()
-    if (!identical(object@version, "1.0.0")) {
-        errors <- c(errors, "version must be '1.0.0'")
+    if (!object@version %in% c("1.0.0", "1.1.0")) {
+        errors <- c(errors, "version must be '1.0.0' or '1.1.0'")
     }
     if (!.is_scalar_nonempty_text(object@target_field)) {
         errors <- c(errors, "target_field must be one non-empty name")
@@ -1978,9 +1979,18 @@ setValidity("ComponentAbstention", function(object) {
         "effect-magnitude-tie",
         "no-eligible-association",
         "non-identifiable-design",
+        "singular-model",
+        "non-convergent-model",
         "permutation-not-identifiable",
         "insufficient-resampling-support"
     )
+    if (identical(object@version, "1.0.0") &&
+        object@reason %in% c("singular-model", "non-convergent-model")) {
+        errors <- c(
+            errors,
+            "version 1.0.0 cannot contain model-specific abstention reasons"
+        )
+    }
     if (length(object@reason) != 1L ||
         !object@reason %in% valid_reasons) {
         errors <- c(errors, "reason is not a supported abstention reason")
@@ -1993,9 +2003,10 @@ setValidity("ComponentAbstention", function(object) {
         object@reason,
         "no-eligible-association"
     ) && !length(object@candidate_components)
-    design_candidates_valid <- identical(
-        object@reason,
-        "non-identifiable-design"
+    design_candidates_valid <- object@reason %in% c(
+        "non-identifiable-design",
+        "singular-model",
+        "non-convergent-model"
     ) && length(object@candidate_components) >= 1L
     permutation_candidates_valid <- object@reason %in% c(
         "permutation-not-identifiable",
@@ -2279,7 +2290,14 @@ setValidity("ComponentProposal", function(object) {
     )
     abstention <- new(
         "ComponentAbstention",
-        version = "1.0.0",
+        version = if (reason %in% c(
+            "singular-model",
+            "non-convergent-model"
+        )) {
+            "1.1.0"
+        } else {
+            "1.0.0"
+        },
         target_field = target,
         reason = reason,
         candidate_components = as.integer(candidate_components),
@@ -2712,14 +2730,11 @@ propose_component <- function(
         ranking <- target_rows
         ranking$proposal_rank <- seq_len(nrow(ranking))
         reason <- target_rows$diagnostic[[1L]]
-        if (grepl(
-            paste0(
-                "^(non-identifiable-design|",
-                "singular-random-effects-covariance|",
-                "model-non-convergent)"
-            ),
-            reason
-        )) {
+        if (grepl("^singular-random-effects-covariance", reason)) {
+            reason <- "singular-model"
+        } else if (grepl("^model-non-convergent", reason)) {
+            reason <- "non-convergent-model"
+        } else if (grepl("^non-identifiable-design", reason)) {
             reason <- "non-identifiable-design"
         }
         return(.new_component_abstention(
@@ -3067,12 +3082,14 @@ as.data.frame.ComponentAbstention <- function(
 .public_abstention_message <- function(reason, diagnostics = character()) {
     diagnostics <- diagnostics[nzchar(diagnostics)]
     diagnostic <- if (length(diagnostics)) diagnostics[[1L]] else ""
-    if (grepl("^singular-random-effects-covariance", diagnostic)) {
+    if (identical(reason, "singular-model") ||
+        grepl("^singular-random-effects-covariance", diagnostic)) {
         return(
             "The declared correlated random-effects model was singular"
         )
     }
-    if (grepl("^model-non-convergent", diagnostic)) {
+    if (identical(reason, "non-convergent-model") ||
+        grepl("^model-non-convergent", diagnostic)) {
         return("The declared repeated-subject model did not converge")
     }
     if (grepl("^non-identifiable-design", diagnostic) ||

@@ -83,6 +83,21 @@ test_that("confounded nuisance adjustment abstains without weakening the model",
     ))
 })
 
+test_that("biological units must exceed the fixed model rank", {
+    atlas <- associate_metadata(
+        repeated_time_course_fixture(subjects_per_condition = 2L),
+        specification = repeated_time_course_specification(),
+        non_analytical_fields = c("mouse_id", "batch")
+    )
+    effects <- atlas_associations(atlas)
+    effects <- effects[effects$proposal_eligible, , drop = FALSE]
+
+    expect_true(all(grepl(
+        "insufficient-biological-units-for-model-rank",
+        effects$diagnostic
+    )))
+})
+
 test_that("subject bootstrap preserves whole trajectories within condition", {
     atlas <- associate_metadata(
         repeated_time_course_fixture(),
@@ -203,6 +218,31 @@ test_that("invalid exchangeability yields typed permutation abstention", {
     )
 })
 
+test_that("subject-level permutation allocations are distinct", {
+    atlas <- associate_metadata(
+        repeated_time_course_fixture(subjects_per_condition = 3L),
+        specification = repeated_time_course_specification(),
+        non_analytical_fields = c("mouse_id", "batch")
+    )
+    trajectory <- atlas_provenance(atlas)$time_course_observations
+    plan <- landscapeR:::.repeated_subject_permutation_plan(
+        trajectory$subject,
+        factor(trajectory$condition, levels = c("control", "treatment")),
+        n_permutations = 19L,
+        seed = 8214L
+    )
+    allocation_keys <- vapply(plan, paste, collapse = "\r", character(1L))
+    observed <- as.character(factor(
+        trajectory$condition,
+        levels = c("control", "treatment")
+    ))
+
+    expect_length(unique(allocation_keys), 19L)
+    expect_false(any(vapply(plan, function(values) {
+        identical(unname(values), observed)
+    }, logical(1L))))
+})
+
 test_that("insufficient subject permutations are not fabricated", {
     atlas <- associate_metadata(
         repeated_time_course_fixture(subjects_per_condition = 3L),
@@ -266,6 +306,33 @@ test_that("repeated-model provenance freezes the complete scientific contract", 
     expect_equal(
         standardization$scale,
         unname(apply(raw_scores, 2L, stats::sd))
+    )
+})
+
+test_that("factor nuisance contrasts ignore global contrast options", {
+    std <- repeated_time_course_fixture()
+    specification <- repeated_time_course_specification("batch")
+    baseline <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    old_contrasts <- getOption("contrasts")
+    on.exit(options(contrasts = old_contrasts), add = TRUE)
+    options(contrasts = c("contr.sum", "contr.poly"))
+    altered <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+
+    expect_equal(
+        atlas_associations(altered)$estimate,
+        atlas_associations(baseline)$estimate
+    )
+    expect_identical(
+        atlas_provenance(altered)$model_formula_digest,
+        atlas_provenance(baseline)$model_formula_digest
     )
 })
 
