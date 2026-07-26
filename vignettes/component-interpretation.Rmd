@@ -30,7 +30,7 @@ The workflow separates four actions:
 2. `plot()` renders the stored decision surface without changing it.
 3. `propose_component()` ranks only the predeclared effect and may compute a
    search-aware permutation null.
-4. `confirm_component()` records a separate human decision and rationale.
+4. `confirm_component()` records a separate analyst decision and rationale.
 
 ## Synthetic worked example
 
@@ -164,7 +164,7 @@ returns a typed `ComponentAbstention` with
 `permutation-not-identifiable`. A rank-deficient or target-confounded nuisance
 design similarly preserves raw evidence while adjusted nomination abstains.
 
-## Record human confirmation
+## Record the analyst decision
 
 ```{r confirmation}
 confirmed <- confirm_component(
@@ -311,5 +311,5 @@ subjects, support repeated-subject models, combine molecular layers, or claim
 axis stability. Repeated-subject support requires a separate registered
 strategy; stability claims require later calibration. Bootstrap intervals here
 quantify association uncertainty while holding the fitted Stage 1 basis fixed.
-A real-data confirmation is a recorded human judgement, not proof that the
+A real-data confirmation is a documented analyst decision, not proof that the
 selected coordinate is biologically true.

@@ -157,7 +157,7 @@ independent_time_course <- function(
 ) {
     if (!is.character(time) || length(time) != 1L ||
         is.na(time) || !nzchar(time)) {
-        stop(
+        .stop_landscapeR_validation(
             paste0(
                 "independent_time_course(): time must be a single ",
                 "non-empty character string"
@@ -169,7 +169,7 @@ independent_time_course <- function(
             (!is.character(time_unit) ||
                 is.na(time_unit) ||
                 !nzchar(time_unit)))) {
-        stop(
+        .stop_landscapeR_validation(
             paste0(
                 "independent_time_course(): time_unit must be empty or one ",
                 "non-empty character string"
@@ -295,20 +295,26 @@ longitudinal <- function(subject_id, time, time_unit = character(0L)) {
 #' @export
 declare_sampling_design <- function(data, design) {
     if (!is(data, "StateTransitionData"))
-        stop("declare_sampling_design(): data must be a StateTransitionData object")
+        .stop_landscapeR_validation(
+            "declare_sampling_design(): data must be a StateTransitionData object"
+        )
     if (!is(design, "SamplingDesign"))
-        stop("declare_sampling_design(): design must be a SamplingDesign object")
+        .stop_landscapeR_validation(
+            "declare_sampling_design(): design must be a SamplingDesign object"
+        )
     if (identical(design@kind, "unspecified"))
-        stop("declare_sampling_design(): 'unspecified' is a migration-only kind; ",
-             paste0(
-                 "use cross_sectional(), independent_time_course(), or ",
-                 "longitudinal()"
-             ))
+        .stop_landscapeR_validation(paste0(
+            "declare_sampling_design(): 'unspecified' is a migration-only ",
+            "kind; use cross_sectional(), independent_time_course(), or ",
+            "longitudinal()"
+        ))
 
     data@sampling_design <- design
     data_valid <- .validate_sampling_design_data(data)
     if (!isTRUE(data_valid))
-        stop("declare_sampling_design(): ", data_valid)
+        .stop_landscapeR_validation(
+            paste0("declare_sampling_design(): ", data_valid)
+        )
     validObject(data)
     data
 }

@@ -3118,7 +3118,7 @@ plot.ComponentAbstention <- function(x, y, ...) {
             y = "Absolute target effect",
             caption = paste(
                 "Evidence is retained; no runner-up is promoted and",
-                "human confirmation is unavailable"
+                "no component is eligible for nomination"
             )
         ) +
         theme_landscapeR() +
@@ -3127,7 +3127,7 @@ plot.ComponentAbstention <- function(x, y, ...) {
         )
 }
 
-#' Confirm a proposed component by explicit human decision
+#' Confirm a proposed component by an explicit analyst decision
 #'
 #' This is the only public bridge from exploratory component ranking to a
 #' confirmed `AnalysisSpecification`. Acceptance must use the recommended
@@ -3494,13 +3494,11 @@ plot.ComponentProposal <- function(x, y, ...) {
             provenance = x@provenance,
             ranking = x@ranking,
             title = sprintf(
-                "Independent time-course proposal for %s",
+                "Component ranking for %s across observed time",
                 x@target_field
             ),
-            subtitle = paste(
-                "Ranked only by the declared condition-by-time interaction;",
-                "human confirmation remains required"
-            )
+            subtitle =
+                "Ranked by the prespecified condition-by-time interaction"
         ))
     }
     data <- proposal_observations(x)
@@ -3697,7 +3695,7 @@ plot.ComponentProposal <- function(x, y, ...) {
             y = "Component score",
             caption = paste(
                 "The red diamond marks the proposed component;",
-                "human confirmation is required"
+                "confirmation requires a documented analyst rationale"
             )
         ) +
         theme_landscapeR()

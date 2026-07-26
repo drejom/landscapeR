@@ -65,6 +65,22 @@ test_that("independent time course fits the declared standardized interaction", 
     expect_true(all(nzchar(adjusted$cohort_digest)))
     expect_true(all(nzchar(adjusted$design_digest)))
     expect_true(all(nzchar(adjusted$resampling_plan_digest)))
+    resample_ranking <- atlas_provenance(
+        atlas
+    )$time_course_resample_rankings
+    rank_summary <- atlas_provenance(atlas)$time_course_rank_summary
+    expect_identical(nrow(resample_ranking), 19L * 2L)
+    expect_identical(
+        as.integer(table(resample_ranking$resample)),
+        rep(2L, 19L)
+    )
+    expect_true(all(vapply(
+        split(resample_ranking$proposal_rank, resample_ranking$resample),
+        function(ranks) identical(sort(ranks), 1:2),
+        logical(1L)
+    )))
+    expect_identical(rank_summary$n_complete_searches, rep(19L, 2L))
+    expect_equal(sum(rank_summary$rank_one_fraction), 1)
     expect_s3_class(plot(atlas), "ggplot")
 })
 
@@ -118,6 +134,54 @@ test_that("time-course resampling is deterministic and preserves design cells", 
     expect_identical(plan$method, "condition-time-cell-bootstrap")
     expect_identical(unname(plan$cell_counts), rep(4L, 6L))
     expect_identical(plan$n_resamples, 13L)
+})
+
+test_that("time-course resampling retains character target design cells", {
+    std <- independent_time_course_fixture(include_nuisance = FALSE)
+    colData(std)$condition <- as.character(colData(std)$condition)
+    atlas <- associate_metadata(
+        std,
+        specification = independent_time_course_specification(),
+        non_analytical_fields = "sample_id",
+        n_resamples = 3L,
+        seed = 8108L
+    )
+
+    expect_identical(
+        unname(atlas_provenance(atlas)$resampling_plan$cell_counts),
+        rep(4L, 6L)
+    )
+})
+
+test_that("incomplete bootstrap searches cannot promote a runner-up", {
+    records <- list(
+        list(
+            component = 1L,
+            component_label = "PC1",
+            unadjusted_uncertainty = list(
+                bootstrap_estimates = c(2, NA_real_, 2)
+            )
+        ),
+        list(
+            component = 2L,
+            component_label = "PC2",
+            unadjusted_uncertainty = list(
+                bootstrap_estimates = c(1, 1, 1)
+            )
+        )
+    )
+    result <- .time_course_resample_rankings(
+        records,
+        "time-course-unadjusted"
+    )
+    incomplete <- result$rankings$resample == 2L
+    pc2 <- result$summary[result$summary$component == 2L, , drop = FALSE]
+
+    expect_true(all(is.na(result$rankings$proposal_rank[incomplete])))
+    expect_false(any(result$rankings$complete_search[incomplete]))
+    expect_identical(pc2$n_complete_searches, 2L)
+    expect_identical(pc2$rank_one_count, 0L)
+    expect_identical(pc2$rank_one_fraction, 0)
 })
 
 test_that("invalid independent-time design retains evidence and abstains", {
@@ -301,6 +365,44 @@ test_that("missing required nuisance values define one visible common cohort", {
     expect_identical(
         unique(unadjusted$cohort_digest),
         unique(adjusted$cohort_digest)
+    )
+    expect_s4_class(propose_component(atlas), "ComponentProposal")
+})
+
+test_that("complete-case exclusion does not redefine the study-time scale", {
+    std <- independent_time_course_fixture()
+    endpoint <- colData(std)$day == 2
+    colData(std)$batch[endpoint] <- NA
+
+    atlas <- associate_metadata(
+        std,
+        specification = independent_time_course_specification("batch"),
+        non_analytical_fields = "sample_id",
+        n_resamples = 7L,
+        seed = 8107L
+    )
+    provenance <- atlas_provenance(atlas)
+    endpoint_cells <- provenance$time_course_cells[
+        provenance$time_course_cells$observed_time == 2,
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(provenance$time_range, c(0, 2))
+    expect_equal(range(provenance$scaled_time), c(0, 0.5))
+    expect_identical(endpoint_cells$count, c(0L, 0L))
+    expect_equal(endpoint_cells$scaled_time, c(1, 1))
+    expect_equal(
+        as.numeric(tapply(
+            provenance$time_course_display_lines$scaled_time,
+            provenance$time_course_display_lines$condition,
+            max
+        )),
+        c(0.5, 0.5)
+    )
+    expect_identical(
+        unname(provenance$resampling_plan$cell_counts),
+        c(4L, 4L, 0L, 4L, 4L, 0L)
     )
     expect_s4_class(propose_component(atlas), "ComponentProposal")
 })

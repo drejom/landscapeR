@@ -38,7 +38,7 @@ complete eligible-component search, and the result remains exploratory.
 Both conditions must have independent replication at two or more overlapping
 observed times. Missing cells remain visible in typed atlas provenance and the
 canonical plot. The invalid design produces `non-identifiable-design`; no
-runner-up can cross the separate human-confirmation boundary.
+runner-up can cross the prespecified decision boundary.
 
 ## Observable contract
 
@@ -48,7 +48,7 @@ runner-up can cross the separate human-confirmation boundary.
 | Trajectory divergence | Stored fixed-model lines and standardized interaction | Full-rank replicated overlap required |
 | Association uncertainty | Condition-by-time-cell bootstrap intervals and failures | Failed resamples are counted |
 | Search multiplicity | Null maxima and observed maximum | Fixed times are never permuted |
-| Human decision | Separate proposal object | Abstention cannot be confirmed |
+| Analyst decision | Separate proposal object | Abstention cannot be confirmed |
 
 ## Reproduction
 

@@ -70,7 +70,7 @@ test_that("independent time-course declaration requires usable observed time", {
     expect_error(
         declare_sampling_design(d, design),
         "time_col contains NA",
-        class = "simpleError"
+        class = "landscapeR_validation_error"
     )
 })
 
@@ -81,7 +81,20 @@ test_that("independent time-course declaration rejects degenerate time", {
     expect_error(
         declare_sampling_design(d, independent_time_course("day")),
         "at least two distinct",
-        class = "simpleError"
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("independent time-course constructor uses typed validation errors", {
+    expect_error(
+        independent_time_course(character()),
+        "time must be",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        independent_time_course("day", c("days", "weeks")),
+        "time_unit must be",
+        class = "landscapeR_validation_error"
     )
 })
 

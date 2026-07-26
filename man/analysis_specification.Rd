@@ -48,7 +48,7 @@ confirmed lifecycles only}
 \item{proposal_decision}{\code{"accepted"} or \code{"overridden"};
 confirmed lifecycle only}
 
-\item{analyst_rationale}{non-empty human rationale; confirmed lifecycle only}
+\item{analyst_rationale}{non-empty analyst rationale; confirmed lifecycle only}
 
 \item{nuisance_fields}{unique \code{colData} fields declared as confounders}
 
@@ -63,7 +63,7 @@ a validated \code{AnalysisSpecification} v2 object
 }
 \description{
 One specification carries the same complete target declaration through a
-draft, ranked proposal, and human-confirmed component decision. Target
+draft, ranked proposal, and analyst-confirmed component decision. Target
 direction is explicit: binary targets use neutral reference/comparison
 levels, ordered targets use \code{ordered_levels}, and continuous targets
 use an increasing/decreasing direction.
@@ -73,7 +73,7 @@ A draft has no proposal or confirmation fields. A proposal adds only
 \code{proposal_digest}. A confirmed specification requires
 \code{selected_component}, the proposal digest, an accepted/overridden
 decision, and non-empty analyst rationale. Real-data confirmation remains a
-human action; this constructor validates the record but does not recommend a
+analyst action; this constructor validates the record but does not recommend a
 component.
 }
 \examples{

@@ -15,12 +15,14 @@ setClass(
     contains = "AssociationStrategy",
     slots = c(
         observed_time = "numeric",
+        study_time_range = "numeric",
         nuisance_values = "list",
         reference_level = "character",
         comparison_level = "character"
     ),
     prototype = list(
         observed_time = numeric(),
+        study_time_range = numeric(),
         nuisance_values = list(),
         reference_level = character(),
         comparison_level = character()
@@ -60,7 +62,8 @@ setMethod(
             observed_time = strategy@observed_time,
             nuisance_values = strategy@nuisance_values,
             reference_level = strategy@reference_level,
-            comparison_level = strategy@comparison_level
+            comparison_level = strategy@comparison_level,
+            study_time_range = strategy@study_time_range
         )
         association <- list(
             status = result$status,
@@ -97,6 +100,7 @@ register_strategy(
     function(params = list()) {
         allowed <- c(
             "observed_time",
+            "study_time_range",
             "nuisance_values",
             "reference_level",
             "comparison_level"
@@ -114,6 +118,9 @@ register_strategy(
         new(
             "IndependentTimeCourseLinearAssociationStrategy",
             observed_time = as.numeric(params$observed_time %||% numeric()),
+            study_time_range = as.numeric(
+                params$study_time_range %||% numeric()
+            ),
             nuisance_values = params$nuisance_values %||% list(),
             reference_level = as.character(
                 params$reference_level %||% character()
@@ -274,7 +281,8 @@ register_strategy(
     nuisance_values,
     reference_level,
     comparison_level,
-    orientation_multiplier = NULL
+    orientation_multiplier = NULL,
+    study_time_range = numeric()
 ) {
     n <- length(scores)
     if (length(target) != n ||
@@ -303,7 +311,13 @@ register_strategy(
     if (nzchar(orientation$status)) {
         structural <- orientation$status
     }
-    time_range <- range(observed_time)
+    time_range <- if (length(study_time_range) == 2L &&
+        all(is.finite(study_time_range)) &&
+        study_time_range[[2L]] > study_time_range[[1L]]) {
+        study_time_range
+    } else {
+        range(observed_time)
+    }
     scaled_time <- (observed_time - time_range[[1L]]) /
         diff(time_range)
     complete <- .time_required_complete(
@@ -483,6 +497,7 @@ register_strategy(
 .time_course_resampling_plan <- function(
     target,
     observed_time,
+    study_time_grid,
     n_resamples,
     seed
 ) {
@@ -491,16 +506,16 @@ register_strategy(
         nuisance_values = list(
             observed_time = factor(
                 observed_time,
-                levels = sort(unique(observed_time))
+                levels = study_time_grid
             )
         ),
         n_resamples = n_resamples,
         seed = seed
     )
     cell <- interaction(
-        target,
-        observed_time,
-        drop = TRUE,
+        factor(target, levels = .binary_level_order(target)),
+        factor(observed_time, levels = study_time_grid),
+        drop = FALSE,
         lex.order = TRUE
     )
     counts <- as.integer(table(cell))
@@ -523,7 +538,8 @@ register_strategy(
     reference_level,
     comparison_level,
     plan,
-    orientation_multiplier
+    orientation_multiplier,
+    study_time_range
 ) {
     estimates <- vapply(plan$indices, function(index) {
         result <- .fit_independent_time_course(
@@ -533,7 +549,8 @@ register_strategy(
             lapply(nuisance_values, `[`, index),
             reference_level,
             comparison_level,
-            orientation_multiplier = orientation_multiplier
+            orientation_multiplier = orientation_multiplier,
+            study_time_range = study_time_range
         )
         if (identical(result$status, "estimable")) {
             result$estimate
@@ -552,6 +569,113 @@ register_strategy(
     }
     summary$bootstrap_estimates <- estimates
     summary
+}
+
+.time_course_resample_rankings <- function(
+    model_records,
+    primary_variant
+) {
+    uncertainty_field <- if (identical(
+        primary_variant,
+        "time-course-adjusted"
+    )) {
+        "adjusted_uncertainty"
+    } else {
+        "unadjusted_uncertainty"
+    }
+    n_resamples <- length(
+        model_records[[1L]][[uncertainty_field]]$bootstrap_estimates
+    )
+    estimates <- vapply(model_records, function(record) {
+        record[[uncertainty_field]]$bootstrap_estimates
+    }, numeric(n_resamples))
+    if (!n_resamples) {
+        rankings <- data.frame(
+            resample = integer(),
+            component = integer(),
+            component_label = character(),
+            estimate = numeric(),
+            proposal_rank = integer(),
+            estimable = logical(),
+            complete_search = logical(),
+            stringsAsFactors = FALSE
+        )
+    } else {
+        if (is.null(dim(estimates))) {
+            estimates <- matrix(estimates, ncol = length(model_records))
+        }
+        rankings <- do.call(rbind, lapply(seq_len(nrow(estimates)), function(i) {
+            estimate <- estimates[i, ]
+            estimable <- is.finite(estimate)
+            complete_search <- all(estimable)
+            proposal_rank <- rep.int(NA_integer_, length(estimate))
+            if (complete_search) {
+                proposal_rank <- rank(-abs(estimate), ties.method = "first")
+            }
+            data.frame(
+                resample = as.integer(i),
+                component = vapply(
+                    model_records,
+                    `[[`,
+                    integer(1L),
+                    "component"
+                ),
+                component_label = vapply(
+                    model_records,
+                    `[[`,
+                    character(1L),
+                    "component_label"
+                ),
+                estimate = estimate,
+                proposal_rank = as.integer(proposal_rank),
+                estimable = estimable,
+                complete_search = rep.int(complete_search, length(estimate)),
+                stringsAsFactors = FALSE
+            )
+        }))
+        rownames(rankings) <- NULL
+    }
+    summary <- do.call(rbind, lapply(model_records, function(record) {
+        component_rows <- rankings$component == record$component
+        complete <- component_rows & rankings$complete_search
+        ranks <- rankings$proposal_rank[complete]
+        n_requested <- length(unique(rankings$resample))
+        data.frame(
+            component = record$component,
+            component_label = record$component_label,
+            n_resamples = as.integer(n_requested),
+            n_complete_searches = as.integer(length(ranks)),
+            component_fit_failures = as.integer(sum(
+                component_rows & !rankings$estimable
+            )),
+            mean_rank = if (length(ranks)) mean(ranks) else NA_real_,
+            rank_one_count = as.integer(sum(ranks == 1L)),
+            rank_one_fraction = if (n_requested) {
+                sum(ranks == 1L) / n_requested
+            } else {
+                NA_real_
+            },
+            stringsAsFactors = FALSE
+        )
+    }))
+    list(rankings = rankings, summary = summary)
+}
+
+.time_course_nuisance_reference <- function(nuisance_values) {
+    if (!length(nuisance_values)) return(numeric())
+    reference <- lapply(nuisance_values, function(values) {
+        if (is.ordered(values) || is.numeric(values)) {
+            return(stats::median(as.numeric(values)))
+        }
+        factor_values <- if (is.factor(values)) values else factor(values)
+        factor(
+            levels(factor_values)[[1L]],
+            levels = levels(factor_values)
+        )
+    })
+    matrix <- .time_nuisance_matrix(reference)
+    if (!nrow(matrix)) return(numeric())
+    matrix[1L, , drop = TRUE]
 }
 
 .time_course_association_row <- function(
@@ -662,7 +786,9 @@ register_strategy(
     component,
     component_label,
     reference_level,
-    comparison_level
+    comparison_level,
+    target,
+    nuisance_values
 ) {
     coefficients <- result$coefficients
     if (!length(coefficients)) {
@@ -675,11 +801,21 @@ register_strategy(
             stringsAsFactors = FALSE
         ))
     }
-    grid <- expand.grid(
-        condition = c(reference_level, comparison_level),
-        scaled_time = c(0, 1),
-        stringsAsFactors = FALSE
+    condition <- factor(
+        as.character(target),
+        levels = c(reference_level, comparison_level)
     )
+    grid <- do.call(rbind, lapply(
+        c(reference_level, comparison_level),
+        function(level) {
+            observed <- result$scaled_time[condition == level]
+            data.frame(
+                condition = level,
+                scaled_time = range(observed),
+                stringsAsFactors = FALSE
+            )
+        }
+    ))
     target_name <- grep("^target", names(coefficients), value = TRUE)
     target_name <- target_name[!grepl(":", target_name)]
     interaction_name <- grep(
@@ -688,11 +824,25 @@ register_strategy(
         value = TRUE
     )
     target_indicator <- as.numeric(grid$condition == comparison_level)
+    nuisance_reference <- .time_course_nuisance_reference(nuisance_values)
+    nuisance_names <- intersect(
+        names(nuisance_reference),
+        names(coefficients)
+    )
+    nuisance_contribution <- if (length(nuisance_names)) {
+        sum(
+            nuisance_reference[nuisance_names] *
+                coefficients[nuisance_names]
+        )
+    } else {
+        0
+    }
     grid$fitted_score <- coefficients[["(Intercept)"]] +
         coefficients[["scaled_time"]] * grid$scaled_time +
         coefficients[[target_name[[1L]]]] * target_indicator +
         coefficients[[interaction_name[[1L]]]] *
-            target_indicator * grid$scaled_time
+            target_indicator * grid$scaled_time +
+        nuisance_contribution
     grid$component <- as.integer(component)
     grid$component_label <- component_label
     grid
@@ -801,6 +951,22 @@ register_strategy(
     )
     observed_time <- .time_values_numeric(observed_time_raw)
     names(observed_time) <- names(observed_time_raw)
+    study_time_grid <- sort(unique(
+        observed_time[is.finite(observed_time)]
+    ))
+    if (length(study_time_grid) < 2L) {
+        return(.new_association_abstention(
+            std,
+            stage1,
+            specification,
+            paste(
+                "non-identifiable-design:",
+                "observed study time has fewer than two finite values"
+            ),
+            reason = "non-identifiable-design"
+        ))
+    }
+    study_time_range <- range(study_time_grid)
     nuisance_values <- stats::setNames(
         lapply(specification@nuisance_fields, function(field) {
             .aligned_component_metadata(
@@ -846,6 +1012,7 @@ register_strategy(
     plan <- .time_course_resampling_plan(
         target,
         observed_time,
+        study_time_grid,
         n_resamples,
         seed
     )
@@ -865,6 +1032,7 @@ register_strategy(
         scores <- coordinate_matrix[, component]
         unadjusted_strategy <- strategy_constructor(list(
             observed_time = observed_time,
+            study_time_range = study_time_range,
             nuisance_values = list(),
             reference_level = reference_level,
             comparison_level = comparison_level
@@ -883,7 +1051,8 @@ register_strategy(
             reference_level,
             comparison_level,
             plan,
-            orientation_multiplier = unadjusted$orientation_multiplier
+            orientation_multiplier = unadjusted$orientation_multiplier,
+            study_time_range = study_time_range
         )
         rows[[length(rows) + 1L]] <- .time_course_pooled_row(
             component,
@@ -906,6 +1075,7 @@ register_strategy(
         if (length(nuisance_values)) {
             adjusted_strategy <- strategy_constructor(list(
                 observed_time = observed_time,
+                study_time_range = study_time_range,
                 nuisance_values = nuisance_values,
                 reference_level = reference_level,
                 comparison_level = comparison_level
@@ -924,7 +1094,8 @@ register_strategy(
                 reference_level,
                 comparison_level,
                 plan,
-                orientation_multiplier = adjusted$orientation_multiplier
+                orientation_multiplier = adjusted$orientation_multiplier,
+                study_time_range = study_time_range
             )
             rows[[length(rows) + 1L]] <- .time_course_association_row(
                 component,
@@ -969,7 +1140,9 @@ register_strategy(
             component,
             component_labels[[component]],
             reference_level,
-            comparison_level
+            comparison_level,
+            target,
+            nuisance_values
         )
         model_records[[component]] <- list(
             component = as.integer(component),
@@ -999,12 +1172,12 @@ register_strategy(
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
     dataset_id <- .time_course_dataset_id(std, input_digest, dataset_id)
-    time_min <- min(observed_time)
-    time_max <- max(observed_time)
+    time_min <- study_time_range[[1L]]
+    time_max <- study_time_range[[2L]]
     scaled_time <- (observed_time - time_min) / (time_max - time_min)
     time_cells <- expand.grid(
         condition = c(reference_level, comparison_level),
-        observed_time = sort(unique(observed_time)),
+        observed_time = study_time_grid,
         stringsAsFactors = FALSE
     )
     observed_cells <- as.data.frame(table(
@@ -1014,7 +1187,7 @@ register_strategy(
         ),
         observed_time = factor(
             observed_time,
-            levels = sort(unique(observed_time))
+            levels = study_time_grid
         )
     ), stringsAsFactors = FALSE)
     observed_cells$observed_time <- as.numeric(
@@ -1070,6 +1243,10 @@ register_strategy(
     } else {
         "time-course-unadjusted"
     }
+    resample_ranks <- .time_course_resample_rankings(
+        model_records,
+        primary_variant
+    )
     effect_summary <- associations[
         associations$evidence_variant == primary_variant,
         c(
@@ -1198,6 +1375,8 @@ register_strategy(
             time_course_display_lines = do.call(rbind, display_lines),
             time_course_effect_summary = effect_summary,
             time_course_cells = time_cells,
+            time_course_resample_rankings = resample_ranks$rankings,
+            time_course_rank_summary = resample_ranks$summary,
             resampling_plan = plan
         ),
         evidence_status = "estimable-exploratory-only"
@@ -1327,7 +1506,8 @@ register_strategy(
                     observed_time,
                     list(),
                     atlas@provenance$reference_level,
-                    atlas@provenance$comparison_level
+                    atlas@provenance$comparison_level,
+                    study_time_range = atlas@provenance$time_range
                 )
                 if (identical(result$status, "estimable")) {
                     result$estimate
@@ -1370,7 +1550,8 @@ register_strategy(
                     observed_time,
                     nuisance_values,
                     atlas@provenance$reference_level,
-                    atlas@provenance$comparison_level
+                    atlas@provenance$comparison_level,
+                    study_time_range = atlas@provenance$time_range
                 )
                 if (identical(result$status, "estimable")) {
                     result$estimate
@@ -1443,11 +1624,15 @@ register_strategy(
         provenance$display_trajectory_variant,
         "time-course-adjusted"
     )) {
-        "adjusted lines use reference/zero nuisance values;"
+        paste(
+            "adjusted lines use median numeric and reference categorical",
+            "nuisance-covariate values;"
+        )
     } else {
         "unadjusted lines;"
     }
     effect_summary <- provenance$time_course_effect_summary
+    rank_summary <- provenance$time_course_rank_summary
     interval_text <- ifelse(
         is.finite(effect_summary$effect_conf_low) &
             is.finite(effect_summary$effect_conf_high),
@@ -1460,13 +1645,25 @@ register_strategy(
         sprintf("%.2f [not estimated]", effect_summary$estimate)
     )
     names(interval_text) <- effect_summary$component_label
+    rank_recurrence <- stats::setNames(
+        ifelse(
+            is.finite(rank_summary$rank_one_fraction),
+            sprintf(
+                "effect rank 1 in %.0f%% of resamples",
+                100 * rank_summary$rank_one_fraction
+            ),
+            "resampling not requested"
+        ),
+        rank_summary$component_label
+    )
     if (!is.null(ranking) && nrow(ranking)) {
         facet_labels <- stats::setNames(
             sprintf(
-                "%s\nrank %d\ninteraction %s",
+                "%s\nrank %d | interaction %s\n%s",
                 ranking$component_label,
                 ranking$proposal_rank,
-                interval_text[ranking$component_label]
+                interval_text[ranking$component_label],
+                rank_recurrence[ranking$component_label]
             ),
             ranking$component_label
         )
@@ -1576,7 +1773,11 @@ register_strategy(
             caption = paste(strwrap(paste(
                 "Counts show independent biological samples per design cell;",
                 trajectory_note,
-                "lines cannot select or confirm a component"
+                paste(
+                    "fitted trajectories are descriptive and do not determine",
+                    "component ranking;"
+                ),
+                "the Stage 1 component basis is held fixed"
             ), width = 80L), collapse = "\n")
         ) +
         theme_landscapeR()

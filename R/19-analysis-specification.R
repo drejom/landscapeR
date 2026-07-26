@@ -34,7 +34,7 @@
 #'   present for proposal and confirmed states
 #' @slot proposal_decision \code{"accepted"} or \code{"overridden"}; present
 #'   only for a confirmed specification
-#' @slot analyst_rationale non-empty human rationale for confirmation
+#' @slot analyst_rationale non-empty analyst rationale for confirmation
 #' @slot nuisance_fields unique metadata fields declared as confounders
 #' @slot orientation_anchor optional numeric metadata field providing an
 #'   orientation convention distinct from target and nuisance roles
@@ -241,7 +241,7 @@ setValidity("AnalysisSpecification", function(object) {
 #' Construct a validated analysis specification
 #'
 #' One specification carries the same complete target declaration through a
-#' draft, ranked proposal, and human-confirmed component decision. Target
+#' draft, ranked proposal, and analyst-confirmed component decision. Target
 #' direction is explicit: binary targets use neutral reference/comparison
 #' levels, ordered targets use \code{ordered_levels}, and continuous targets
 #' use an increasing/decreasing direction.
@@ -250,7 +250,7 @@ setValidity("AnalysisSpecification", function(object) {
 #' \code{proposal_digest}. A confirmed specification requires
 #' \code{selected_component}, the proposal digest, an accepted/overridden
 #' decision, and non-empty analyst rationale. Real-data confirmation remains a
-#' human action; this constructor validates the record but does not recommend a
+#' analyst action; this constructor validates the record but does not recommend a
 #' component.
 #'
 #' @param id non-empty run identity
@@ -268,7 +268,7 @@ setValidity("AnalysisSpecification", function(object) {
 #'   confirmed lifecycles only
 #' @param proposal_decision \code{"accepted"} or \code{"overridden"};
 #'   confirmed lifecycle only
-#' @param analyst_rationale non-empty human rationale; confirmed lifecycle only
+#' @param analyst_rationale non-empty analyst rationale; confirmed lifecycle only
 #' @param nuisance_fields unique \code{colData} fields declared as confounders
 #' @param orientation_anchor optional numeric non-degenerate \code{colData}
 #'   field distinct from target and nuisance roles
@@ -421,7 +421,7 @@ analysis_specification <- function(
 #' @param proposal_digest optional digest of an existing ranked proposal;
 #'   required when migrating a legacy manual component
 #' @param proposal_decision \code{"accepted"} or \code{"overridden"}
-#' @param analyst_rationale non-empty human rationale for a legacy component
+#' @param analyst_rationale non-empty analyst rationale for a legacy component
 #' @return a validated v2 \code{AnalysisSpecification}
 #' @export
 migrate_analysis_specification <- function(
