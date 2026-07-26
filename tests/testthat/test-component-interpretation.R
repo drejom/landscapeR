@@ -180,6 +180,13 @@ test_that("inappropriate declared target type returns a typed abstention", {
     expect_identical(restored@digest, abstention@digest)
 })
 
+test_that("association abstention validity rejects empty reasons cleanly", {
+    expect_error(
+        validObject(new("AssociationAbstention")),
+        "reason must be"
+    )
+})
+
 test_that("ordered metadata uses Kendall tau-b with declared level order", {
     atlas <- associate_metadata(
         ordered_component_interpretation_fixture(),

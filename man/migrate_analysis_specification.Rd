@@ -39,7 +39,7 @@ required when migrating a legacy manual component}
 
 \item{proposal_decision}{\code{"accepted"} or \code{"overridden"}}
 
-\item{analyst_rationale}{non-empty human rationale for a legacy component}
+\item{analyst_rationale}{non-empty analyst rationale for a legacy component}
 }
 \value{
 a validated v2 \code{AnalysisSpecification}

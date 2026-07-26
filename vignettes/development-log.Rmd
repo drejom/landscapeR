@@ -57,7 +57,7 @@ article does not duplicate a second planned-work list.
 
 A component decision now **resolves rather than replaces** its target. Every
 specification retains the target field and its neutral contrast/order/direction;
-confirmation adds the frozen-basis component and human decision provenance.
+confirmation adds the frozen-basis component and analyst decision provenance.
 
 ```{r analysis-specification-v2}
 proposal_id <- strrep("a", 64L)
@@ -152,7 +152,7 @@ plot_components(
 
 **Cold-reader conclusion:** metadata colour is visible for both categorical and
 continuous fields, panels remain in decomposition order, and the gallery makes
-no association score or component recommendation. Scientific ranking and human
+no association score or component recommendation. Scientific ranking and analyst
 confirmation remain the responsibility of the future atlas/proposal workflow.
 
 ### K=1 single-omic-layer SVD and double-well calibration (#50)

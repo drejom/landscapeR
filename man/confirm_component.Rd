@@ -2,7 +2,7 @@
 % Please edit documentation in R/13b-component-interpretation.R
 \name{confirm_component}
 \alias{confirm_component}
-\title{Confirm a proposed component by explicit human decision}
+\title{Confirm a proposed component by an explicit analyst decision}
 \usage{
 confirm_component(proposal, index, decision, rationale)
 }

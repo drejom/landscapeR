@@ -46,7 +46,7 @@ present for proposal and confirmed states}
 \item{\code{proposal_decision}}{\code{"accepted"} or \code{"overridden"}; present
 only for a confirmed specification}
 
-\item{\code{analyst_rationale}}{non-empty human rationale for confirmation}
+\item{\code{analyst_rationale}}{non-empty analyst rationale for confirmation}
 
 \item{\code{nuisance_fields}}{unique metadata fields declared as confounders}
 

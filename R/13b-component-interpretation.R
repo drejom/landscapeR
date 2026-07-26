@@ -1,4 +1,4 @@
-# Cross-sectional component interpretation (ADR 0020; issues #79 and #80)
+# Component interpretation (ADR 0020; issues #79, #80, and #81)
 
 utils::globalVariables(c("metadata_field", "component_label"))
 
@@ -338,8 +338,17 @@ setValidity("AssociationAbstention", function(object) {
     if (!.is_scalar_nonempty_text(object@target_field)) {
         errors <- c(errors, "target_field must be one non-empty name")
     }
-    if (!identical(object@reason, "inappropriate-target-type")) {
-        errors <- c(errors, "reason must be 'inappropriate-target-type'")
+    valid_reasons <- c(
+        "inappropriate-target-type",
+        "non-identifiable-design"
+    )
+    if (length(object@reason) != 1L ||
+        is.na(object@reason) ||
+        !object@reason %in% valid_reasons) {
+        errors <- c(errors, paste(
+            "reason must be 'inappropriate-target-type' or",
+            "'non-identifiable-design'"
+        ))
     }
     if (!.is_scalar_nonempty_text(object@diagnostic)) {
         errors <- c(errors, "diagnostic must be one non-empty string")
@@ -838,7 +847,8 @@ register_strategy(
     std,
     stage1,
     specification,
-    diagnostic
+    diagnostic,
+    reason = "inappropriate-target-type"
 ) {
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
@@ -855,7 +865,7 @@ register_strategy(
         list(
             version = "1.0.0",
             target_field = specification@target_field,
-            reason = "inappropriate-target-type",
+            reason = reason,
             diagnostic = diagnostic,
             sampling_design = std@sampling_design,
             input_digest = input_digest,
@@ -870,7 +880,7 @@ register_strategy(
         "AssociationAbstention",
         version = "1.0.0",
         target_field = specification@target_field,
-        reason = "inappropriate-target-type",
+        reason = reason,
         diagnostic = diagnostic,
         sampling_design = std@sampling_design,
         input_digest = input_digest,
@@ -1137,9 +1147,28 @@ associate_metadata <- function(
             "associate_metadata(): Stage 1 has not been run"
         )
     }
+    if (identical(
+        std@sampling_design@kind,
+        "independent_time_course"
+    )) {
+        return(.associate_independent_time_course(
+            std = std,
+            stage1 = stage1,
+            specification = specification,
+            non_analytical_fields = non_analytical_fields,
+            dataset_id = dataset_id,
+            n_resamples = n_resamples,
+            seed = seed,
+            exchangeability = exchangeability
+        ))
+    }
     if (!identical(std@sampling_design@kind, "cross_sectional")) {
         .stop_landscapeR_validation(
-            "associate_metadata(): issue #79 requires a cross-sectional design"
+            paste0(
+                "associate_metadata(): sampling design is unsupported; ",
+                "destructive independent time courses must be declared with ",
+                "independent_time_course()"
+            )
         )
     }
     specification_provenance <- list()
@@ -2342,6 +2371,18 @@ setValidity("ComponentProposal", function(object) {
     n_permutations,
     seed
 ) {
+    if (identical(
+        atlas@sampling_design@kind,
+        "independent_time_course"
+    )) {
+        return(.compute_independent_time_permutation_evidence(
+            atlas,
+            target,
+            ranking,
+            n_permutations,
+            seed
+        ))
+    }
     if (n_permutations == 0L) {
         return(.new_permutation_evidence())
     }
@@ -2589,7 +2630,14 @@ propose_component <- function(
         ,
         drop = FALSE
     ]
-    if (length(atlas@provenance$nuisance_fields) &&
+    primary_variant <- atlas@provenance$primary_evidence_variant
+    if (.is_scalar_nonempty_text(primary_variant)) {
+        target_rows <- target_rows[
+            target_rows$evidence_variant == primary_variant,
+            ,
+            drop = FALSE
+        ]
+    } else if (length(atlas@provenance$nuisance_fields) &&
         any(target_rows$evidence_variant == "adjusted")) {
         target_rows <- target_rows[
             target_rows$evidence_variant == "adjusted",
@@ -2607,10 +2655,14 @@ propose_component <- function(
         !any(is.finite(target_rows$effect_magnitude))) {
         ranking <- target_rows
         ranking$proposal_rank <- seq_len(nrow(ranking))
+        reason <- target_rows$diagnostic[[1L]]
+        if (grepl("^non-identifiable-design", reason)) {
+            reason <- "non-identifiable-design"
+        }
         return(.new_component_abstention(
             atlas = atlas,
             target = target,
-            reason = target_rows$diagnostic[[1L]],
+            reason = reason,
             ranking = ranking,
             candidate_components = as.integer(target_rows$component)
         ))
@@ -3001,6 +3053,26 @@ plot.ComponentAbstention <- function(x, y, ...) {
     if (!is(x, "ComponentAbstention")) {
         stop("plot.ComponentAbstention(): x must be ComponentAbstention")
     }
+    if (identical(
+        x@provenance$sampling_design,
+        "independent_time_course"
+    )) {
+        diagnostic <- unique(x@ranking$diagnostic)
+        diagnostic <- diagnostic[nzchar(diagnostic)]
+        return(.plot_independent_time_course(
+            observations = x@observations,
+            provenance = x@provenance,
+            ranking = x@ranking,
+            title = sprintf(
+                "No component nominated for %s",
+                x@target_field
+            ),
+            subtitle = paste(
+                c(x@reason, diagnostic),
+                collapse = " | "
+            )
+        ))
+    }
     ranking <- abstention_ranking(x)
     finite <- ranking[
         is.finite(ranking$effect_magnitude),
@@ -3046,7 +3118,7 @@ plot.ComponentAbstention <- function(x, y, ...) {
             y = "Absolute target effect",
             caption = paste(
                 "Evidence is retained; no runner-up is promoted and",
-                "human confirmation is unavailable"
+                "no component is eligible for nomination"
             )
         ) +
         theme_landscapeR() +
@@ -3055,7 +3127,7 @@ plot.ComponentAbstention <- function(x, y, ...) {
         )
 }
 
-#' Confirm a proposed component by explicit human decision
+#' Confirm a proposed component by an explicit analyst decision
 #'
 #' This is the only public bridge from exploratory component ranking to a
 #' confirmed `AnalysisSpecification`. Acceptance must use the recommended
@@ -3263,6 +3335,15 @@ confirm_component <- function(
 #' @return a `ggplot` object
 #' @export
 plot.MetadataAssociationAtlas <- function(x, y, ...) {
+    if (identical(
+        x@sampling_design@kind,
+        "independent_time_course"
+    )) {
+        return(.plot_independent_time_course(
+            observations = x@observations,
+            provenance = x@provenance
+        ))
+    }
     data <- atlas_observations(x)
     diagnostics <- atlas_associations(x)
     diagnostics <- unique(diagnostics[
@@ -3404,6 +3485,22 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
 #' @return a `ggplot` object
 #' @export
 plot.ComponentProposal <- function(x, y, ...) {
+    if (identical(
+        x@provenance$sampling_design,
+        "independent_time_course"
+    )) {
+        return(.plot_independent_time_course(
+            observations = x@observations,
+            provenance = x@provenance,
+            ranking = x@ranking,
+            title = sprintf(
+                "Component ranking for %s across observed time",
+                x@target_field
+            ),
+            subtitle =
+                "Ranked by the prespecified condition-by-time interaction"
+        ))
+    }
     data <- proposal_observations(x)
     available <- data[data$available, , drop = FALSE]
     categorical <- available[
@@ -3598,7 +3695,7 @@ plot.ComponentProposal <- function(x, y, ...) {
             y = "Component score",
             caption = paste(
                 "The red diamond marks the proposed component;",
-                "human confirmation is required"
+                "confirmation requires a documented analyst rationale"
             )
         ) +
         theme_landscapeR()

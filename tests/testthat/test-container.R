@@ -51,6 +51,53 @@ test_that("cross-sectional sampling design attaches to data", {
     expect_equal(d@sampling_design@kind, "cross_sectional")
 })
 
+test_that("independent time-course declaration requires usable observed time", {
+    d <- synthetic_control(n = 6L, p = 5L, K = 2L, signal = 10, seed = 81L)
+    cd <- colData(d)
+    cd$day <- c(0, 0, 1, 1, 2, 2)
+    colData(d) <- cd
+
+    design <- independent_time_course("day", "days")
+    out <- declare_sampling_design(d, design)
+
+    expect_equal(out@sampling_design@kind, "independent_time_course")
+    expect_equal(out@sampling_design@time_col, "day")
+    expect_equal(out@sampling_design@time_unit, "days")
+    expect_length(out@sampling_design@subject_id_col, 0L)
+
+    cd$day[[6L]] <- NA_real_
+    colData(d) <- cd
+    expect_error(
+        declare_sampling_design(d, design),
+        "time_col contains NA",
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("independent time-course declaration rejects degenerate time", {
+    d <- synthetic_control(n = 4L, p = 5L, K = 2L, signal = 10, seed = 82L)
+    colData(d)$day <- rep(1, 4L)
+
+    expect_error(
+        declare_sampling_design(d, independent_time_course("day")),
+        "at least two distinct",
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("independent time-course constructor uses typed validation errors", {
+    expect_error(
+        independent_time_course(character()),
+        "time must be",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        independent_time_course("day", c("days", "weeks")),
+        "time_unit must be",
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("longitudinal declaration validates required colData structure", {
     d <- synthetic_control(n = 4L, p = 5L, K = 2L, signal = 10, seed = 1L)
     cd <- colData(d)

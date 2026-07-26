@@ -145,8 +145,10 @@ coefficient.
 
 The concrete v1 engines are:
 
-- independent strategy: `stats::lm()` on
-  `score_std ~ target * time_scaled + nuisance_terms`;
+- independent strategy: `stats::lm()` with explicit treatment contrasts and
+  `na.action = na.fail` on
+  `score_std ~ target * time_scaled + nuisance_terms`, registered as
+  `AssociationStrategy:independent_time_course_linear`;
 - repeated-subject strategy: `lme4::lmer()` on
   `score_std ~ target * time_scaled + nuisance_terms +
   (1 + time_scaled | subject)`.
@@ -170,6 +172,10 @@ and the existing strategy registry. The contract owns supported sampling
 designs and targets, cohort construction, estimand mapping, diagnostics,
 abstention, refitting, and normalized output. Native fit objects remain private
 diagnostic payloads rather than authoritative serialized scientific results.
+Routing by the declared `SamplingDesign` is structural contract dispatch, not
+algorithm selection. It may branch on the finite set of supported design kinds;
+the statistical implementation selected within that branch must remain a
+registered `AssociationStrategy`.
 
 No core dependency is added on `tidymodels`, `parsnip`, `workflows`,
 `multilevelmod`, `rsample`, `broom`, `broom.mixed`, `lmerTest`,
@@ -363,6 +369,17 @@ Plotly or other compatible adapters can consume the same evidence without
 changing scientific computation. Interactive inspection cannot confirm or
 alter a proposal. Static plots remain the canonical reproducible artifacts for
 tests, documentation, and pull-request review.
+
+Public figures, captions, and user-facing workflow documentation use restrained,
+publication-quality scientific language suitable for a primary research
+article. They state the estimand, design, uncertainty, and inferential boundary
+directly. Internal governance phrases such as *human confirmation*, software
+enforcement language, agent/development terminology, and implementation
+instructions remain in provenance, API reference, ADRs, or developer
+documentation and do not appear in scientific plot titles, subtitles, axes, or
+captions. Visual review is performed at the canonical 100 mm output size and
+must reject clipping, crowding, ambiguous encodings, or decorative elements
+that do not carry scientific information.
 
 The axis-identifiability surface jointly exposes the spectrum, matching
 similarity and ambiguity, recurrence distributions, subspace angles, and final
