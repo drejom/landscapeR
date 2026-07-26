@@ -338,10 +338,13 @@ setValidity("AssociationAbstention", function(object) {
     if (!.is_scalar_nonempty_text(object@target_field)) {
         errors <- c(errors, "target_field must be one non-empty name")
     }
-    if (!object@reason %in% c(
+    valid_reasons <- c(
         "inappropriate-target-type",
         "non-identifiable-design"
-    )) {
+    )
+    if (length(object@reason) != 1L ||
+        is.na(object@reason) ||
+        !object@reason %in% valid_reasons) {
         errors <- c(errors, paste(
             "reason must be 'inappropriate-target-type' or",
             "'non-identifiable-design'"
