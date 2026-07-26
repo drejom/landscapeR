@@ -1,8 +1,8 @@
 ---
-title: "Cross-sectional component interpretation"
+title: "Component interpretation"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Cross-sectional component interpretation}
+  %\VignetteIndexEntry{Component interpretation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,11 +18,11 @@ knitr::opts_chunk$set(
 library(landscapeR)
 ```
 
-This workflow interprets one molecular layer measured on independent
-cross-sectional biological samples. Binary, continuous, and ordered targets
-have registered association strategies. Unordered multilevel fields remain
-visible as descriptive omnibus evidence but cannot nominate a component.
-Every result remains exploratory.
+This workflow interprets one molecular layer measured on canonical biological
+samples. Registered strategies cover independent cross-sectional samples and
+independent destructive-sampling time courses. Repeated-subject time courses
+require their own subject-aware strategy and are not silently treated as
+independent. Every result remains exploratory.
 
 The workflow separates four actions:
 
@@ -185,11 +185,131 @@ canonical_digest(confirmed)
 different ranked component requires `decision = "override"` and remains
 explicit. An abstention cannot be confirmed.
 
+## Independent destructive-sampling time courses
+
+A destructive time course observes different biological samples at each time
+point. Time is known, but no subject trajectory is observed. Declare that
+design explicitly with `independent_time_course()`. Do not invent subject IDs
+or use `longitudinal()` for these data.
+
+The synthetic example below plants a condition-by-time divergence across two
+components. It uses three independent samples in every condition-by-time cell.
+
+```{r destructive-time-course}
+time <- rep(c(0, 2, 4), each = 6L)
+condition <- factor(
+  rep(rep(c("control", "treatment"), each = 3L), 3L),
+  levels = c("control", "treatment")
+)
+batch <- factor(rep(c("run_1", "run_2", "run_1"), 6L))
+primary_time <- sprintf("time_sample_%02d", seq_along(time))
+assay_time <- sprintf("rna_time_%02d", seq_along(time))
+
+time_data <- StateTransitionData(
+  experiments = list(
+    rna = SummarizedExperiment::SummarizedExperiment(
+      assays = list(logcounts = matrix(
+        seq_len(4L * length(time)),
+        nrow = 4L,
+        dimnames = list(sprintf("gene_%02d", 1:4), assay_time)
+      ))
+    )
+  ),
+  colData = S4Vectors::DataFrame(
+    condition = condition,
+    day = time,
+    batch = batch,
+    row.names = primary_time
+  ),
+  sampleMap = S4Vectors::DataFrame(
+    assay = factor(rep("rna", length(time)), levels = "rna"),
+    primary = primary_time,
+    colname = assay_time
+  )
+)
+time_data <- declare_sampling_design(
+  time_data,
+  independent_time_course(time = "day", time_unit = "days")
+)
+time_metadata <- S4Vectors::metadata(time_data)
+time_metadata$stage1 <- DecompositionResult(
+  V_star = c(1, 0, 0, 0),
+  sigma = 1,
+  coords = list(seq_along(time)),
+  V_k = diag(4)[, 1:2, drop = FALSE],
+  sigma_k = matrix(c(2, 1), nrow = 1L),
+  coords_k = list(cbind(
+    PC1 = as.numeric(scale(time)),
+    PC2 = as.numeric(scale(
+      time * as.integer(condition == "treatment") +
+        rep(c(-0.15, 0, 0.15), 6L)
+    ))
+  )),
+  k = 2L
+)
+S4Vectors::metadata(time_data) <- time_metadata
+
+time_specification <- analysis_specification(
+  id = "synthetic-time-divergence",
+  target_field = "condition",
+  target_type = "binary",
+  reference_level = "control",
+  comparison_level = "treatment",
+  nuisance_fields = "batch"
+)
+time_atlas <- associate_metadata(
+  time_data,
+  specification = time_specification,
+  dataset_id = "synthetic-destructive-time-course",
+  n_resamples = 49L,
+  seed = 8101L
+)
+atlas_associations(time_atlas)
+plot(time_atlas)
+```
+
+The registered ordinary linear model is
+`score_std ~ condition * time_scaled + nuisance_terms`. Scores have a
+deterministic orientation and SD scale. Observed study time is transformed
+deterministically to the study's 0--1 interval, and the interaction coefficient
+is the proposal-eligible effect. Raw and adjusted variants remain separate.
+The stored evidence records the analysis cohort, formula, model-matrix rank,
+time transformation, cell counts, bootstrap failures, engine controls, and
+provenance.
+
+Both conditions must occur at two or more overlapping times, every relevant
+condition-by-time cell must contain independent replication, the design matrix
+must be full rank, and the number of observations must exceed its degrees of
+freedom. A failed gate produces a typed abstention. Bootstrap resampling occurs
+within condition-by-observed-time cells and retains the observed grid and cell
+counts. Fixed observed times are never permuted. Unadjusted proposals permute
+condition labels within time; adjusted proposals use nuisance-only residual
+permutation within time.
+
+```{r destructive-time-course-proposal}
+time_proposal <- propose_component(
+  time_atlas,
+  n_permutations = 49L,
+  seed = 8201L
+)
+proposal_ranking(time_proposal)
+proposal_permutation_evidence(time_proposal)
+plot(time_proposal)
+```
+
+This declaration is distinct from two other designs:
+
+- repeated subjects require complete subject trajectories to be resampled and
+  a subject-aware random-effects association strategy;
+- ordered cross-sectional states express a declared ordering, not elapsed
+  observed time or within-subject change.
+
 ## Current boundary
 
-This path does not reinterpret destructive time courses as longitudinal
+These paths do not reinterpret destructive time courses as longitudinal
 subjects, support repeated-subject models, combine molecular layers, or claim
-axis stability. Those require separate registered strategies and later
-calibration. Bootstrap intervals here quantify association uncertainty while
-holding the fitted Stage 1 basis fixed. A real-data confirmation is a recorded
-human judgement, not proof that the selected coordinate is biologically true.
+axis stability. Repeated-subject support requires a separate registered
+strategy; stability claims require later calibration. Bootstrap intervals here
+quantify association uncertainty while holding the fitted Stage 1 basis fixed.
+A real-data confirmation is a recorded human judgement, not proof that the
+selected coordinate is biologically true.

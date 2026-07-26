@@ -5,6 +5,7 @@
 #
 # Public interface:
 #   cross_sectional()                        — construct a cross-sectional design
+#   independent_time_course(time, ...)       — construct a destructive-time design
 #   longitudinal(subject_id, time, ...)       — construct a longitudinal design
 #   declare_sampling_design(data, design)     — attach design to container
 #   supported_sampling_designs(strategy)      — capability query (generic)
@@ -19,16 +20,19 @@
 #'
 #' A `SamplingDesign` object is a lightweight, versioned declaration that
 #' travels with a `StateTransitionData` container.  It describes how samples
-#' were collected (cross-sectional or longitudinal) and names the
+#' were collected (cross-sectional, independent over observed time, or
+#' longitudinal) and names the
 #' `colData` columns that carry subject identity and ordered time when
 #' applicable.
 #'
-#' Users construct designs with \code{\link{cross_sectional}} or
-#' \code{\link{longitudinal}}.  The `"unspecified"` kind is created only by
-#' the schema migration machinery (see `R/03-container.R`).
+#' Users construct designs with \code{\link{cross_sectional}},
+#' \code{\link{independent_time_course}}, or \code{\link{longitudinal}}.  The
+#' `"unspecified"` kind is created only by the schema migration machinery (see
+#' `R/03-container.R`).
 #'
 #' @slot version  schema version of this object, initially `"1.0.0"`
-#' @slot kind     one of `"unspecified"`, `"cross_sectional"`, or `"longitudinal"`
+#' @slot kind one of `"unspecified"`, `"cross_sectional"`,
+#'   `"independent_time_course"`, or `"longitudinal"`
 #' @slot subject_id_col  zero-or-one `colData` column name for subject identity
 #' @slot time_col        zero-or-one `colData` column name for ordered time
 #' @slot time_unit       optional scalar description of the time unit
@@ -54,7 +58,12 @@ setClass("SamplingDesign",
 setValidity("SamplingDesign", function(object) {
     errs <- character()
 
-    allowed_kinds <- c("unspecified", "cross_sectional", "longitudinal")
+    allowed_kinds <- c(
+        "unspecified",
+        "cross_sectional",
+        "independent_time_course",
+        "longitudinal"
+    )
     if (length(object@version) != 1L || !identical(object@version, "1.0.0"))
         errs <- c(errs, "SamplingDesign@version must be '1.0.0'")
     if (length(object@kind) != 1L || !object@kind %in% allowed_kinds)
@@ -79,6 +88,25 @@ setValidity("SamplingDesign", function(object) {
             errs <- c(errs, "longitudinal design requires a non-empty time_col")
         if (identical(object@subject_id_col, object@time_col))
             errs <- c(errs, "subject_id_col and time_col must be distinct")
+    }
+
+    if (identical(object@kind, "independent_time_course")) {
+        if (length(object@subject_id_col) > 0L) {
+            errs <- c(
+                errs,
+                "independent_time_course design must not specify subject_id_col"
+            )
+        }
+        if (length(object@time_col) != 1L ||
+            !nzchar(object@time_col)) {
+            errs <- c(
+                errs,
+                paste0(
+                    "independent_time_course design requires a non-empty ",
+                    "time_col"
+                )
+            )
+        }
     }
 
     if (length(object@time_unit) > 1L ||
@@ -107,6 +135,54 @@ cross_sectional <- function() {
         subject_id_col = character(0L),
         time_col       = character(0L),
         time_unit      = character(0L)
+    )
+    validObject(obj)
+    obj
+}
+
+#' Declare an independent destructive-sampling time course
+#'
+#' Each observation is an independent biological sampling unit collected at a
+#' declared observed study time. No subject identity or repeated-measures
+#' structure is introduced. Observed study time remains distinct from ordered
+#' biological state, severity, and inferred pseudotime.
+#'
+#' @param time character name of the `colData` column containing observed time
+#' @param time_unit optional character description of the time unit
+#' @return a validated \code{SamplingDesign} object
+#' @export
+independent_time_course <- function(
+    time,
+    time_unit = character(0L)
+) {
+    if (!is.character(time) || length(time) != 1L ||
+        is.na(time) || !nzchar(time)) {
+        stop(
+            paste0(
+                "independent_time_course(): time must be a single ",
+                "non-empty character string"
+            )
+        )
+    }
+    if (length(time_unit) > 1L ||
+        (length(time_unit) == 1L &&
+            (!is.character(time_unit) ||
+                is.na(time_unit) ||
+                !nzchar(time_unit)))) {
+        stop(
+            paste0(
+                "independent_time_course(): time_unit must be empty or one ",
+                "non-empty character string"
+            )
+        )
+    }
+    obj <- new(
+        "SamplingDesign",
+        version = "1.0.0",
+        kind = "independent_time_course",
+        subject_id_col = character(0L),
+        time_col = time,
+        time_unit = time_unit
     )
     validObject(obj)
     obj
@@ -156,26 +232,41 @@ longitudinal <- function(subject_id, time, time_unit = character(0L)) {
 
 .validate_sampling_design_data <- function(data) {
     design <- data@sampling_design
-    if (!identical(design@kind, "longitudinal")) return(TRUE)
+    time_aware <- design@kind %in%
+        c("independent_time_course", "longitudinal")
+    if (!time_aware) return(TRUE)
 
     cd <- as.data.frame(colData(data))
-    sid_col  <- design@subject_id_col
     time_col <- design@time_col
-    if (!sid_col %in% colnames(cd))
-        return(sprintf("subject_id_col '%s' not found in colData", sid_col))
     if (!time_col %in% colnames(cd))
         return(sprintf("time_col '%s' not found in colData", time_col))
 
-    sid_vals <- cd[[sid_col]]
-    if (any(is.na(sid_vals))) return("subject_id_col contains NA values")
     time_vals <- cd[[time_col]]
     if (any(is.na(time_vals))) return("time_col contains NA values")
     if (!is.numeric(time_vals) &&
         !inherits(time_vals, c("Date", "POSIXct", "POSIXlt")) &&
         !is.ordered(time_vals))
         return("time_col must be numeric, Date/POSIXct, or ordered")
+    if (is.numeric(time_vals) && any(!is.finite(time_vals))) {
+        return("time_col contains non-finite values")
+    }
+    if (identical(design@kind, "independent_time_course")) {
+        if (length(unique(time_vals)) < 2L) {
+            return("time_col requires at least two distinct observed times")
+        }
+        return(TRUE)
+    }
+
+    sid_col <- design@subject_id_col
+    if (!sid_col %in% colnames(cd))
+        return(sprintf("subject_id_col '%s' not found in colData", sid_col))
+    sid_vals <- cd[[sid_col]]
+    if (any(is.na(sid_vals))) return("subject_id_col contains NA values")
     if (any(duplicated(data.frame(subject = sid_vals, time = time_vals))))
         return("duplicate subject/time observations are not supported")
+    if (length(unique(time_vals)) < 2L) {
+        return("time_col requires at least two distinct observed times")
+    }
     has_repeats <- any(tapply(time_vals, sid_vals, function(tv)
         length(unique(tv))) > 1L)
     if (!has_repeats)
@@ -192,13 +283,14 @@ longitudinal <- function(subject_id, time, time_unit = character(0L)) {
 #' Returns a new `StateTransitionData` with the declared design stored in the
 #' `sampling_design` slot.  Does not mutate the caller's object.
 #'
-#' For a `longitudinal` design, the referenced columns must exist in `colData`;
-#' subject IDs must be non-missing and at least one subject must have distinct
+#' For a time-aware design, the observed-time column must exist and contain at
+#' least two distinct usable values. For a `longitudinal` design, subject IDs
+#' must additionally be non-missing and at least one subject must have distinct
 #' repeated time points.
 #'
 #' @param data   a \code{StateTransitionData} object
-#' @param design a \code{SamplingDesign} from \code{\link{cross_sectional}} or
-#'   \code{\link{longitudinal}}
+#' @param design a \code{SamplingDesign} from \code{\link{cross_sectional}},
+#'   \code{\link{independent_time_course}}, or \code{\link{longitudinal}}
 #' @return a new \code{StateTransitionData} with `sampling_design` set
 #' @export
 declare_sampling_design <- function(data, design) {
@@ -208,7 +300,10 @@ declare_sampling_design <- function(data, design) {
         stop("declare_sampling_design(): design must be a SamplingDesign object")
     if (identical(design@kind, "unspecified"))
         stop("declare_sampling_design(): 'unspecified' is a migration-only kind; ",
-             "use cross_sectional() or longitudinal()")
+             paste0(
+                 "use cross_sectional(), independent_time_course(), or ",
+                 "longitudinal()"
+             ))
 
     data@sampling_design <- design
     data_valid <- .validate_sampling_design_data(data)

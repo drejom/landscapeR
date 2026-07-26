@@ -146,7 +146,8 @@ coefficient.
 The concrete v1 engines are:
 
 - independent strategy: `stats::lm()` on
-  `score_std ~ target * time_scaled + nuisance_terms`;
+  `score_std ~ target * time_scaled + nuisance_terms`, registered as
+  `AssociationStrategy:independent_time_course_linear`;
 - repeated-subject strategy: `lme4::lmer()` on
   `score_std ~ target * time_scaled + nuisance_terms +
   (1 + time_scaled | subject)`.

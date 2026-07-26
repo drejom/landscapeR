@@ -1,4 +1,4 @@
-# Cross-sectional component interpretation (ADR 0020; issues #79 and #80)
+# Component interpretation (ADR 0020; issues #79, #80, and #81)
 
 utils::globalVariables(c("metadata_field", "component_label"))
 
@@ -1137,9 +1137,28 @@ associate_metadata <- function(
             "associate_metadata(): Stage 1 has not been run"
         )
     }
+    if (identical(
+        std@sampling_design@kind,
+        "independent_time_course"
+    )) {
+        return(.associate_independent_time_course(
+            std = std,
+            stage1 = stage1,
+            specification = specification,
+            non_analytical_fields = non_analytical_fields,
+            dataset_id = dataset_id,
+            n_resamples = n_resamples,
+            seed = seed,
+            exchangeability = exchangeability
+        ))
+    }
     if (!identical(std@sampling_design@kind, "cross_sectional")) {
         .stop_landscapeR_validation(
-            "associate_metadata(): issue #79 requires a cross-sectional design"
+            paste0(
+                "associate_metadata(): sampling design is unsupported; ",
+                "destructive independent time courses must be declared with ",
+                "independent_time_course()"
+            )
         )
     }
     specification_provenance <- list()
@@ -2342,6 +2361,18 @@ setValidity("ComponentProposal", function(object) {
     n_permutations,
     seed
 ) {
+    if (identical(
+        atlas@sampling_design@kind,
+        "independent_time_course"
+    )) {
+        return(.compute_independent_time_permutation_evidence(
+            atlas,
+            target,
+            ranking,
+            n_permutations,
+            seed
+        ))
+    }
     if (n_permutations == 0L) {
         return(.new_permutation_evidence())
     }
@@ -2589,7 +2620,14 @@ propose_component <- function(
         ,
         drop = FALSE
     ]
-    if (length(atlas@provenance$nuisance_fields) &&
+    primary_variant <- atlas@provenance$primary_evidence_variant
+    if (.is_scalar_nonempty_text(primary_variant)) {
+        target_rows <- target_rows[
+            target_rows$evidence_variant == primary_variant,
+            ,
+            drop = FALSE
+        ]
+    } else if (length(atlas@provenance$nuisance_fields) &&
         any(target_rows$evidence_variant == "adjusted")) {
         target_rows <- target_rows[
             target_rows$evidence_variant == "adjusted",
@@ -2607,10 +2645,14 @@ propose_component <- function(
         !any(is.finite(target_rows$effect_magnitude))) {
         ranking <- target_rows
         ranking$proposal_rank <- seq_len(nrow(ranking))
+        reason <- target_rows$diagnostic[[1L]]
+        if (grepl("^non-identifiable-design", reason)) {
+            reason <- "non-identifiable-design"
+        }
         return(.new_component_abstention(
             atlas = atlas,
             target = target,
-            reason = target_rows$diagnostic[[1L]],
+            reason = reason,
             ranking = ranking,
             candidate_components = as.integer(target_rows$component)
         ))
@@ -3001,6 +3043,26 @@ plot.ComponentAbstention <- function(x, y, ...) {
     if (!is(x, "ComponentAbstention")) {
         stop("plot.ComponentAbstention(): x must be ComponentAbstention")
     }
+    if (identical(
+        x@provenance$sampling_design,
+        "independent_time_course"
+    )) {
+        diagnostic <- unique(x@ranking$diagnostic)
+        diagnostic <- diagnostic[nzchar(diagnostic)]
+        return(.plot_independent_time_course(
+            observations = x@observations,
+            provenance = x@provenance,
+            ranking = x@ranking,
+            title = sprintf(
+                "No component nominated for %s",
+                x@target_field
+            ),
+            subtitle = paste(
+                c(x@reason, diagnostic),
+                collapse = " | "
+            )
+        ))
+    }
     ranking <- abstention_ranking(x)
     finite <- ranking[
         is.finite(ranking$effect_magnitude),
@@ -3263,6 +3325,15 @@ confirm_component <- function(
 #' @return a `ggplot` object
 #' @export
 plot.MetadataAssociationAtlas <- function(x, y, ...) {
+    if (identical(
+        x@sampling_design@kind,
+        "independent_time_course"
+    )) {
+        return(.plot_independent_time_course(
+            observations = x@observations,
+            provenance = x@provenance
+        ))
+    }
     data <- atlas_observations(x)
     diagnostics <- atlas_associations(x)
     diagnostics <- unique(diagnostics[
@@ -3404,6 +3475,24 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
 #' @return a `ggplot` object
 #' @export
 plot.ComponentProposal <- function(x, y, ...) {
+    if (identical(
+        x@provenance$sampling_design,
+        "independent_time_course"
+    )) {
+        return(.plot_independent_time_course(
+            observations = x@observations,
+            provenance = x@provenance,
+            ranking = x@ranking,
+            title = sprintf(
+                "Independent time-course proposal for %s",
+                x@target_field
+            ),
+            subtitle = paste(
+                "Ranked only by the declared condition-by-time interaction;",
+                "human confirmation remains required"
+            )
+        ))
+    }
     data <- proposal_observations(x)
     available <- data[data$available, , drop = FALSE]
     categorical <- available[

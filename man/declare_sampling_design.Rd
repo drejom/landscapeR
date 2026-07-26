@@ -9,8 +9,8 @@ declare_sampling_design(data, design)
 \arguments{
 \item{data}{a \code{StateTransitionData} object}
 
-\item{design}{a \code{SamplingDesign} from \code{\link{cross_sectional}} or
-\code{\link{longitudinal}}}
+\item{design}{a \code{SamplingDesign} from \code{\link{cross_sectional}},
+\code{\link{independent_time_course}}, or \code{\link{longitudinal}}}
 }
 \value{
 a new \code{StateTransitionData} with \code{sampling_design} set
@@ -20,7 +20,8 @@ Returns a new \code{StateTransitionData} with the declared design stored in the
 \code{sampling_design} slot.  Does not mutate the caller's object.
 }
 \details{
-For a \code{longitudinal} design, the referenced columns must exist in \code{colData};
-subject IDs must be non-missing and at least one subject must have distinct
+For a time-aware design, the observed-time column must exist and contain at
+least two distinct usable values. For a \code{longitudinal} design, subject IDs
+must additionally be non-missing and at least one subject must have distinct
 repeated time points.
 }

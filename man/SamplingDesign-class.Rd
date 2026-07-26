@@ -7,21 +7,24 @@
 \description{
 A \code{SamplingDesign} object is a lightweight, versioned declaration that
 travels with a \code{StateTransitionData} container.  It describes how samples
-were collected (cross-sectional or longitudinal) and names the
+were collected (cross-sectional, independent over observed time, or
+longitudinal) and names the
 \code{colData} columns that carry subject identity and ordered time when
 applicable.
 }
 \details{
-Users construct designs with \code{\link{cross_sectional}} or
-\code{\link{longitudinal}}.  The \code{"unspecified"} kind is created only by
-the schema migration machinery (see \code{R/03-container.R}).
+Users construct designs with \code{\link{cross_sectional}},
+\code{\link{independent_time_course}}, or \code{\link{longitudinal}}.  The
+\code{"unspecified"} kind is created only by the schema migration machinery (see
+\code{R/03-container.R}).
 }
 \section{Slots}{
 
 \describe{
 \item{\code{version}}{schema version of this object, initially \code{"1.0.0"}}
 
-\item{\code{kind}}{one of \code{"unspecified"}, \code{"cross_sectional"}, or \code{"longitudinal"}}
+\item{\code{kind}}{one of \code{"unspecified"}, \code{"cross_sectional"},
+\code{"independent_time_course"}, or \code{"longitudinal"}}
 
 \item{\code{subject_id_col}}{zero-or-one \code{colData} column name for subject identity}
 
