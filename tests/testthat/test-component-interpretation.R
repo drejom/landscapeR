@@ -1062,6 +1062,33 @@ test_that("available-case and tied-score diagnostics remain visible", {
     expect_identical(condition$n_score_ties, c(0L, 7L))
 })
 
+test_that("non-finite continuous targets are unavailable everywhere", {
+    std <- continuous_component_interpretation_fixture()
+    colData(std)$severity[[8L]] <- Inf
+
+    atlas <- associate_metadata(
+        std,
+        non_analytical_fields = "mouse_id"
+    )
+    severity <- atlas_associations(atlas)
+    severity <- severity[
+        severity$metadata_field == "severity",
+        ,
+        drop = FALSE
+    ]
+    observations <- atlas_observations(atlas)
+    observations <- observations[
+        observations$metadata_field == "severity" &
+            observations$sample_index == 8L,
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(severity$n_available, c(7L, 7L))
+    expect_identical(severity$n_missing, c(1L, 1L))
+    expect_false(any(observations$available))
+})
+
 test_that("component interpretation rejects malformed layer and coordinate inputs", {
     std <- component_interpretation_fixture()
 

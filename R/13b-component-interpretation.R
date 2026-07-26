@@ -1519,18 +1519,23 @@ associate_metadata <- function(
                         primary_sample = names(values),
                         metadata_type = metadata_type,
                         metadata_value = as.character(values),
-                    metadata_numeric = metadata_numeric,
-                    score = as.numeric(scores),
-                    atom_count = as.integer(ave(
-                        rep.int(1L, length(scores)),
-                        paste(
-                            as.character(values),
-                            sprintf("%.17g", scores),
-                            sep = "\r"
-                        ),
-                        FUN = length
-                    )),
-                    available = is.finite(scores) & !is.na(values),
+                        metadata_numeric = metadata_numeric,
+                        score = as.numeric(scores),
+                        atom_count = as.integer(ave(
+                            rep.int(1L, length(scores)),
+                            paste(
+                                as.character(values),
+                                sprintf("%.17g", scores),
+                                sep = "\r"
+                            ),
+                            FUN = length
+                        )),
+                        available = is.finite(scores) &
+                            !is.na(values) &
+                            (
+                                !identical(metadata_type, "continuous") |
+                                    is.finite(metadata_numeric)
+                            ),
                         stringsAsFactors = FALSE
                     )
                 }
