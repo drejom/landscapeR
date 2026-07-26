@@ -1040,7 +1040,7 @@ register_strategy(
         index <- associations$evidence_variant == variant
         associations$q_value[index] <- stats::p.adjust(
             associations$p_value[index],
-            method = "holm"
+            method = "BH"
         )
     }
     observations <- do.call(rbind, observations)
@@ -1077,11 +1077,25 @@ register_strategy(
         scaled_time = scaled_time,
         stringsAsFactors = FALSE
     )
+    subject_intervals <- unlist(lapply(
+        split(trajectory_data$observed_time, trajectory_data$subject),
+        function(values) diff(sort(unique(values)))
+    ))
+    subject_intervals <- subject_intervals[
+        is.finite(subject_intervals) & subject_intervals > 0
+    ]
+    endpoint_tolerance <- if (length(subject_intervals)) {
+        0.75 * stats::median(subject_intervals)
+    } else {
+        0
+    }
     trajectory_data$dropout <- as.logical(ave(
-        rep.int(1L, nrow(trajectory_data)),
+        trajectory_data$observed_time,
         trajectory_data$subject,
-        FUN = function(values) length(values) <
-            max(table(trajectory_data$subject))
+        FUN = function(values) {
+            max(values) <
+                study_time_range[[2L]] - endpoint_tolerance
+        }
     ))
     subject_summary <- unique(trajectory_data[
         ,
@@ -1154,6 +1168,23 @@ register_strategy(
             nuisance_fields = specification@nuisance_fields,
             nuisance_values = nuisance_values,
             orientation_anchor = specification@orientation_anchor,
+            component_standardization = do.call(rbind, lapply(
+                seq_along(model_records),
+                function(component) {
+                    scores <- coordinate_matrix[, component]
+                    data.frame(
+                        component = as.integer(component),
+                        component_label = component_labels[[component]],
+                        method = "sample-mean-and-sample-SD",
+                        centre = mean(scores),
+                        scale = stats::sd(scores),
+                        orientation_multiplier =
+                            model_records[[component]]$
+                                orientation_multiplier,
+                        stringsAsFactors = FALSE
+                    )
+                }
+            )),
             claim_intent = specification@claim_intent,
             subject_field = subject_field,
             time_field = time_field,
@@ -1234,6 +1265,7 @@ register_strategy(
             analysis_cohort_exclusions = excluded_cohort,
             time_course_models = model_records,
             time_course_observations = trajectory_data,
+            endpoint_tolerance = endpoint_tolerance,
             time_course_display_lines = do.call(rbind, display_lines),
             time_course_effect_summary = effect_summary,
             subject_summary = subject_summary,
@@ -1388,6 +1420,8 @@ register_strategy(
         return(.new_permutation_evidence(
             status = "not-identifiable",
             n_requested = n_permutations,
+            n_completed = 0L,
+            null_max_effect = rep(NA_real_, n_permutations),
             seed = seed,
             diagnostic = "failed-subject-level-null-replicate"
         ))
@@ -1398,7 +1432,6 @@ register_strategy(
         status = status,
         n_requested = n_permutations,
         n_completed = n_completed,
-        n_failures = n_failures,
         observed_max_effect = max(ranking$effect_magnitude),
         null_max_effect = null_max,
         search_aware_p_value = (
@@ -1442,7 +1475,10 @@ register_strategy(
         )
         diagnostics <- diagnostics[nzchar(diagnostics)]
         title <- "Repeated-subject model not estimable"
-        subtitle <- paste(diagnostics, collapse = " | ")
+        subtitle <- .public_abstention_message(
+            "non-identifiable-design",
+            diagnostics
+        )
     }
     endpoint <- ave(
         data$scaled_time,
@@ -1607,7 +1643,10 @@ register_strategy(
                     "no population-level trajectory is shown;"
                 },
                 if (nrow(dropout_points)) {
-                    "crosses mark subjects without the final study observation;"
+                    paste(
+                        "crosses mark subjects ending before the final",
+                        "study-time window;"
+                    )
                 } else {
                     ""
                 },

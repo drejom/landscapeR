@@ -156,6 +156,32 @@ test_that("failed bootstrap fits remain in the requested denominator", {
     expect_identical(summary$n_resamples, rep(15L, 2L))
 })
 
+test_that("all failed null refits retain the requested denominator", {
+    atlas <- associate_metadata(
+        repeated_time_course_fixture(),
+        specification = repeated_time_course_specification(),
+        non_analytical_fields = c("mouse_id", "batch")
+    )
+    testthat::local_mocked_bindings(
+        .landscapeR_lmer = function(...) {
+            stop("planted null-refit failure")
+        },
+        .package = "landscapeR"
+    )
+    abstention <- propose_component(
+        atlas,
+        n_permutations = 5L,
+        seed = 8217L
+    )
+    evidence <- abstention@permutation_evidence
+
+    expect_identical(evidence@status, "not-identifiable")
+    expect_identical(evidence@n_requested, 5L)
+    expect_identical(evidence@n_completed, 0L)
+    expect_length(evidence@null_max_effect, 5L)
+    expect_true(all(is.na(evidence@null_max_effect)))
+})
+
 test_that("invalid exchangeability yields typed permutation abstention", {
     atlas <- associate_metadata(
         repeated_time_course_fixture(),
@@ -228,6 +254,63 @@ test_that("repeated-model provenance freezes the complete scientific contract", 
         nrow(provenance$subject_condition_assignment),
         length(unique(provenance$time_course_observations$subject))
     )
+    standardization <- provenance$component_standardization
+    raw_scores <- metadata(
+        repeated_time_course_fixture()
+    )$stage1@coords_k[[1L]]
+    expect_identical(
+        standardization$method,
+        rep("sample-mean-and-sample-SD", 2L)
+    )
+    expect_equal(standardization$centre, unname(colMeans(raw_scores)))
+    expect_equal(
+        standardization$scale,
+        unname(apply(raw_scores, 2L, stats::sd))
+    )
+})
+
+test_that("dropout denotes an early endpoint rather than fewer visits", {
+    std <- repeated_time_course_fixture(irregular = TRUE)
+    subject <- colData(std)$mouse_id[[1L]]
+    rows <- which(colData(std)$mouse_id == subject)
+    colData(std)$day[rows[[length(rows)]]] <- 2
+    atlas <- associate_metadata(
+        std,
+        specification = repeated_time_course_specification(),
+        non_analytical_fields = c("mouse_id", "batch")
+    )
+    trajectory <- atlas_provenance(atlas)$time_course_observations
+
+    expect_true(all(trajectory$dropout[trajectory$subject == subject]))
+    expect_true(all(table(trajectory$subject) == 4L))
+})
+
+test_that("permutation evidence preserves its readable v1 schema", {
+    legacy <- new(
+        "PermutationEvidence",
+        version = "1.0.0",
+        method = "label-permutation",
+        status = "complete",
+        n_requested = 1L,
+        n_completed = 1L,
+        observed_max_effect = 1,
+        null_max_effect = 0.5,
+        search_aware_p_value = 1,
+        seed = 1L,
+        cohort_digest = paste(rep("a", 64L), collapse = ""),
+        design_digest = NA_character_,
+        diagnostic = ""
+    )
+
+    expect_true(validObject(legacy))
+    expect_identical(
+        readRDS(local({
+            path <- tempfile(fileext = ".rds")
+            saveRDS(legacy, path)
+            path
+        }))@version,
+        "1.0.0"
+    )
 })
 
 test_that("longitudinal constructor uses typed validation errors", {
@@ -260,8 +343,16 @@ test_that("repeated plots expose uncertainty dropout and model diagnostics", {
     atlas_plot <- plot(atlas)
     proposal_plot <- plot(proposal)
 
-    expect_match(atlas_plot$labels$caption, "random intercepts")
+    expect_match(atlas_plot$labels$caption, "random\\s+intercepts")
     expect_match(atlas_plot$labels$caption, "crosses mark subjects")
+    expect_false(grepl(
+        "singular-random-effects-covariance|non-identifiable-design",
+        plot(propose_component(associate_metadata(
+            repeated_time_course_fixture(slope_scale = 0),
+            specification = repeated_time_course_specification(),
+            non_analytical_fields = c("mouse_id", "batch")
+        )))$labels$subtitle
+    ))
     expect_true(any(grepl(
         "interaction",
         unname(proposal_plot$facet$params$labeller(

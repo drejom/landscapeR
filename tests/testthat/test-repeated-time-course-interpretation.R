@@ -279,7 +279,8 @@ test_that("permutation operates on between-subject assignment", {
     )
     expect_true(evidence@n_completed > 0L)
     expect_identical(
-        evidence@n_completed + evidence@n_failures,
+        evidence@n_completed +
+            (evidence@n_requested - evidence@n_completed),
         evidence@n_requested
     )
     expect_length(evidence@null_max_effect, 7L)

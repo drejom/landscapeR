@@ -1766,11 +1766,12 @@ atlas_digest <- function(atlas) {
 #' repeating the complete eligible-component search under each null
 #' permutation. It cannot alter point ranking.
 #'
-#' @slot version schema version, currently `"1.0.0"`
+#' @slot version schema version. Version `"1.0.0"` remains readable; new
+#'   evidence uses `"1.1.0"` to distinguish partial null-search results.
 #' @slot method permutation method or `"none"`
 #' @slot status computation status
-#' @slot n_requested,n_completed,n_failures requested, completed, and failed
-#'   permutations
+#' @slot n_requested,n_completed requested and completed permutations. Failed
+#'   permutations are retained as `n_requested - n_completed`.
 #' @slot observed_max_effect observed maximum absolute target effect
 #' @slot null_max_effect maximum absolute effect from each null search
 #' @slot search_aware_p_value finite-sample corrected search-aware p-value
@@ -1787,7 +1788,6 @@ setClass("PermutationEvidence",
         status = "character",
         n_requested = "integer",
         n_completed = "integer",
-        n_failures = "integer",
         observed_max_effect = "numeric",
         null_max_effect = "numeric",
         search_aware_p_value = "numeric",
@@ -1797,12 +1797,11 @@ setClass("PermutationEvidence",
         diagnostic = "character"
     ),
     prototype = prototype(
-        version = "1.0.0",
+        version = "1.1.0",
         method = "none",
         status = "not-requested",
         n_requested = 0L,
         n_completed = 0L,
-        n_failures = 0L,
         observed_max_effect = NA_real_,
         null_max_effect = numeric(),
         search_aware_p_value = NA_real_,
@@ -1819,24 +1818,26 @@ setValidity("PermutationEvidence", function(object) {
         "not-requested", "complete", "partial", "not-identifiable",
         "insufficient-support"
     )
-    if (!identical(object@version, "1.0.0")) {
-        errors <- c(errors, "version must be '1.0.0'")
+    if (!object@version %in% c("1.0.0", "1.1.0")) {
+        errors <- c(errors, "version must be '1.0.0' or '1.1.0'")
+    }
+    if (identical(object@version, "1.0.0") &&
+        identical(object@status, "partial")) {
+        errors <- c(errors, "version 1.0.0 cannot contain partial evidence")
     }
     if (length(object@status) != 1L || !object@status %in% statuses) {
         errors <- c(errors, "status is not supported")
     }
     if (length(object@n_requested) != 1L ||
         length(object@n_completed) != 1L ||
-        length(object@n_failures) != 1L ||
         object@n_requested < 0L ||
         object@n_completed < 0L ||
-        object@n_failures < 0L) {
+        object@n_completed > object@n_requested) {
         errors <- c(errors, "permutation counts must be non-negative scalars")
     }
     if (identical(object@status, "complete")) {
         if (object@n_requested < 1L ||
             !identical(object@n_completed, object@n_requested) ||
-            object@n_failures != 0L ||
             length(object@null_max_effect) != object@n_completed ||
             any(!is.finite(object@null_max_effect)) ||
             !is.finite(object@observed_max_effect) ||
@@ -1849,11 +1850,11 @@ setValidity("PermutationEvidence", function(object) {
     } else if (identical(object@status, "partial")) {
         if (object@n_requested < 1L ||
             object@n_completed < 1L ||
-            object@n_failures < 1L ||
-            object@n_completed + object@n_failures != object@n_requested ||
+            object@n_completed >= object@n_requested ||
             length(object@null_max_effect) != object@n_requested ||
             sum(is.finite(object@null_max_effect)) != object@n_completed ||
-            sum(is.na(object@null_max_effect)) != object@n_failures ||
+            sum(is.na(object@null_max_effect)) !=
+                object@n_requested - object@n_completed ||
             !is.finite(object@observed_max_effect) ||
             !is.finite(object@search_aware_p_value) ||
             object@search_aware_p_value < 0 ||
@@ -1862,11 +1863,22 @@ setValidity("PermutationEvidence", function(object) {
             !.is_scalar_nonempty_text(object@diagnostic)) {
             errors <- c(errors, "partial permutation evidence is malformed")
         }
-    } else if (length(object@null_max_effect) ||
-        object@n_completed != 0L ||
-        object@n_failures != 0L ||
-        !is.na(object@search_aware_p_value)) {
-        errors <- c(errors, "incomplete evidence must not contain null results")
+    } else {
+        all_failed <- identical(object@version, "1.1.0") &&
+            identical(object@status, "not-identifiable") &&
+            object@n_requested > 0L &&
+            object@n_completed == 0L &&
+            length(object@null_max_effect) == object@n_requested &&
+            all(is.na(object@null_max_effect))
+        empty_incomplete <- !length(object@null_max_effect) &&
+            object@n_completed == 0L
+        if ((!all_failed && !empty_incomplete) ||
+            !is.na(object@search_aware_p_value)) {
+            errors <- c(
+                errors,
+                "incomplete evidence must retain a valid failure denominator"
+            )
+        }
     }
     if (object@status %in% c("not-identifiable", "insufficient-support") &&
         !.is_scalar_nonempty_text(object@diagnostic)) {
@@ -1880,7 +1892,6 @@ setValidity("PermutationEvidence", function(object) {
     status = "not-requested",
     n_requested = 0L,
     n_completed = 0L,
-    n_failures = 0L,
     observed_max_effect = NA_real_,
     null_max_effect = numeric(),
     search_aware_p_value = NA_real_,
@@ -1891,12 +1902,11 @@ setValidity("PermutationEvidence", function(object) {
 ) {
     evidence <- new(
         "PermutationEvidence",
-        version = "1.0.0",
+        version = "1.1.0",
         method = method,
         status = status,
         n_requested = as.integer(n_requested),
         n_completed = as.integer(n_completed),
-        n_failures = as.integer(n_failures),
         observed_max_effect = as.numeric(observed_max_effect),
         null_max_effect = as.numeric(null_max_effect),
         search_aware_p_value = as.numeric(search_aware_p_value),
@@ -2954,8 +2964,16 @@ plot.PermutationEvidence <- function(x, y, ...) {
                         "%d of %d requested null refits completed; %d failed.",
                         x@n_completed,
                         x@n_requested,
-                        x@n_failures
+                        x@n_requested - x@n_completed
                     )
+                )
+            } else if (x@n_requested > 0L) {
+                sprintf(
+                    paste(
+                        "No search-aware p-value was fabricated;",
+                        "0 of %d requested null refits completed"
+                    ),
+                    x@n_requested
                 )
             } else {
                 "No search-aware p-value was fabricated"
@@ -3046,6 +3064,33 @@ as.data.frame.ComponentAbstention <- function(
     abstention_ranking(x)
 }
 
+.public_abstention_message <- function(reason, diagnostics = character()) {
+    diagnostics <- diagnostics[nzchar(diagnostics)]
+    diagnostic <- diagnostics[[1L]] %||% ""
+    if (grepl("^singular-random-effects-covariance", diagnostic)) {
+        return(
+            "The declared correlated random-effects model was singular"
+        )
+    }
+    if (grepl("^non-convergent-mixed-model", diagnostic)) {
+        return("The declared repeated-subject model did not converge")
+    }
+    if (grepl("^non-identifiable-design", diagnostic) ||
+        identical(reason, "non-identifiable-design")) {
+        return("The declared sampling design was not identifiable")
+    }
+    if (identical(reason, "permutation-not-identifiable")) {
+        return("The declared subject-level permutation was not identifiable")
+    }
+    if (identical(reason, "insufficient-resampling-support")) {
+        return("The declared design has insufficient resampling support")
+    }
+    if (identical(reason, "effect-magnitude-tie")) {
+        return("The prespecified biological effects were tied")
+    }
+    "No eligible component met the declared analysis requirements"
+}
+
 #' Extract the diagnostic from an association abstention
 #'
 #' @param abstention an `AssociationAbstention`
@@ -3132,10 +3177,7 @@ plot.ComponentAbstention <- function(x, y, ...) {
                 "No component nominated for %s",
                 x@target_field
             ),
-            subtitle = paste(
-                c(x@reason, diagnostic),
-                collapse = " | "
-            )
+            subtitle = .public_abstention_message(x@reason, diagnostic)
         ))
     }
     if (identical(x@provenance$sampling_design, "longitudinal")) {
@@ -3149,10 +3191,7 @@ plot.ComponentAbstention <- function(x, y, ...) {
                 "No component nominated for %s",
                 x@target_field
             ),
-            subtitle = paste(
-                c(x@reason, diagnostic),
-                collapse = " | "
-            )
+            subtitle = .public_abstention_message(x@reason, diagnostic)
         ))
     }
     ranking <- abstention_ranking(x)
