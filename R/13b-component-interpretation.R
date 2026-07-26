@@ -1288,6 +1288,18 @@ associate_metadata <- function(
             field,
             caller = "associate_metadata"
         )
+        if (
+            !is.null(specification) &&
+            identical(field, specification@target_field) &&
+            identical(specification@target_type, "ordered")
+        ) {
+            ordered_values <- ordered(
+                as.character(values),
+                levels = specification@ordered_levels
+            )
+            names(ordered_values) <- names(values)
+            values <- ordered_values
+        }
         strategy <- .resolve_component_association_strategy(std, values)
         descriptive_unordered <- is.factor(values) &&
             !is.ordered(values) &&

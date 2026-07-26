@@ -206,6 +206,35 @@ test_that("ordered metadata uses Kendall tau-b with declared level order", {
     )
 })
 
+test_that("declared ordered semantics override the metadata storage class", {
+    std <- ordered_component_interpretation_fixture()
+    colData(std)$state <- as.character(colData(std)$state)
+    specification <- analysis_specification(
+        id = "character-ordered-target",
+        target_field = "state",
+        target_type = "ordered",
+        ordered_levels = c("early", "middle", "late", "end")
+    )
+
+    atlas <- associate_metadata(
+        std,
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    state <- atlas_associations(atlas)
+    state <- state[
+        state$metadata_field == "state",
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(state$estimand, rep("kendall-tau-b", 2L))
+    expect_true(
+        "cross-sectional-ordered-kendall-tau-b-v1" %in%
+            atlas_provenance(atlas)$association_strategy
+    )
+})
+
 test_that("unordered multilevel metadata remains descriptive only", {
     atlas <- associate_metadata(
         unordered_component_interpretation_fixture(),
