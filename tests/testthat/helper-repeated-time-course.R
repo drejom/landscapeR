@@ -16,8 +16,9 @@ repeated_time_course_fixture <- function(
         observed <- times
         if (subject %in% dropout) observed <- observed[-length(observed)]
         if (irregular) {
-            observed <- observed + 0.08 * ((i %% 3L) - 1L) *
-                seq_along(observed)
+            offset <- 0.08 * ((i %% 3L) - 1L) * seq_along(observed)
+            offset[c(1L, length(offset))] <- 0
+            observed <- observed + offset
         }
         data.frame(
             mouse_id = subject,

@@ -220,6 +220,15 @@ test_that("singular and non-convergent models remain distinct failures", {
         "model-non-convergent",
         nonconvergent_effects$diagnostic
     )))
+    nonconvergent_abstention <- propose_component(nonconvergent_atlas)
+    expect_identical(
+        nonconvergent_abstention@reason,
+        "non-identifiable-design"
+    )
+    expect_identical(
+        plot(nonconvergent_abstention)$labels$subtitle,
+        "The declared repeated-subject model did not converge"
+    )
     expect_true(all(vapply(
         atlas_provenance(
             nonconvergent_atlas

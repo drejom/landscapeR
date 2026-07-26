@@ -359,4 +359,11 @@ test_that("repeated plots expose uncertainty dropout and model diagnostics", {
             data.frame(component_label = c("PC1", "PC2"))
         )$component_label)
     )))
+    expect_identical(
+        landscapeR:::.public_abstention_message(
+            "effect-magnitude-tie",
+            character()
+        ),
+        "The prespecified biological effects were tied"
+    )
 })

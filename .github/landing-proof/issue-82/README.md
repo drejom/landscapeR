@@ -37,8 +37,8 @@ exploratory.
 |---|---|
 | ![Irregular observed times and early trajectory endpoints remain visible](irregular-dropout.png) | ![No proposal because the correlated random-effects covariance is singular](singular-abstention.png) |
 
-Crosses mark subjects whose last observation precedes the final study-time
-window. Fitted condition lines stop at the observed support of each condition.
+Crosses mark subjects whose last observation precedes the final observed study
+time. Fitted condition lines stop at the observed support of each condition.
 A singular random-effects covariance produces a typed abstention with native
 diagnostics. The strategy does not simplify to a random-intercept-only or
 independent-observation model.

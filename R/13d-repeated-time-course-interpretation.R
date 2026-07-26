@@ -1077,24 +1077,11 @@ register_strategy(
         scaled_time = scaled_time,
         stringsAsFactors = FALSE
     )
-    subject_intervals <- unlist(lapply(
-        split(trajectory_data$observed_time, trajectory_data$subject),
-        function(values) diff(sort(unique(values)))
-    ))
-    subject_intervals <- subject_intervals[
-        is.finite(subject_intervals) & subject_intervals > 0
-    ]
-    endpoint_tolerance <- if (length(subject_intervals)) {
-        0.75 * stats::median(subject_intervals)
-    } else {
-        0
-    }
     trajectory_data$dropout <- as.logical(ave(
         trajectory_data$observed_time,
         trajectory_data$subject,
         FUN = function(values) {
-            max(values) <
-                study_time_range[[2L]] - endpoint_tolerance
+            max(values) < study_time_range[[2L]]
         }
     ))
     subject_summary <- unique(trajectory_data[
@@ -1265,7 +1252,6 @@ register_strategy(
             analysis_cohort_exclusions = excluded_cohort,
             time_course_models = model_records,
             time_course_observations = trajectory_data,
-            endpoint_tolerance = endpoint_tolerance,
             time_course_display_lines = do.call(rbind, display_lines),
             time_course_effect_summary = effect_summary,
             subject_summary = subject_summary,
@@ -1645,7 +1631,7 @@ register_strategy(
                 if (nrow(dropout_points)) {
                     paste(
                         "crosses mark subjects ending before the final",
-                        "study-time window;"
+                        "observed study time;"
                     )
                 } else {
                     ""

@@ -2716,7 +2716,7 @@ propose_component <- function(
             paste0(
                 "^(non-identifiable-design|",
                 "singular-random-effects-covariance|",
-                "non-convergent-mixed-model)"
+                "model-non-convergent)"
             ),
             reason
         )) {
@@ -3066,13 +3066,13 @@ as.data.frame.ComponentAbstention <- function(
 
 .public_abstention_message <- function(reason, diagnostics = character()) {
     diagnostics <- diagnostics[nzchar(diagnostics)]
-    diagnostic <- diagnostics[[1L]] %||% ""
+    diagnostic <- if (length(diagnostics)) diagnostics[[1L]] else ""
     if (grepl("^singular-random-effects-covariance", diagnostic)) {
         return(
             "The declared correlated random-effects model was singular"
         )
     }
-    if (grepl("^non-convergent-mixed-model", diagnostic)) {
+    if (grepl("^model-non-convergent", diagnostic)) {
         return("The declared repeated-subject model did not converge")
     }
     if (grepl("^non-identifiable-design", diagnostic) ||
