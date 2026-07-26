@@ -1609,6 +1609,18 @@ register_strategy(
     data <- .time_course_plot_data(provenance, observations)
     data <- data[data$available, , drop = FALSE]
     lines <- provenance$time_course_display_lines
+    has_trajectories <- nrow(lines) > 0L
+    if (!has_trajectories &&
+        identical(
+            title,
+            "Independent destructive-time-course evidence"
+        )) {
+        title <- "Observed destructive-time-course design"
+        subtitle <- paste(
+            "Condition-by-time interaction is not estimable from",
+            "this sampling grid"
+        )
+    }
     cells <- provenance$time_course_cells
     score_range <- range(data$score)
     score_span <- diff(score_range)
@@ -1620,7 +1632,12 @@ register_strategy(
     cells$label_y <- score_range[[1L]] +
         label_offset[cells$condition]
     cells$label <- paste0("n=", cells$count)
-    trajectory_note <- if (identical(
+    trajectory_note <- if (!has_trajectories) {
+        paste(
+            "no fitted trajectory is shown because the interaction",
+            "is not estimable;"
+        )
+    } else if (identical(
         provenance$display_trajectory_variant,
         "time-course-adjusted"
     )) {
@@ -1773,10 +1790,14 @@ register_strategy(
             caption = paste(strwrap(paste(
                 "Counts show independent biological samples per design cell;",
                 trajectory_note,
-                paste(
-                    "fitted trajectories are descriptive and do not determine",
-                    "component ranking;"
-                ),
+                if (has_trajectories) {
+                    paste(
+                        "fitted trajectories are descriptive and do not",
+                        "determine component ranking;"
+                    )
+                } else {
+                    "crosses mark unobserved design cells;"
+                },
                 "the Stage 1 component basis is held fixed"
             ), width = 80L), collapse = "\n")
         ) +

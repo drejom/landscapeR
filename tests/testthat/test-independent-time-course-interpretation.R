@@ -327,6 +327,16 @@ test_that("a singly replicated overlapping cell causes design abstention", {
         "insufficient-independent-cell-replication",
         effects$diagnostic
     )))
+    design_plot <- plot(atlas)
+    expect_identical(
+        design_plot$labels$title,
+        "Observed destructive-time-course design"
+    )
+    expect_match(design_plot$labels$subtitle, "not estimable")
+    expect_match(
+        design_plot$labels$caption,
+        "no fitted\\s+trajectory is shown"
+    )
     expect_s4_class(propose_component(atlas), "ComponentAbstention")
 })
 
