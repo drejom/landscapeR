@@ -71,6 +71,8 @@ test_that("time model records standardized orientation and engine controls", {
     provenance <- atlas_provenance(atlas)
     expect_identical(provenance$model_engine, "stats::lm")
     expect_identical(provenance$model_na_action, "stats::na.fail")
+    expect_false(provenance$model_singular_ok)
+    expect_identical(provenance$engine_formula, "response ~ design - 1")
     expect_true(nzchar(provenance$model_engine_version))
     expect_true(nzchar(provenance$model_formula_digest))
     expect_identical(

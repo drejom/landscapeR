@@ -22,7 +22,7 @@ test_that("independent time course fits the declared standardized interaction", 
     )
     expect_identical(atlas_provenance(atlas)$model_engine, "stats::lm")
     expect_match(
-        atlas_provenance(atlas)$model_formula_adjusted,
+        atlas_provenance(atlas)$scientific_model_formula_adjusted,
         "condition \\* scaled_time"
     )
 
@@ -303,6 +303,33 @@ test_that("missing required nuisance values define one visible common cohort", {
         unique(adjusted$cohort_digest)
     )
     expect_s4_class(propose_component(atlas), "ComponentProposal")
+})
+
+test_that("an empty complete-case cohort returns typed abstention", {
+    std <- independent_time_course_fixture()
+    colData(std)$batch[] <- NA
+
+    abstention <- associate_metadata(
+        std,
+        specification = independent_time_course_specification("batch"),
+        non_analytical_fields = "sample_id"
+    )
+
+    expect_s4_class(abstention, "AssociationAbstention")
+    expect_match(
+        association_abstention_diagnostic(abstention),
+        "non-identifiable-design: no complete cases"
+    )
+    expect_error(
+        confirm_component(
+            abstention,
+            1L,
+            "accept",
+            "An empty cohort cannot be confirmed."
+        ),
+        "cannot confirm an abstention",
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("target-confounded nuisance design preserves raw model evidence", {

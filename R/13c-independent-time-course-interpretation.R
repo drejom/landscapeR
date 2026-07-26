@@ -821,6 +821,17 @@ register_strategy(
     )
     analysis_cohort <- all_sample_ids[analysis_complete]
     excluded_cohort <- all_sample_ids[!analysis_complete]
+    if (!length(analysis_cohort)) {
+        return(.new_association_abstention(
+            std,
+            stage1,
+            specification,
+            paste(
+                "non-identifiable-design:",
+                "no complete cases for target, observed time, and nuisance"
+            )
+        ))
+    }
     target <- target[analysis_complete]
     observed_time <- observed_time[analysis_complete]
     nuisance_values <- lapply(nuisance_values, `[`, analysis_complete)
@@ -1128,13 +1139,15 @@ register_strategy(
                 utils::packageVersion("stats")
             ),
             model_na_action = "stats::na.fail",
+            model_singular_ok = FALSE,
             model_contrasts = list(
                 target = "contr.treatment(2, base = 1)",
                 nuisance_factors = "contr.treatment(nlevels, base = 1)"
             ),
-            model_formula_unadjusted =
+            engine_formula = "response ~ design - 1",
+            scientific_model_formula_unadjusted =
                 "standardized_score ~ condition * scaled_time",
-            model_formula_adjusted = paste(
+            scientific_model_formula_adjusted = paste(
                 "standardized_score ~ condition * scaled_time",
                 if (length(nuisance_values)) {
                     paste("+", paste(names(nuisance_values), collapse = " + "))
@@ -1144,9 +1157,10 @@ register_strategy(
             ),
             model_formula_digest = digest::digest(
                 list(
-                    unadjusted =
+                    engine = "response ~ design - 1",
+                    scientific_unadjusted =
                         "standardized_score ~ condition * scaled_time",
-                    adjusted = paste(
+                    scientific_adjusted = paste(
                         "standardized_score ~ condition * scaled_time",
                         if (length(nuisance_values)) {
                             paste(
@@ -1161,7 +1175,9 @@ register_strategy(
                         target = "contr.treatment(2, base = 1)",
                         nuisance_factors =
                             "contr.treatment(nlevels, base = 1)"
-                    )
+                    ),
+                    na_action = "stats::na.fail",
+                    singular_ok = FALSE
                 ),
                 algo = "sha256",
                 serialize = TRUE
