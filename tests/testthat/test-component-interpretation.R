@@ -473,6 +473,39 @@ test_that("interpretation evidence has tidy accessors and ggplot views", {
     )))
 })
 
+test_that("continuous atlas plot exposes monotone and flexible fits", {
+    atlas <- associate_metadata(
+        continuous_component_interpretation_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+    atlas_plot <- plot(atlas)
+    severity <- atlas_observations(atlas)
+    severity <- severity[
+        severity$metadata_field == "severity",
+        ,
+        drop = FALSE
+    ]
+
+    expect_equal(
+        severity$metadata_numeric[severity$component == 1L],
+        c(1, 2, 2, 4, 5, 6, 7, 8)
+    )
+    smooth_layers <- vapply(
+        atlas_plot$layers,
+        function(layer) inherits(layer$geom, "GeomSmooth"),
+        logical(1L)
+    )
+    expect_identical(sum(smooth_layers), 2L)
+    expect_identical(
+        unname(vapply(
+            atlas_plot$layers[smooth_layers],
+            function(layer) layer$stat_params$method,
+            character(1L)
+        )),
+        c("lm", "loess")
+    )
+})
+
 test_that("atlas and proposal survive serialization without refitting", {
     atlas <- associate_metadata(
         component_interpretation_fixture(),

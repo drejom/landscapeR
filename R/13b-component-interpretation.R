@@ -12,7 +12,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
 
 .association_observation_columns <- c(
     "metadata_field", "component", "component_label", "sample_index",
-    "primary_sample", "metadata_value", "score", "available"
+    "primary_sample", "metadata_type", "metadata_value", "metadata_numeric",
+    "score", "available"
 )
 
 .is_sha256_digest <- function(x) {
@@ -1012,13 +1013,29 @@ associate_metadata <- function(
                 seq_len(ncol(coordinate_matrix)),
                 function(j) {
                     scores <- coordinate_matrix[, j]
+                    metadata_type <- if (is.ordered(values)) {
+                        "ordered"
+                    } else if (is.numeric(values) && !is.logical(values)) {
+                        "continuous"
+                    } else {
+                        "categorical"
+                    }
+                    metadata_numeric <- if (is.ordered(values)) {
+                        as.numeric(values)
+                    } else if (identical(metadata_type, "continuous")) {
+                        as.numeric(values)
+                    } else {
+                        rep(NA_real_, length(values))
+                    }
                     data.frame(
                         metadata_field = field,
                         component = as.integer(j),
                         component_label = component_labels[[j]],
                         sample_index = seq_along(scores),
                         primary_sample = names(values),
+                        metadata_type = metadata_type,
                         metadata_value = as.character(values),
+                        metadata_numeric = metadata_numeric,
                         score = as.numeric(scores),
                         available = is.finite(scores) & !is.na(values),
                         stringsAsFactors = FALSE
@@ -1053,7 +1070,9 @@ associate_metadata <- function(
             component_label = character(),
             sample_index = integer(),
             primary_sample = character(),
+            metadata_type = character(),
             metadata_value = character(),
+            metadata_numeric = numeric(),
             score = numeric(),
             available = logical(),
             stringsAsFactors = FALSE
@@ -1920,15 +1939,23 @@ confirm_component <- function(
 plot.MetadataAssociationAtlas <- function(x, y, ...) {
     data <- atlas_observations(x)
     available <- data[data$available, , drop = FALSE]
-    ggplot2::ggplot(
-        data,
-        ggplot2::aes(
+    categorical <- available[
+        available$metadata_type == "categorical",
+        ,
+        drop = FALSE
+    ]
+    numeric <- available[
+        available$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    ggplot2::ggplot(data) +
+        ggplot2::geom_boxplot(
+            data = categorical,
+            mapping = ggplot2::aes(
             x = .data[["metadata_value"]],
             y = .data[["score"]]
-        )
-    ) +
-        ggplot2::geom_boxplot(
-            data = available,
+            ),
             width = 0.5,
             outlier.shape = NA,
             colour = "#111111",
@@ -1936,7 +1963,11 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             linewidth = 0.45
         ) +
         ggplot2::geom_point(
-            data = available,
+            data = categorical,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_value"]],
+                y = .data[["score"]]
+            ),
             shape = 21,
             size = 1.8,
             stroke = 0.45,
@@ -1948,6 +1979,42 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
                 seed = 79L
             )
         ) +
+        ggplot2::geom_point(
+            data = numeric,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["score"]]
+            ),
+            shape = 21,
+            size = 1.8,
+            stroke = 0.45,
+            colour = "#111111",
+            fill = "#FFFFFF"
+        ) +
+        ggplot2::geom_smooth(
+            data = numeric,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["score"]]
+            ),
+            method = "lm",
+            formula = y ~ x,
+            se = FALSE,
+            colour = "#111111",
+            linewidth = 0.6
+        ) +
+        ggplot2::geom_smooth(
+            data = numeric,
+            mapping = ggplot2::aes(
+                x = .data[["metadata_numeric"]],
+                y = .data[["score"]]
+            ),
+            method = "loess",
+            formula = y ~ x,
+            se = FALSE,
+            colour = "#B2182B",
+            linewidth = 0.7
+        ) +
         ggplot2::facet_grid(
             rows = ggplot2::vars(metadata_field),
             cols = ggplot2::vars(component_label),
@@ -1956,10 +2023,10 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
         ggplot2::labs(
             title = "Metadata association atlas",
             subtitle = paste(
-                "Raw component distributions;",
+                "Raw observations with linear and flexible fits;",
                 "exploratory evidence only"
             ),
-            x = "Target level",
+            x = "Metadata value",
             y = "Component score"
         ) +
         theme_landscapeR()
