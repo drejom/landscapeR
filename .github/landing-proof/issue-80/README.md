@@ -7,11 +7,11 @@ establish calibrated acceptance thresholds.
 
 ## Monotone and flexible decision surface
 
-![Raw observations with linear and flexible fits, including a non-monotone warning](nonmonotone-atlas.png)
+![Raw observations with monotone and flexible fits, including a non-monotone warning](nonmonotone-atlas.png)
 
 The atlas keeps raw observations visible. The black line represents the
-predeclared monotone question and the red smoother is descriptive only. PC1 has
-reversing level-wise medians and is marked
+predeclared monotone question using a constrained fit, and the red smoother is
+descriptive only. PC1 has reversing level-wise medians and is marked
 `possible-nonmonotone-association`; the warning cannot change ranking.
 
 ## Raw and adjusted evidence
@@ -48,7 +48,7 @@ boundary.
 
 | Decision point | Visible evidence | Structural boundary |
 |---|---|---|
-| Monotone target adequacy | Raw points, linear fit, flexible smoother, warning | Diagnostic cannot rerank |
+| Monotone target adequacy | Raw points, constrained monotone fit, flexible smoother, warning | Diagnostic cannot rerank |
 | Nuisance adjustment | Raw and adjusted rows, cohort/design digests | Invalid design returns typed abstention |
 | Association uncertainty | Bootstrap intervals and failure count | Stage 1 basis remains fixed |
 | Search multiplicity | Null maxima and observed maximum | Invalid exchangeability returns no p-value |

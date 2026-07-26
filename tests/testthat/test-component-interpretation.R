@@ -155,6 +155,31 @@ test_that("continuous metadata uses Spearman association with visible ties", {
     )
 })
 
+test_that("inappropriate declared target type returns a typed abstention", {
+    specification <- analysis_specification(
+        id = "invalid-continuous-target",
+        target_field = "condition",
+        target_type = "continuous",
+        continuous_direction = "increasing"
+    )
+
+    abstention <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+
+    expect_s4_class(abstention, "AssociationAbstention")
+    expect_identical(abstention@reason, "inappropriate-target-type")
+    expect_match(
+        association_abstention_diagnostic(abstention),
+        "continuous target must be finite numeric"
+    )
+    expect_s3_class(plot(abstention), "ggplot")
+    restored <- unserialize(serialize(abstention, NULL))
+    expect_identical(restored@digest, abstention@digest)
+})
+
 test_that("ordered metadata uses Kendall tau-b with declared level order", {
     atlas <- associate_metadata(
         ordered_component_interpretation_fixture(),
@@ -617,6 +642,35 @@ test_that("permutation without declared exchangeability intent abstains", {
     expect_s3_class(plot(abstention), "ggplot")
 })
 
+test_that("declared invalid exchangeability returns a typed abstention", {
+    specification <- analysis_specification(
+        id = "invalid-exchangeability",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment"
+    )
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id",
+        exchangeability = "not_identifiable"
+    )
+
+    abstention <- propose_component(
+        atlas,
+        n_permutations = 19L,
+        seed = 8005L
+    )
+
+    expect_s4_class(abstention, "ComponentAbstention")
+    expect_identical(abstention@reason, "permutation-not-identifiable")
+    expect_identical(
+        abstention_permutation_evidence(abstention)@diagnostic,
+        "exchangeability-not-identifiable"
+    )
+})
+
 test_that("component proposal abstains when the largest effects are tied", {
     atlas <- associate_metadata(
         component_interpretation_fixture(),
@@ -801,15 +855,55 @@ test_that("continuous atlas plot exposes monotone and flexible fits", {
         function(layer) inherits(layer$geom, "GeomSmooth"),
         logical(1L)
     )
-    expect_identical(sum(smooth_layers), 2L)
+    monotone_layers <- vapply(
+        atlas_plot$layers,
+        function(layer) {
+            inherits(layer$geom, "GeomLine") &&
+                "monotone_fitted" %in% names(layer$data)
+        },
+        logical(1L)
+    )
+    expect_identical(sum(smooth_layers), 1L)
+    expect_identical(sum(monotone_layers), 1L)
     expect_identical(
         unname(vapply(
             atlas_plot$layers[smooth_layers],
             function(layer) layer$stat_params$method,
             character(1L)
         )),
-        c("lm", "loess")
+        "loess"
     )
+})
+
+test_that("coincident continuous observations expose atom mass", {
+    std <- continuous_component_interpretation_fixture()
+    md <- metadata(std)
+    md$stage1@coords_k[[1L]][1:2, 1L] <- 1
+    colData(std)$severity[1:2] <- 1
+    metadata(std) <- md
+
+    atlas <- associate_metadata(
+        std,
+        non_analytical_fields = "mouse_id"
+    )
+    observations <- atlas_observations(atlas)
+    atom <- observations[
+        observations$metadata_field == "severity" &
+            observations$component == 1L &
+            observations$sample_index %in% 1:2,
+        ,
+        drop = FALSE
+    ]
+
+    expect_identical(atom$atom_count, c(2L, 2L))
+    numeric_points <- Filter(
+        function(layer) {
+            inherits(layer$geom, "GeomPoint") &&
+                !is.null(layer$mapping$size)
+        },
+        plot(atlas)$layers
+    )
+    expect_true(length(numeric_points) >= 1L)
 })
 
 test_that("continuous proposal plot preserves the numeric decision surface", {
@@ -831,7 +925,7 @@ test_that("continuous proposal plot preserves the numeric decision surface", {
         logical(1L)
     )
 
-    expect_identical(sum(smooth_layers), 2L)
+    expect_identical(sum(smooth_layers), 1L)
     expect_true(any(vapply(
         proposal_plot$layers,
         function(layer) {

@@ -10,7 +10,8 @@ associate_metadata(
   non_analytical_fields = character(),
   dataset_id = NULL,
   n_resamples = 0L,
-  seed = 1L
+  seed = 1L,
+  exchangeability = c("independent", "not_identifiable")
 )
 }
 \arguments{
@@ -29,9 +30,15 @@ deterministic input-digest identifier}
 retains point/descriptive evidence only}
 
 \item{seed}{deterministic bootstrap seed}
+
+\item{exchangeability}{whether independent biological-unit exchangeability
+is defensible for permutation; \code{"not_identifiable"} preserves point
+evidence but prohibits a search-aware p-value}
 }
 \value{
-a validated \code{MetadataAssociationAtlas}
+a validated \code{MetadataAssociationAtlas}, or an
+\code{AssociationAbstention} when declared target type and observed metadata
+are incompatible
 }
 \description{
 The cross-sectional tracer supports one biological layer. Binary metadata

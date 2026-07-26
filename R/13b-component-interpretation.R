@@ -16,7 +16,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
 .association_observation_columns <- c(
     "metadata_field", "component", "component_label", "sample_index",
     "primary_sample", "metadata_type", "metadata_value", "metadata_numeric",
-    "score", "available"
+    "score", "atom_count", "available"
 )
 
 .is_sha256_digest <- function(x) {
@@ -274,6 +274,80 @@ setValidity("MetadataAssociationAtlas", function(object) {
     )
     if (!all(required_provenance %in% names(object@provenance))) {
         errors <- c(errors, "provenance is missing required fields")
+    }
+    if (!identical(
+        object@evidence_status,
+        "estimable-exploratory-only"
+    )) {
+        errors <- c(
+            errors,
+            "evidence_status must be 'estimable-exploratory-only'"
+        )
+    }
+    if (length(errors)) errors else TRUE
+})
+
+#' Typed abstention before metadata association
+#'
+#' Returned when a declared target type is incompatible with the observed
+#' metadata. No association, substitution, or component ranking is performed.
+#'
+#' @slot version schema version, currently `"1.0.0"`
+#' @slot target_field declared target field
+#' @slot reason machine-readable abstention reason
+#' @slot diagnostic data-dependent validation diagnostic
+#' @slot sampling_design declared biological sampling design
+#' @slot input_digest,state_space_digest bound input digests
+#' @slot provenance specification and package provenance
+#' @slot digest canonical abstention digest
+#' @slot evidence_status support tier
+#'
+#' @export
+setClass("AssociationAbstention",
+    representation(
+        version = "character",
+        target_field = "character",
+        reason = "character",
+        diagnostic = "character",
+        sampling_design = "SamplingDesign",
+        input_digest = "character",
+        state_space_digest = "character",
+        provenance = "list",
+        digest = "character",
+        evidence_status = "character"
+    ),
+    prototype = prototype(
+        version = "1.0.0",
+        target_field = character(),
+        reason = character(),
+        diagnostic = character(),
+        sampling_design = new("SamplingDesign"),
+        input_digest = character(),
+        state_space_digest = character(),
+        provenance = list(),
+        digest = character(),
+        evidence_status = "estimable-exploratory-only"
+    )
+)
+
+setValidity("AssociationAbstention", function(object) {
+    errors <- character()
+    if (!identical(object@version, "1.0.0")) {
+        errors <- c(errors, "version must be '1.0.0'")
+    }
+    if (!.is_scalar_nonempty_text(object@target_field)) {
+        errors <- c(errors, "target_field must be one non-empty name")
+    }
+    if (!identical(object@reason, "inappropriate-target-type")) {
+        errors <- c(errors, "reason must be 'inappropriate-target-type'")
+    }
+    if (!.is_scalar_nonempty_text(object@diagnostic)) {
+        errors <- c(errors, "diagnostic must be one non-empty string")
+    }
+    if (!.is_sha256_digest(object@input_digest) ||
+        !.is_sha256_digest(object@state_space_digest) ||
+        !.is_sha256_digest(object@digest)) {
+        errors <- c(errors, "abstention digests must be SHA-256 values")
     }
     if (!identical(
         object@evidence_status,
@@ -760,6 +834,55 @@ register_strategy(
     )
 }
 
+.new_association_abstention <- function(
+    std,
+    stage1,
+    specification,
+    diagnostic
+) {
+    input_digest <- .atlas_input_digest(std)
+    state_space_digest <- .atlas_state_space_digest(stage1)
+    provenance <- list(
+        analysis_specification_id = specification@id,
+        analysis_specification_digest = canonical_digest(specification),
+        target_type = specification@target_type,
+        package_version = as.character(utils::packageVersion("landscapeR")),
+        sampling_design = std@sampling_design@kind,
+        input_digest = input_digest,
+        state_space_digest = state_space_digest
+    )
+    digest_value <- digest::digest(
+        list(
+            version = "1.0.0",
+            target_field = specification@target_field,
+            reason = "inappropriate-target-type",
+            diagnostic = diagnostic,
+            sampling_design = std@sampling_design,
+            input_digest = input_digest,
+            state_space_digest = state_space_digest,
+            provenance = provenance,
+            evidence_status = "estimable-exploratory-only"
+        ),
+        algo = "sha256",
+        serialize = TRUE
+    )
+    abstention <- new(
+        "AssociationAbstention",
+        version = "1.0.0",
+        target_field = specification@target_field,
+        reason = "inappropriate-target-type",
+        diagnostic = diagnostic,
+        sampling_design = std@sampling_design,
+        input_digest = input_digest,
+        state_space_digest = state_space_digest,
+        provenance = provenance,
+        digest = digest_value,
+        evidence_status = "estimable-exploratory-only"
+    )
+    validObject(abstention)
+    abstention
+}
+
 .adjusted_rank_score_effect <- function(
     std,
     scores,
@@ -789,31 +912,14 @@ register_strategy(
     complete_target <- target_values[complete]
     if (length(complete_scores) < 3L) return(NULL)
 
-    nuisance_frame <- as.data.frame(lapply(
-        nuisance_values,
-        function(values) {
-            values <- values[complete]
-            if (is.numeric(values) || is.ordered(values)) {
-                rank(values, ties.method = "average")
-            } else {
-                factor(values)
-            }
-        }
-    ), stringsAsFactors = FALSE)
-    design <- stats::model.matrix(~ ., data = nuisance_frame)
-    target_numeric <- if (identical(specification@target_type, "binary")) {
-        match(
-            as.character(complete_target),
-            c(specification@reference_level, specification@comparison_level)
-        )
-    } else if (identical(specification@target_type, "ordered")) {
-        match(
-            as.character(complete_target),
-            specification@ordered_levels
-        )
-    } else {
-        as.numeric(complete_target)
-    }
+    design <- .nuisance_design(nuisance_values, complete)
+    target_numeric <- .target_numeric_values(
+        complete_target,
+        specification@target_type,
+        specification@reference_level,
+        specification@comparison_level,
+        specification@ordered_levels
+    )
     score_rank <- rank(complete_scores, ties.method = "average")
     target_rank <- rank(target_numeric, ties.method = "average")
     score_ties <- duplicated(complete_scores) |
@@ -910,19 +1016,13 @@ register_strategy(
         nuisance_values,
         rep(TRUE, length(scores))
     )
-    target_numeric <- if (identical(specification@target_type, "binary")) {
-        match(
-            as.character(target_values),
-            c(specification@reference_level, specification@comparison_level)
-        )
-    } else if (identical(specification@target_type, "ordered")) {
-        match(
-            as.character(target_values),
-            specification@ordered_levels
-        )
-    } else {
-        as.numeric(target_values)
-    }
+    target_numeric <- .target_numeric_values(
+        target_values,
+        specification@target_type,
+        specification@reference_level,
+        specification@comparison_level,
+        specification@ordered_levels
+    )
     score_rank <- rank(scores, ties.method = "average")
     target_rank <- rank(target_numeric, ties.method = "average")
     if (qr(design)$rank < ncol(design) ||
@@ -993,8 +1093,13 @@ register_strategy(
 #' @param n_resamples number of design-preserving association bootstraps; zero
 #'   retains point/descriptive evidence only
 #' @param seed deterministic bootstrap seed
+#' @param exchangeability whether independent biological-unit exchangeability
+#'   is defensible for permutation; `"not_identifiable"` preserves point
+#'   evidence but prohibits a search-aware p-value
 #'
-#' @return a validated `MetadataAssociationAtlas`
+#' @return a validated `MetadataAssociationAtlas`, or an
+#'   `AssociationAbstention` when declared target type and observed metadata
+#'   are incompatible
 #' @export
 associate_metadata <- function(
     std,
@@ -1002,7 +1107,8 @@ associate_metadata <- function(
     non_analytical_fields = character(),
     dataset_id = NULL,
     n_resamples = 0L,
-    seed = 1L
+    seed = 1L,
+    exchangeability = c("independent", "not_identifiable")
 ) {
     if (!is(std, "StateTransitionData")) {
         .stop_landscapeR_validation(
@@ -1024,6 +1130,7 @@ associate_metadata <- function(
         )
     }
     seed <- as.integer(seed)
+    exchangeability <- match.arg(exchangeability)
     stage1 <- metadata(std)$stage1
     if (is.null(stage1)) {
         .stop_landscapeR_validation(
@@ -1051,10 +1158,24 @@ associate_metadata <- function(
             std
         )
         if (!identical(specification_error, TRUE)) {
-            .stop_landscapeR_validation(paste0(
-                "associate_metadata(): ",
+            inappropriate_target <- grepl(
+                paste(
+                    "^observed target values must equal",
+                    "|^continuous target must be"
+                ),
                 specification_error
-            ))
+            )
+            if (inappropriate_target) {
+                return(.new_association_abstention(
+                    std,
+                    stage1,
+                    specification,
+                    specification_error
+                ))
+            }
+            .stop_landscapeR_validation(
+                paste0("associate_metadata(): ", specification_error)
+            )
         }
         specification_provenance <- list(
             analysis_specification_id = specification@id,
@@ -1386,9 +1507,18 @@ associate_metadata <- function(
                         primary_sample = names(values),
                         metadata_type = metadata_type,
                         metadata_value = as.character(values),
-                        metadata_numeric = metadata_numeric,
-                        score = as.numeric(scores),
-                        available = is.finite(scores) & !is.na(values),
+                    metadata_numeric = metadata_numeric,
+                    score = as.numeric(scores),
+                    atom_count = as.integer(ave(
+                        rep.int(1L, length(scores)),
+                        paste(
+                            as.character(values),
+                            sprintf("%.17g", scores),
+                            sep = "\r"
+                        ),
+                        FUN = length
+                    )),
+                    available = is.finite(scores) & !is.na(values),
                         stringsAsFactors = FALSE
                     )
                 }
@@ -1432,6 +1562,7 @@ associate_metadata <- function(
             metadata_value = character(),
             metadata_numeric = numeric(),
             score = numeric(),
+            atom_count = integer(),
             available = logical(),
             stringsAsFactors = FALSE
         )
@@ -1491,7 +1622,8 @@ associate_metadata <- function(
             layer = names(as.list(experiments(std)))[[1L]],
             input_digest = input_digest,
             state_space_digest = state_space_digest,
-            dataset_id = dataset_id
+            dataset_id = dataset_id,
+            exchangeability = exchangeability
         ), specification_provenance),
         evidence_status = "estimable-exploratory-only"
     )
@@ -2152,6 +2284,25 @@ setValidity("ComponentProposal", function(object) {
     log(n_permutations + 1) <= log_arrangements
 }
 
+.target_numeric_values <- function(
+    values,
+    target_type,
+    reference_level = character(),
+    comparison_level = character(),
+    ordered_levels = character()
+) {
+    if (identical(target_type, "binary")) {
+        return(match(
+            as.character(values),
+            c(reference_level, comparison_level)
+        ))
+    }
+    if (identical(target_type, "ordered")) {
+        return(match(as.character(values), ordered_levels))
+    }
+    as.numeric(values)
+}
+
 .nuisance_design <- function(nuisance_values, complete) {
     nuisance_frame <- as.data.frame(lapply(
         nuisance_values,
@@ -2185,6 +2336,17 @@ setValidity("ComponentProposal", function(object) {
             n_requested = n_permutations,
             seed = seed,
             diagnostic = "missing-declared-target-intent"
+        ))
+    }
+    if (!identical(
+        atlas@provenance$exchangeability,
+        "independent"
+    )) {
+        return(.new_permutation_evidence(
+            status = "not-identifiable",
+            n_requested = n_permutations,
+            seed = seed,
+            diagnostic = "exchangeability-not-identifiable"
         ))
     }
     target_observations <- atlas@observations[
@@ -2290,28 +2452,13 @@ setValidity("ComponentProposal", function(object) {
                 diagnostic = "non-identifiable-permutation-design"
             ))
         }
-        target_numeric <- if (identical(
+        target_numeric <- .target_numeric_values(
+            complete_values,
             atlas@provenance$target_type,
-            "binary"
-        )) {
-            match(
-                as.character(complete_values),
-                c(
-                    atlas@provenance$reference_level,
-                    atlas@provenance$comparison_level
-                )
-            )
-        } else if (identical(
-            atlas@provenance$target_type,
-            "ordered"
-        )) {
-            match(
-                as.character(complete_values),
-                atlas@provenance$ordered_levels
-            )
-        } else {
-            as.numeric(complete_values)
-        }
+            atlas@provenance$reference_level,
+            atlas@provenance$comparison_level,
+            atlas@provenance$ordered_levels
+        )
         target_rank <- rank(target_numeric, ties.method = "average")
         target_residual <- stats::lm.fit(design, target_rank)$residuals
         score_models <- lapply(seq_len(ncol(score_matrix)), function(j) {
@@ -2765,6 +2912,63 @@ as.data.frame.ComponentAbstention <- function(
     abstention_ranking(x)
 }
 
+#' Extract the diagnostic from an association abstention
+#'
+#' @param abstention an `AssociationAbstention`
+#' @return one machine-readable diagnostic string
+#' @export
+association_abstention_diagnostic <- function(abstention) {
+    if (!is(abstention, "AssociationAbstention")) {
+        stop(
+            paste0(
+                "association_abstention_diagnostic(): abstention must be an ",
+                "AssociationAbstention"
+            )
+        )
+    }
+    abstention@diagnostic
+}
+
+#' Plot an association abstention
+#'
+#' @param x an `AssociationAbstention`
+#' @param y ignored
+#' @param ... ignored
+#' @return a `ggplot` object
+#' @export
+plot.AssociationAbstention <- function(x, y, ...) {
+    if (!is(x, "AssociationAbstention")) {
+        stop("plot.AssociationAbstention(): x must be AssociationAbstention")
+    }
+    ggplot2::ggplot(data.frame(x = 0, y = 0)) +
+        ggplot2::geom_blank(ggplot2::aes(
+            x = .data[["x"]],
+            y = .data[["y"]]
+        )) +
+        ggplot2::annotate(
+            "text",
+            x = 0,
+            y = 0,
+            label = x@diagnostic,
+            colour = "#111111",
+            size = 3.4
+        ) +
+        ggplot2::labs(
+            title = sprintf(
+                "Association abstained for %s",
+                x@target_field
+            ),
+            subtitle = x@reason,
+            x = NULL,
+            y = NULL,
+            caption = "No target type or association was substituted"
+        ) +
+        theme_landscapeR() +
+        ggplot2::theme(
+            plot.subtitle = ggplot2::element_text(colour = "#B2182B")
+        )
+}
+
 #' Plot a component-nomination abstention
 #'
 #' Displays retained finite effect evidence when available and the
@@ -2854,9 +3058,10 @@ confirm_component <- function(
     decision,
     rationale
 ) {
-    if (is(proposal, "ComponentAbstention")) {
+    if (is(proposal, "ComponentAbstention") ||
+        is(proposal, "AssociationAbstention")) {
         .stop_landscapeR_validation(
-            "confirm_component(): cannot confirm a component abstention"
+            "confirm_component(): cannot confirm an abstention"
         )
     }
     if (!is(proposal, "ComponentProposal")) {
@@ -2972,6 +3177,62 @@ confirm_component <- function(
     )
 }
 
+.monotone_fit_data <- function(data) {
+    numeric <- data[
+        data$available &
+            data$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    if (!nrow(numeric)) {
+        numeric$monotone_fitted <- numeric$score
+        return(numeric)
+    }
+    groups <- interaction(
+        numeric$metadata_field,
+        numeric$component_label,
+        drop = TRUE,
+        lex.order = TRUE
+    )
+    fitted <- lapply(split(numeric, groups, drop = TRUE), function(group) {
+        collapsed <- stats::aggregate(
+            group$score,
+            list(metadata_numeric = group$metadata_numeric),
+            stats::median
+        )
+        names(collapsed)[[2L]] <- "score"
+        collapsed <- collapsed[
+            order(collapsed$metadata_numeric),
+            ,
+            drop = FALSE
+        ]
+        increasing <- stats::isoreg(
+            collapsed$metadata_numeric,
+            collapsed$score
+        )$yf
+        decreasing <- -stats::isoreg(
+            collapsed$metadata_numeric,
+            -collapsed$score
+        )$yf
+        monotone <- if (
+            sum((collapsed$score - increasing)^2) <=
+                sum((collapsed$score - decreasing)^2)
+        ) {
+            increasing
+        } else {
+            decreasing
+        }
+        data.frame(
+            metadata_field = group$metadata_field[[1L]],
+            component_label = group$component_label[[1L]],
+            metadata_numeric = collapsed$metadata_numeric,
+            monotone_fitted = monotone,
+            stringsAsFactors = FALSE
+        )
+    })
+    do.call(rbind, fitted)
+}
+
 #' Plot a metadata-association atlas
 #'
 #' Displays the raw component-score distributions for every eligible metadata
@@ -3004,6 +3265,17 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
         ,
         drop = FALSE
     ]
+    monotone <- .monotone_fit_data(data)
+    max_atom_count <- if (nrow(available)) {
+        max(available$atom_count)
+    } else {
+        1L
+    }
+    atom_guide <- if (any(available$atom_count > 1L)) {
+        ggplot2::waiver()
+    } else {
+        "none"
+    }
     ggplot2::ggplot(data) +
         ggplot2::geom_boxplot(
             data = categorical,
@@ -3021,10 +3293,10 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             data = categorical,
             mapping = ggplot2::aes(
                 x = .data[["metadata_value"]],
-                y = .data[["score"]]
+                y = .data[["score"]],
+                size = .data[["atom_count"]]
             ),
             shape = 21,
-            size = 1.8,
             stroke = 0.45,
             colour = "#111111",
             fill = "#FFFFFF",
@@ -3038,23 +3310,20 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             data = numeric,
             mapping = ggplot2::aes(
                 x = .data[["metadata_numeric"]],
-                y = .data[["score"]]
+                y = .data[["score"]],
+                size = .data[["atom_count"]]
             ),
             shape = 21,
-            size = 1.8,
             stroke = 0.45,
             colour = "#111111",
             fill = "#FFFFFF"
         ) +
-        ggplot2::geom_smooth(
-            data = numeric,
+        ggplot2::geom_line(
+            data = monotone,
             mapping = ggplot2::aes(
                 x = .data[["metadata_numeric"]],
-                y = .data[["score"]]
+                y = .data[["monotone_fitted"]]
             ),
-            method = "lm",
-            formula = y ~ x,
-            se = FALSE,
             colour = "#111111",
             linewidth = 0.6
         ) +
@@ -3075,13 +3344,19 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             mapping = ggplot2::aes(
                 x = -Inf,
                 y = Inf,
-                label = "△ non-monotone"
+                label = "\u25b3 non-monotone"
             ),
             hjust = -0.05,
             vjust = 1.2,
             colour = "#B2182B",
             size = 3,
             inherit.aes = FALSE
+        ) +
+        ggplot2::scale_size_continuous(
+            name = "Coincident observations",
+            range = c(1.8, 4),
+            limits = c(1, max(2L, max_atom_count)),
+            guide = atom_guide
         ) +
         ggplot2::facet_grid(
             rows = ggplot2::vars(metadata_field),
@@ -3091,7 +3366,7 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
         ggplot2::labs(
             title = "Metadata association atlas",
             subtitle = paste(
-                "Raw observations with linear and flexible fits;",
+                "Raw observations with monotone and flexible fits;",
                 "exploratory evidence only"
             ),
             x = "Metadata value",
@@ -3124,6 +3399,17 @@ plot.ComponentProposal <- function(x, y, ...) {
         ,
         drop = FALSE
     ]
+    monotone <- .monotone_fit_data(data)
+    max_atom_count <- if (nrow(available)) {
+        max(available$atom_count)
+    } else {
+        1L
+    }
+    atom_guide <- if (any(available$atom_count > 1L)) {
+        ggplot2::waiver()
+    } else {
+        "none"
+    }
     ranking <- proposal_ranking(x)
     facet_labels <- stats::setNames(
         sprintf(
@@ -3196,10 +3482,10 @@ plot.ComponentProposal <- function(x, y, ...) {
             data = categorical,
             mapping = ggplot2::aes(
                 x = .data[["metadata_value"]],
-                y = .data[["score"]]
+                y = .data[["score"]],
+                size = .data[["atom_count"]]
             ),
             shape = 21,
-            size = 1.8,
             stroke = 0.45,
             colour = "#111111",
             fill = "#FFFFFF",
@@ -3213,23 +3499,20 @@ plot.ComponentProposal <- function(x, y, ...) {
             data = numeric,
             mapping = ggplot2::aes(
                 x = .data[["metadata_numeric"]],
-                y = .data[["score"]]
+                y = .data[["score"]],
+                size = .data[["atom_count"]]
             ),
             shape = 21,
-            size = 1.8,
             stroke = 0.45,
             colour = "#111111",
             fill = "#FFFFFF"
         ) +
-        ggplot2::geom_smooth(
-            data = numeric,
+        ggplot2::geom_line(
+            data = monotone,
             mapping = ggplot2::aes(
                 x = .data[["metadata_numeric"]],
-                y = .data[["score"]]
+                y = .data[["monotone_fitted"]]
             ),
-            method = "lm",
-            formula = y ~ x,
-            se = FALSE,
             colour = "#111111",
             linewidth = 0.6
         ) +
@@ -3270,6 +3553,12 @@ plot.ComponentProposal <- function(x, y, ...) {
             stroke = 0.65,
             colour = "#111111",
             fill = "#C61A2A"
+        ) +
+        ggplot2::scale_size_continuous(
+            name = "Coincident observations",
+            range = c(1.8, 4),
+            limits = c(1, max(2L, max_atom_count)),
+            guide = atom_guide
         ) +
         ggplot2::facet_wrap(
             ggplot2::vars(component_label),

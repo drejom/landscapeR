@@ -125,8 +125,8 @@ q-value. Bootstrap draws preserve discrete target and nuisance-cell counts and
 resample complete independent biological units rather than features or
 technical replicates.
 
-Raw points, a black linear fit, and a red flexible smoother expose the
-predeclared monotone relationship. A reversal in level-wise medians adds a
+Raw points, a black monotone-constrained fit, and a red flexible smoother
+expose the predeclared monotone relationship. A reversal in level-wise medians adds a
 `possible-nonmonotone-association` warning. The warning and smoother are
 descriptive and cannot rerank components.
 
@@ -152,6 +152,12 @@ and repeats the complete eligible-component search. The resulting p-value
 therefore compares the observed maximum absolute effect with null maxima, not
 with one component considered in isolation. It remains supporting exploratory
 evidence and cannot promote a runner-up.
+
+The default cross-sectional declaration treats canonical biological samples as
+independent and exchangeable. If that assumption is not defensible, set
+`exchangeability = "not_identifiable"` in `associate_metadata()`. Point
+evidence remains available, while permutation returns
+`permutation-not-identifiable` and no search-aware p-value.
 
 If target intent or a defensible permutation structure is absent, the same call
 returns a typed `ComponentAbstention` with
