@@ -4,13 +4,18 @@
 \alias{propose_component}
 \title{Nominate a component from a metadata-association atlas}
 \usage{
-propose_component(atlas, target = NULL)
+propose_component(atlas, target = NULL, n_permutations = 0L, seed = 1L)
 }
 \arguments{
 \item{atlas}{a \code{MetadataAssociationAtlas}}
 
 \item{target}{optional metadata field present in the atlas; omitted when the
 source atlas carries a draft \code{AnalysisSpecification}}
+
+\item{n_permutations}{number of complete-search null permutations; zero
+retains point/descriptive evidence only}
+
+\item{seed}{deterministic permutation seed}
 }
 \value{
 a versioned exploratory \code{ComponentProposal}, or a

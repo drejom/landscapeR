@@ -8,7 +8,9 @@ associate_metadata(
   std,
   specification = NULL,
   non_analytical_fields = character(),
-  dataset_id = NULL
+  dataset_id = NULL,
+  n_resamples = 0L,
+  seed = 1L
 )
 }
 \arguments{
@@ -22,6 +24,11 @@ and nuisance intent for this run}
 \item{dataset_id}{optional stable dataset identifier used in confirmed
 analysis IDs; defaults to \code{metadata(std)$dataset_id} when present, then a
 deterministic input-digest identifier}
+
+\item{n_resamples}{number of design-preserving association bootstraps; zero
+retains point/descriptive evidence only}
+
+\item{seed}{deterministic bootstrap seed}
 }
 \value{
 a validated \code{MetadataAssociationAtlas}
@@ -30,7 +37,9 @@ a validated \code{MetadataAssociationAtlas}
 The cross-sectional tracer supports one biological layer. Binary metadata
 use signed rank-biserial association, continuous metadata use Spearman
 association, and ordered factors use Kendall tau-b against their declared
-level order. Binary factor levels declare reference then comparison;
-character or logical levels use deterministic lexical order. Identifier-like
-fields and caller-declared non-analytical fields are excluded with reasons.
+level order. Unordered multilevel factors retain descriptive Kruskal-Wallis
+epsilon-squared evidence but cannot nominate a component. Binary factor
+levels declare reference then comparison; character or logical levels use
+deterministic lexical order. Identifier-like fields and caller-declared
+non-analytical fields are excluded from target association with reasons.
 }

@@ -23,6 +23,8 @@ unique component could be nominated. It cannot be confirmed.
 
 \item{\code{observations}}{target-specific raw component distributions}
 
+\item{\code{permutation_evidence}}{typed search-aware null evidence}
+
 \item{\code{atlas_digest}}{digest of the complete source atlas}
 
 \item{\code{provenance}}{complete inherited and proposal-step provenance}
