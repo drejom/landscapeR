@@ -287,6 +287,17 @@ register_strategy(
     if (any(condition_counts < 2L)) {
         return("non-identifiable-design: insufficient-subject-replication")
     }
+    categorical_nuisance_levels <- vapply(
+        nuisance_values,
+        function(values) {
+            if (is.numeric(values) || is.ordered(values)) return(Inf)
+            length(unique(as.character(values)))
+        },
+        numeric(1L)
+    )
+    if (any(categorical_nuisance_levels < 2L)) {
+        return("non-identifiable-design: rank-deficient-fixed-effect-design")
+    }
     range <- range(observed_time)
     scaled_time <- (observed_time - range[[1L]]) / diff(range)
     frame <- .repeated_model_frame(

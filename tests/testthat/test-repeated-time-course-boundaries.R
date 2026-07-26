@@ -83,6 +83,28 @@ test_that("confounded nuisance adjustment abstains without weakening the model",
     ))
 })
 
+test_that("collapsed categorical nuisance returns typed design abstention", {
+    std <- repeated_time_course_fixture()
+    colData(std)$collapsed <- factor("only-level")
+    atlas <- associate_metadata(
+        std,
+        specification = repeated_time_course_specification("collapsed"),
+        non_analytical_fields = c("mouse_id", "batch")
+    )
+    adjusted <- atlas_associations(atlas)
+    adjusted <- adjusted[
+        adjusted$evidence_variant == "repeated-time-course-adjusted",
+        ,
+        drop = FALSE
+    ]
+
+    expect_true(all(grepl(
+        "rank-deficient-fixed-effect-design",
+        adjusted$diagnostic
+    )))
+    expect_s4_class(propose_component(atlas), "ComponentAbstention")
+})
+
 test_that("biological units must exceed the fixed model rank", {
     atlas <- associate_metadata(
         repeated_time_course_fixture(subjects_per_condition = 2L),
