@@ -119,10 +119,13 @@ utils::globalVariables(c("metadata_field", "component_label"))
         )
     }
     member_columns <- c(
-        "metadata_field", "component", "evidence_variant", "primary_sample"
+        "metadata_field", "component", "evidence_variant", "primary_sample",
+        "included"
     )
     members_valid <- is.data.frame(contract$cohort_members) &&
-        all(member_columns %in% names(contract$cohort_members))
+        all(member_columns %in% names(contract$cohort_members)) &&
+        is.logical(contract$cohort_members$included) &&
+        !anyNA(contract$cohort_members$included)
     if (!members_valid) {
         return(c(
             errors,
@@ -192,7 +195,9 @@ utils::globalVariables(c("metadata_field", "component_label"))
                 ,
                 drop = FALSE
             ]
-            member_ids <- as.character(members$primary_sample)
+            member_ids <- as.character(
+                members$primary_sample[members$included]
+            )
             observed <- observations[
                 observations$metadata_field == association$metadata_field &
                     observations$component == association$component,
@@ -203,10 +208,14 @@ utils::globalVariables(c("metadata_field", "component_label"))
                 member_ids,
                 rep(TRUE, length(member_ids))
             )
-            if (anyDuplicated(member_ids) ||
+            if (anyDuplicated(members$primary_sample) ||
+                !setequal(
+                    as.character(members$primary_sample),
+                    as.character(observed$primary_sample)
+                ) ||
+                nrow(members) != nrow(observed) ||
                 length(member_ids) != association$n_available ||
-                association$n_missing !=
-                    nrow(observed) - association$n_available ||
+                association$n_missing != sum(!members$included) ||
                 !identical(expected_digest, association$cohort_digest) ||
                 !all(member_ids %in% observed$primary_sample[
                     observed$available
@@ -283,6 +292,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
         component = integer(),
         evidence_variant = character(),
         primary_sample = character(),
+        included = logical(),
         stringsAsFactors = FALSE
     )
 }
@@ -336,7 +346,8 @@ setValidity("CrossSectionalInterpretationEvidence", function(object) {
                 metadata_field = associations$metadata_field[[i]],
                 component = associations$component[[i]],
                 evidence_variant = associations$evidence_variant[[i]],
-                primary_sample = as.character(members),
+                primary_sample = as.character(members$primary_sample),
+                included = as.logical(members$included),
                 stringsAsFactors = FALSE
             )
         }))
@@ -1336,7 +1347,11 @@ register_strategy(
                 names(target_values),
                 complete
             ),
-            cohort_members = as.character(names(target_values)[complete]),
+            cohort_members = data.frame(
+                primary_sample = as.character(names(target_values)),
+                included = complete,
+                stringsAsFactors = FALSE
+            ),
             design_digest = design_digest,
             diagnostic = diagnostic,
             evidence_status = evidence_status
@@ -1826,7 +1841,11 @@ associate_metadata <- function(
                     uncertainty$resampling_plan_digest,
                 evidence_status = "estimable-exploratory-only",
                 .cohort_members = I(list(
-                    as.character(names(values)[complete])
+                    data.frame(
+                        primary_sample = as.character(names(values)),
+                        included = complete,
+                        stringsAsFactors = FALSE
+                    )
                 )),
                 stringsAsFactors = FALSE
             )

@@ -78,6 +78,7 @@ test_that("cross-sectional workflow exposes its complete evidence contract", {
         unique(contract$cohort_members$primary_sample),
         sprintf("sample_%02d", seq_len(8L))
     )
+    expect_true(all(contract$cohort_members$included))
     expect_true(validObject(atlas))
 
     restored <- unserialize(serialize(atlas, NULL))
@@ -97,6 +98,7 @@ test_that("cross-sectional evidence contract retains missing and collapsed state
     expect_identical(missing_contract$cohorts$n_available, c(7L, 7L))
     expect_identical(missing_contract$cohorts$n_missing, c(1L, 1L))
     expect_identical(missing_contract$row_counts[["observations"]], 16L)
+    expect_identical(sum(!missing_contract$cohort_members$included), 2L)
 
     collapsed_std <- .cross_evidence_fixture()
     colData(collapsed_std)$condition <- factor(rep("control", 8L))
@@ -178,5 +180,20 @@ test_that("cross-sectional module marker makes its contract mandatory", {
     expect_error(
         validObject(missing_marker),
         "requires a recognized interpretation module"
+    )
+})
+
+test_that("cohort membership must cover the exact observation universe", {
+    atlas <- associate_metadata(
+        .cross_evidence_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+    altered <- atlas
+    altered@provenance$evidence_contract$cohort_members <-
+        altered@provenance$evidence_contract$cohort_members[-1L, , drop = FALSE]
+
+    expect_error(
+        validObject(altered),
+        "cohort membership does not match association evidence"
     )
 })
