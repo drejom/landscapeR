@@ -8,7 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#83 — integrated axis-identifiability evidence**.
+**Next task after this change lands:** **#91 — deepen interpretation evidence
+through the cross-sectional path**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -173,13 +174,28 @@ design respected.
 **Implementation slices:** #79 establishes the cross-sectional binary tracer
 path; #80, #81, and #82 then add adjusted/general cross-sectional, independent
 destructive-time-course, and repeated-subject interpretation respectively;
-#83 integrates evidence-tier axis identifiability across the completed paths.
+#91 deepens the shared interpretation/evidence seam before #83 integrates
+evidence-tier axis identifiability across the completed paths. #92 then moves
+both time-course adapters behind that seam. #93 and #94 are follow-on
+resampling-policy and typed visual-evidence deepening slices; they do not
+silently expand #83.
 The reusable publication visual grammar and 100 mm export helper are the
 cross-cutting visual prefactor for #79; they expose later decision surfaces
 consistently but do not themselves satisfy #79's scientific exit.
 
 **Exit:** synthetic truth can assert proposals; real data always requires human
 confirmation; stable-subspace/no-stable-axis is a valid abstention.
+
+### 4a. Architecture debt lane
+
+**Active prefactor:** #91 deepens the interpretation evidence seam before #83.
+#92 is its time-course migration follow-up. #93 and #94 remain queued behind
+#92 and require an explicit roadmap decision before becoming active.
+
+**Parked debt:** #95 deepens stage completion/provenance. #96 establishes shared
+artifact migration policy, with #97 adopting it across the interpretation
+evidence graph. These issues remain parked until the active #55/#83
+interpretation lane lands.
 
 ### 5. AML-shaped synthetic control — #67 calibration lane
 
@@ -360,8 +376,15 @@ bodies may state dependencies but do not change this ordering.
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
 | [#80](https://github.com/drejom/landscapeR/issues/80) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
 | [#81](https://github.com/drejom/landscapeR/issues/81) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
-| [#82](https://github.com/drejom/landscapeR/issues/82) | Exploratory AML Stage 1 interpretation — #55 slice | complete on merge |
-| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | active — next |
+| [#82](https://github.com/drejom/landscapeR/issues/82) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
+| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | active — blocked by #91 |
+| [#91](https://github.com/drejom/landscapeR/issues/91) | Interpretation evidence architecture prefactor | active — next |
+| [#92](https://github.com/drejom/landscapeR/issues/92) | Time-course interpretation architecture migration | queued — blocked by #91 |
+| [#93](https://github.com/drejom/landscapeR/issues/93) | Design-preserving resampling policy | queued — blocked by #92 |
+| [#94](https://github.com/drejom/landscapeR/issues/94) | Typed visual-evidence view | queued — blocked by #92 |
+| [#95](https://github.com/drejom/landscapeR/issues/95) | Stage completion and provenance architecture | parked |
+| [#96](https://github.com/drejom/landscapeR/issues/96) | Shared artifact migration policy | parked |
+| [#97](https://github.com/drejom/landscapeR/issues/97) | Interpretation evidence-graph migration policy | parked — blocked by #96 |
 <!-- issue-map:end -->
 
 ---
