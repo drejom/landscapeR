@@ -80,7 +80,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
     associations,
     observations,
     exclusions,
-    contract
+    contract,
+    provenance
 ) {
     errors <- character()
     association_columns <- c(
@@ -204,22 +205,55 @@ utils::globalVariables(c("metadata_field", "component_label"))
                 ,
                 drop = FALSE
             ]
+            member_order <- match(
+                observed$primary_sample,
+                members$primary_sample
+            )
+            expected_included <- unname(observed$available)
+            if (identical(association$evidence_variant, "adjusted")) {
+                nuisance_values <- provenance$nuisance_values
+                if (!is.list(nuisance_values) || !length(nuisance_values)) {
+                    errors <- c(
+                        errors,
+                        paste(
+                            "adjusted cross-sectional cohort requires",
+                            "declared nuisance values"
+                        )
+                    )
+                    break
+                }
+                for (values in nuisance_values) {
+                    aligned <- values[match(
+                        observed$primary_sample,
+                        names(values)
+                    )]
+                    nuisance_available <- unname(!is.na(aligned))
+                    if (is.numeric(aligned)) {
+                        nuisance_available <-
+                            nuisance_available & is.finite(aligned)
+                    }
+                    expected_included <-
+                        expected_included & nuisance_available
+                }
+            }
             expected_digest <- .association_cohort_digest(
                 member_ids,
                 rep(TRUE, length(member_ids))
             )
             if (anyDuplicated(members$primary_sample) ||
+                anyNA(member_order) ||
                 !setequal(
                     as.character(members$primary_sample),
                     as.character(observed$primary_sample)
                 ) ||
                 nrow(members) != nrow(observed) ||
+                !identical(
+                    members$included[member_order],
+                    expected_included
+                ) ||
                 length(member_ids) != association$n_available ||
                 association$n_missing != sum(!members$included) ||
-                !identical(expected_digest, association$cohort_digest) ||
-                !all(member_ids %in% observed$primary_sample[
-                    observed$available
-                ])) {
+                !identical(expected_digest, association$cohort_digest)) {
                 errors <- c(
                     errors,
                     paste(
@@ -314,7 +348,8 @@ setValidity("CrossSectionalInterpretationEvidence", function(object) {
         object@associations,
         object@observations,
         object@exclusions,
-        object@provenance$evidence_contract
+        object@provenance$evidence_contract,
+        object@provenance
     )
 })
 
@@ -641,7 +676,8 @@ setValidity("MetadataAssociationAtlas", function(object) {
                 object@associations,
                 object@observations,
                 object@exclusions,
-                object@provenance$evidence_contract
+                object@provenance$evidence_contract,
+                object@provenance
             )
         )
     }
