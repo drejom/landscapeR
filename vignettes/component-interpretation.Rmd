@@ -115,6 +115,7 @@ atlas <- associate_metadata(
 )
 atlas_associations(atlas)
 atlas_exclusions(atlas)
+atlas_evidence_contract(atlas)
 plot(atlas)
 ```
 
@@ -129,6 +130,13 @@ Raw points, a black monotone-constrained fit, and a red flexible smoother
 expose the predeclared monotone relationship. A reversal in level-wise medians adds a
 `possible-nonmonotone-association` warning. The warning and smoother are
 descriptive and cannot rerank components.
+
+The evidence contract is the package-owned summary behind the atlas. It records
+normalized row counts, available-case cohorts, and deterministic table digests.
+Atlas validity checks those values before proposal, permutation, plotting, or
+serialization consumers can use the evidence. Registered association
+strategies still calculate the scientific estimands; they do not assemble or
+validate the surrounding evidence.
 
 ## Produce an exploratory proposal
 

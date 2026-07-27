@@ -26,6 +26,7 @@ LOCAL_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]*)\)")
 ALLOWED_STATE_PREFIXES = ("active", "queued", "conditional", "parked", "complete")
 ALLOWED_DOCS_AREAS = {
     "agents": {".md"},
+    "architecture": {".md"},
     "archive": {".md"},
     "plans": {".md"},
     "research": {".md"},

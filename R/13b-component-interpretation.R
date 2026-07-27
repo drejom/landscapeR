@@ -19,6 +19,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
     "score", "atom_count", "available"
 )
 
+.cross_evidence_version <- "cross-sectional-v1"
+
 .is_sha256_digest <- function(x) {
     length(x) == 1L && !is.na(x) &&
         grepl("^[[:xdigit:]]{64}$", x)
@@ -34,6 +36,247 @@ utils::globalVariables(c("metadata_field", "component_label"))
         algo = "sha256",
         serialize = TRUE
     )
+}
+
+.evidence_table_digest <- function(x) {
+    digest::digest(x, algo = "sha256", serialize = TRUE)
+}
+
+.cross_cohort_summary <- function(associations) {
+    columns <- c(
+        "metadata_field", "component", "evidence_variant",
+        "cohort_digest", "n_available", "n_missing"
+    )
+    summary <- unique(associations[, columns, drop = FALSE])
+    rownames(summary) <- NULL
+    summary
+}
+
+.new_cross_evidence_contract <- function(
+    associations,
+    observations,
+    exclusions
+) {
+    list(
+        version = .cross_evidence_version,
+        sampling_design = "cross_sectional",
+        row_counts = c(
+            associations = as.integer(nrow(associations)),
+            observations = as.integer(nrow(observations)),
+            exclusions = as.integer(nrow(exclusions))
+        ),
+        digests = c(
+            associations = .evidence_table_digest(associations),
+            observations = .evidence_table_digest(observations),
+            exclusions = .evidence_table_digest(exclusions)
+        ),
+        cohorts = .cross_cohort_summary(associations)
+    )
+}
+
+.cross_evidence_errors <- function(
+    associations,
+    observations,
+    exclusions,
+    contract
+) {
+    errors <- character()
+    association_columns <- c(
+        "metadata_field", "component", "evidence_variant", "cohort_digest",
+        "n_available", "n_missing"
+    )
+    observation_columns <- c("metadata_field", "component")
+    exclusion_columns <- c("metadata_field", "reason")
+    if (!all(association_columns %in% names(associations)) ||
+            !all(observation_columns %in% names(observations)) ||
+            !all(exclusion_columns %in% names(exclusions))) {
+        return(
+            paste(
+                "cross-sectional evidence contract requires normalized",
+                "association, observation, and exclusion columns"
+            )
+        )
+    }
+    required <- c(
+        "version", "sampling_design", "row_counts", "digests", "cohorts"
+    )
+    if (!is.list(contract) || !all(required %in% names(contract))) {
+        return("cross-sectional evidence contract is missing required fields")
+    }
+    if (!identical(
+        contract$version,
+        .cross_evidence_version
+    )) {
+        errors <- c(errors, "cross-sectional evidence contract version is invalid")
+    }
+    if (!identical(contract$sampling_design, "cross_sectional")) {
+        errors <- c(
+            errors,
+            "cross-sectional evidence contract sampling design is invalid"
+        )
+    }
+    expected <- .new_cross_evidence_contract(
+        associations,
+        observations,
+        exclusions
+    )
+    if (!identical(contract$row_counts, expected$row_counts)) {
+        errors <- c(
+            errors,
+            "cross-sectional evidence contract row counts do not match evidence"
+        )
+    }
+    if (!identical(contract$digests, expected$digests)) {
+        errors <- c(
+            errors,
+            "cross-sectional evidence contract digests do not match evidence"
+        )
+    }
+    if (!identical(contract$cohorts, expected$cohorts)) {
+        errors <- c(
+            errors,
+            "cross-sectional evidence contract cohorts do not match associations"
+        )
+    }
+    if (nrow(associations)) {
+        cohort_digests <- associations$cohort_digest
+        invalid_cohort <- !vapply(
+            cohort_digests,
+            .is_sha256_digest,
+            logical(1L)
+        )
+        if (any(invalid_cohort)) {
+            errors <- c(
+                errors,
+                "cross-sectional association cohorts require SHA-256 digests"
+            )
+        }
+        association_keys <- unique(paste(
+            associations$metadata_field,
+            associations$component,
+            sep = "\r"
+        ))
+        observation_keys <- unique(paste(
+            observations$metadata_field,
+            observations$component,
+            sep = "\r"
+        ))
+        if (!all(association_keys %in% observation_keys)) {
+            errors <- c(
+                errors,
+                "cross-sectional associations lack normalized observations"
+            )
+        }
+    }
+    errors
+}
+
+.empty_association_evidence <- function() {
+    empty <- lapply(.association_atlas_columns, function(name) {
+        if (name %in% c(
+            "component", "n_available", "n_missing", "n_score_ties",
+            "n_target_ties", "n_resamples", "resample_failures"
+        )) {
+            integer()
+        } else if (name %in% c(
+            "estimate", "effect_magnitude", "p_value", "q_value",
+            "effect_conf_low", "effect_conf_high"
+        )) {
+            numeric()
+        } else if (identical(name, "proposal_eligible")) {
+            logical()
+        } else {
+            character()
+        }
+    })
+    names(empty) <- .association_atlas_columns
+    as.data.frame(empty, stringsAsFactors = FALSE)
+}
+
+.empty_observation_evidence <- function() {
+    data.frame(
+        metadata_field = character(),
+        component = integer(),
+        component_label = character(),
+        sample_index = integer(),
+        primary_sample = character(),
+        metadata_type = character(),
+        metadata_value = character(),
+        metadata_numeric = numeric(),
+        score = numeric(),
+        atom_count = integer(),
+        available = logical(),
+        stringsAsFactors = FALSE
+    )
+}
+
+.empty_exclusion_evidence <- function() {
+    data.frame(
+        metadata_field = character(),
+        reason = character(),
+        stringsAsFactors = FALSE
+    )
+}
+
+# Internal deep-module result. Public callers observe it through the
+# MetadataAssociationAtlas boundary and its stable accessors.
+setClass(
+    "CrossSectionalInterpretationEvidence",
+    representation(
+        associations = "data.frame",
+        observations = "data.frame",
+        exclusions = "data.frame",
+        provenance = "list"
+    )
+)
+
+setValidity("CrossSectionalInterpretationEvidence", function(object) {
+    .cross_evidence_errors(
+        object@associations,
+        object@observations,
+        object@exclusions,
+        object@provenance$evidence_contract
+    )
+})
+
+.new_cross_evidence <- function(
+    association_rows,
+    observation_rows,
+    exclusion_rows,
+    provenance
+) {
+    associations <- if (length(association_rows)) {
+        do.call(rbind, association_rows)
+    } else {
+        .empty_association_evidence()
+    }
+    observations <- if (length(observation_rows)) {
+        do.call(rbind, observation_rows)
+    } else {
+        .empty_observation_evidence()
+    }
+    exclusions <- if (length(exclusion_rows)) {
+        do.call(rbind, exclusion_rows)
+    } else {
+        .empty_exclusion_evidence()
+    }
+    rownames(associations) <- NULL
+    rownames(observations) <- NULL
+    rownames(exclusions) <- NULL
+    provenance$evidence_contract <- .new_cross_evidence_contract(
+        associations,
+        observations,
+        exclusions
+    )
+    evidence <- new(
+        "CrossSectionalInterpretationEvidence",
+        associations = associations,
+        observations = observations,
+        exclusions = exclusions,
+        provenance = provenance
+    )
+    validObject(evidence)
+    evidence
 }
 
 .monotonicity_diagnostic <- function(scores, values) {
@@ -274,6 +517,17 @@ setValidity("MetadataAssociationAtlas", function(object) {
     )
     if (!all(required_provenance %in% names(object@provenance))) {
         errors <- c(errors, "provenance is missing required fields")
+    }
+    if (!is.null(object@provenance$evidence_contract)) {
+        errors <- c(
+            errors,
+            .cross_evidence_errors(
+                object@associations,
+                object@observations,
+                object@exclusions,
+                object@provenance$evidence_contract
+            )
+        )
     }
     if (!identical(
         object@evidence_status,
@@ -1586,57 +1840,6 @@ associate_metadata <- function(
         }
     }
 
-    associations <- if (length(association_rows)) {
-        do.call(rbind, association_rows)
-    } else {
-        empty <- lapply(.association_atlas_columns, function(name) {
-            if (name %in% c(
-                "component", "n_available", "n_missing", "n_score_ties",
-                "n_target_ties"
-            )) integer() else if (name %in% c(
-                "estimate", "effect_magnitude", "p_value", "q_value",
-                "effect_conf_low", "effect_conf_high"
-            )) numeric() else if (identical(name, "proposal_eligible")) {
-                logical()
-            } else if (name %in% c(
-                "n_resamples", "resample_failures"
-            )) {
-                integer()
-            } else character()
-        })
-        names(empty) <- .association_atlas_columns
-        as.data.frame(empty, stringsAsFactors = FALSE)
-    }
-    observations <- if (length(observation_rows)) {
-        do.call(rbind, observation_rows)
-    } else {
-        data.frame(
-            metadata_field = character(),
-            component = integer(),
-            component_label = character(),
-            sample_index = integer(),
-            primary_sample = character(),
-            metadata_type = character(),
-            metadata_value = character(),
-            metadata_numeric = numeric(),
-            score = numeric(),
-            atom_count = integer(),
-            available = logical(),
-            stringsAsFactors = FALSE
-        )
-    }
-    exclusions <- if (length(exclusion_rows)) {
-        do.call(rbind, exclusion_rows)
-    } else {
-        data.frame(
-            metadata_field = character(),
-            reason = character(),
-            stringsAsFactors = FALSE
-        )
-    }
-    rownames(associations) <- NULL
-    rownames(observations) <- NULL
-    rownames(exclusions) <- NULL
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
     metadata_dataset_id <- metadata(std)$dataset_id
@@ -1651,13 +1854,30 @@ associate_metadata <- function(
             "associate_metadata(): dataset_id must be one non-empty string"
         )
     }
+    evidence <- .new_cross_evidence(
+        association_rows = association_rows,
+        observation_rows = observation_rows,
+        exclusion_rows = exclusion_rows,
+        provenance = c(list(
+            association_strategy = sort(unique(association_strategy_ids)),
+            package_version = as.character(
+                utils::packageVersion("landscapeR")
+            ),
+            sampling_design = std@sampling_design@kind,
+            layer = names(as.list(experiments(std)))[[1L]],
+            input_digest = input_digest,
+            state_space_digest = state_space_digest,
+            dataset_id = dataset_id,
+            exchangeability = exchangeability
+        ), specification_provenance)
+    )
     atlas <- new(
         "MetadataAssociationAtlas",
         version = "1.0.0",
         dataset_id = dataset_id,
-        associations = associations,
-        observations = observations,
-        exclusions = exclusions,
+        associations = evidence@associations,
+        observations = evidence@observations,
+        exclusions = evidence@exclusions,
         sampling_design = std@sampling_design,
         input_digest = input_digest,
         state_space_digest = state_space_digest,
@@ -1671,18 +1891,7 @@ associate_metadata <- function(
         } else {
             "analytic-unadjusted"
         },
-        provenance = c(list(
-            association_strategy = sort(unique(association_strategy_ids)),
-            package_version = as.character(
-                utils::packageVersion("landscapeR")
-            ),
-            sampling_design = std@sampling_design@kind,
-            layer = names(as.list(experiments(std)))[[1L]],
-            input_digest = input_digest,
-            state_space_digest = state_space_digest,
-            dataset_id = dataset_id,
-            exchangeability = exchangeability
-        ), specification_provenance),
+        provenance = evidence@provenance,
         evidence_status = "estimable-exploratory-only"
     )
     validObject(atlas)
@@ -1736,6 +1945,29 @@ atlas_provenance <- function(atlas) {
         stop("atlas_provenance(): atlas must be a MetadataAssociationAtlas")
     }
     atlas@provenance
+}
+
+#' Extract the cross-sectional evidence contract
+#'
+#' The contract summarizes the normalized evidence rows, analysis cohorts, and
+#' deterministic table digests owned by the cross-sectional interpretation
+#' module. Time-course atlases are migrated separately and therefore return
+#' `NULL` until their dedicated interpretation modules adopt this contract.
+#'
+#' @param atlas a `MetadataAssociationAtlas`
+#' @return a named evidence-contract list, or `NULL` for an atlas without the
+#'   cross-sectional contract
+#' @export
+atlas_evidence_contract <- function(atlas) {
+    if (!is(atlas, "MetadataAssociationAtlas")) {
+        stop(
+            paste0(
+                "atlas_evidence_contract(): atlas must be a ",
+                "MetadataAssociationAtlas"
+            )
+        )
+    }
+    atlas@provenance$evidence_contract
 }
 
 #' @export

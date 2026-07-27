@@ -194,6 +194,17 @@ class RoadmapCheckerCliTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_allows_architecture_markdown(self) -> None:
+        architecture = self.repo / "docs" / "architecture"
+        architecture.mkdir()
+        (architecture / "module-seam.md").write_text(
+            "# Package module seam\n", encoding="utf-8"
+        )
+
+        result = self._run()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_rejects_json_outside_review_instruments(self) -> None:
         plans = self.repo / "docs" / "plans"
         plans.mkdir()
