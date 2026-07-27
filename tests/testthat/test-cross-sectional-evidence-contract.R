@@ -73,6 +73,11 @@ test_that("cross-sectional workflow exposes its complete evidence contract", {
     )
     expect_identical(contract$cohorts$metadata_field, rep("condition", 2L))
     expect_identical(contract$cohorts$component, c(1L, 2L))
+    expect_identical(nrow(contract$cohort_members), 16L)
+    expect_identical(
+        unique(contract$cohort_members$primary_sample),
+        sprintf("sample_%02d", seq_len(8L))
+    )
     expect_true(validObject(atlas))
 
     restored <- unserialize(serialize(atlas, NULL))
@@ -146,5 +151,32 @@ test_that("cross-sectional evidence contract retains typed non-identifiability",
     expect_identical(
         propose_component(atlas)@reason,
         "non-identifiable-design"
+    )
+})
+
+test_that("evidence contract accessor rejects invalid public input", {
+    expect_error(
+        atlas_evidence_contract(list()),
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("cross-sectional module marker makes its contract mandatory", {
+    atlas <- associate_metadata(
+        .cross_evidence_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+    missing_contract <- atlas
+    missing_contract@provenance$evidence_contract <- NULL
+    expect_error(
+        validObject(missing_contract),
+        "requires evidence contract"
+    )
+
+    missing_marker <- atlas
+    missing_marker@provenance$interpretation_module <- NULL
+    expect_error(
+        validObject(missing_marker),
+        "requires a recognized interpretation module"
     )
 })

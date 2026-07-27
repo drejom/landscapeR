@@ -161,6 +161,11 @@ contract_lines <- c(
             collapse = ", "
         )
     ),
+    paste(
+        "cohort_members:",
+        nrow(contract$cohort_members),
+        "normalized rows"
+    ),
     "",
     paste(capture.output(print(contract$cohorts, row.names = FALSE)), collapse = "\n")
 )
