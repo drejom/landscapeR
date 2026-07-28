@@ -1,18 +1,18 @@
-experiment,matrix_sample_id,include,exclusion_reason,genotype,temperature_c,stage,day,tissue,biological_unit,source_group,source_deg_id,metadata_status
-early_urogenital_28c,9520_E1_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,,parsed_from_matrix_id
-early_urogenital_28c,9520_E10_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,,parsed_from_matrix_id
-early_urogenital_28c,9520_E11_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,,parsed_from_matrix_id
-early_urogenital_28c,9520_E14_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,,parsed_from_matrix_id
-early_urogenital_28c,9520_E15_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,,parsed_from_matrix_id
-early_urogenital_28c,9520_E16_S4_ZW,true,,ZW,28,S4,,whole urogenital system,independent destructive sample,ZW_28C_S4,,parsed_from_matrix_id
-early_urogenital_28c,9520_E17_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,,parsed_from_matrix_id
-early_urogenital_28c,9520_E18_S4_ZW,true,,ZW,28,S4,,whole urogenital system,independent destructive sample,ZW_28C_S4,,parsed_from_matrix_id
-early_urogenital_28c,9520_E19_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,,parsed_from_matrix_id
-early_urogenital_28c,9520_E2_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,,parsed_from_matrix_id
-early_urogenital_28c,9520_E3_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,,parsed_from_matrix_id
-early_urogenital_28c,9520_E4_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,,parsed_from_matrix_id
-early_urogenital_28c,9520_E5_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,,parsed_from_matrix_id
-early_urogenital_28c,9520_E6_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,,parsed_from_matrix_id
-early_urogenital_28c,9520_E8_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,,parsed_from_matrix_id
-early_urogenital_28c,9520_E9_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,,parsed_from_matrix_id
-early_urogenital_28c,9559_E11_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,,parsed_from_matrix_id
+experiment,matrix_sample_id,include,exclusion_reason,genotype,temperature_c,stage,day,tissue,biological_unit,source_group,source_deg_id,metadata_status,source_library_keys,source_specimen_ids,source_pool_composition,genotype_confidence,temperature_confidence,stage_confidence,source_registry_refcodes,defect_flag
+early_urogenital_28c,9520_E1_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,9520_E1_S1_ZW,master_registry_matched,FD07745609,E:9520:20:2:1,,high,authoritative,high,,
+early_urogenital_28c,9520_E10_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,9520_E10_S2_ZZ,master_registry_matched,FD07745694,E:9520:20:2:10,,high,authoritative,high,,
+early_urogenital_28c,9520_E11_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,9520_E11_S2_ZW,master_registry_matched,FD07745878,E:9520:20:2:11,,high,authoritative,high,,
+early_urogenital_28c,9520_E14_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,9520_E14_S2_ZZ,master_registry_matched,FD07745880,E:9520:20:2:14,,high,authoritative,high,,
+early_urogenital_28c,9520_E15_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,9520_E15_S4_ZZ,master_registry_matched,FD07743286,E:9520:20:2:15,,high,authoritative,high,,
+early_urogenital_28c,9520_E16_S4_ZW,true,,ZW,28,S4,,whole urogenital system,independent destructive sample,ZW_28C_S4,9520_E16_S4_ZW,master_registry_matched,FD07743179,E:9520:20:2:16,,high,authoritative,high,,
+early_urogenital_28c,9520_E17_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,9520_E17_S4_ZZ,master_registry_matched,FD07747628,E:9520:20:2:17,,high,authoritative,high,,
+early_urogenital_28c,9520_E18_S4_ZW,true,,ZW,28,S4,,whole urogenital system,independent destructive sample,ZW_28C_S4,9520_E18_S4_ZW,master_registry_matched,FD07745577,E:9520:20:2:18,,high,authoritative,high,,
+early_urogenital_28c,9520_E19_S4_ZZ,true,,ZZ,28,S4,,whole urogenital system,independent destructive sample,ZZ_28C_S4,9520_E19_S4_ZZ,master_registry_matched,FD07743462,E:9520:20:2:19,,high,authoritative,high,,
+early_urogenital_28c,9520_E2_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,9520_E2_S1_ZZ,master_registry_matched,FD07745665,E:9520:20:2:2,,high,authoritative,high,,
+early_urogenital_28c,9520_E3_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,9520_E3_S1_ZW,master_registry_matched,FD07745666,E:9520:20:2:3,,high,authoritative,high,,
+early_urogenital_28c,9520_E4_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,9520_E4_S1_ZZ,master_registry_matched,FD07745691,E:9520:20:2:4,,high,authoritative,high,,
+early_urogenital_28c,9520_E5_S1_ZZ,true,,ZZ,28,S1,,whole urogenital system,independent destructive sample,ZZ_28C_S1,9520_E5_S1_ZZ,master_registry_matched,FD07745127,E:9520:20:2:5,,high,authoritative,high,,
+early_urogenital_28c,9520_E6_S1_ZW,true,,ZW,28,S1,,whole urogenital system,independent destructive sample,ZW_28C_S1,9520_E6_S1_ZW,master_registry_matched,FD07745693,E:9520:20:2:6,,high,authoritative,high,,
+early_urogenital_28c,9520_E8_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,9520_E8_S2_ZW,master_registry_matched,FD07746922,E:9520:20:2:8,,high,authoritative,high,,
+early_urogenital_28c,9520_E9_S2_ZW,true,,ZW,28,S2,,whole urogenital system,independent destructive sample,ZW_28C_S2,9520_E9_S2_ZW,master_registry_matched,FD07745575,E:9520:20:2:9,,high,authoritative,high,,
+early_urogenital_28c,9559_E11_S2_ZZ,true,,ZZ,28,S2,,whole urogenital system,independent destructive sample,ZZ_28C_S2,9559_E11_S2_ZZ,master_registry_matched,FD07747889,E:9559:20:3:11,,high,authoritative,high,,
