@@ -65,6 +65,7 @@ Collate:
     '12a-stage1-svd.R'
     '13-stage0-synthetic.R'
     '13a-plot-theme.R'
+    '13b-interpretation-evidence.R'
     '13b-component-interpretation.R'
     '13c-independent-time-course-interpretation.R'
     '13d-repeated-time-course-interpretation.R'

@@ -389,7 +389,7 @@ bodies may state dependencies but do not change this ordering.
 | [#96](https://github.com/drejom/landscapeR/issues/96) | Shared artifact migration policy | parked |
 | [#97](https://github.com/drejom/landscapeR/issues/97) | Interpretation evidence-graph migration policy | parked — blocked by #96 |
 | [#100](https://github.com/drejom/landscapeR/issues/100) | Shared interpretation evidence contract correction | active — required for #91 |
-| [#101](https://github.com/drejom/landscapeR/issues/101) | Pogona master-registry manifest reconciliation | active — supporting data preparation |
+| [#101](https://github.com/drejom/landscapeR/issues/101) | Pogona master-registry manifest reconciliation | complete |
 <!-- issue-map:end -->
 
 ---
@@ -412,6 +412,7 @@ plans.
 | 2026-07-15 | Descriptive component gallery | #54 complete on merge; canonical metadata colour without private ranking |
 | 2026-07-24 | Component-interpretation statistical strategy | ADR 0020 accepted; #55 implementation gate open |
 | 2026-07-25 | General cross-sectional component interpretation | #80 complete; continuous, ordered, adjusted, resampled, and search-aware evidence landed |
+| 2026-07-27 | Pogona master-registry reconciliation | #101 complete; canonical manifests derive from the audited registry while unresolved records remain excluded |
 
 ---
 

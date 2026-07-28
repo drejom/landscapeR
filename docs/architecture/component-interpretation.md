@@ -4,7 +4,7 @@ ADR 0020 defines the scientific strategy contract. The package architecture
 keeps that choice separate from the evidence invariant exposed to downstream
 consumers.
 
-## Cross-sectional seam
+## Shared evidence seam
 
 `associate_metadata()` is the public workflow boundary. For a cross-sectional
 sampling design it delegates individual score-vector calculations to registered
@@ -15,17 +15,24 @@ That seam normalizes and validates:
 - raw component observations for every association;
 - declared exclusions;
 - available-case cohort identity and counts;
-- deterministic table digests and provenance.
+- deterministic table and cohort-membership digests and provenance.
 
-The internal `CrossSectionalInterpretationEvidence` type owns this complete
-invariant before a `MetadataAssociationAtlas` can be constructed. Strategies
-therefore own the estimand calculation, while the interpretation module owns
-the evidence that proposal, permutation, plotting, serialization, and
-confirmation consumers require.
+The internal `InterpretationEvidence` type owns this complete invariant before
+a `MetadataAssociationAtlas` can be constructed. Cross-sectional
+interpretation is the first module behind the boundary; issue #92 migrates the
+two time-course modules through the same type. New designs supply
+design-specific validation without creating peer evidence containers.
+
+Strategies therefore own the estimand calculation, while package-owned modules
+own the evidence that proposal, permutation, plotting, serialization, and
+confirmation consumers require. Method authors continue to return the narrow
+`AssociationStrategy` result and do not construct S4 evidence objects, manage
+digests, or assemble provenance.
 
 `atlas_evidence_contract()` exposes a stable summary of the normalized row
-counts, cohorts, and digests. `MetadataAssociationAtlas` validity checks the
-summary against its stored evidence. Atlases serialized before this contract
+counts, cohorts, and digests as an inspection-friendly list. This summary is
+not the internal authoritative object. `MetadataAssociationAtlas` validity
+checks it against stored evidence. Atlases serialized before this contract
 remain readable, and time-course modules remain unchanged until their
 separately scoped migrations.
 
@@ -40,5 +47,5 @@ separately scoped migrations.
 - Evidence validation cannot select a component, promote a runner-up, change a
   scientific estimand, or create an acceptance threshold.
 
-Issue #91 is an architecture and implementation change only. It does not
-establish component identifiability or scientific recovery.
+Issues #91 and #100 are architecture and implementation changes only. They do
+not establish component identifiability or scientific recovery.

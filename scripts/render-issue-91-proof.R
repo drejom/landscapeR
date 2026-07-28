@@ -62,61 +62,13 @@ atlas <- associate_metadata(
     seed = 9101L
 )
 proposal <- propose_component(atlas, n_permutations = 19L, seed = 9102L)
-atlas_data <- atlas_observations(atlas)
-atlas_data <- atlas_data[
-    atlas_data$metadata_field == "condition" & atlas_data$available,
-    ,
-    drop = FALSE
-]
-atlas_plot <- ggplot2::ggplot(
-    atlas_data,
-    ggplot2::aes(
-        x = .data[["metadata_value"]],
-        y = .data[["score"]]
-    )
-) +
-    ggplot2::geom_boxplot(
-        width = 0.5,
-        outlier.shape = NA,
-        colour = "#111111",
-        fill = "#FFFFFF",
-        linewidth = 0.45
-    ) +
-    ggplot2::geom_point(
-        shape = 21,
-        stroke = 0.45,
-        colour = "#111111",
-        fill = "#FFFFFF",
-        position = ggplot2::position_jitter(
-            width = 0.08,
-            height = 0,
-            seed = 91L
-        )
-    ) +
-    ggplot2::facet_wrap(ggplot2::vars(component_label), nrow = 1L) +
-    ggplot2::labs(
-        title = "Metadata association atlas",
-        subtitle = "Stored cross-sectional observations",
-        x = "Condition",
-        y = "Component score"
-    ) +
-    theme_landscapeR()
-
-ggplot2::ggsave(
-    file.path(output_dir, "cross-sectional-atlas.png"),
-    atlas_plot,
-    width = 100,
-    height = 100,
-    units = "mm",
-    dpi = 180
+save_landscapeR_plot(
+    plot(atlas),
+    file.path(output_dir, "cross-sectional-atlas.png")
 )
-ggplot2::ggsave(
-    file.path(output_dir, "component-proposal.png"),
+save_landscapeR_plot(
     plot(proposal),
-    width = 100,
-    height = 100,
-    units = "mm",
-    dpi = 180
+    file.path(output_dir, "component-proposal.png")
 )
 
 confounded <- std
@@ -136,13 +88,9 @@ abstention_atlas <- associate_metadata(
     dataset_id = "issue-91-confounded"
 )
 abstention <- propose_component(abstention_atlas)
-ggplot2::ggsave(
-    file.path(output_dir, "typed-abstention.png"),
+save_landscapeR_plot(
     plot(abstention),
-    width = 100,
-    height = 100,
-    units = "mm",
-    dpi = 180
+    file.path(output_dir, "typed-abstention.png")
 )
 
 contract <- atlas_evidence_contract(atlas)

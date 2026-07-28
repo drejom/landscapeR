@@ -14,7 +14,9 @@ threshold.
 | ![Cross-sectional association atlas](cross-sectional-atlas.png) | ![Effect-first component proposal](component-proposal.png) |
 
 Registered cross-sectional strategies retain the ADR 0020 estimands. Public
-plotting and effect-first proposal behavior are unchanged.
+plotting and effect-first proposal behavior are unchanged. The atlas artifact
+is rendered directly through `plot(atlas)` and all raster artifacts use the
+package's 100 mm square, 450 dpi publication export contract.
 
 ## Typed non-identifiability remains visible
 
@@ -27,9 +29,10 @@ component.
 ## Inspectable evidence contract
 
 [`evidence-contract.txt`](evidence-contract.txt) records the normalized
-association, observation, and exclusion counts; deterministic table digests;
-and available-case cohort summaries. The same values are available through
-`atlas_evidence_contract()` and checked by `MetadataAssociationAtlas` validity.
+association, observation, and exclusion counts; deterministic table and
+cohort-membership digests; and available-case cohort summaries. The same values
+are available through the inspection-friendly `atlas_evidence_contract()`
+summary and checked by `MetadataAssociationAtlas` validity.
 
 ## Reproduction
 

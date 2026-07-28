@@ -61,7 +61,7 @@ test_that("cross-sectional workflow exposes its complete evidence contract", {
     )
     expect_named(
         contract$digests,
-        c("associations", "observations", "exclusions")
+        c("associations", "observations", "exclusions", "cohort_members")
     )
     expect_true(all(grepl("^[[:xdigit:]]{64}$", contract$digests)))
     expect_identical(
@@ -195,5 +195,36 @@ test_that("cohort membership must cover the exact observation universe", {
     expect_error(
         validObject(altered),
         "cohort membership does not match association evidence"
+    )
+})
+
+test_that("cohort membership rejects undeclared association groups", {
+    atlas <- associate_metadata(
+        .cross_evidence_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+    altered <- atlas
+    orphan <- altered@provenance$evidence_contract$cohort_members[1L, ]
+    orphan$component <- 99L
+    altered@provenance$evidence_contract$cohort_members <- rbind(
+        altered@provenance$evidence_contract$cohort_members,
+        orphan
+    )
+
+    expect_error(
+        validObject(altered),
+        "cohort membership groups do not equal association groups"
+    )
+})
+
+test_that("public cross-sectional atlas plot renders all diagnostic panels", {
+    atlas <- associate_metadata(
+        .cross_evidence_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+
+    expect_s3_class(
+        ggplot2::ggplotGrob(plot(atlas)),
+        "gtable"
     )
 })
