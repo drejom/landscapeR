@@ -432,6 +432,32 @@ trajectories, condition-level fitted divergence, sampling support, dropout,
 uncertainty, fit failures, and abstention remain visible in the canonical
 plots.
 
+All three supported sampling designs cross the same package-owned evidence
+boundary before the atlas is constructed. `atlas_evidence_contract()` returns
+the same inspection fields for each design: a module version and sampling
+design, normalized row counts, deterministic table digests, cohort summaries,
+and explicit cohort membership. The common shape makes downstream evidence
+auditable without treating condition-by-time cells and subject trajectories as
+exchangeable:
+
+```{r evidence-contracts}
+lapply(
+  list(
+    cross_sectional = atlas,
+    independent_time_course = time_atlas,
+    repeated_subject = repeated_atlas
+  ),
+  function(x) {
+    contract <- atlas_evidence_contract(x)
+    list(
+      version = contract$version,
+      sampling_design = contract$sampling_design,
+      row_counts = contract$row_counts
+    )
+  }
+)
+```
+
 ## Current boundary
 
 These paths do not reinterpret destructive time courses as longitudinal

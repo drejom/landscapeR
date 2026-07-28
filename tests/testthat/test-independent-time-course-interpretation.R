@@ -20,6 +20,27 @@ test_that("independent time course fits the declared standardized interaction", 
         atlas_provenance(atlas)$time_transform,
         "(time - min(time)) / (max(time) - min(time))"
     )
+    contract <- atlas_evidence_contract(atlas)
+    expect_identical(contract$version, "independent-time-course-v1")
+    expect_identical(contract$sampling_design, "independent_time_course")
+    expect_identical(
+        contract$row_counts,
+        c(
+            associations = 6L,
+            observations = 48L,
+            exclusions = 3L
+        )
+    )
+    expect_true(all(grepl("^[[:xdigit:]]{64}$", contract$digests)))
+    expect_identical(
+        sort(unique(contract$cohort_members$evidence_variant)),
+        sort(c(
+            "pooled-descriptive",
+            "time-course-unadjusted",
+            "time-course-adjusted"
+        ))
+    )
+    expect_true(validObject(atlas))
     expect_identical(atlas_provenance(atlas)$model_engine, "stats::lm")
     expect_match(
         atlas_provenance(atlas)$scientific_model_formula_adjusted,
@@ -214,6 +235,12 @@ test_that("invalid independent-time design retains evidence and abstains", {
     abstention <- propose_component(atlas)
     expect_s4_class(abstention, "ComponentAbstention")
     expect_identical(abstention@reason, "non-identifiable-design")
+    expect_identical(
+        atlas_evidence_contract(
+            unserialize(serialize(atlas, NULL))
+        ),
+        atlas_evidence_contract(atlas)
+    )
     expect_s3_class(plot(abstention), "ggplot")
     expect_error(
         confirm_component(
@@ -429,6 +456,10 @@ test_that("an empty complete-case cohort returns typed abstention", {
 
     expect_s4_class(abstention, "AssociationAbstention")
     expect_identical(abstention@reason, "non-identifiable-design")
+    expect_identical(
+        abstention@provenance$interpretation_module,
+        "independent-time-course-v1"
+    )
     expect_match(
         association_abstention_diagnostic(abstention),
         "non-identifiable-design: no complete cases"
@@ -442,6 +473,22 @@ test_that("an empty complete-case cohort returns typed abstention", {
         ),
         "cannot confirm an abstention",
         class = "landscapeR_validation_error"
+    )
+})
+
+test_that("time-course contract rejects unrelated cohort identities", {
+    atlas <- associate_metadata(
+        independent_time_course_fixture(include_nuisance = FALSE),
+        specification = independent_time_course_specification(),
+        non_analytical_fields = c("sample_id", "batch")
+    )
+    altered <- atlas
+    altered@provenance$evidence_contract$cohort_members$primary_sample[[1L]] <-
+        "unrelated-sample"
+
+    expect_error(
+        validObject(altered),
+        "cohort membership does not match association evidence"
     )
 })
 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/13b-component-interpretation.R
 \name{atlas_evidence_contract}
 \alias{atlas_evidence_contract}
-\title{Extract the cross-sectional evidence contract}
+\title{Extract the interpretation evidence contract}
 \usage{
 atlas_evidence_contract(atlas)
 }
@@ -24,12 +24,11 @@ group, with its cohort digest and available/missing counts; and
 logical \code{included} column records whether that sample contributed to the
 corresponding association estimate.
 
-Returns \code{NULL} for an atlas without the cross-sectional contract.
+Returns \code{NULL} for an atlas without an interpretation evidence contract.
 }
 }
 \description{
 The contract summarizes the normalized evidence rows, analysis cohorts, and
-deterministic table digests owned by the cross-sectional interpretation
-module. Time-course atlases are migrated separately and therefore return
-\code{NULL} until their dedicated interpretation modules adopt this contract.
+deterministic table digests owned by the sampling-design interpretation
+module.
 }

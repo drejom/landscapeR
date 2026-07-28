@@ -6,9 +6,9 @@ consumers.
 
 ## Shared evidence seam
 
-`associate_metadata()` is the public workflow boundary. For a cross-sectional
-sampling design it delegates individual score-vector calculations to registered
-`AssociationStrategy` adapters, then crosses one package-owned evidence seam.
+`associate_metadata()` is the public workflow boundary. Each supported sampling
+design delegates its score-vector calculation to a registered
+`AssociationStrategy` adapter, then crosses one package-owned evidence seam.
 That seam normalizes and validates:
 
 - association rows at metadata field, component, and evidence-variant grain;
@@ -18,10 +18,12 @@ That seam normalizes and validates:
 - deterministic table and cohort-membership digests and provenance.
 
 The internal `InterpretationEvidence` type owns this complete invariant before
-a `MetadataAssociationAtlas` can be constructed. Cross-sectional
-interpretation is the first module behind the boundary; issue #92 migrates the
-two time-course modules through the same type. New designs supply
-design-specific validation without creating peer evidence containers.
+a `MetadataAssociationAtlas` can be constructed. Cross-sectional, independent
+destructive-time-course, and repeated-subject modules all cross this boundary.
+Their contract lists have the same fields and normalized evidence grain, while
+their registered module versions retain distinct sampling-design validation.
+New designs supply design-specific validation without creating peer evidence
+containers.
 
 Strategies therefore own the estimand calculation, while package-owned modules
 own the evidence that proposal, permutation, plotting, serialization, and
@@ -32,9 +34,9 @@ digests, or assemble provenance.
 `atlas_evidence_contract()` exposes a stable summary of the normalized row
 counts, cohorts, and digests as an inspection-friendly list. This summary is
 not the internal authoritative object. `MetadataAssociationAtlas` validity
-checks it against stored evidence. Atlases serialized before this contract
-remain readable, and time-course modules remain unchanged until their
-separately scoped migrations.
+checks it against stored evidence. The contract does not collapse destructive
+time cells into subjects or repeated subject trajectories into independent
+observations. Atlases serialized before this contract remain readable.
 
 ## Boundaries retained from ADR 0020
 
@@ -47,5 +49,5 @@ separately scoped migrations.
 - Evidence validation cannot select a component, promote a runner-up, change a
   scientific estimand, or create an acceptance threshold.
 
-Issues #91 and #100 are architecture and implementation changes only. They do
-not establish component identifiability or scientific recovery.
+Issues #91, #100, and #92 are architecture and implementation changes only.
+They do not establish component identifiability or scientific recovery.

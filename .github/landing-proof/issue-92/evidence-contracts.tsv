@@ -1,0 +1,4 @@
+workflow	version	sampling_design	associations	observations	exclusions	cohort_members
+cross_sectional	cross-sectional-v1	cross_sectional	2	16	1	16
+independent_time_course	independent-time-course-v1	independent_time_course	6	48	3	144
+repeated_subject	repeated-time-course-v1	longitudinal	6	128	3	384
