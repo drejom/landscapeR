@@ -1,0 +1,15 @@
+version: cross-sectional-v1
+sampling_design: cross_sectional
+row_counts: associations 2, observations 16, exclusions 1
+digests: associations 30691e2863297b1b, observations e5bd226e3213eaa4, exclusions d21dd68e92a559db, cohort_members 06bd8696bc6e7d42
+cohort_members: 16 normalized rows
+
+ metadata_field component evidence_variant
+      condition         1       unadjusted
+      condition         2       unadjusted
+                                                    cohort_digest n_available
+ d4f167505230ab2788195fc248e5496032fd64121ccaf3a1c862b6aa54c746bd           8
+ d4f167505230ab2788195fc248e5496032fd64121ccaf3a1c862b6aa54c746bd           8
+ n_missing
+         0
+         0

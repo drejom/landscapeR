@@ -126,6 +126,22 @@ this provisional decision before or during implementation.
 `ComponentProposal` → confirmed `AnalysisSpecification` workflow using three
 registered, capability-bounded association strategies.
 
+One package-owned internal `InterpretationEvidence` contract is the shared
+construction boundary between design-specific interpretation modules and
+`MetadataAssociationAtlas`. It owns normalized associations, observations,
+exclusions, cohort membership, provenance, module identity, and deterministic
+integrity evidence. Cross-sectional interpretation is its first producer;
+independent-time and repeated-subject paths migrate through the same boundary
+under #92 rather than introducing peer evidence classes.
+
+`InterpretationEvidence` is not public API, an independently serialized
+scientific result, or a method-author extension point. Ordinary method authors
+continue to implement the narrow `AssociationStrategy` result contract.
+Package-owned modules construct evidence objects, reconcile cohorts, and manage
+digests and provenance. A new sampling design requires a scientific design
+decision but must reuse this boundary unless a later ADR demonstrates that its
+invariant cannot be represented there.
+
 ### Target intent and role exclusivity
 
 A draft `AnalysisSpecification` is the sole target-intent object. It supplies
@@ -344,9 +360,11 @@ contract.
 ## Consequences
 
 - `SamplingDesign` v2 and migration must land before association strategies.
-- New deep objects are limited to `MetadataAssociationAtlas`,
-  `ComponentProposal`, and one `AssociationStrategy` contract; ordinary
-  algorithms remain plain code inside strategies.
+- New deep public objects are limited to `MetadataAssociationAtlas`,
+  `ComponentProposal`, and one `AssociationStrategy` contract. One shared
+  internal `InterpretationEvidence` construction boundary is authorized for
+  all component-interpretation designs. Design-specific peer evidence classes
+  require a later ADR; ordinary algorithms remain plain code inside strategies.
 - `nlme` is required for the repeated strategy; `clue` is required for global
   component assignment. ADR 0018 governs any `future.apply` repetition.
 - Atlas/proposal plots render stored results and never recompute models.

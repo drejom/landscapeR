@@ -1,40 +1,4 @@
-# Component interpretation (ADR 0020; issues #79, #80, and #81)
-
-utils::globalVariables(c("metadata_field", "component_label"))
-
-.association_atlas_columns <- c(
-    "metadata_field", "component", "component_label", "estimand",
-    "estimate", "effect_magnitude", "reference_level", "comparison_level",
-    "n_available", "n_missing", "n_score_ties", "n_target_ties",
-    "evidence_variant", "proposal_eligible", "nuisance_fields",
-    "cohort_digest", "design_digest", "diagnostic", "p_value", "q_value",
-    "effect_conf_low", "effect_conf_high", "n_resamples",
-    "resample_failures", "resampling_method", "resampling_plan_digest",
-    "evidence_status"
-)
-
-.association_observation_columns <- c(
-    "metadata_field", "component", "component_label", "sample_index",
-    "primary_sample", "metadata_type", "metadata_value", "metadata_numeric",
-    "score", "atom_count", "available"
-)
-
-.is_sha256_digest <- function(x) {
-    length(x) == 1L && !is.na(x) &&
-        grepl("^[[:xdigit:]]{64}$", x)
-}
-
-.is_scalar_nonempty_text <- function(x) {
-    length(x) == 1L && !is.na(x) && nzchar(x)
-}
-
-.association_cohort_digest <- function(primary_sample, complete) {
-    digest::digest(
-        as.character(primary_sample[complete]),
-        algo = "sha256",
-        serialize = TRUE
-    )
-}
+# Component interpretation (ADR 0020; issues #79, #80, #81, #91, and #100)
 
 .monotonicity_diagnostic <- function(scores, values) {
     if (!is.numeric(values) && !is.ordered(values)) {
@@ -274,6 +238,37 @@ setValidity("MetadataAssociationAtlas", function(object) {
     )
     if (!all(required_provenance %in% names(object@provenance))) {
         errors <- c(errors, "provenance is missing required fields")
+    }
+    interpretation_module <- object@provenance$interpretation_module
+    uses_cross_sectional_module <- identical(
+        interpretation_module,
+        .cross_sectional_evidence_version
+    )
+    if (uses_cross_sectional_module &&
+        is.null(object@provenance$evidence_contract)) {
+        errors <- c(
+            errors,
+            "cross-sectional interpretation module requires evidence contract"
+        )
+    }
+    if (!is.null(object@provenance$evidence_contract) &&
+        !uses_cross_sectional_module) {
+        errors <- c(
+            errors,
+            "evidence contract requires a recognized interpretation module"
+        )
+    }
+    if (uses_cross_sectional_module) {
+        errors <- c(
+            errors,
+            .cross_sectional_evidence_errors(
+                object@associations,
+                object@observations,
+                object@exclusions,
+                object@provenance$evidence_contract,
+                object@provenance
+            )
+        )
     }
     if (!identical(
         object@evidence_status,
@@ -858,6 +853,7 @@ register_strategy(
         target_type = specification@target_type,
         package_version = as.character(utils::packageVersion("landscapeR")),
         sampling_design = std@sampling_design@kind,
+        interpretation_module = .cross_sectional_evidence_version,
         input_digest = input_digest,
         state_space_digest = state_space_digest
     )
@@ -975,6 +971,11 @@ register_strategy(
             cohort_digest = .association_cohort_digest(
                 names(target_values),
                 complete
+            ),
+            cohort_members = data.frame(
+                primary_sample = as.character(names(target_values)),
+                included = complete,
+                stringsAsFactors = FALSE
             ),
             design_digest = design_digest,
             diagnostic = diagnostic,
@@ -1183,6 +1184,28 @@ associate_metadata <- function(
             )
         )
     }
+    .associate_cross_sectional(
+        std = std,
+        stage1 = stage1,
+        specification = specification,
+        non_analytical_fields = non_analytical_fields,
+        dataset_id = dataset_id,
+        n_resamples = n_resamples,
+        seed = seed,
+        exchangeability = exchangeability
+    )
+}
+
+.associate_cross_sectional <- function(
+    std,
+    stage1,
+    specification,
+    non_analytical_fields,
+    dataset_id,
+    n_resamples,
+    seed,
+    exchangeability
+) {
     specification_provenance <- list()
     if (!is.null(specification)) {
         if (!is(specification, "AnalysisSpecification") ||
@@ -1383,6 +1406,9 @@ associate_metadata <- function(
             }
             if (is.null(effect)) return(NULL)
             complete <- is.finite(scores) & !is.na(values)
+            if (is.numeric(values) && !is.ordered(values)) {
+                complete <- complete & is.finite(values)
+            }
             resampled_estimates <- vapply(
                 resampling_plan$indices,
                 function(index) {
@@ -1439,6 +1465,13 @@ associate_metadata <- function(
                 resampling_plan_digest =
                     uncertainty$resampling_plan_digest,
                 evidence_status = "estimable-exploratory-only",
+                .cohort_members = I(list(
+                    data.frame(
+                        primary_sample = as.character(names(values)),
+                        included = complete,
+                        stringsAsFactors = FALSE
+                    )
+                )),
                 stringsAsFactors = FALSE
             )
         })
@@ -1519,6 +1552,9 @@ associate_metadata <- function(
                             resampling_plan_digest =
                                 uncertainty$resampling_plan_digest,
                             evidence_status = effect$evidence_status,
+                            .cohort_members = I(list(
+                                effect$cohort_members
+                            )),
                             stringsAsFactors = FALSE
                         )
                     }
@@ -1586,57 +1622,6 @@ associate_metadata <- function(
         }
     }
 
-    associations <- if (length(association_rows)) {
-        do.call(rbind, association_rows)
-    } else {
-        empty <- lapply(.association_atlas_columns, function(name) {
-            if (name %in% c(
-                "component", "n_available", "n_missing", "n_score_ties",
-                "n_target_ties"
-            )) integer() else if (name %in% c(
-                "estimate", "effect_magnitude", "p_value", "q_value",
-                "effect_conf_low", "effect_conf_high"
-            )) numeric() else if (identical(name, "proposal_eligible")) {
-                logical()
-            } else if (name %in% c(
-                "n_resamples", "resample_failures"
-            )) {
-                integer()
-            } else character()
-        })
-        names(empty) <- .association_atlas_columns
-        as.data.frame(empty, stringsAsFactors = FALSE)
-    }
-    observations <- if (length(observation_rows)) {
-        do.call(rbind, observation_rows)
-    } else {
-        data.frame(
-            metadata_field = character(),
-            component = integer(),
-            component_label = character(),
-            sample_index = integer(),
-            primary_sample = character(),
-            metadata_type = character(),
-            metadata_value = character(),
-            metadata_numeric = numeric(),
-            score = numeric(),
-            atom_count = integer(),
-            available = logical(),
-            stringsAsFactors = FALSE
-        )
-    }
-    exclusions <- if (length(exclusion_rows)) {
-        do.call(rbind, exclusion_rows)
-    } else {
-        data.frame(
-            metadata_field = character(),
-            reason = character(),
-            stringsAsFactors = FALSE
-        )
-    }
-    rownames(associations) <- NULL
-    rownames(observations) <- NULL
-    rownames(exclusions) <- NULL
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
     metadata_dataset_id <- metadata(std)$dataset_id
@@ -1651,13 +1636,31 @@ associate_metadata <- function(
             "associate_metadata(): dataset_id must be one non-empty string"
         )
     }
+    evidence <- .new_cross_sectional_evidence(
+        association_rows = association_rows,
+        observation_rows = observation_rows,
+        exclusion_rows = exclusion_rows,
+        provenance = c(list(
+            association_strategy = sort(unique(association_strategy_ids)),
+            package_version = as.character(
+                utils::packageVersion("landscapeR")
+            ),
+            sampling_design = std@sampling_design@kind,
+            layer = names(as.list(experiments(std)))[[1L]],
+            input_digest = input_digest,
+            state_space_digest = state_space_digest,
+            dataset_id = dataset_id,
+            exchangeability = exchangeability,
+            interpretation_module = .cross_sectional_evidence_version
+        ), specification_provenance)
+    )
     atlas <- new(
         "MetadataAssociationAtlas",
         version = "1.0.0",
         dataset_id = dataset_id,
-        associations = associations,
-        observations = observations,
-        exclusions = exclusions,
+        associations = evidence@associations,
+        observations = evidence@observations,
+        exclusions = evidence@exclusions,
         sampling_design = std@sampling_design,
         input_digest = input_digest,
         state_space_digest = state_space_digest,
@@ -1671,18 +1674,7 @@ associate_metadata <- function(
         } else {
             "analytic-unadjusted"
         },
-        provenance = c(list(
-            association_strategy = sort(unique(association_strategy_ids)),
-            package_version = as.character(
-                utils::packageVersion("landscapeR")
-            ),
-            sampling_design = std@sampling_design@kind,
-            layer = names(as.list(experiments(std)))[[1L]],
-            input_digest = input_digest,
-            state_space_digest = state_space_digest,
-            dataset_id = dataset_id,
-            exchangeability = exchangeability
-        ), specification_provenance),
+        provenance = evidence@provenance,
         evidence_status = "estimable-exploratory-only"
     )
     validObject(atlas)
@@ -1736,6 +1728,41 @@ atlas_provenance <- function(atlas) {
         stop("atlas_provenance(): atlas must be a MetadataAssociationAtlas")
     }
     atlas@provenance
+}
+
+#' Extract the cross-sectional evidence contract
+#'
+#' The contract summarizes the normalized evidence rows, analysis cohorts, and
+#' deterministic table digests owned by the cross-sectional interpretation
+#' module. Time-course atlases are migrated separately and therefore return
+#' `NULL` until their dedicated interpretation modules adopt this contract.
+#'
+#' @param atlas a `MetadataAssociationAtlas`
+#' @return A named list with:
+#' * `version`, the contract-version string;
+#' * `sampling_design`, the sampling-design identifier;
+#' * `row_counts`, integer counts for association, observation, and exclusion
+#'   evidence rows;
+#' * `digests`, SHA-256 digests for those three evidence tables and the cohort
+#'   membership table;
+#' * `cohorts`, one row per metadata-field, component, and evidence-variant
+#'   group, with its cohort digest and available/missing counts; and
+#' * `cohort_members`, one row per primary sample in each group, where the
+#'   logical `included` column records whether that sample contributed to the
+#'   corresponding association estimate.
+#'
+#'   Returns `NULL` for an atlas without the cross-sectional contract.
+#' @export
+atlas_evidence_contract <- function(atlas) {
+    if (!is(atlas, "MetadataAssociationAtlas")) {
+        .stop_landscapeR_validation(
+            paste0(
+                "atlas_evidence_contract(): atlas must be a ",
+                "MetadataAssociationAtlas"
+            )
+        )
+    }
+    atlas@provenance$evidence_contract
 }
 
 #' @export
@@ -3490,12 +3517,36 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
     }
     data <- atlas_observations(x)
     diagnostics <- atlas_associations(x)
-    diagnostics <- unique(diagnostics[
+    diagnostic_keys <- unique(diagnostics[
         diagnostics$evidence_variant == "unadjusted" &
             diagnostics$diagnostic == "possible-nonmonotone-association",
-        c("metadata_field", "component_label", "diagnostic"),
+        c("metadata_field", "component_label"),
         drop = FALSE
     ])
+    diagnostics <- unique(data[
+        ,
+        c("metadata_field", "component_label"),
+        drop = FALSE
+    ])
+    diagnostic_match <- paste(
+        diagnostics$metadata_field,
+        diagnostics$component_label,
+        sep = "\r"
+    ) %in% paste(
+        diagnostic_keys$metadata_field,
+        diagnostic_keys$component_label,
+        sep = "\r"
+    )
+    diagnostics$diagnostic <- ifelse(
+        diagnostic_match,
+        "possible-nonmonotone-association",
+        ""
+    )
+    diagnostics$display_label <- ifelse(
+        diagnostic_match,
+        "\u25b3 non-monotone",
+        ""
+    )
     available <- data[data$available, , drop = FALSE]
     categorical <- available[
         available$metadata_type == "categorical",
@@ -3584,10 +3635,10 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
         ggplot2::geom_text(
             data = diagnostics,
             mapping = ggplot2::aes(
-                x = -Inf,
-                y = Inf,
-                label = "\u25b3 non-monotone"
+                label = .data[["display_label"]]
             ),
+            x = -Inf,
+            y = Inf,
             hjust = -0.05,
             vjust = 1.2,
             colour = "#B2182B",

@@ -16,6 +16,7 @@ is built under `_site/` and deployed by CI; it is not committed here.
 | [`plans/`](plans/) | Per-issue execution plans and completion evidence | Current package priority |
 | [`research/`](research/) | Primary-source methodological research notes that inform decisions | Algorithm decisions or acceptance status |
 | [`reviews/`](reviews/) | Versioned expert-consultation instruments, hosted-form manifests, and private-review protocols | Reviewer identities, raw responses, or quotations |
+| [`architecture/`](architecture/) | Current package module seams, owned invariants, and dependency direction | Algorithm choice or work scheduling |
 | [`archive/`](archive/) | Completed audits and superseded planning context | Current package priority |
 | [`agents/`](agents/) | Agent workflow and issue/triage guidance | Scientific decisions |
 | [`vignettes/`](../vignettes/) | Current user workflow, implementation status, and evidence presentation | Historical transition proof or scheduling |

@@ -1,0 +1,51 @@
+# Component-interpretation architecture
+
+ADR 0020 defines the scientific strategy contract. The package architecture
+keeps that choice separate from the evidence invariant exposed to downstream
+consumers.
+
+## Shared evidence seam
+
+`associate_metadata()` is the public workflow boundary. For a cross-sectional
+sampling design it delegates individual score-vector calculations to registered
+`AssociationStrategy` adapters, then crosses one package-owned evidence seam.
+That seam normalizes and validates:
+
+- association rows at metadata field, component, and evidence-variant grain;
+- raw component observations for every association;
+- declared exclusions;
+- available-case cohort identity and counts;
+- deterministic table and cohort-membership digests and provenance.
+
+The internal `InterpretationEvidence` type owns this complete invariant before
+a `MetadataAssociationAtlas` can be constructed. Cross-sectional
+interpretation is the first module behind the boundary; issue #92 migrates the
+two time-course modules through the same type. New designs supply
+design-specific validation without creating peer evidence containers.
+
+Strategies therefore own the estimand calculation, while package-owned modules
+own the evidence that proposal, permutation, plotting, serialization, and
+confirmation consumers require. Method authors continue to return the narrow
+`AssociationStrategy` result and do not construct S4 evidence objects, manage
+digests, or assemble provenance.
+
+`atlas_evidence_contract()` exposes a stable summary of the normalized row
+counts, cohorts, and digests as an inspection-friendly list. This summary is
+not the internal authoritative object. `MetadataAssociationAtlas` validity
+checks it against stored evidence. Atlases serialized before this contract
+remain readable, and time-course modules remain unchanged until their
+separately scoped migrations.
+
+## Boundaries retained from ADR 0020
+
+- Unadjusted and adjusted evidence remain separate.
+- Missing observations remain visible through available-case counts.
+- Collapsed metadata are retained as exclusions.
+- Non-identifiable adjustment remains typed evidence and produces a typed
+  abstention rather than a fallback.
+- Strategies remain registry adapters.
+- Evidence validation cannot select a component, promote a runner-up, change a
+  scientific estimand, or create an acceptance threshold.
+
+Issues #91 and #100 are architecture and implementation changes only. They do
+not establish component identifiability or scientific recovery.
