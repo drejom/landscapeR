@@ -1,84 +1,84 @@
-experiment,matrix_sample_id,include,exclusion_reason,genotype,temperature_c,stage,day,tissue,biological_unit,source_group,source_deg_id,metadata_status
-gonad_temperature,28ZWC3_3a_Gonad_1,true,,ZW,28,S15,,gonad,independent destructive sample,ZW_28C_S15,28ZWC3_3a_Gonad_1,matched
-gonad_temperature,28ZWC3_3b_Gonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,28ZWC3_3b_Gonad_1,matched
-gonad_temperature,28ZWC3_3c_Gonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,28ZWC3_3c_Gonad_1,matched
-gonad_temperature,28ZWC6_2a_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,28ZWC6_2a_Gonad_1,matched
-gonad_temperature,28ZWC6_2b_Gonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,28ZWC6_2b_Gonad_1,matched
-gonad_temperature,28ZWC6_2c_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,28ZWC6_2c_Gonad_1,matched
-gonad_temperature,E_81826_22_1_4_Body,false,non-gonad body sample,,,,,body,independent destructive sample,,,unmatched
-gonad_temperature,E_81826_22_1_6_Body,false,non-gonad body sample,,,,,body,independent destructive sample,,,unmatched
-gonad_temperature,E_82003_22_1_10_Gonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,E_82003_22_1_8_Gonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,E_82003_22_1_9_Gonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,E_82037_22_1_15_Gonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,E_82037_22_1_3_Body,false,non-gonad body sample,,,,,body,independent destructive sample,,,unmatched
-gonad_temperature,E_82037_22_1_4_Gonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,E_82037_22_1_5_Gonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,E_82037_22_1_6_Gonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,SW_28C1_2aGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C1_2aGonad_1,matched
-gonad_temperature,SW_28C1_2cGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C1_2cGonad_1,matched
-gonad_temperature,SW_28C1_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C1_3aGonad_1,matched
-gonad_temperature,SW_28C1_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C1_3bGonad_1,matched
-gonad_temperature,SW_28C2_1aGonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,SW_28C2_1bGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C2_1bGonad_1,matched
-gonad_temperature,SW_28C2_1cGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C2_1cGonad_1,matched
-gonad_temperature,SW_28C2_2aGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C2_2aGonad_1,matched
-gonad_temperature,SW_28C2_2cGonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,SW_28C2_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C2_3aGonad_1,matched
-gonad_temperature,SW_28C2_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C2_3bGonad_1,matched
-gonad_temperature,SW_28C2_3cGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C2_3cGonad_1,matched
-gonad_temperature,SW_28C9_1a_Gonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C9_1a_Gonad_1,matched
-gonad_temperature,SW_28C9_1b_Gonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C9_1b_Gonad_1,matched
-gonad_temperature,SW_28C9_2a_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C9_2a_Gonad_1,matched
-gonad_temperature,SW_28C9_2b_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C9_2b_Gonad_1,matched
-gonad_temperature,SW_28C9_3a_Gonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C9_3a_Gonad_1,matched
-gonad_temperature,SW_28C9_3b_Gonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C9_3b_Gonad_1,matched
-gonad_temperature,SW_28ZWC1_1aGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC1_1aGonad_1,matched
-gonad_temperature,SW_28ZWC1_1bGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC1_1bGonad_1,matched
-gonad_temperature,SW_28ZWC1_1cGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC1_1cGonad_1,matched
-gonad_temperature,SW_28ZWC1_2aGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28ZWC1_2aGonad_1,matched
-gonad_temperature,SW_28ZWC1_2bGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC1_2bGonad_1,matched
-gonad_temperature,SW_28ZWC1_2cGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC1_2cGonad_1,matched
-gonad_temperature,SW_28ZWC1_2dGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC1_2dGonad_1,matched
-gonad_temperature,SW_28ZWC1_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC1_3aGonad_1,matched
-gonad_temperature,SW_28ZWC1_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC1_3bGonad_1,matched
-gonad_temperature,SW_28ZWC1_3cGonad_1,true,,ZW,28,S15,,gonad,independent destructive sample,ZW_28C_S15,SW_28ZWC1_3cGonad_1,matched
-gonad_temperature,SW_28ZWC2_1aGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28ZWC2_1aGonad_1,matched
-gonad_temperature,SW_28ZWC2_1bGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28ZWC2_1bGonad_1,matched
-gonad_temperature,SW_28ZWC2_2aGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC2_2aGonad_1,matched
-gonad_temperature,SW_28ZWC2_2bGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28ZWC2_2bGonad_1,matched
-gonad_temperature,SW_28ZWC2_2cGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC2_2cGonad_1,matched
-gonad_temperature,SW_28ZWC2_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC2_3aGonad_1,matched
-gonad_temperature,SW_28ZWC2_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC2_3bGonad_1,matched
-gonad_temperature,SW_28ZWC3_1aGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC3_1aGonad_1,matched
-gonad_temperature,SW_28ZWC3_1bGonad_1,false,no supplied metadata match,,,,,unknown,independent destructive sample,,,unmatched
-gonad_temperature,SW_28ZWC3_1cGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC3_1cGonad_1,matched
-gonad_temperature,SW_28ZWC3_2aGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC3_2aGonad_1,matched
-gonad_temperature,SW_28ZWC3_2bGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28ZWC3_2bGonad_1,matched
-gonad_temperature,SW_28ZWC3_2cGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC3_2cGonad_1,matched
-gonad_temperature,SW_28ZWC3_2dGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC3_2dGonad_1,matched
-gonad_temperature,SW_28ZWC6_1aGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC6_1aGonad_1,matched
-gonad_temperature,SW_28ZWC6_1bGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28ZWC6_1bGonad_1,matched
-gonad_temperature,SW_28ZWC6_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC6_3aGonad_1,matched
-gonad_temperature,SW_28ZWC6_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC6_3bGonad_1,matched
-gonad_temperature,SW_3506zw_18_1_10_gonad_1,true,,ZW,28,S15,,gonad,independent destructive sample,ZW_28C_S15,SW_3506zw_18_1_10_gonad_1,matched
-gonad_temperature,SW_3506zw_18_1_8_gonad_1,true,,ZW,28,S15,,gonad,independent destructive sample,ZW_28C_S15,SW_3506zw_18_1_8_gonad_1,matched
-gonad_temperature,SW_36C1_1aGonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C1_1aGonad_1,matched
-gonad_temperature,SW_36C1_1bGonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C1_1bGonad_1,matched
-gonad_temperature,SW_36C1_2aGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C1_2aGonad_1,matched
-gonad_temperature,SW_36C1_2bGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C1_2bGonad_1,matched
-gonad_temperature,SW_36C1_3aGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C1_3aGonad_1,matched
-gonad_temperature,SW_36C1_3bGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C1_3bGonad_1,matched
-gonad_temperature,SW_36C2_1aGonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C2_1aGonad_1,matched
-gonad_temperature,SW_36C2_1bGonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C2_1bGonad_1,matched
-gonad_temperature,SW_36C2_2bGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C2_2bGonad_1,matched
-gonad_temperature,SW_36C2_2cGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C2_2cGonad_1,matched
-gonad_temperature,SW_36C2_2dGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C2_2dGonad_1,matched
-gonad_temperature,SW_36C2_3aGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C2_3aGonad_1,matched
-gonad_temperature,SW_36C2_3bGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C2_3bGonad_1,matched
-gonad_temperature,SW_36C2_3cGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C2_3cGonad_1,matched
-gonad_temperature,SW_36C9_1a_Gonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C9_1a_Gonad_1,matched
-gonad_temperature,SW_36C9_1b_Gonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C9_1b_Gonad_1,matched
-gonad_temperature,SW_36C9_2a_Gonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C9_2a_Gonad_1,matched
-gonad_temperature,SW_36C9_3a_Gonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C9_3a_Gonad_1,matched
-gonad_temperature,SW_36C9_3b_Gonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C9_3b_Gonad_1,matched
+experiment,matrix_sample_id,include,exclusion_reason,genotype,temperature_c,stage,day,tissue,biological_unit,source_group,source_deg_id,metadata_status,source_library_keys,source_specimen_ids,source_pool_composition,genotype_confidence,temperature_confidence,stage_confidence,source_registry_refcodes,defect_flag
+gonad_temperature,28ZWC3_3a_Gonad_1,true,,ZW,28,S15,,gonad,independent destructive sample,ZW_28C_S15,28ZWC3_3a_Gonad_1,master_registry_matched,SW_28ZWC3_3a,SW_28ZWC3_3a,,authoritative,high,high,206,
+gonad_temperature,28ZWC3_3b_Gonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,28ZWC3_3b_Gonad_1,master_registry_matched,SW_28ZWC3_3b,SW_28ZWC3_3b,,authoritative,high,high,219,
+gonad_temperature,28ZWC3_3c_Gonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,28ZWC3_3c_Gonad_1,master_registry_matched,SW_28ZWC3_3c,SW_28ZWC3_3c,,authoritative,high,high,220,
+gonad_temperature,28ZWC6_2a_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,28ZWC6_2a_Gonad_1,master_registry_matched,SW_28ZWC6_2a,SW_28ZWC6_2a,,authoritative,high,high,213,
+gonad_temperature,28ZWC6_2b_Gonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,28ZWC6_2b_Gonad_1,master_registry_matched,SW_28ZWC6_2b,SW_28ZWC6_2b,,authoritative,high,high,204,
+gonad_temperature,28ZWC6_2c_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,28ZWC6_2c_Gonad_1,master_registry_matched,SW_28ZWC6_2c,SW_28ZWC6_2c,,authoritative,high,high,214,
+gonad_temperature,E_81826_22_1_4_Body,false,matrix identifier says body but master registry says gonad,,36,S6,,gonad,independent destructive sample,_36C_S6,E_81826_22_1_4_Body,registry_tissue_conflict,FS42260835,E:81826:22:1:4,,unrecorded,authoritative,high,408,
+gonad_temperature,E_81826_22_1_6_Body,false,matrix identifier says body but master registry says gonad,ZW,36,S6,,gonad,independent destructive sample,ZW_36C_S6,E_81826_22_1_6_Body,registry_tissue_conflict,FS42262147,E:81826:22:1:6,,authoritative,authoritative,high,362,
+gonad_temperature,E_82003_22_1_10_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,E_82003_22_1_10_Gonad_1,master_registry_matched,FS42262204,E:82003:22:1:10,,authoritative,authoritative,high,393,
+gonad_temperature,E_82003_22_1_8_Gonad_1,true,,ZW,36,S12,,gonad,independent destructive sample,ZW_36C_S12,E_82003_22_1_8_Gonad_1,master_registry_matched,FS42262130,E:82003:22:1:8,,authoritative,authoritative,high,352,
+gonad_temperature,E_82003_22_1_9_Gonad_1,true,,ZW,36,S12,,gonad,independent destructive sample,ZW_36C_S12,E_82003_22_1_9_Gonad_1,master_registry_matched,FS42262224,E:82003:22:1:9,,authoritative,authoritative,high,406,
+gonad_temperature,E_82037_22_1_15_Gonad_1,true,,ZW,36,S15,,gonad,independent destructive sample,ZW_36C_S15,E_82037_22_1_15_Gonad_1,master_registry_matched,FS42260837,E:82037:22:1:15,,high,high,high,410,
+gonad_temperature,E_82037_22_1_3_Body,false,matrix identifier says body but master registry says gonad,ZW,36,S6,,gonad,independent destructive sample,ZW_36C_S6,E_82037_22_1_3_Body,registry_tissue_conflict,FS42260836,E:82037:22:1:3,,high,high,high,409,
+gonad_temperature,E_82037_22_1_4_Gonad_1,false,unsupported or unresolved genotype: F,F,36,S6,,gonad,independent destructive sample,F_36C_S6,E_82037_22_1_4_Gonad_1,registry_genotype_unresolved,FS42260840,E:82037:22:1:4,,high,high,high,412,
+gonad_temperature,E_82037_22_1_5_Gonad_1,false,HIGH_organ_culture_sample_in_gonad_matrix,ZZ,28,S6,,Organ culture,independent destructive sample,,E_82037_22_1_5_Gonad_1,registry_defect,FS42262182,E:82037:22:1:5,,authoritative,authoritative,high,343;379,HIGH_organ_culture_sample_in_gonad_matrix
+gonad_temperature,E_82037_22_1_6_Gonad_1,false,multiple registry libraries map to one matrix column,ZW,36,S6,,gonad,unresolved combined libraries,,E_82037_22_1_6_Gonad_1,registry_multiple_libraries,FS42260838; FS42262140,UNRESOLVED — DO NOT ASSERT (see specimen_id__all_values and specimen_id_manifest_candidates); UNRESOLVED — DO NOT ASSERT (see specimen_id__all_values and specimen_id_manifest_candidates),,high,high,high,411; 360,CRITICAL_specimen_identity_unresolved
+gonad_temperature,SW_28C1_2aGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C1_2aGonad_1,master_registry_matched,SW_28C1_2a,SW_28C1_2a,,authoritative,high,high,229,
+gonad_temperature,SW_28C1_2cGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C1_2cGonad_1,master_registry_matched,SW_28C1_2c,SW_28C1_2c,,authoritative,high,high,230,
+gonad_temperature,SW_28C1_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C1_3aGonad_1,master_registry_matched,SW_28C1_3a,SW_28C1_3a,,authoritative,high,high,235,
+gonad_temperature,SW_28C1_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C1_3bGonad_1,master_registry_matched,SW_28C1_3b,SW_28C1_3b,,authoritative,high,high,236,
+gonad_temperature,SW_28C2_1aGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C2_1aGonad_1,master_registry_matched,SW_28C2_1a,SW_28C2_1a,,authoritative,high,high,224,
+gonad_temperature,SW_28C2_1bGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C2_1bGonad_1,master_registry_matched,SW_28C2_1b,SW_28C2_1b,,authoritative,high,high,225,
+gonad_temperature,SW_28C2_1cGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C2_1cGonad_1,master_registry_matched,SW_28C2_1c,SW_28C2_1c,,authoritative,high,high,226,
+gonad_temperature,SW_28C2_2aGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C2_2aGonad_1,master_registry_matched,SW_28C2_2a,SW_28C2_2a,,authoritative,high,high,231,
+gonad_temperature,SW_28C2_2cGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C2_2cGonad_1,master_registry_matched,SW_28C2_2c,SW_28C2_2c,,authoritative,high,high,232,
+gonad_temperature,SW_28C2_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C2_3aGonad_1,master_registry_matched,SW_28C2_3a,SW_28C2_3a,,authoritative,high,high,237,
+gonad_temperature,SW_28C2_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C2_3bGonad_1,master_registry_matched,SW_28C2_3b,SW_28C2_3b,,authoritative,high,high,238,
+gonad_temperature,SW_28C2_3cGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C2_3cGonad_1,master_registry_matched,SW_28C2_3c,SW_28C2_3c,,authoritative,high,high,239,
+gonad_temperature,SW_28C9_1a_Gonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C9_1a_Gonad_1,master_registry_matched,SW_28C9_1a,SW_28C9_1a,,authoritative,high,high,227,
+gonad_temperature,SW_28C9_1b_Gonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28C9_1b_Gonad_1,master_registry_matched,SW_28C9_1b,SW_28C9_1b,,authoritative,high,high,228,
+gonad_temperature,SW_28C9_2a_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C9_2a_Gonad_1,master_registry_matched,SW_28C9_2a,SW_28C9_2a,,authoritative,high,high,233,
+gonad_temperature,SW_28C9_2b_Gonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28C9_2b_Gonad_1,master_registry_matched,SW_28C9_2b,SW_28C9_2b,,authoritative,high,high,234,
+gonad_temperature,SW_28C9_3a_Gonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C9_3a_Gonad_1,master_registry_matched,SW_28C9_3a,SW_28C9_3a,,authoritative,high,high,240,
+gonad_temperature,SW_28C9_3b_Gonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28C9_3b_Gonad_1,master_registry_matched,SW_28C9_3b,SW_28C9_3b,,authoritative,high,high,241,
+gonad_temperature,SW_28ZWC1_1aGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC1_1aGonad_1,master_registry_matched,SW_28ZWC1_1a,SW_28ZWC1_1a,,authoritative,high,high,189,
+gonad_temperature,SW_28ZWC1_1bGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC1_1bGonad_1,master_registry_matched,SW_28ZWC1_1b,SW_28ZWC1_1b,,authoritative,high,high,190,
+gonad_temperature,SW_28ZWC1_1cGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC1_1cGonad_1,master_registry_matched,SW_28ZWC1_1c,SW_28ZWC1_1c,,authoritative,high,high,191,
+gonad_temperature,SW_28ZWC1_2aGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28ZWC1_2aGonad_1,master_registry_matched,SW_28ZWC1_2a,SW_28ZWC1_2a,,authoritative,high,high,210,
+gonad_temperature,SW_28ZWC1_2bGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC1_2bGonad_1,master_registry_matched,SW_28ZWC1_2b,SW_28ZWC1_2b,,authoritative,high,high,196,
+gonad_temperature,SW_28ZWC1_2cGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC1_2cGonad_1,master_registry_matched,SW_28ZWC1_2c,SW_28ZWC1_2c,,authoritative,high,high,197,
+gonad_temperature,SW_28ZWC1_2dGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC1_2dGonad_1,master_registry_matched,SW_28ZWC1_2d,SW_28ZWC1_2d,,authoritative,high,high,198,
+gonad_temperature,SW_28ZWC1_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC1_3aGonad_1,master_registry_matched,SW_28ZWC1_3a,SW_28ZWC1_3a,,authoritative,high,high,215,
+gonad_temperature,SW_28ZWC1_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC1_3bGonad_1,master_registry_matched,SW_28ZWC1_3b,SW_28ZWC1_3b,,authoritative,high,high,216,
+gonad_temperature,SW_28ZWC1_3cGonad_1,true,,ZW,28,S15,,gonad,independent destructive sample,ZW_28C_S15,SW_28ZWC1_3cGonad_1,master_registry_matched,SW_28ZWC1_3c,SW_28ZWC1_3c,,authoritative,high,high,205,
+gonad_temperature,SW_28ZWC2_1aGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28ZWC2_1aGonad_1,master_registry_matched,SW_28ZWC2_1a,SW_28ZWC2_1a,,authoritative,high,high,207,
+gonad_temperature,SW_28ZWC2_1bGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28ZWC2_1bGonad_1,master_registry_matched,SW_28ZWC2_1b,SW_28ZWC2_1b,,authoritative,high,high,208,
+gonad_temperature,SW_28ZWC2_2aGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC2_2aGonad_1,master_registry_matched,SW_28ZWC2_2a,SW_28ZWC2_2a,,authoritative,high,high,199,
+gonad_temperature,SW_28ZWC2_2bGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28ZWC2_2bGonad_1,master_registry_matched,SW_28ZWC2_2b,SW_28ZWC2_2b,,authoritative,high,high,211,
+gonad_temperature,SW_28ZWC2_2cGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC2_2cGonad_1,master_registry_matched,SW_28ZWC2_2c,SW_28ZWC2_2c,,authoritative,high,high,200,
+gonad_temperature,SW_28ZWC2_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC2_3aGonad_1,master_registry_matched,SW_28ZWC2_3a,SW_28ZWC2_3a,,authoritative,high,high,217,
+gonad_temperature,SW_28ZWC2_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC2_3bGonad_1,master_registry_matched,SW_28ZWC2_3b,SW_28ZWC2_3b,,authoritative,high,high,218,
+gonad_temperature,SW_28ZWC3_1aGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC3_1aGonad_1,master_registry_matched,SW_28ZWC3_1a,SW_28ZWC3_1a,,authoritative,high,high,192,
+gonad_temperature,SW_28ZWC3_1bGonad_1,false,multiple registry libraries map to one matrix column,ZW; ZZ,28,S6,,gonad,unresolved combined libraries,,SW_28ZWC3_1bGonad_1,registry_multiple_libraries,SW_28ZWC3_1b; SW_28C1_1a,SW_28ZWC3_1b; SW_28C1_1a,,authoritative,high,high,193; 223,MEDIUM_matrix_column_pools_two_libraries
+gonad_temperature,SW_28ZWC3_1cGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC3_1cGonad_1,master_registry_matched,SW_28ZWC3_1c,SW_28ZWC3_1c,,authoritative,high,high,194,
+gonad_temperature,SW_28ZWC3_2aGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC3_2aGonad_1,master_registry_matched,SW_28ZWC3_2a,SW_28ZWC3_2a,,authoritative,high,high,201,
+gonad_temperature,SW_28ZWC3_2bGonad_1,true,,ZZ,28,S12,,gonad,independent destructive sample,ZZ_28C_S12,SW_28ZWC3_2bGonad_1,master_registry_matched,SW_28ZWC3_2b,SW_28ZWC3_2b,,authoritative,high,high,212,
+gonad_temperature,SW_28ZWC3_2cGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC3_2cGonad_1,master_registry_matched,SW_28ZWC3_2c,SW_28ZWC3_2c,,authoritative,high,high,202,
+gonad_temperature,SW_28ZWC3_2dGonad_1,true,,ZW,28,S12,,gonad,independent destructive sample,ZW_28C_S12,SW_28ZWC3_2dGonad_1,master_registry_matched,SW_28ZWC3_2d,SW_28ZWC3_2d,,authoritative,high,high,203,
+gonad_temperature,SW_28ZWC6_1aGonad_1,true,,ZW,28,S6,,gonad,independent destructive sample,ZW_28C_S6,SW_28ZWC6_1aGonad_1,master_registry_matched,SW_28ZWC6_1a,SW_28ZWC6_1a,,authoritative,high,high,195,
+gonad_temperature,SW_28ZWC6_1bGonad_1,true,,ZZ,28,S6,,gonad,independent destructive sample,ZZ_28C_S6,SW_28ZWC6_1bGonad_1,master_registry_matched,SW_28ZWC6_1b,SW_28ZWC6_1b,,authoritative,high,high,209,
+gonad_temperature,SW_28ZWC6_3aGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC6_3aGonad_1,master_registry_matched,SW_28ZWC6_3a,SW_28ZWC6_3a,,authoritative,high,high,221,
+gonad_temperature,SW_28ZWC6_3bGonad_1,true,,ZZ,28,S15,,gonad,independent destructive sample,ZZ_28C_S15,SW_28ZWC6_3bGonad_1,master_registry_matched,SW_28ZWC6_3b,SW_28ZWC6_3b,,authoritative,high,high,222,
+gonad_temperature,SW_3506zw_18_1_10_gonad_1,true,,ZW,28,S15,,gonad,independent destructive sample,ZW_28C_S15,SW_3506zw_18_1_10_gonad_1,master_registry_matched,Pit_3506zw_18_1_10,SW_3506zw:18:1:10,,authoritative,high,high,141,
+gonad_temperature,SW_3506zw_18_1_8_gonad_1,true,,ZW,28,S15,,gonad,independent destructive sample,ZW_28C_S15,SW_3506zw_18_1_8_gonad_1,master_registry_matched,Pit_3506zw_18_1_8,SW_3506zw:18:1:8,,authoritative,high,high,142,
+gonad_temperature,SW_36C1_1aGonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C1_1aGonad_1,master_registry_matched,SW_36C1_1a,SW_36C1_1a,,authoritative,high,high,242,
+gonad_temperature,SW_36C1_1bGonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C1_1bGonad_1,master_registry_matched,SW_36C1_1b,SW_36C1_1b,,authoritative,high,high,243,
+gonad_temperature,SW_36C1_2aGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C1_2aGonad_1,master_registry_matched,SW_36C1_2a,SW_36C1_2a,,authoritative,high,high,248,
+gonad_temperature,SW_36C1_2bGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C1_2bGonad_1,master_registry_matched,SW_36C1_2b,SW_36C1_2b,,authoritative,high,high,249,
+gonad_temperature,SW_36C1_3aGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C1_3aGonad_1,master_registry_matched,SW_36C1_3a,SW_36C1_3a,,authoritative,high,high,254,
+gonad_temperature,SW_36C1_3bGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C1_3bGonad_1,master_registry_matched,SW_36C1_3b,SW_36C1_3b,,authoritative,high,high,255,
+gonad_temperature,SW_36C2_1aGonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C2_1aGonad_1,master_registry_matched,SW_36C2_1a,SW_36C2_1a,,authoritative,high,high,244,
+gonad_temperature,SW_36C2_1bGonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C2_1bGonad_1,master_registry_matched,SW_36C2_1b,SW_36C2_1b,,authoritative,high,high,245,
+gonad_temperature,SW_36C2_2bGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C2_2bGonad_1,master_registry_matched,SW_36C2_2b,SW_36C2_2b,,authoritative,high,high,250,
+gonad_temperature,SW_36C2_2cGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C2_2cGonad_1,master_registry_matched,SW_36C2_2c,SW_36C2_2c,,authoritative,high,high,251,
+gonad_temperature,SW_36C2_2dGonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C2_2dGonad_1,master_registry_matched,SW_36C2_2d,SW_36C2_2d,,authoritative,high,high,252,
+gonad_temperature,SW_36C2_3aGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C2_3aGonad_1,master_registry_matched,SW_36C2_3a,SW_36C2_3a,,authoritative,high,high,256,
+gonad_temperature,SW_36C2_3bGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C2_3bGonad_1,master_registry_matched,SW_36C2_3b,SW_36C2_3b,,authoritative,high,high,257,
+gonad_temperature,SW_36C2_3cGonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C2_3cGonad_1,master_registry_matched,SW_36C2_3c,SW_36C2_3c,,authoritative,high,high,258,
+gonad_temperature,SW_36C9_1a_Gonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C9_1a_Gonad_1,master_registry_matched,SW_36C9_1a,SW_36C9_1a,,authoritative,high,high,246,
+gonad_temperature,SW_36C9_1b_Gonad_1,true,,ZZ,36,S6,,gonad,independent destructive sample,ZZ_36C_S6,SW_36C9_1b_Gonad_1,master_registry_matched,SW_36C9_1b,SW_36C9_1b,,authoritative,high,high,247,
+gonad_temperature,SW_36C9_2a_Gonad_1,true,,ZZ,36,S12,,gonad,independent destructive sample,ZZ_36C_S12,SW_36C9_2a_Gonad_1,master_registry_matched,SW_36C9_2a,SW_36C9_2a,,authoritative,high,high,253,
+gonad_temperature,SW_36C9_3a_Gonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C9_3a_Gonad_1,master_registry_matched,SW_36C9_3a,SW_36C9_3a,,authoritative,high,high,259,
+gonad_temperature,SW_36C9_3b_Gonad_1,true,,ZZ,36,S15,,gonad,independent destructive sample,ZZ_36C_S15,SW_36C9_3b_Gonad_1,master_registry_matched,SW_36C9_3b,SW_36C9_3b,,authoritative,high,high,260,

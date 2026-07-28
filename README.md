@@ -66,8 +66,12 @@ For destructive-sampling developmental designs,
 and development control. It is not validation evidence. Reproducible source
 for the July 2026 informal presentation is retained under
 `inst/extra/presentations/2026-07-22-ai-meeting/`; the tracked acquisition
-scripts, normalized metadata, and known metadata conflict for the future
-Pogona analysis are documented in `data-raw/pogona/README.md`.
+scripts and normalized metadata for the future Pogona analysis are documented
+in `data-raw/pogona/README.md`. Those local development manifests treat one
+expression-matrix column as one canonical observation, expose declared tissue
+pools without counting their libraries as biological replicates, and retain
+unresolved registry conflicts as exclusions. They are prepared inputs for
+future exploratory work, not packaged example data or validation evidence.
 
 ## Status
 

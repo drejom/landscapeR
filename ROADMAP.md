@@ -189,8 +189,11 @@ confirmation; stable-subspace/no-stable-axis is a valid abstention.
 ### 4a. Architecture debt lane
 
 **Active prefactor:** #91 deepens the interpretation evidence seam before #83.
-#92 is its time-course migration follow-up. #93 and #94 remain queued behind
-#92 and require an explicit roadmap decision before becoming active.
+#100 records the required general-contract correction before #91 can merge.
+#92 is the time-course migration follow-up. #93 and #94 remain queued behind
+#92 and require an explicit roadmap decision before becoming active. #101
+reconciles supporting Pogona manifests without changing the active task
+sequence.
 
 **Parked debt:** #95 deepens stage completion/provenance. #96 establishes shared
 artifact migration policy, with #97 adopting it across the interpretation
@@ -385,6 +388,8 @@ bodies may state dependencies but do not change this ordering.
 | [#95](https://github.com/drejom/landscapeR/issues/95) | Stage completion and provenance architecture | parked |
 | [#96](https://github.com/drejom/landscapeR/issues/96) | Shared artifact migration policy | parked |
 | [#97](https://github.com/drejom/landscapeR/issues/97) | Interpretation evidence-graph migration policy | parked — blocked by #96 |
+| [#100](https://github.com/drejom/landscapeR/issues/100) | Shared interpretation evidence contract correction | active — required for #91 |
+| [#101](https://github.com/drejom/landscapeR/issues/101) | Pogona master-registry manifest reconciliation | active — supporting data preparation |
 <!-- issue-map:end -->
 
 ---
