@@ -242,7 +242,7 @@ setValidity("MetadataAssociationAtlas", function(object) {
     interpretation_module <- object@provenance$interpretation_module
     uses_cross_sectional_module <- identical(
         interpretation_module,
-        .cross_sectional_version
+        .cross_sectional_evidence_version
     )
     if (uses_cross_sectional_module &&
         is.null(object@provenance$evidence_contract)) {
@@ -261,7 +261,7 @@ setValidity("MetadataAssociationAtlas", function(object) {
     if (uses_cross_sectional_module) {
         errors <- c(
             errors,
-            .cross_sectional_errors(
+            .cross_sectional_evidence_errors(
                 object@associations,
                 object@observations,
                 object@exclusions,
@@ -853,7 +853,7 @@ register_strategy(
         target_type = specification@target_type,
         package_version = as.character(utils::packageVersion("landscapeR")),
         sampling_design = std@sampling_design@kind,
-        interpretation_module = .cross_sectional_version,
+        interpretation_module = .cross_sectional_evidence_version,
         input_digest = input_digest,
         state_space_digest = state_space_digest
     )
@@ -1651,7 +1651,7 @@ associate_metadata <- function(
             state_space_digest = state_space_digest,
             dataset_id = dataset_id,
             exchangeability = exchangeability,
-            interpretation_module = .cross_sectional_version
+            interpretation_module = .cross_sectional_evidence_version
         ), specification_provenance)
     )
     atlas <- new(
@@ -1738,8 +1738,20 @@ atlas_provenance <- function(atlas) {
 #' `NULL` until their dedicated interpretation modules adopt this contract.
 #'
 #' @param atlas a `MetadataAssociationAtlas`
-#' @return a named evidence-contract list, or `NULL` for an atlas without the
-#'   cross-sectional contract
+#' @return A named list with:
+#' * `version`, the contract-version string;
+#' * `sampling_design`, the sampling-design identifier;
+#' * `row_counts`, integer counts for association, observation, and exclusion
+#'   evidence rows;
+#' * `digests`, SHA-256 digests for those three evidence tables and the cohort
+#'   membership table;
+#' * `cohorts`, one row per metadata-field, component, and evidence-variant
+#'   group, with its cohort digest and available/missing counts; and
+#' * `cohort_members`, one row per primary sample in each group, where the
+#'   logical `included` column records whether that sample contributed to the
+#'   corresponding association estimate.
+#'
+#'   Returns `NULL` for an atlas without the cross-sectional contract.
 #' @export
 atlas_evidence_contract <- function(atlas) {
     if (!is(atlas, "MetadataAssociationAtlas")) {

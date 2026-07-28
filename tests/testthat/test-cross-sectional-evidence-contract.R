@@ -217,6 +217,23 @@ test_that("cohort membership rejects undeclared association groups", {
     )
 })
 
+test_that("evidence contract rejects duplicate association groups", {
+    atlas <- associate_metadata(
+        .cross_evidence_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+    altered <- atlas
+    altered@associations <- rbind(
+        altered@associations,
+        altered@associations[1L, , drop = FALSE]
+    )
+
+    expect_error(
+        validObject(altered),
+        "association groups must be unique"
+    )
+})
+
 test_that("public cross-sectional atlas plot renders all diagnostic panels", {
     atlas <- associate_metadata(
         .cross_evidence_fixture(),

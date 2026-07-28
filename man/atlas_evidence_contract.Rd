@@ -10,8 +10,22 @@ atlas_evidence_contract(atlas)
 \item{atlas}{a \code{MetadataAssociationAtlas}}
 }
 \value{
-a named evidence-contract list, or \code{NULL} for an atlas without the
-cross-sectional contract
+A named list with:
+\itemize{
+\item \code{version}, the contract-version string;
+\item \code{sampling_design}, the sampling-design identifier;
+\item \code{row_counts}, integer counts for association, observation, and exclusion
+evidence rows;
+\item \code{digests}, SHA-256 digests for those three evidence tables and the cohort
+membership table;
+\item \code{cohorts}, one row per metadata-field, component, and evidence-variant
+group, with its cohort digest and available/missing counts; and
+\item \code{cohort_members}, one row per primary sample in each group, where the
+logical \code{included} column records whether that sample contributed to the
+corresponding association estimate.
+
+Returns \code{NULL} for an atlas without the cross-sectional contract.
+}
 }
 \description{
 The contract summarizes the normalized evidence rows, analysis cohorts, and

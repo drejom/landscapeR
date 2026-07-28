@@ -19,7 +19,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
     "score", "atom_count", "available"
 )
 
-.cross_sectional_version <- "cross-sectional-v1"
+.cross_sectional_evidence_version <- "cross-sectional-v1"
 
 .is_sha256_digest <- function(x) {
     length(x) == 1L && !is.na(x) &&
@@ -59,7 +59,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
     cohort_members
 ) {
     list(
-        version = .cross_sectional_version,
+        version = .cross_sectional_evidence_version,
         sampling_design = "cross_sectional",
         row_counts = c(
             associations = as.integer(nrow(associations)),
@@ -77,7 +77,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
     )
 }
 
-.cross_sectional_errors <- function(
+.cross_sectional_evidence_errors <- function(
     associations,
     observations,
     exclusions,
@@ -110,7 +110,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
     }
     if (!identical(
         contract$version,
-        .cross_sectional_version
+        .cross_sectional_evidence_version
     )) {
         errors <- c(errors, "cross-sectional evidence contract version is invalid")
     }
@@ -134,12 +134,19 @@ utils::globalVariables(c("metadata_field", "component_label"))
             "cross-sectional evidence contract cohort members are invalid"
         ))
     }
-    association_group_keys <- unique(paste(
+    association_group_keys <- paste(
         associations$metadata_field,
         associations$component,
         associations$evidence_variant,
         sep = "\r"
-    ))
+    )
+    if (anyDuplicated(association_group_keys)) {
+        errors <- c(
+            errors,
+            "cross-sectional association groups must be unique"
+        )
+    }
+    association_group_keys <- unique(association_group_keys)
     member_group_keys <- unique(paste(
         contract$cohort_members$metadata_field,
         contract$cohort_members$component,
@@ -369,10 +376,10 @@ setClass(
 )
 
 setValidity("InterpretationEvidence", function(object) {
-    if (!identical(object@module, .cross_sectional_version)) {
+    if (!identical(object@module, .cross_sectional_evidence_version)) {
         return("interpretation evidence module is not registered")
     }
-    .cross_sectional_errors(
+    .cross_sectional_evidence_errors(
         associations = object@associations,
         observations = object@observations,
         exclusions = object@exclusions,
@@ -430,7 +437,7 @@ setValidity("InterpretationEvidence", function(object) {
     )
     evidence <- new(
         "InterpretationEvidence",
-        module = .cross_sectional_version,
+        module = .cross_sectional_evidence_version,
         associations = associations,
         observations = observations,
         exclusions = exclusions,
