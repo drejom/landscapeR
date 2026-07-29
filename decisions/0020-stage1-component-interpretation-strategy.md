@@ -3,6 +3,7 @@
 **Stage:** 1 / cross-cutting
 **Status:** accepted
 **Date:** 2026-07-24
+**Amended:** 2026-07-29
 
 ## Context
 
@@ -381,6 +382,36 @@ documentation and do not appear in scientific plot titles, subtitles, axes, or
 captions. Visual review is performed at the canonical 100 mm output size and
 must reject clipping, crowding, ambiguous encodings, or decorative elements
 that do not carry scientific information.
+
+Every exported or otherwise user-facing plotting function returns its
+scientific caption with the `ggplot` object, normally through
+`ggplot2::labs(caption = ...)`. The caption is generated deterministically from
+the same typed evidence rendered by the plot; a renderer cannot require the
+user to consult developer documentation to discover what colours, shapes,
+lines, panels, observations, summaries, missing values, failures, thresholds,
+or structured outcomes mean. Where applicable, the caption states:
+
+- what is plotted and the biological sampling or analysis unit;
+- the meaning of every non-obvious visual encoding, including focal versus
+  comparison marks;
+- the estimand, sampling design, and uncertainty or resampling basis;
+- the meaning and calibration status of any threshold or reference line;
+- the inferential and claim boundary, including exploratory or abstention
+  status.
+
+Titles, axis labels, legends, and direct annotations may make a simple plot
+self-explanatory, but omission of a caption from a user-facing function is a
+documented exception rather than the default. An exception is valid only when
+tests demonstrate that all applicable scientific semantics above are already
+present in the returned plot. Internal-only diagnostic renders may omit this
+contract only when they are unexported, identified as development diagnostics,
+and not used in user documentation or public workflow examples.
+
+Caption tests inspect the returned `ggplot` object, including
+`plot$labels$caption`, and verify dynamic content for materially different
+designs, evidence states, encodings, and calibrated versus uncalibrated
+boundaries. Captions describe stored evidence and never become a second place
+where scientific results are calculated.
 
 The axis-identifiability surface jointly exposes the spectrum, matching
 similarity and ambiguity, recurrence distributions, subspace angles, and final
