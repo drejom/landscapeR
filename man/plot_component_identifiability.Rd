@@ -17,5 +17,6 @@ a \code{ggplot2} object
 Produces a compact evidence surface for the spectrum, joint matching,
 recurrence, subspace angles, and replicate completion. Values are shown
 without uncalibrated stability thresholds; the subtitle reports the
-structured evidence outcome.
+structured evidence outcome and exact failed-replicate fraction. Unmatched
+axes appear as zero individual-axis recurrence rather than disappearing.
 }

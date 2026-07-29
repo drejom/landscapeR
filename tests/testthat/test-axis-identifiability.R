@@ -224,7 +224,9 @@ test_that("identifiability assessment repeats the complete discovery search", {
         unique(surface$data$surface),
         c(
             "Spectrum", "Matching similarity", "Assignment margin",
-            "Axis recurrence", "Subspace angle", "Replicate completion"
+            "Individual-axis recurrence", "Index recurrence",
+            "Orientation recurrence", "Proposal rank", "Subspace angle",
+            "Replicate completion"
         )
     )
     expect_false(any(grepl(
@@ -258,34 +260,93 @@ test_that("identifiability assessment repeats the complete discovery search", {
         rev(evidence$replicates)
     )
     expect_identical(forward, reverse)
-    calibration_digest <- paste(rep("a", 64L), collapse = "")
-    stable <- landscapeR:::.record_identifiability_outcome(
+    incomplete_replicates <- evidence$replicates
+    incomplete_replicates[[1L]]$proposal_status <- "abstention"
+    nominated <- fixture$proposal@recommended_component
+    nominated_row <-
+        incomplete_replicates[[2L]]$assignment$reference_component ==
+            nominated
+    incomplete_replicates[[2L]]$assignment$matched[nominated_row] <- FALSE
+    incomplete <- landscapeR:::.new_identifiability_evidence(
+        fixture$proposal,
+        fixture$config,
+        fixture$source,
+        reference,
+        "feature-loading-cosine",
+        plan,
+        incomplete_replicates
+    )
+    expect_equal(incomplete$failure_summary$failure_fraction, 2 / 7)
+    expect_equal(
+        incomplete$failure_summary$proposal_abstention_fraction,
+        1 / 7
+    )
+    expect_equal(
+        incomplete$failure_summary$nominated_unmatched_fraction,
+        1 / 7
+    )
+    expect_identical(
+        incomplete$failure_summary$failed_replicates,
+        c(1L, 2L)
+    )
+    proposal_failure <- landscapeR:::.failed_identifiability_replicate(
+        index = 1L,
+        seed = 11L,
+        source_primary = "sample_01",
+        stage = "proposal",
+        diagnostic = "synthetic proposal failure"
+    )
+    expect_identical(proposal_failure$decomposition_status, "success")
+    expect_identical(proposal_failure$association_status, "success")
+    expect_identical(proposal_failure$proposal_status, "failure")
+    exploratory <- confirm_component(
         assessed,
-        outcome = "stable-axis",
-        calibration_digest = calibration_digest,
-        diagnostic = "target-axis-recoverable"
+        index = assessed@recommended_component,
+        decision = "accept",
+        rationale = "Record an exploratory choice before calibration."
     )
-    expect_s4_class(
-        confirm_component(
-            stable,
-            index = stable@recommended_component,
-            decision = "accept",
-            rationale = "Accepted after calibrated axis-identifiability review."
+    expect_s4_class(exploratory, "AnalysisSpecification")
+    expect_identical(exploratory@claim_intent, "exploratory")
+    expect_match(
+        surface$labels$subtitle,
+        sprintf(
+            "failure fraction: %.3f",
+            evidence$failure_summary$failure_fraction
         ),
-        "AnalysisSpecification"
+        fixed = TRUE
     )
+    expect_true(
+        "Individual-axis recurrence" %in%
+            levels(surface$data$surface)
+    )
+    rendered <- ggplot2::ggplot_build(surface)
+    expect_true(all(rendered$data[[4L]]$y >= 0 & rendered$data[[4L]]$y <= 1))
+    expect_true(all(rendered$data[[5L]]$y >= 0 & rendered$data[[5L]]$y <= 1))
+    calibration_digest <- paste(rep("a", 64L), collapse = "")
     for (outcome in c(
-        "stable-subspace-no-stable-axis",
+        "stable-subspace/no-stable-axis",
         "no-stable-target-structure",
-        "outside-operating-region",
+        "outside-calibrated-operating-region",
         "unique-winner-failure",
-        "invalid-design"
+        "non-identifiable-design"
     )) {
-        ineligible <- landscapeR:::.record_identifiability_outcome(
+        ineligible_evidence <- proposal_identifiability(assessed)
+        ineligible_evidence$structured_outcome <- outcome
+        ineligible_evidence$status <- "calibrated-ineligible"
+        ineligible_evidence$calibration_digest <- calibration_digest
+        ineligible_evidence$outcome_diagnostic <- paste0(
+            "calibrated-",
+            outcome
+        )
+        ineligible_evidence$digest <- NULL
+        ineligible_evidence$digest <- digest::digest(
+            ineligible_evidence,
+            algo = "sha256",
+            serialize = TRUE
+        )
+        ineligible <- landscapeR:::.proposal_with_identifiability(
             assessed,
-            outcome = outcome,
-            calibration_digest = calibration_digest,
-            diagnostic = paste0("calibrated-", outcome)
+            ineligible_evidence
         )
         expect_error(
             confirm_component(

@@ -219,16 +219,16 @@ Before a known-truth calibration is frozen, the structured outcome is
 `not-calibrated` and the evidence remains
 `estimable-exploratory-only`. Singular-value gaps are visible diagnostics, not
 effect weights or universal cutoffs. A later calibrated
-`stable-subspace-no-stable-axis` or `no-stable-target-structure` outcome is a
+`stable-subspace/no-stable-axis` or `no-stable-target-structure` outcome is a
 successful scientific abstention and cannot be overridden to confirm an
 individual component.
 
 ## Record the analyst decision
 
-```{r confirmation}
+```{r confirmation, eval=FALSE}
 confirmed <- confirm_component(
-  proposal,
-  index = proposal@recommended_component,
+  assessed,
+  index = assessed@recommended_component,
   decision = "accept",
   rationale = paste(
     "Accepted the unique effect-first component in this synthetic",
@@ -240,11 +240,15 @@ canonical_digest(confirmed)
 ```
 
 `confirm_component()` is the enforced transition to a confirmed
-`AnalysisSpecification`. Acceptance must use the recommended component. A
-different ranked component requires `decision = "override"` and remains
-explicit. An abstention cannot be confirmed, and an override cannot bypass a
-calibrated non-axis, invalid-design, outside-operating-region, or
-unique-winner-failure outcome.
+`AnalysisSpecification`. Before calibration it records an explicitly
+exploratory choice and forces `claim_intent = "exploratory"`; it does not label
+the axis stable, validated, accepted as evidence, or scientifically supported.
+After calibration, only digest-valid `stable-axis` evidence permits individual
+component confirmation. Acceptance must use the recommended component. A
+different effect-equivalent component still requires
+`decision = "override"` and remains explicit. An override cannot bypass a
+calibrated non-axis, `non-identifiable-design`,
+`outside-calibrated-operating-region`, or `unique-winner-failure` outcome.
 
 ## Independent destructive-sampling time courses
 

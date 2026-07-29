@@ -20,7 +20,10 @@ a confirmed \code{AnalysisSpecification}
 }
 \description{
 This is the only public bridge from exploratory component ranking to a
-confirmed \code{AnalysisSpecification}. Acceptance must use the recommended
-component; choosing another ranked component requires an explicit override.
-A typed abstention cannot be bypassed.
+confirmed \code{AnalysisSpecification}. Before calibration, confirmation records
+an exploratory choice only. Once calibrated axis-identifiability evidence is
+attached, only a digest-valid \code{stable-axis} result can be confirmed;
+acceptance must use the recommendation and an override is limited to the
+calibrated effect-equivalent candidate set. Typed abstention or calibrated
+ineligibility cannot be bypassed.
 }

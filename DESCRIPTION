@@ -30,6 +30,8 @@ Imports:
     ggplot2,
     lme4,
     clue,
+    future,
+    future.apply,
     rlang,
     viridisLite
 Suggests:

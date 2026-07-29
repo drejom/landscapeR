@@ -520,12 +520,18 @@ utils::globalVariables(c(
         } else {
             "success"
         },
-        association_status = if (identical(stage, "association")) {
+        association_status = if (identical(stage, "decomposition")) {
+            "not-run"
+        } else if (identical(stage, "association")) {
+            "failure"
+        } else {
+            "success"
+        },
+        proposal_status = if (identical(stage, "proposal")) {
             "failure"
         } else {
             "not-run"
         },
-        proposal_status = "not-run",
         diagnostic = as.character(diagnostic),
         similarity = matrix(numeric(), 0L, 0L),
         signed_similarity = matrix(numeric(), 0L, 0L),
@@ -624,14 +630,28 @@ utils::globalVariables(c(
         error = identity
     )
     if (inherits(replicate_proposal, "error")) {
-        return(.failed_identifiability_replicate(
+        failed <- .failed_identifiability_replicate(
             index,
             replicate_seed,
             draw$source_primary,
-            "association",
+            "proposal",
             conditionMessage(replicate_proposal),
             draw$replicate_subject
-        ))
+        )
+        failed$similarity <- alignment$similarity
+        failed$signed_similarity <- alignment$signed_similarity
+        failed$assignment <- alignment$assignment
+        failed$competing_assignments <- alignment$competing_assignments
+        failed$global_assignment_margin <-
+            alignment$global_assignment_margin
+        failed$subspace_angles <- .subspace_angle_evidence(
+            reference_loadings,
+            replicate_loadings
+        )
+        failed$spectral_gaps <- .spectral_gap_evidence(
+            replicate_decomposition
+        )
+        return(failed)
     }
     proposal_status <- if (is(replicate_proposal, "ComponentProposal")) {
         "proposal"
@@ -668,7 +688,8 @@ utils::globalVariables(c(
 .identifiability_recurrence <- function(
     replicates,
     reference_components,
-    nominated_component
+    nominated_component,
+    reference_ranking
 ) {
     rows <- lapply(replicates, function(replicate) {
         assignment <- replicate$assignment
@@ -709,6 +730,33 @@ utils::globalVariables(c(
             } else {
                 NA_integer_
             }
+            replicate_estimate <- if (
+                nrow(rank_row) &&
+                    "estimate" %in% names(rank_row)
+            ) {
+                rank_row$estimate[[1L]]
+            } else {
+                NA_real_
+            }
+            reference_row <- reference_ranking[
+                reference_ranking$component == component,
+                ,
+                drop = FALSE
+            ]
+            reference_estimate <- if (
+                nrow(reference_row) &&
+                    "estimate" %in% names(reference_row)
+            ) {
+                reference_row$estimate[[1L]]
+            } else {
+                NA_real_
+            }
+            loading_orientation <- if (nrow(match_row)) {
+                match_row$orientation[[1L]]
+            } else {
+                NA_integer_
+            }
+            corrected_estimate <- replicate_estimate * loading_orientation
             data.frame(
                 replicate = replicate$replicate,
                 reference_component = as.integer(component),
@@ -725,11 +773,7 @@ utils::globalVariables(c(
                 } else {
                     NA_real_
                 },
-                orientation = if (nrow(match_row)) {
-                    match_row$orientation[[1L]]
-                } else {
-                    NA_integer_
-                },
+                orientation = loading_orientation,
                 assignment_margin = if (nrow(match_row)) {
                     match_row$assignment_margin[[1L]]
                 } else {
@@ -737,6 +781,10 @@ utils::globalVariables(c(
                 },
                 index_recurrent = !is.na(replicate_component) &&
                     replicate_component == component,
+                orientation_recurrent =
+                    is.finite(corrected_estimate) &&
+                    is.finite(reference_estimate) &&
+                    sign(corrected_estimate) == sign(reference_estimate),
                 proposal_rank = proposal_rank,
                 rank_one = !is.na(proposal_rank) && proposal_rank == 1L,
                 nominated_reference = component == nominated_component,
@@ -764,12 +812,12 @@ utils::globalVariables(c(
                 NA_real_
             },
             orientation_recurrence = if (any(!is.na(
-                component_rows$orientation
+                component_rows$orientation_recurrent
             ))) {
                 mean(
-                    component_rows$orientation[
-                        !is.na(component_rows$orientation)
-                    ] == 1L
+                    component_rows$orientation_recurrent[
+                        !is.na(component_rows$orientation_recurrent)
+                    ]
                 )
             } else {
                 NA_real_
@@ -806,7 +854,7 @@ utils::globalVariables(c(
         integer(1L)
     ))
     replicates <- replicates[replicate_order]
-    completed <- vapply(
+    computationally_completed <- vapply(
         replicates,
         function(x) {
             identical(x$decomposition_status, "success") &&
@@ -818,8 +866,44 @@ utils::globalVariables(c(
     recurrence <- .identifiability_recurrence(
         replicates,
         reference_components,
-        proposal@recommended_component
+        proposal@recommended_component,
+        proposal@ranking
     )
+    proposal_abstained <- vapply(
+        replicates,
+        function(x) identical(x$proposal_status, "abstention"),
+        logical(1L)
+    )
+    proposal_failed <- vapply(
+        replicates,
+        function(x) identical(x$proposal_status, "failure"),
+        logical(1L)
+    )
+    proposal_completed <- vapply(
+        replicates,
+        function(x) identical(x$proposal_status, "proposal"),
+        logical(1L)
+    )
+    matching_reached <- computationally_completed & vapply(
+        replicates,
+        function(x) is.data.frame(x$assignment) && nrow(x$assignment) > 0L,
+        logical(1L)
+    )
+    nominated_rows <- recurrence$recurrence[
+        recurrence$recurrence$nominated_reference,
+        ,
+        drop = FALSE
+    ]
+    nominated_matched <- nominated_rows$matched[
+        match(
+            vapply(replicates, function(x) x$replicate, integer(1L)),
+            nominated_rows$replicate
+        )
+    ]
+    nominated_matched[is.na(nominated_matched)] <- FALSE
+    completed <- computationally_completed &
+        proposal_completed &
+        nominated_matched
     payload <- list(
         version = "1.0.0",
         status = "estimable-exploratory-only",
@@ -858,9 +942,22 @@ utils::globalVariables(c(
             n_requested = as.integer(length(replicates)),
             n_completed = as.integer(sum(completed)),
             n_failed = as.integer(sum(!completed)),
-            failure_fraction = mean(!completed)
+            failure_fraction = mean(!completed),
+            computational_failure_fraction =
+                mean(!computationally_completed),
+            proposal_abstention_fraction = mean(proposal_abstained),
+            proposal_execution_failure_fraction = mean(proposal_failed),
+            nominated_unmatched_fraction =
+                mean(matching_reached & !nominated_matched),
+            failed_replicates = as.integer(vapply(
+                replicates,
+                function(x) x$replicate,
+                integer(1L)
+            )[!completed])
         ),
         thresholds = list(),
+        effect_equivalent_candidates = integer(),
+        effect_equivalence_status = "not-calibrated",
         calibration_digest = NA_character_
     )
     payload$digest <- digest::digest(
@@ -990,30 +1087,36 @@ assess_component_identifiability <- function(
         proposal,
         non_analytical_fields
     )
-    replicates <- lapply(seq_len(n_resamples), function(index) {
-        tryCatch(
-            .run_identifiability_replicate(
-                index = index,
-                draw = plan$draws[[index]],
-                replicate_seed = plan$replicate_seeds[[index]],
-                source_data = data,
-                reference_loadings = reference_loadings,
-                loading_geometry = loading_geometry,
-                config = config,
-                non_analytical_fields = fields
-            ),
-            error = function(error) {
-                .failed_identifiability_replicate(
-                    index,
-                    plan$replicate_seeds[[index]],
-                    plan$draws[[index]]$source_primary,
-                    "decomposition",
-                    conditionMessage(error),
-                    plan$draws[[index]]$replicate_subject
-                )
-            }
-        )
-    })
+    run_replicate <- .run_identifiability_replicate
+    failed_replicate <- .failed_identifiability_replicate
+    replicates <- future.apply::future_lapply(
+        seq_len(n_resamples),
+        function(index) {
+            tryCatch(
+                run_replicate(
+                    index = index,
+                    draw = plan$draws[[index]],
+                    replicate_seed = plan$replicate_seeds[[index]],
+                    source_data = data,
+                    reference_loadings = reference_loadings,
+                    loading_geometry = loading_geometry,
+                    config = config,
+                    non_analytical_fields = fields
+                ),
+                error = function(error) {
+                    failed_replicate(
+                        index,
+                        plan$replicate_seeds[[index]],
+                        plan$draws[[index]]$source_primary,
+                        "decomposition",
+                        conditionMessage(error),
+                        plan$draws[[index]]$replicate_subject
+                    )
+                }
+            )
+        },
+        future.seed = TRUE
+    )
     evidence <- .new_identifiability_evidence(
         proposal,
         config,
@@ -1047,59 +1150,6 @@ proposal_identifiability <- function(proposal) {
     evidence
 }
 
-.record_identifiability_outcome <- function(
-    proposal,
-    outcome,
-    calibration_digest,
-    diagnostic
-) {
-    allowed <- c(
-        "stable-axis",
-        "stable-subspace-no-stable-axis",
-        "no-stable-target-structure",
-        "outside-operating-region",
-        "unique-winner-failure",
-        "invalid-design"
-    )
-    if (length(outcome) != 1L || is.na(outcome) ||
-        !outcome %in% allowed) {
-        .stop_landscapeR_validation(
-            "identifiability outcome is not supported"
-        )
-    }
-    if (!.is_sha256_digest(calibration_digest)) {
-        .stop_landscapeR_validation(
-            "identifiability outcome requires a calibration SHA-256 digest"
-        )
-    }
-    if (!.is_scalar_nonempty_text(diagnostic)) {
-        .stop_landscapeR_validation(
-            "identifiability outcome requires one diagnostic"
-        )
-    }
-    evidence <- proposal_identifiability(proposal)
-    evidence$structured_outcome <- outcome
-    evidence$status <- if (identical(outcome, "stable-axis")) {
-        "calibrated-axis-eligible"
-    } else if (outcome %in% c(
-        "stable-subspace-no-stable-axis",
-        "no-stable-target-structure"
-    )) {
-        "calibrated-scientific-abstention"
-    } else {
-        "calibrated-ineligible"
-    }
-    evidence$calibration_digest <- calibration_digest
-    evidence$outcome_diagnostic <- diagnostic
-    evidence$digest <- NULL
-    evidence$digest <- digest::digest(
-        evidence,
-        algo = "sha256",
-        serialize = TRUE
-    )
-    .proposal_with_identifiability(proposal, evidence)
-}
-
 .identifiability_surface_data <- function(evidence) {
     spectrum <- evidence$reference_spectral_gaps
     spectrum_rows <- data.frame(
@@ -1127,10 +1177,34 @@ proposal_identifiability <- function(proposal) {
         focal = recurrence$nominated_reference,
         stringsAsFactors = FALSE
     )
-    recurrence_rows <- data.frame(
-        surface = "Axis recurrence",
+    axis_rows <- data.frame(
+        surface = "Individual-axis recurrence",
         evidence_index = recurrence$replicate,
-        value = as.numeric(recurrence$rank_one),
+        value = as.numeric(recurrence$matched),
+        series = paste0("Component ", recurrence$reference_component),
+        focal = recurrence$nominated_reference,
+        stringsAsFactors = FALSE
+    )
+    index_rows <- data.frame(
+        surface = "Index recurrence",
+        evidence_index = recurrence$replicate,
+        value = as.numeric(recurrence$index_recurrent),
+        series = paste0("Component ", recurrence$reference_component),
+        focal = recurrence$nominated_reference,
+        stringsAsFactors = FALSE
+    )
+    orientation_rows <- data.frame(
+        surface = "Orientation recurrence",
+        evidence_index = recurrence$replicate,
+        value = as.numeric(recurrence$orientation_recurrent),
+        series = paste0("Component ", recurrence$reference_component),
+        focal = recurrence$nominated_reference,
+        stringsAsFactors = FALSE
+    )
+    rank_rows <- data.frame(
+        surface = "Proposal rank",
+        evidence_index = recurrence$replicate,
+        value = recurrence$proposal_rank,
         series = paste0("Component ", recurrence$reference_component),
         focal = recurrence$nominated_reference,
         stringsAsFactors = FALSE
@@ -1163,11 +1237,11 @@ proposal_identifiability <- function(proposal) {
             function(x) x$replicate,
             integer(1L)
         ),
-        value = as.numeric(vapply(
+        value = as.numeric(!vapply(
             evidence$replicates,
             function(x) {
-                identical(x$decomposition_status, "success") &&
-                    identical(x$association_status, "success")
+                x$replicate %in%
+                    evidence$failure_summary$failed_replicates
             },
             logical(1L)
         )),
@@ -1181,7 +1255,10 @@ proposal_identifiability <- function(proposal) {
             spectrum_rows,
             similarity_rows,
             margin_rows,
-            recurrence_rows,
+            axis_rows,
+            index_rows,
+            orientation_rows,
+            rank_rows,
             angle_rows,
             completion_rows
         )
@@ -1191,7 +1268,9 @@ proposal_identifiability <- function(proposal) {
         surface_data$surface,
         levels = c(
             "Spectrum", "Matching similarity", "Assignment margin",
-            "Axis recurrence", "Subspace angle", "Replicate completion"
+            "Individual-axis recurrence", "Index recurrence",
+            "Orientation recurrence", "Proposal rank", "Subspace angle",
+            "Replicate completion"
         )
     )
     rownames(surface_data) <- NULL
@@ -1203,7 +1282,8 @@ proposal_identifiability <- function(proposal) {
 #' Produces a compact evidence surface for the spectrum, joint matching,
 #' recurrence, subspace angles, and replicate completion. Values are shown
 #' without uncalibrated stability thresholds; the subtitle reports the
-#' structured evidence outcome.
+#' structured evidence outcome and exact failed-replicate fraction. Unmatched
+#' axes appear as zero individual-axis recurrence rather than disappearing.
 #'
 #' @param proposal a `ComponentProposal` assessed by
 #'   `assess_component_identifiability()`
@@ -1213,6 +1293,22 @@ plot_component_identifiability <- function(proposal) {
     evidence <- proposal_identifiability(proposal)
     surface_data <- .identifiability_surface_data(evidence)
     palette <- landscapeR_palette("semantic")
+    binary_limits <- data.frame(
+        surface = factor(
+            rep(
+                c(
+                    "Individual-axis recurrence",
+                    "Index recurrence",
+                    "Orientation recurrence",
+                    "Replicate completion"
+                ),
+                each = 2L
+            ),
+            levels = levels(surface_data$surface)
+        ),
+        evidence_index = NA_real_,
+        value = rep(c(0, 1), 4L)
+    )
     ggplot2::ggplot(
         surface_data,
         ggplot2::aes(
@@ -1221,6 +1317,11 @@ plot_component_identifiability <- function(proposal) {
             colour = focal
         )
     ) +
+        ggplot2::geom_blank(
+            data = binary_limits,
+            ggplot2::aes(x = evidence_index, y = value),
+            inherit.aes = FALSE
+        ) +
         ggplot2::geom_line(
             data = surface_data[
                 surface_data$surface == "Spectrum",
@@ -1235,7 +1336,9 @@ plot_component_identifiability <- function(proposal) {
         ggplot2::geom_point(
             data = surface_data[
                 !surface_data$surface %in% c(
-                    "Axis recurrence",
+                    "Individual-axis recurrence",
+                    "Index recurrence",
+                    "Orientation recurrence",
                     "Replicate completion"
                 ),
                 ,
@@ -1247,12 +1350,16 @@ plot_component_identifiability <- function(proposal) {
         ) +
         ggplot2::geom_jitter(
             data = surface_data[
-                surface_data$surface == "Axis recurrence",
+                surface_data$surface %in% c(
+                    "Individual-axis recurrence",
+                    "Index recurrence",
+                    "Orientation recurrence"
+                ),
                 ,
                 drop = FALSE
             ],
             width = 0.15,
-            height = 0.012,
+            height = 0,
             size = 0.8,
             alpha = 0.55,
             na.rm = TRUE
@@ -1272,7 +1379,8 @@ plot_component_identifiability <- function(proposal) {
         ggplot2::facet_wrap(
             ggplot2::vars(surface),
             scales = "free",
-            ncol = 2L
+            ncol = 3L,
+            labeller = ggplot2::label_wrap_gen(width = 18L)
         ) +
         ggplot2::scale_colour_manual(
             values = c(
@@ -1283,9 +1391,10 @@ plot_component_identifiability <- function(proposal) {
         ) +
         ggplot2::labs(
             title = "Component identifiability evidence",
-            subtitle = paste(
-                "Structured outcome:",
-                gsub("-", " ", evidence$structured_outcome)
+            subtitle = sprintf(
+                "Structured outcome: %s; failure fraction: %.3f",
+                gsub("-", " ", evidence$structured_outcome),
+                evidence$failure_summary$failure_fraction
             ),
             x = "Evidence replicate or component",
             y = "Observed value"

@@ -10,8 +10,11 @@ threshold, axis recovery, or biological support.
 The red traces identify the uniquely nominated discovery component. Grey traces
 retain the remaining search set. The compact surface exposes the reference
 spectrum, matching similarity and ambiguity, proposal-rank recurrence,
-subspace angles, replicate completion, and the final structured status without
-using a spectral gap or stability score to rerank the biological effect.
+individual-axis, component-index, and biological-orientation recurrence,
+subspace angles, exact failed-replicate fraction, replicate completion, and the
+final structured status without using a spectral gap or stability score to
+rerank the biological effect. Unmatched axes remain visible as zero
+individual-axis recurrence.
 
 The exact per-replicate assignments and rank recurrence remain available in
 [`component-recurrence.tsv`](component-recurrence.tsv);
