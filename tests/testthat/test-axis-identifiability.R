@@ -218,16 +218,72 @@ test_that("identifiability assessment repeats the complete discovery search", {
         evidence$failure_summary$failure_fraction,
         0
     )
+    expect_true(all(c(
+        "replicate", "dimension", "maximum_angle_degrees"
+    ) %in% names(evidence$subspace_angle_summary)))
     surface <- plot_component_identifiability(assessed)
     expect_s3_class(surface, "ggplot")
+    caption_text <- gsub("\\s+", " ", surface$labels$caption)
     expect_setequal(
         unique(surface$data$surface),
+        c(
+            "Axis recurrence", "Matching similarity",
+            "Assignment margin", "Subspace angle"
+        )
+    )
+    expect_match(
+        caption_text,
+        "red triangle marks the nominated component",
+        ignore.case = TRUE
+    )
+    expect_match(
+        caption_text,
+        "independent biological observation",
+        fixed = TRUE
+    )
+    expect_match(
+        caption_text,
+        "target stratified biological unit bootstrap",
+        fixed = TRUE
+    )
+    expect_match(
+        caption_text,
+        "No stability threshold is applied",
+        fixed = TRUE
+    )
+    expect_identical(surface$labels$colour, "Discovery component")
+    expect_identical(surface$labels$shape, "Discovery component")
+    diagnostic <- plot_component_identifiability(
+        assessed,
+        view = "diagnostic"
+    )
+    expect_s3_class(diagnostic, "ggplot")
+    diagnostic_caption <- gsub("\\s+", " ", diagnostic$labels$caption)
+    expect_setequal(
+        unique(diagnostic$data$surface),
         c(
             "Spectrum", "Matching similarity", "Assignment margin",
             "Individual-axis recurrence", "Index recurrence",
             "Orientation recurrence", "Proposal rank", "Subspace angle",
             "Replicate completion"
         )
+    )
+    expect_match(
+        diagnostic_caption,
+        "In the diagnostic view",
+        fixed = TRUE
+    )
+    expect_match(
+        diagnostic_caption,
+        "larger red points mark the nominated component",
+        fixed = TRUE
+    )
+    expect_identical(diagnostic$labels$colour, "Discovery component")
+    expect_identical(diagnostic$labels$shape, "Evidence series")
+    expect_identical(diagnostic$labels$size, "Nominated component")
+    expect_error(
+        plot_component_identifiability(assessed, view = "radial"),
+        "should be one of"
     )
     expect_false(any(grepl(
         "human",
@@ -289,6 +345,34 @@ test_that("identifiability assessment repeats the complete discovery search", {
         incomplete$failure_summary$failed_replicates,
         c(1L, 2L)
     )
+    incomplete_plot <- plot_component_identifiability(
+        landscapeR:::.proposal_with_identifiability(assessed, incomplete)
+    )
+    incomplete_caption <- gsub("\\s+", " ", incomplete_plot$labels$caption)
+    expect_match(
+        incomplete_caption,
+        "5 of 7 independent biological observation resamples completed",
+        fixed = TRUE
+    )
+    expect_match(incomplete_caption, "1 proposal abstention", fixed = TRUE)
+    expect_match(incomplete_caption, "1 unmatched nominated axis", fixed = TRUE)
+    incomplete_axis <- incomplete_plot$data[
+        incomplete_plot$data$surface == "Axis recurrence" &
+            incomplete_plot$data$focal,
+        ,
+        drop = FALSE
+    ]
+    expect_equal(incomplete_axis$value, 6 / 7)
+    incomplete_diagnostic <- plot_component_identifiability(
+        landscapeR:::.proposal_with_identifiability(assessed, incomplete),
+        view = "diagnostic"
+    )
+    completion_rows <- incomplete_diagnostic$data[
+        incomplete_diagnostic$data$surface == "Replicate completion",
+        ,
+        drop = FALSE
+    ]
+    expect_identical(sum(completion_rows$value == 0), 2L)
     proposal_failure <- landscapeR:::.failed_identifiability_replicate(
         index = 1L,
         seed = 11L,
@@ -309,20 +393,77 @@ test_that("identifiability assessment repeats the complete discovery search", {
     expect_identical(exploratory@claim_intent, "exploratory")
     expect_match(
         surface$labels$subtitle,
-        sprintf(
-            "failure fraction: %.3f",
-            evidence$failure_summary$failure_fraction
-        ),
+        "Calibration not yet available",
         fixed = TRUE
     )
     expect_true(
-        "Individual-axis recurrence" %in%
+        "Axis recurrence" %in%
             levels(surface$data$surface)
     )
     rendered <- ggplot2::ggplot_build(surface)
-    expect_true(all(rendered$data[[4L]]$y >= 0 & rendered$data[[4L]]$y <= 1))
-    expect_true(all(rendered$data[[5L]]$y >= 0 & rendered$data[[5L]]$y <= 1))
+    bounded <- surface$data$surface %in% c(
+        "Axis recurrence", "Matching similarity"
+    )
+    expect_true(all(
+        surface$data$value[bounded] >= 0 &
+            surface$data$value[bounded] <= 1
+    ))
     calibration_digest <- paste(rep("a", 64L), collapse = "")
+    outcome_labels <- c(
+        `stable-axis` = "Individual axis recovered",
+        `stable-subspace/no-stable-axis` =
+            "Enclosing subspace recovered; individual axis unresolved",
+        `no-stable-target-structure` =
+            "No stable target-associated structure recovered",
+        `outside-calibrated-operating-region` =
+            "Design outside the calibrated operating region",
+        `unique-winner-failure` =
+            "No unique effect-ranked component identified",
+        `non-identifiable-design` =
+            "Design does not identify an individual axis"
+    )
+    for (outcome in names(outcome_labels)) {
+        outcome_evidence <- proposal_identifiability(assessed)
+        outcome_evidence$structured_outcome <- outcome
+        outcome_evidence$status <- if (identical(outcome, "stable-axis")) {
+            "calibrated-eligible"
+        } else {
+            "calibrated-ineligible"
+        }
+        outcome_evidence$calibration_digest <- calibration_digest
+        outcome_evidence$digest <- NULL
+        outcome_evidence$digest <- digest::digest(
+            outcome_evidence,
+            algo = "sha256",
+            serialize = TRUE
+        )
+        outcome_plot <- plot_component_identifiability(
+            landscapeR:::.proposal_with_identifiability(
+                assessed,
+                outcome_evidence
+            )
+        )
+        expect_match(
+            gsub("\\s+", " ", outcome_plot$labels$subtitle),
+            outcome_labels[[outcome]],
+            fixed = TRUE
+        )
+        outcome_caption <- gsub(
+            "\\s+",
+            " ",
+            outcome_plot$labels$caption
+        )
+        expect_match(
+            outcome_caption,
+            "Digest-bound calibration thresholds produced the stored evidence outcome",
+            fixed = TRUE
+        )
+        expect_false(grepl(
+            "No stability threshold is applied",
+            outcome_caption,
+            fixed = TRUE
+        ))
+    }
     for (outcome in c(
         "stable-subspace/no-stable-axis",
         "no-stable-target-structure",

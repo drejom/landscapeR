@@ -4,19 +4,22 @@
 \alias{plot_component_identifiability}
 \title{Plot component-axis identifiability evidence}
 \usage{
-plot_component_identifiability(proposal)
+plot_component_identifiability(proposal, view = c("primary", "diagnostic"))
 }
 \arguments{
 \item{proposal}{a \code{ComponentProposal} assessed by
 \code{assess_component_identifiability()}}
+
+\item{view}{either \code{"primary"} (the default scientific summary) or
+\code{"diagnostic"} (the complete audit surface)}
 }
 \value{
 a \code{ggplot2} object
 }
 \description{
-Produces a compact evidence surface for the spectrum, joint matching,
-recurrence, subspace angles, and replicate completion. Values are shown
-without uncalibrated stability thresholds; the subtitle reports the
-structured evidence outcome and exact failed-replicate fraction. Unmatched
-axes appear as zero individual-axis recurrence rather than disappearing.
+The default primary view summarizes individual-axis recurrence, joint
+matching, assignment ambiguity, and enclosing-subspace angles. The detailed
+diagnostic view retains the full nine-panel audit surface, including the
+spectrum, index and orientation recurrence, proposal rank, and replicate
+completion. Values are shown without uncalibrated stability thresholds.
 }

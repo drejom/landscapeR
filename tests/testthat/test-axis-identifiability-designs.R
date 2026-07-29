@@ -265,6 +265,13 @@ test_that("time-course designs repeat the complete discovery workflow", {
         )
         evidence <- proposal_identifiability(assessed)
         expect_identical(evidence$resampling$unit, expected_units[[design]])
+        plot <- plot_component_identifiability(assessed)
+        caption <- gsub("\\s+", " ", plot$labels$caption)
+        expect_match(
+            caption,
+            gsub("-", " ", expected_units[[design]], fixed = TRUE),
+            fixed = TRUE
+        )
         expect_identical(evidence$n_requested, 3L)
         expect_length(evidence$replicates, 3L)
         expect_true(all(vapply(

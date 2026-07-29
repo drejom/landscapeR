@@ -839,6 +839,35 @@ utils::globalVariables(c(
     )
 }
 
+.summarize_subspace_angles <- function(replicates) {
+    rows <- lapply(replicates, function(replicate) {
+        angles <- replicate$subspace_angles
+        if (!nrow(angles)) return(NULL)
+        maximum <- stats::aggregate(
+            angle_degrees ~ dimension,
+            data = angles,
+            FUN = max
+        )
+        data.frame(
+            replicate = replicate$replicate,
+            dimension = maximum$dimension,
+            maximum_angle_degrees = maximum$angle_degrees,
+            stringsAsFactors = FALSE
+        )
+    })
+    rows <- Filter(function(x) !is.null(x) && nrow(x), rows)
+    if (!length(rows)) {
+        return(data.frame(
+            replicate = integer(),
+            dimension = integer(),
+            maximum_angle_degrees = numeric()
+        ))
+    }
+    out <- do.call(rbind, rows)
+    rownames(out) <- NULL
+    out
+}
+
 .new_identifiability_evidence <- function(
     proposal,
     config,
@@ -938,6 +967,7 @@ utils::globalVariables(c(
         recurrence = recurrence$recurrence,
         recurrence_summary = recurrence$summary,
         target_recurrence = recurrence$target,
+        subspace_angle_summary = .summarize_subspace_angles(replicates),
         failure_summary = list(
             n_requested = as.integer(length(replicates)),
             n_completed = as.integer(sum(completed)),
@@ -1209,27 +1239,15 @@ proposal_identifiability <- function(proposal) {
         focal = recurrence$nominated_reference,
         stringsAsFactors = FALSE
     )
-    angle_rows <- do.call(rbind, lapply(
-        evidence$replicates,
-        function(replicate) {
-            angles <- replicate$subspace_angles
-            if (!nrow(angles)) return(NULL)
-            maximum <- stats::aggregate(
-                angle_degrees ~ dimension,
-                data = angles,
-                FUN = max
-            )
-            data.frame(
-                surface = "Subspace angle",
-                evidence_index = replicate$replicate,
-                value = maximum$angle_degrees,
-                series = paste0("Dimension ", maximum$dimension),
-                focal = maximum$dimension ==
-                    evidence$nominated_component,
-                stringsAsFactors = FALSE
-            )
-        }
-    ))
+    angle_summary <- evidence$subspace_angle_summary
+    angle_rows <- data.frame(
+        surface = "Subspace angle",
+        evidence_index = angle_summary$replicate,
+        value = angle_summary$maximum_angle_degrees,
+        series = paste0("Dimension ", angle_summary$dimension),
+        focal = FALSE,
+        stringsAsFactors = FALSE
+    )
     completion_rows <- data.frame(
         surface = "Replicate completion",
         evidence_index = vapply(
@@ -1277,22 +1295,306 @@ proposal_identifiability <- function(proposal) {
     surface_data
 }
 
+.identifiability_primary_data <- function(evidence) {
+    summary <- evidence$recurrence_summary
+    summary_rows <- rbind(
+        data.frame(
+            surface = "Axis recurrence",
+            evidence_index = summary$reference_component,
+            value = summary$matched_fraction,
+            series = paste0("Component ", summary$reference_component),
+            focal = summary$nominated_reference,
+            stringsAsFactors = FALSE
+        ),
+        data.frame(
+            surface = "Matching similarity",
+            evidence_index = summary$reference_component,
+            value = summary$mean_absolute_similarity,
+            series = paste0("Component ", summary$reference_component),
+            focal = summary$nominated_reference,
+            stringsAsFactors = FALSE
+        )
+    )
+    recurrence <- evidence$recurrence
+    margin_rows <- data.frame(
+        surface = "Assignment margin",
+        evidence_index = recurrence$reference_component,
+        value = recurrence$assignment_margin,
+        series = paste0("Component ", recurrence$reference_component),
+        focal = recurrence$nominated_reference,
+        stringsAsFactors = FALSE
+    )
+    angle_summary <- evidence$subspace_angle_summary
+    angle_rows <- data.frame(
+        surface = "Subspace angle",
+        evidence_index = angle_summary$dimension,
+        value = angle_summary$maximum_angle_degrees,
+        series = paste0("Dimension ", angle_summary$dimension),
+        focal = FALSE,
+        stringsAsFactors = FALSE
+    )
+    rows <- Filter(
+        function(x) !is.null(x) && nrow(x),
+        list(summary_rows, margin_rows, angle_rows)
+    )
+    primary_data <- do.call(rbind, rows)
+    primary_data$surface <- factor(
+        primary_data$surface,
+        levels = c(
+            "Axis recurrence", "Matching similarity",
+            "Assignment margin", "Subspace angle"
+        )
+    )
+    rownames(primary_data) <- NULL
+    primary_data
+}
+
+.identifiability_caption <- function(evidence, view) {
+    unit <- gsub("-", " ", evidence$resampling$unit, fixed = TRUE)
+    method <- gsub("-", " ", evidence$resampling$method, fixed = TRUE)
+    count_phrase <- function(value, singular, plural) {
+        sprintf("%d %s", value, if (value == 1L) singular else plural)
+    }
+    completion <- sprintf(
+        "%s of %s %s resamples completed the full assessment; %s did not.",
+        evidence$n_completed,
+        evidence$n_requested,
+        unit,
+        evidence$n_requested - evidence$n_completed
+    )
+    incomplete <- if (evidence$n_completed < evidence$n_requested) {
+        n <- evidence$n_requested
+        summary <- evidence$failure_summary
+        paste(
+            "Incomplete evidence included",
+            paste0(count_phrase(
+                round(n * summary$computational_failure_fraction),
+                "computational failure",
+                "computational failures"
+            ), ","),
+            paste0(count_phrase(
+                round(n * summary$proposal_abstention_fraction),
+                "proposal abstention",
+                "proposal abstentions"
+            ), ","),
+            paste0(count_phrase(
+                round(n * summary$proposal_execution_failure_fraction),
+                "proposal execution failure",
+                "proposal execution failures"
+            ), ","),
+            "and",
+            paste0(count_phrase(
+                round(n * summary$nominated_unmatched_fraction),
+                "unmatched nominated axis",
+                "unmatched nominated axes"
+            ), ".")
+        )
+    } else {
+        NULL
+    }
+    encodings <- if (identical(view, "primary")) {
+        paste(
+            "In component-indexed panels, the red triangle marks the",
+            "nominated component and black circles mark comparisons."
+        )
+    } else {
+        paste(
+            "In component-indexed panels, larger red points mark the",
+            "nominated component and smaller black points mark comparisons."
+        )
+    }
+    interpretation <- paste(
+        "Components are matched jointly one-to-one by maximum total",
+        "absolute feature-loading cosine.",
+        "Axis recurrence is the fraction assigned to the same discovery",
+        "axis; higher absolute loading cosine indicates a closer match;",
+        "larger assignment margin indicates less ambiguity. Subspace",
+        "points are per-resample largest principal angles for each",
+        "enclosing dimension."
+    )
+    calibrated <- !identical(evidence$structured_outcome, "not-calibrated") &&
+        is.character(evidence$calibration_digest) &&
+        length(evidence$calibration_digest) == 1L &&
+        !is.na(evidence$calibration_digest) &&
+        nzchar(evidence$calibration_digest)
+    boundary <- if (calibrated) {
+        paste(
+            "Digest-bound calibration thresholds produced the stored",
+            "evidence outcome; the renderer does not reclassify it.",
+            "The evidence does not by itself establish biological validity."
+        )
+    } else {
+        paste(
+            "Smaller subspace angles indicate more recurrent enclosing",
+            "subspaces. No stability threshold is applied; evidence is",
+            "descriptive and does not establish biological validity."
+        )
+    }
+    detail <- if (identical(view, "diagnostic")) {
+        paste(
+            "In the diagnostic view, the spectrum shows stored singular",
+            "values; individual-axis recurrence marks matched axes;",
+            "index recurrence marks repeated component indices;",
+            "orientation recurrence marks repeated corrected effect",
+            "direction; proposal rank is the resampled biological-effect",
+            "rank; and completion equals one only when the full assessment",
+            "completed. Point shapes identify evidence series."
+        )
+    } else {
+        NULL
+    }
+    caption <- paste(
+        c(
+            sprintf("%s Resampling used %s.", completion, method),
+            incomplete,
+            encodings,
+            interpretation,
+            boundary,
+            detail
+        ),
+        collapse = " "
+    )
+    paste(strwrap(caption, width = 96L), collapse = "\n")
+}
+
+.identifiability_outcome_label <- function(outcome) {
+    labels <- c(
+        `not-calibrated` = "Calibration not yet available",
+        `stable-axis` = "Individual axis recovered",
+        `stable-subspace/no-stable-axis` =
+            "Enclosing subspace recovered; individual axis unresolved",
+        `no-stable-target-structure` =
+            "No stable target-associated structure recovered",
+        `outside-calibrated-operating-region` =
+            "Design outside the calibrated operating region",
+        `unique-winner-failure` =
+            "No unique effect-ranked component identified",
+        `non-identifiable-design` =
+            "Design does not identify an individual axis"
+    )
+    label <- unname(labels[[outcome]])
+    if (is.null(label)) gsub("-", " ", outcome, fixed = TRUE) else label
+}
+
 #' Plot component-axis identifiability evidence
 #'
-#' Produces a compact evidence surface for the spectrum, joint matching,
-#' recurrence, subspace angles, and replicate completion. Values are shown
-#' without uncalibrated stability thresholds; the subtitle reports the
-#' structured evidence outcome and exact failed-replicate fraction. Unmatched
-#' axes appear as zero individual-axis recurrence rather than disappearing.
+#' The default primary view summarizes individual-axis recurrence, joint
+#' matching, assignment ambiguity, and enclosing-subspace angles. The detailed
+#' diagnostic view retains the full nine-panel audit surface, including the
+#' spectrum, index and orientation recurrence, proposal rank, and replicate
+#' completion. Values are shown without uncalibrated stability thresholds.
 #'
 #' @param proposal a `ComponentProposal` assessed by
 #'   `assess_component_identifiability()`
+#' @param view either `"primary"` (the default scientific summary) or
+#'   `"diagnostic"` (the complete audit surface)
 #' @return a `ggplot2` object
 #' @export
-plot_component_identifiability <- function(proposal) {
+plot_component_identifiability <- function(
+    proposal,
+    view = c("primary", "diagnostic")
+) {
+    view <- match.arg(view)
     evidence <- proposal_identifiability(proposal)
-    surface_data <- .identifiability_surface_data(evidence)
+    surface_data <- if (identical(view, "primary")) {
+        .identifiability_primary_data(evidence)
+    } else {
+        .identifiability_surface_data(evidence)
+    }
     palette <- landscapeR_palette("semantic")
+    subtitle <- paste(strwrap(sprintf(
+        "Evidence outcome: %s; full-assessment completion: %d/%d",
+        .identifiability_outcome_label(evidence$structured_outcome),
+        evidence$n_completed,
+        evidence$n_requested
+    ), width = 74L), collapse = "\n")
+    caption <- .identifiability_caption(evidence, view)
+    colour_scale <- ggplot2::scale_colour_manual(
+        values = c(
+            `FALSE` = unname(palette[["ink"]]),
+            `TRUE` = unname(palette[["focal"]])
+        ),
+        breaks = c(FALSE, TRUE),
+        labels = c("Comparison components", "Nominated component"),
+        name = "Discovery component"
+    )
+    if (identical(view, "primary")) {
+        shape_scale <- ggplot2::scale_shape_manual(
+            values = c(`FALSE` = 16, `TRUE` = 17),
+            breaks = c(FALSE, TRUE),
+            labels = c("Comparison components", "Nominated component"),
+            name = "Discovery component"
+        )
+        summary_surfaces <- c("Axis recurrence", "Matching similarity")
+        bounded <- data.frame(
+            surface = factor(
+                rep(summary_surfaces, each = 2L),
+                levels = levels(surface_data$surface)
+            ),
+            evidence_index = NA_real_,
+            value = rep(c(0, 1), length(summary_surfaces))
+        )
+        return(
+            ggplot2::ggplot(
+                surface_data,
+                ggplot2::aes(
+                    x = evidence_index,
+                    y = value,
+                    colour = focal,
+                    shape = focal
+                )
+            ) +
+                ggplot2::geom_blank(
+                    data = bounded,
+                    ggplot2::aes(x = evidence_index, y = value),
+                    inherit.aes = FALSE
+                ) +
+                ggplot2::geom_point(
+                    data = surface_data[
+                        surface_data$surface %in% summary_surfaces,
+                        ,
+                        drop = FALSE
+                    ],
+                    size = 2.2,
+                    alpha = 0.9,
+                    na.rm = TRUE
+                ) +
+                ggplot2::geom_jitter(
+                    data = surface_data[
+                        !surface_data$surface %in% summary_surfaces,
+                        ,
+                        drop = FALSE
+                    ],
+                    width = 0.12,
+                    height = 0,
+                    size = 1.2,
+                    alpha = 0.5,
+                    na.rm = TRUE
+                ) +
+                ggplot2::facet_wrap(
+                    ggplot2::vars(surface),
+                    scales = "free_y",
+                    ncol = 2L
+                ) +
+                colour_scale +
+                shape_scale +
+                ggplot2::labs(
+                    title = "Axis identifiability summary",
+                    subtitle = subtitle,
+                    x = "Discovery component or subspace dimension",
+                    y = "Observed value",
+                    colour = "Discovery component",
+                    shape = "Discovery component",
+                    caption = caption
+                ) +
+                theme_landscapeR(square = FALSE) +
+                ggplot2::theme(
+                    legend.position = "bottom",
+                    plot.caption.position = "plot",
+                    plot.caption = ggplot2::element_text(hjust = 0)
+                )
+        )
+    }
     binary_limits <- data.frame(
         surface = factor(
             rep(
@@ -1309,12 +1611,19 @@ plot_component_identifiability <- function(proposal) {
         evidence_index = NA_real_,
         value = rep(c(0, 1), 4L)
     )
+    series_levels <- unique(as.character(surface_data$series))
+    series_shapes <- rep(
+        c(16, 17, 15, 3, 7, 8, 0:2, 4:6, 9:14),
+        length.out = length(series_levels)
+    )
+    names(series_shapes) <- series_levels
     ggplot2::ggplot(
         surface_data,
         ggplot2::aes(
             x = evidence_index,
             y = value,
-            colour = focal
+            colour = focal,
+            shape = series
         )
     ) +
         ggplot2::geom_blank(
@@ -1344,7 +1653,7 @@ plot_component_identifiability <- function(proposal) {
                 ,
                 drop = FALSE
             ],
-            size = 0.9,
+            ggplot2::aes(size = focal),
             alpha = 0.65,
             na.rm = TRUE
         ) +
@@ -1358,9 +1667,9 @@ plot_component_identifiability <- function(proposal) {
                 ,
                 drop = FALSE
             ],
+            ggplot2::aes(size = focal),
             width = 0.15,
             height = 0,
-            size = 0.8,
             alpha = 0.55,
             na.rm = TRUE
         ) +
@@ -1370,9 +1679,9 @@ plot_component_identifiability <- function(proposal) {
                 ,
                 drop = FALSE
             ],
+            ggplot2::aes(size = focal),
             width = 0.15,
             height = 0,
-            size = 0.8,
             alpha = 0.55,
             na.rm = TRUE
         ) +
@@ -1382,22 +1691,42 @@ plot_component_identifiability <- function(proposal) {
             ncol = 3L,
             labeller = ggplot2::label_wrap_gen(width = 18L)
         ) +
-        ggplot2::scale_colour_manual(
-            values = c(
-                `FALSE` = unname(palette[["ink"]]),
-                `TRUE` = unname(palette[["focal"]])
-            ),
+        colour_scale +
+        ggplot2::scale_shape_manual(
+            values = series_shapes,
+            name = "Evidence series"
+        ) +
+        ggplot2::scale_size_manual(
+            values = c(`FALSE` = 0.8, `TRUE` = 1.5),
             guide = "none"
         ) +
-        ggplot2::labs(
-            title = "Component identifiability evidence",
-            subtitle = sprintf(
-                "Structured outcome: %s; failure fraction: %.3f",
-                gsub("-", " ", evidence$structured_outcome),
-                evidence$failure_summary$failure_fraction
+        ggplot2::guides(
+            shape = ggplot2::guide_legend(
+                nrow = 4L,
+                byrow = TRUE,
+                order = 1L
             ),
-            x = "Evidence replicate or component",
-            y = "Observed value"
+            colour = ggplot2::guide_legend(
+                nrow = 2L,
+                byrow = TRUE,
+                order = 2L
+            )
         ) +
-        theme_landscapeR(square = FALSE)
+        ggplot2::labs(
+            title = "Component identifiability diagnostics",
+            subtitle = subtitle,
+            x = "Evidence replicate or component",
+            y = "Observed value",
+            colour = "Discovery component",
+            shape = "Evidence series",
+            size = "Nominated component",
+            caption = caption
+        ) +
+        theme_landscapeR(square = FALSE) +
+        ggplot2::theme(
+            legend.position = "bottom",
+            legend.box = "vertical",
+            plot.caption.position = "plot",
+            plot.caption = ggplot2::element_text(hjust = 0)
+        )
 }
