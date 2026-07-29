@@ -192,7 +192,9 @@ confirmation; stable-subspace/no-stable-axis is a valid abstention.
 complete. #92 is complete and #83 completes on merge, leaving #93 as the next
 interpretation-policy task. #94 remains queued behind that policy deepening.
 #101 reconciles supporting Pogona manifests without changing the active task
-sequence.
+sequence. The plot audit recorded in #106–#109 does not displace #93: #109
+completes with #83 on merge; #106 is the caption-contract prefactor for the
+queued #94 visual-evidence view and the #107/#108 renderer migrations.
 
 **Parked debt:** #95 deepens stage completion/provenance. #96 establishes shared
 artifact migration policy, with #97 adopting it across the interpretation
@@ -390,6 +392,10 @@ bodies may state dependencies but do not change this ordering.
 | [#100](https://github.com/drejom/landscapeR/issues/100) | Shared interpretation evidence contract correction | complete on merge |
 | [#101](https://github.com/drejom/landscapeR/issues/101) | Pogona master-registry manifest reconciliation | complete |
 | [#104](https://github.com/drejom/landscapeR/issues/104) | Candidate temporal biological dataset | parked — research question |
+| [#106](https://github.com/drejom/landscapeR/issues/106) | Scientific caption contract — visual-evidence prefactor | queued — after #93 |
+| [#107](https://github.com/drejom/landscapeR/issues/107) | Stage 1/2 scientific caption migration | queued — blocked by #106 |
+| [#108](https://github.com/drejom/landscapeR/issues/108) | Component-interpretation caption migration | queued — blocked by #94 and #106 |
+| [#109](https://github.com/drejom/landscapeR/issues/109) | Component-identifiability primary/diagnostic views | complete on merge |
 <!-- issue-map:end -->
 
 ---
