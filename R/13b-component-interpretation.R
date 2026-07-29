@@ -240,28 +240,27 @@ setValidity("MetadataAssociationAtlas", function(object) {
         errors <- c(errors, "provenance is missing required fields")
     }
     interpretation_module <- object@provenance$interpretation_module
-    uses_cross_sectional_module <- identical(
-        interpretation_module,
-        .cross_sectional_evidence_version
-    )
-    if (uses_cross_sectional_module &&
+    uses_interpretation_module <- length(interpretation_module) == 1L &&
+        interpretation_module %in% .interpretation_evidence_versions
+    if (uses_interpretation_module &&
         is.null(object@provenance$evidence_contract)) {
         errors <- c(
             errors,
-            "cross-sectional interpretation module requires evidence contract"
+            "interpretation module requires evidence contract"
         )
     }
     if (!is.null(object@provenance$evidence_contract) &&
-        !uses_cross_sectional_module) {
+        !uses_interpretation_module) {
         errors <- c(
             errors,
             "evidence contract requires a recognized interpretation module"
         )
     }
-    if (uses_cross_sectional_module) {
+    if (uses_interpretation_module) {
         errors <- c(
             errors,
-            .cross_sectional_evidence_errors(
+            .interpretation_evidence_errors(
+                interpretation_module,
                 object@associations,
                 object@observations,
                 object@exclusions,
@@ -843,7 +842,8 @@ register_strategy(
     stage1,
     specification,
     diagnostic,
-    reason = "inappropriate-target-type"
+    reason = "inappropriate-target-type",
+    interpretation_module = .cross_sectional_evidence_version
 ) {
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
@@ -853,7 +853,7 @@ register_strategy(
         target_type = specification@target_type,
         package_version = as.character(utils::packageVersion("landscapeR")),
         sampling_design = std@sampling_design@kind,
-        interpretation_module = .cross_sectional_evidence_version,
+        interpretation_module = interpretation_module,
         input_digest = input_digest,
         state_space_digest = state_space_digest
     )
@@ -1730,12 +1730,11 @@ atlas_provenance <- function(atlas) {
     atlas@provenance
 }
 
-#' Extract the cross-sectional evidence contract
+#' Extract the interpretation evidence contract
 #'
 #' The contract summarizes the normalized evidence rows, analysis cohorts, and
-#' deterministic table digests owned by the cross-sectional interpretation
-#' module. Time-course atlases are migrated separately and therefore return
-#' `NULL` until their dedicated interpretation modules adopt this contract.
+#' deterministic table digests owned by the sampling-design interpretation
+#' module.
 #'
 #' @param atlas a `MetadataAssociationAtlas`
 #' @return A named list with:
@@ -1751,7 +1750,7 @@ atlas_provenance <- function(atlas) {
 #'   logical `included` column records whether that sample contributed to the
 #'   corresponding association estimate.
 #'
-#'   Returns `NULL` for an atlas without the cross-sectional contract.
+#'   Returns `NULL` for an atlas without an interpretation evidence contract.
 #' @export
 atlas_evidence_contract <- function(atlas) {
     if (!is(atlas, "MetadataAssociationAtlas")) {

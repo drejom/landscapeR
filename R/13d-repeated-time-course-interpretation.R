@@ -831,7 +831,8 @@ register_strategy(
                 std,
                 stage1,
                 specification,
-                specification_error
+                specification_error,
+                interpretation_module = .repeated_time_evidence_version
             ))
         }
         .stop_landscapeR_validation(
@@ -901,7 +902,8 @@ register_strategy(
             stage1,
             specification,
             "non-identifiable-design: fewer than two observed times",
-            reason = "non-identifiable-design"
+            reason = "non-identifiable-design",
+            interpretation_module = .repeated_time_evidence_version
         ))
     }
     study_time_range <- range(study_time_grid)
@@ -920,7 +922,8 @@ register_strategy(
             stage1,
             specification,
             "non-identifiable-design: no complete subject trajectories",
-            reason = "non-identifiable-design"
+            reason = "non-identifiable-design",
+            interpretation_module = .repeated_time_evidence_version
         ))
     }
     analysis_cohort <- all_sample_ids[analysis_complete]
@@ -1160,13 +1163,19 @@ register_strategy(
         ),
         stringsAsFactors = FALSE
     )
-    atlas <- new(
-        "MetadataAssociationAtlas",
+    atlas <- .new_time_course_atlas(
+        module = .repeated_time_evidence_version,
+        contract_sampling_design = "longitudinal",
         version = "1.0.0",
         dataset_id = dataset_id,
         associations = associations,
         observations = observations,
         exclusions = exclusions,
+        cohort_members = .time_course_cohort_members(
+            associations,
+            observations,
+            analysis_cohort
+        ),
         sampling_design = std@sampling_design,
         input_digest = input_digest,
         state_space_digest = state_space_digest,

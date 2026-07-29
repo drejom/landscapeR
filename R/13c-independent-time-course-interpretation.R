@@ -922,7 +922,8 @@ register_strategy(
             std,
             stage1,
             specification,
-            "independent time-course target must be declared binary"
+            "independent time-course target must be declared binary",
+            interpretation_module = .independent_time_evidence_version
         ))
     }
     specification_error <- .validate_analysis_specification_data(
@@ -935,7 +936,8 @@ register_strategy(
                 std,
                 stage1,
                 specification,
-                specification_error
+                specification_error,
+                interpretation_module = .independent_time_evidence_version
             ))
         }
         .stop_landscapeR_validation(
@@ -996,7 +998,8 @@ register_strategy(
                 "non-identifiable-design:",
                 "observed study time has fewer than two finite values"
             ),
-            reason = "non-identifiable-design"
+            reason = "non-identifiable-design",
+            interpretation_module = .independent_time_evidence_version
         ))
     }
     study_time_range <- range(study_time_grid)
@@ -1029,7 +1032,8 @@ register_strategy(
                 "non-identifiable-design:",
                 "no complete cases for target, observed time, and nuisance"
             ),
-            reason = "non-identifiable-design"
+            reason = "non-identifiable-design",
+            interpretation_module = .independent_time_evidence_version
         ))
     }
     target <- target[analysis_complete]
@@ -1292,13 +1296,19 @@ register_strategy(
         ),
         drop = FALSE
     ]
-    atlas <- new(
-        "MetadataAssociationAtlas",
+    atlas <- .new_time_course_atlas(
+        module = .independent_time_evidence_version,
+        contract_sampling_design = "independent_time_course",
         version = "1.0.0",
         dataset_id = dataset_id,
         associations = associations,
         observations = observations,
         exclusions = exclusions,
+        cohort_members = .time_course_cohort_members(
+            associations,
+            observations,
+            analysis_cohort
+        ),
         sampling_design = std@sampling_design,
         input_digest = input_digest,
         state_space_digest = state_space_digest,
@@ -1763,6 +1773,7 @@ register_strategy(
                 colour = .data[["condition"]]
             ),
             size = 2.7,
+            show.legend = FALSE,
             inherit.aes = FALSE
         ) +
         ggplot2::geom_point(

@@ -20,6 +20,14 @@ utils::globalVariables(c("metadata_field", "component_label"))
 )
 
 .cross_sectional_evidence_version <- "cross-sectional-v1"
+.independent_time_evidence_version <- "independent-time-course-v1"
+.repeated_time_evidence_version <- "repeated-time-course-v1"
+
+.interpretation_evidence_versions <- c(
+    cross_sectional = .cross_sectional_evidence_version,
+    independent_time_course = .independent_time_evidence_version,
+    longitudinal = .repeated_time_evidence_version
+)
 
 .is_sha256_digest <- function(x) {
     length(x) == 1L && !is.na(x) &&
@@ -42,7 +50,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
     digest::digest(x, algo = "sha256", serialize = TRUE)
 }
 
-.cross_sectional_cohorts <- function(associations) {
+.interpretation_cohort_summary <- function(associations) {
     columns <- c(
         "metadata_field", "component", "evidence_variant",
         "cohort_digest", "n_available", "n_missing"
@@ -58,9 +66,27 @@ utils::globalVariables(c("metadata_field", "component_label"))
     exclusions,
     cohort_members
 ) {
+    .new_interpretation_contract(
+        .cross_sectional_evidence_version,
+        "cross_sectional",
+        associations,
+        observations,
+        exclusions,
+        cohort_members
+    )
+}
+
+.new_interpretation_contract <- function(
+    version,
+    sampling_design,
+    associations,
+    observations,
+    exclusions,
+    cohort_members
+) {
     list(
-        version = .cross_sectional_evidence_version,
-        sampling_design = "cross_sectional",
+        version = version,
+        sampling_design = sampling_design,
         row_counts = c(
             associations = as.integer(nrow(associations)),
             observations = as.integer(nrow(observations)),
@@ -72,7 +98,7 @@ utils::globalVariables(c("metadata_field", "component_label"))
             exclusions = .evidence_table_digest(exclusions),
             cohort_members = .evidence_table_digest(cohort_members)
         ),
-        cohorts = .cross_sectional_cohorts(associations),
+        cohorts = .interpretation_cohort_summary(associations),
         cohort_members = cohort_members
     )
 }
@@ -302,6 +328,262 @@ utils::globalVariables(c("metadata_field", "component_label"))
     errors
 }
 
+.time_course_evidence_errors <- function(
+    module,
+    sampling_design,
+    associations,
+    observations,
+    exclusions,
+    contract,
+    provenance
+) {
+    errors <- character()
+    association_columns <- c(
+        "metadata_field", "component", "evidence_variant", "cohort_digest",
+        "n_available", "n_missing"
+    )
+    observation_columns <- c(
+        "metadata_field", "component", "primary_sample"
+    )
+    exclusion_columns <- c("metadata_field", "reason")
+    required_contract <- c(
+        "version", "sampling_design", "row_counts", "digests", "cohorts",
+        "cohort_members"
+    )
+    if (!all(association_columns %in% names(associations)) ||
+            !all(observation_columns %in% names(observations)) ||
+            !all(exclusion_columns %in% names(exclusions))) {
+        return(
+            paste(
+                "time-course evidence contract requires normalized",
+                "association, observation, and exclusion columns"
+            )
+        )
+    }
+    if (!is.list(contract) ||
+            !all(required_contract %in% names(contract))) {
+        return("time-course evidence contract is missing required fields")
+    }
+    if (!identical(contract$version, module)) {
+        errors <- c(errors, "time-course evidence contract version is invalid")
+    }
+    if (!identical(contract$sampling_design, sampling_design)) {
+        errors <- c(
+            errors,
+            "time-course evidence contract sampling design is invalid"
+        )
+    }
+    member_columns <- c(
+        "metadata_field", "component", "evidence_variant", "primary_sample",
+        "included"
+    )
+    members <- contract$cohort_members
+    if (!is.data.frame(members) ||
+            !all(member_columns %in% names(members)) ||
+            !is.logical(members$included) ||
+            anyNA(members$included)) {
+        return(c(
+            errors,
+            "time-course evidence contract cohort members are invalid"
+        ))
+    }
+    association_keys <- paste(
+        associations$metadata_field,
+        associations$component,
+        associations$evidence_variant,
+        sep = "\r"
+    )
+    if (anyDuplicated(association_keys)) {
+        errors <- c(errors, "time-course association groups must be unique")
+    }
+    member_keys <- unique(paste(
+        members$metadata_field,
+        members$component,
+        members$evidence_variant,
+        sep = "\r"
+    ))
+    if (!setequal(unique(association_keys), member_keys)) {
+        errors <- c(
+            errors,
+            "time-course cohort membership groups do not equal association groups"
+        )
+    }
+    expected <- .new_interpretation_contract(
+        module,
+        sampling_design,
+        associations,
+        observations,
+        exclusions,
+        members
+    )
+    if (!identical(contract$row_counts, expected$row_counts)) {
+        errors <- c(
+            errors,
+            "time-course evidence contract row counts do not match evidence"
+        )
+    }
+    if (!identical(contract$digests, expected$digests)) {
+        errors <- c(
+            errors,
+            "time-course evidence contract digests do not match evidence"
+        )
+    }
+    if (!identical(contract$cohorts, expected$cohorts)) {
+        errors <- c(
+            errors,
+            "time-course evidence contract cohorts do not match associations"
+        )
+    }
+    observation_keys <- unique(paste(
+        observations$metadata_field,
+        observations$component,
+        sep = "\r"
+    ))
+    association_observation_keys <- unique(paste(
+        associations$metadata_field,
+        associations$component,
+        sep = "\r"
+    ))
+    if (!all(association_observation_keys %in% observation_keys)) {
+        errors <- c(
+            errors,
+            "time-course associations lack normalized observations"
+        )
+    }
+    for (i in seq_len(nrow(associations))) {
+        association <- associations[i, , drop = FALSE]
+        observed <- observations[
+            observations$metadata_field == association$metadata_field &
+                observations$component == association$component,
+            ,
+            drop = FALSE
+        ]
+        group <- members[
+            members$metadata_field == association$metadata_field &
+                members$component == association$component &
+                members$evidence_variant == association$evidence_variant,
+            ,
+            drop = FALSE
+        ]
+        included_ids <- as.character(
+            group$primary_sample[group$included]
+        )
+        expected_digest <- .association_cohort_digest(
+            included_ids,
+            rep(TRUE, length(included_ids))
+        )
+        member_order <- match(observed$primary_sample, group$primary_sample)
+        expected_included <- if (identical(
+            association$evidence_variant,
+            "pooled-descriptive"
+        )) {
+            observed$available
+        } else {
+            observed$primary_sample %in% provenance$analysis_cohort
+        }
+        if (anyDuplicated(group$primary_sample) ||
+                anyNA(member_order) ||
+                nrow(group) != nrow(observed) ||
+                !setequal(group$primary_sample, observed$primary_sample) ||
+                !identical(
+                    group$included[member_order],
+                    unname(expected_included)
+                ) ||
+                length(included_ids) != association$n_available ||
+                sum(!group$included) != association$n_missing ||
+                !identical(expected_digest, association$cohort_digest)) {
+            errors <- c(
+                errors,
+                paste(
+                    "time-course cohort membership does not match",
+                    "association evidence"
+                )
+            )
+            break
+        }
+    }
+    design <- provenance$time_course_observations
+    analysis_cohort <- provenance$analysis_cohort
+    if (!is.data.frame(design) ||
+            !"primary_sample" %in% names(design) ||
+            anyDuplicated(design$primary_sample) ||
+            !is.character(analysis_cohort) ||
+            !setequal(
+                as.character(design$primary_sample),
+                analysis_cohort
+            ) ||
+            !setequal(
+                as.character(design$primary_sample),
+                as.character(unique(observations$primary_sample))
+            )) {
+        errors <- c(
+            errors,
+            "time-course sampling structure does not match normalized observations"
+        )
+    } else if (identical(sampling_design, "independent_time_course")) {
+        required <- c("condition", "observed_time")
+        if (!all(required %in% names(design)) ||
+                anyNA(design[, required, drop = FALSE]) ||
+                any(!is.finite(design$observed_time))) {
+            errors <- c(
+                errors,
+                "independent time-course sampling cells are not recorded"
+            )
+        }
+    } else if (identical(sampling_design, "longitudinal")) {
+        required <- c("subject", "condition", "observed_time")
+        structure_valid <- all(required %in% names(design))
+        if (structure_valid) {
+            structure_valid <-
+                anyNA(design[, required, drop = FALSE]) ||
+                    any(!nzchar(as.character(design$subject))) ||
+                    any(!is.finite(design$observed_time))
+            structure_valid <- !structure_valid
+        }
+        if (!structure_valid) {
+            errors <- c(
+                errors,
+                "repeated-subject trajectory structure is not recorded"
+            )
+        }
+    }
+    errors
+}
+
+.interpretation_evidence_errors <- function(
+    module,
+    associations,
+    observations,
+    exclusions,
+    contract,
+    provenance
+) {
+    if (identical(module, .cross_sectional_evidence_version)) {
+        return(.cross_sectional_evidence_errors(
+            associations,
+            observations,
+            exclusions,
+            contract,
+            provenance
+        ))
+    }
+    sampling_design <- names(.interpretation_evidence_versions)[
+        match(module, .interpretation_evidence_versions)
+    ]
+    if (!length(sampling_design) || is.na(sampling_design)) {
+        return("interpretation evidence module is not registered")
+    }
+    .time_course_evidence_errors(
+        module,
+        sampling_design,
+        associations,
+        observations,
+        exclusions,
+        contract,
+        provenance
+    )
+}
+
 .empty_association_evidence <- function() {
     empty <- lapply(.association_atlas_columns, function(name) {
         if (name %in% c(
@@ -376,10 +658,8 @@ setClass(
 )
 
 setValidity("InterpretationEvidence", function(object) {
-    if (!identical(object@module, .cross_sectional_evidence_version)) {
-        return("interpretation evidence module is not registered")
-    }
-    .cross_sectional_evidence_errors(
+    .interpretation_evidence_errors(
+        module = object@module,
         associations = object@associations,
         observations = object@observations,
         exclusions = object@exclusions,
@@ -445,4 +725,118 @@ setValidity("InterpretationEvidence", function(object) {
     )
     validObject(evidence)
     evidence
+}
+
+.new_time_course_evidence <- function(
+    module,
+    sampling_design,
+    associations,
+    observations,
+    exclusions,
+    cohort_members,
+    provenance
+) {
+    rownames(associations) <- NULL
+    rownames(observations) <- NULL
+    rownames(exclusions) <- NULL
+    rownames(cohort_members) <- NULL
+    provenance$interpretation_module <- module
+    provenance$evidence_contract <- .new_interpretation_contract(
+        module,
+        sampling_design,
+        associations,
+        observations,
+        exclusions,
+        cohort_members
+    )
+    evidence <- new(
+        "InterpretationEvidence",
+        module = module,
+        associations = associations,
+        observations = observations,
+        exclusions = exclusions,
+        provenance = provenance
+    )
+    validObject(evidence)
+    evidence
+}
+
+.time_course_cohort_members <- function(
+    associations,
+    observations,
+    analysis_cohort
+) {
+    members <- do.call(rbind, lapply(
+        seq_len(nrow(associations)),
+        function(i) {
+            association <- associations[i, , drop = FALSE]
+            observed <- observations[
+                observations$metadata_field == association$metadata_field &
+                    observations$component == association$component,
+                ,
+                drop = FALSE
+            ]
+            included <- if (identical(
+                association$evidence_variant,
+                "pooled-descriptive"
+            )) {
+                observed$available
+            } else {
+                observed$primary_sample %in% analysis_cohort
+            }
+            data.frame(
+                metadata_field = association$metadata_field,
+                component = association$component,
+                evidence_variant = association$evidence_variant,
+                primary_sample = as.character(observed$primary_sample),
+                included = unname(as.logical(included)),
+                stringsAsFactors = FALSE
+            )
+        }
+    ))
+    rownames(members) <- NULL
+    members
+}
+
+.new_time_course_atlas <- function(
+    module,
+    contract_sampling_design,
+    version,
+    dataset_id,
+    associations,
+    observations,
+    exclusions,
+    cohort_members,
+    sampling_design,
+    input_digest,
+    state_space_digest,
+    compute_tier,
+    provenance,
+    evidence_status
+) {
+    evidence <- .new_time_course_evidence(
+        module = module,
+        sampling_design = contract_sampling_design,
+        associations = associations,
+        observations = observations,
+        exclusions = exclusions,
+        cohort_members = cohort_members,
+        provenance = provenance
+    )
+    atlas <- new(
+        "MetadataAssociationAtlas",
+        version = version,
+        dataset_id = dataset_id,
+        associations = evidence@associations,
+        observations = evidence@observations,
+        exclusions = evidence@exclusions,
+        sampling_design = sampling_design,
+        input_digest = input_digest,
+        state_space_digest = state_space_digest,
+        compute_tier = compute_tier,
+        provenance = evidence@provenance,
+        evidence_status = evidence_status
+    )
+    validObject(atlas)
+    atlas
 }

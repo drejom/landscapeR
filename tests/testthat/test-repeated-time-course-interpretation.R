@@ -31,6 +31,27 @@ test_that("repeated time course fits the registered random-slope strategy", {
         provenance$scientific_random_formula,
         "(1 + scaled_time | subject)"
     )
+    contract <- atlas_evidence_contract(atlas)
+    expect_identical(contract$version, "repeated-time-course-v1")
+    expect_identical(contract$sampling_design, "longitudinal")
+    expect_identical(
+        contract$row_counts,
+        c(
+            associations = 6L,
+            observations = 128L,
+            exclusions = 3L
+        )
+    )
+    expect_true(all(grepl("^[[:xdigit:]]{64}$", contract$digests)))
+    expect_identical(
+        sort(unique(contract$cohort_members$evidence_variant)),
+        sort(c(
+            "pooled-descriptive",
+            "repeated-time-course-unadjusted",
+            "repeated-time-course-adjusted"
+        ))
+    )
+    expect_true(validObject(atlas))
     expect_identical(
         adjusted$estimand,
         rep("standardized-condition-time-interaction", 2L)
@@ -142,6 +163,29 @@ test_that("condition assignment must be constant within each subject", {
         effects$diagnostic
     )))
     expect_s4_class(propose_component(atlas), "ComponentAbstention")
+    expect_identical(
+        atlas_evidence_contract(
+            unserialize(serialize(atlas, NULL))
+        ),
+        atlas_evidence_contract(atlas)
+    )
+})
+
+test_that("empty repeated-subject cohort retains its module provenance", {
+    std <- repeated_time_course_fixture()
+    colData(std)$batch[] <- NA
+    abstention <- associate_metadata(
+        std,
+        specification = repeated_time_course_specification("batch"),
+        non_analytical_fields = "mouse_id"
+    )
+
+    expect_s4_class(abstention, "AssociationAbstention")
+    expect_identical(abstention@reason, "non-identifiable-design")
+    expect_identical(
+        abstention@provenance$interpretation_module,
+        "repeated-time-course-v1"
+    )
 })
 
 test_that("random slopes require replicated subjects with at least three times", {

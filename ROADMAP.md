@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#92 — migrate time-course
-interpretation behind the shared evidence boundary**.
+**Next task after this change lands:** **#83 — integrate evidence-tier axis
+identifiability across the completed interpretation paths**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -188,11 +188,11 @@ confirmation; stable-subspace/no-stable-axis is a valid abstention.
 
 ### 4a. Architecture debt lane
 
-**Active prefactor:** #91 and its general-contract correction #100 complete on
-merge. #92 is the next time-course migration task. #93 and #94 remain queued
-behind #92 and require an explicit roadmap decision before becoming active.
-#101 reconciles supporting Pogona manifests without changing the active task
-sequence.
+**Active prefactor:** #91 and its general-contract correction #100 are
+complete. #92 completes on merge, leaving #83 as the next interpretation
+integration task. #93 and #94 remain queued and require an explicit roadmap
+decision before becoming active. #101 reconciles supporting Pogona
+manifests without changing the active task sequence.
 
 **Parked debt:** #95 deepens stage completion/provenance. #96 establishes shared
 artifact migration policy, with #97 adopting it across the interpretation
@@ -379,11 +379,11 @@ bodies may state dependencies but do not change this ordering.
 | [#80](https://github.com/drejom/landscapeR/issues/80) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
 | [#81](https://github.com/drejom/landscapeR/issues/81) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
 | [#82](https://github.com/drejom/landscapeR/issues/82) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
-| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | active — blocked by #92 |
+| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | active — next |
 | [#91](https://github.com/drejom/landscapeR/issues/91) | Interpretation evidence architecture prefactor | complete on merge |
-| [#92](https://github.com/drejom/landscapeR/issues/92) | Time-course interpretation architecture migration | active — next |
-| [#93](https://github.com/drejom/landscapeR/issues/93) | Design-preserving resampling policy | queued — blocked by #92 |
-| [#94](https://github.com/drejom/landscapeR/issues/94) | Typed visual-evidence view | queued — blocked by #92 |
+| [#92](https://github.com/drejom/landscapeR/issues/92) | Time-course interpretation architecture migration | complete on merge |
+| [#93](https://github.com/drejom/landscapeR/issues/93) | Design-preserving resampling policy | queued |
+| [#94](https://github.com/drejom/landscapeR/issues/94) | Typed visual-evidence view | queued |
 | [#95](https://github.com/drejom/landscapeR/issues/95) | Stage completion and provenance architecture | parked |
 | [#96](https://github.com/drejom/landscapeR/issues/96) | Shared artifact migration policy | parked |
 | [#97](https://github.com/drejom/landscapeR/issues/97) | Interpretation evidence-graph migration policy | parked — blocked by #96 |

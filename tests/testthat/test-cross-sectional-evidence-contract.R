@@ -245,3 +245,42 @@ test_that("public cross-sectional atlas plot renders all diagnostic panels", {
         "gtable"
     )
 })
+
+test_that("all supported designs expose one evidence-contract list shape", {
+    cross <- associate_metadata(
+        .cross_evidence_fixture(),
+        non_analytical_fields = "mouse_id"
+    )
+    independent <- associate_metadata(
+        independent_time_course_fixture(include_nuisance = FALSE),
+        specification = independent_time_course_specification(),
+        non_analytical_fields = c("sample_id", "batch")
+    )
+    repeated <- associate_metadata(
+        repeated_time_course_fixture(),
+        specification = repeated_time_course_specification(),
+        non_analytical_fields = c("mouse_id", "batch")
+    )
+    contracts <- lapply(
+        list(cross, independent, repeated),
+        atlas_evidence_contract
+    )
+
+    expect_true(all(vapply(
+        contracts,
+        function(contract) {
+            identical(
+                names(contract),
+                c(
+                    "version", "sampling_design", "row_counts", "digests",
+                    "cohorts", "cohort_members"
+                )
+            )
+        },
+        logical(1L)
+    )))
+    expect_identical(
+        vapply(contracts, `[[`, character(1L), "sampling_design"),
+        c("cross_sectional", "independent_time_course", "longitudinal")
+    )
+})
