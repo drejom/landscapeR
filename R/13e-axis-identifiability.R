@@ -1026,6 +1026,59 @@ proposal_identifiability <- function(proposal) {
     evidence
 }
 
+.record_identifiability_outcome <- function(
+    proposal,
+    outcome,
+    calibration_digest,
+    diagnostic
+) {
+    allowed <- c(
+        "stable-axis",
+        "stable-subspace-no-stable-axis",
+        "no-stable-target-structure",
+        "outside-operating-region",
+        "unique-winner-failure",
+        "invalid-design"
+    )
+    if (length(outcome) != 1L || is.na(outcome) ||
+        !outcome %in% allowed) {
+        .stop_landscapeR_validation(
+            "identifiability outcome is not supported"
+        )
+    }
+    if (!.is_sha256_digest(calibration_digest)) {
+        .stop_landscapeR_validation(
+            "identifiability outcome requires a calibration SHA-256 digest"
+        )
+    }
+    if (!.is_scalar_nonempty_text(diagnostic)) {
+        .stop_landscapeR_validation(
+            "identifiability outcome requires one diagnostic"
+        )
+    }
+    evidence <- proposal_identifiability(proposal)
+    evidence$structured_outcome <- outcome
+    evidence$status <- if (identical(outcome, "stable-axis")) {
+        "calibrated-axis-eligible"
+    } else if (outcome %in% c(
+        "stable-subspace-no-stable-axis",
+        "no-stable-target-structure"
+    )) {
+        "calibrated-scientific-abstention"
+    } else {
+        "calibrated-ineligible"
+    }
+    evidence$calibration_digest <- calibration_digest
+    evidence$outcome_diagnostic <- diagnostic
+    evidence$digest <- NULL
+    evidence$digest <- digest::digest(
+        evidence,
+        algo = "sha256",
+        serialize = TRUE
+    )
+    .proposal_with_identifiability(proposal, evidence)
+}
+
 .identifiability_surface_data <- function(evidence) {
     spectrum <- evidence$reference_spectral_gaps
     spectrum_rows <- data.frame(

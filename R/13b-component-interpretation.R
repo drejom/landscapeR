@@ -3322,6 +3322,21 @@ confirm_component <- function(
             "confirm_component(): proposal must be a ComponentProposal"
         )
     }
+    identifiability <- proposal@provenance$axis_identifiability
+    if (!is.null(identifiability)) {
+        outcome <- identifiability$structured_outcome
+        confirmation_eligible <- outcome %in% c(
+            "not-calibrated",
+            "stable-axis"
+        )
+        if (length(outcome) != 1L || is.na(outcome) ||
+            !confirmation_eligible) {
+            .stop_landscapeR_validation(paste0(
+                "confirm_component(): axis-identifiability evidence ",
+                "prevents confirmation of a one-dimensional component"
+            ))
+        }
+    }
     if (!is.numeric(index) || length(index) != 1L ||
         is.na(index) || !is.finite(index) ||
         index != as.integer(index) || index < 1L) {

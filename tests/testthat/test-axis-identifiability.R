@@ -232,6 +232,45 @@ test_that("identifiability assessment repeats the complete discovery search", {
         c(surface$labels$title, surface$labels$subtitle),
         ignore.case = TRUE
     )))
+    calibration_digest <- paste(rep("a", 64L), collapse = "")
+    stable <- landscapeR:::.record_identifiability_outcome(
+        assessed,
+        outcome = "stable-axis",
+        calibration_digest = calibration_digest,
+        diagnostic = "target-axis-recoverable"
+    )
+    expect_s4_class(
+        confirm_component(
+            stable,
+            index = stable@recommended_component,
+            decision = "accept",
+            rationale = "Accepted after calibrated axis-identifiability review."
+        ),
+        "AnalysisSpecification"
+    )
+    for (outcome in c(
+        "stable-subspace-no-stable-axis",
+        "no-stable-target-structure",
+        "outside-operating-region",
+        "unique-winner-failure",
+        "invalid-design"
+    )) {
+        ineligible <- landscapeR:::.record_identifiability_outcome(
+            assessed,
+            outcome = outcome,
+            calibration_digest = calibration_digest,
+            diagnostic = paste0("calibrated-", outcome)
+        )
+        expect_error(
+            confirm_component(
+                ineligible,
+                index = ineligible@recommended_component,
+                decision = "accept",
+                rationale = "This must not override mathematical eligibility."
+            ),
+            "axis-identifiability evidence prevents confirmation"
+        )
+    }
     expect_true(grepl("^[[:xdigit:]]{64}$", evidence$digest))
     expect_identical(
         proposal_identifiability(unserialize(serialize(assessed, NULL))),
