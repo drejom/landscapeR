@@ -7,14 +7,16 @@ threshold, axis recovery, or biological support.
 
 ![Component identifiability evidence](identifiability-surface.png)
 
-The red traces identify the uniquely nominated discovery component. Grey traces
-retain the remaining search set. The compact surface exposes the reference
-spectrum, matching similarity and ambiguity, proposal-rank recurrence,
-individual-axis, component-index, and biological-orientation recurrence,
-subspace angles, exact failed-replicate fraction, replicate completion, and the
-final structured status without using a spectral gap or stability score to
-rerank the biological effect. Unmatched axes remain visible as zero
-individual-axis recurrence.
+The red triangles identify the uniquely nominated discovery component; black
+circles retain the remaining search set. The primary surface exposes
+individual-axis recurrence, mean loading-match similarity, assignment
+ambiguity, and enclosing-subspace angles. Its dynamic caption defines the
+encodings, biological resampling unit, joint one-to-one matching rule,
+completion status, and uncalibrated claim boundary. The complete nine-panel
+audit surface remains available through
+`plot_component_identifiability(proposal, view = "diagnostic")`, where
+component identity, per-resample recurrence, proposal rank, orientation,
+spectrum, and completion remain visible.
 
 The exact per-replicate assignments and rank recurrence remain available in
 [`component-recurrence.tsv`](component-recurrence.tsv);
