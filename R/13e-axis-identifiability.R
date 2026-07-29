@@ -759,6 +759,17 @@
             } else {
                 NA_real_
             },
+            orientation_recurrence = if (any(!is.na(
+                component_rows$orientation
+            ))) {
+                mean(
+                    component_rows$orientation[
+                        !is.na(component_rows$orientation)
+                    ] == 1L
+                )
+            } else {
+                NA_real_
+            },
             index_recurrence = mean(component_rows$index_recurrent),
             rank_one_fraction = mean(component_rows$rank_one),
             stringsAsFactors = FALSE
@@ -785,6 +796,12 @@
     plan,
     replicates
 ) {
+    replicate_order <- order(vapply(
+        replicates,
+        function(x) x$replicate,
+        integer(1L)
+    ))
+    replicates <- replicates[replicate_order]
     completed <- vapply(
         replicates,
         function(x) {
@@ -1197,12 +1214,57 @@ plot_component_identifiability <- function(proposal) {
         ggplot2::aes(
             x = evidence_index,
             y = value,
-            group = series,
             colour = focal
         )
     ) +
-        ggplot2::geom_line(linewidth = 0.35, alpha = 0.7, na.rm = TRUE) +
-        ggplot2::geom_point(size = 1.1, alpha = 0.85, na.rm = TRUE) +
+        ggplot2::geom_line(
+            data = surface_data[
+                surface_data$surface == "Spectrum",
+                ,
+                drop = FALSE
+            ],
+            ggplot2::aes(group = series),
+            linewidth = 0.45,
+            alpha = 0.75,
+            na.rm = TRUE
+        ) +
+        ggplot2::geom_point(
+            data = surface_data[
+                !surface_data$surface %in% c(
+                    "Axis recurrence",
+                    "Replicate completion"
+                ),
+                ,
+                drop = FALSE
+            ],
+            size = 0.9,
+            alpha = 0.65,
+            na.rm = TRUE
+        ) +
+        ggplot2::geom_jitter(
+            data = surface_data[
+                surface_data$surface == "Axis recurrence",
+                ,
+                drop = FALSE
+            ],
+            width = 0.15,
+            height = 0.012,
+            size = 0.8,
+            alpha = 0.55,
+            na.rm = TRUE
+        ) +
+        ggplot2::geom_jitter(
+            data = surface_data[
+                surface_data$surface == "Replicate completion",
+                ,
+                drop = FALSE
+            ],
+            width = 0.15,
+            height = 0,
+            size = 0.8,
+            alpha = 0.55,
+            na.rm = TRUE
+        ) +
         ggplot2::facet_wrap(
             ggplot2::vars(surface),
             scales = "free",

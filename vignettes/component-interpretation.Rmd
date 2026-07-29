@@ -24,13 +24,16 @@ independent destructive-sampling time courses. Repeated-subject time courses
 require their own subject-aware strategy and are not silently treated as
 independent. Every result remains exploratory.
 
-The workflow separates four actions:
+The workflow separates five actions:
 
 1. `associate_metadata()` stores raw, adjusted, and resampled evidence.
 2. `plot()` renders the stored decision surface without changing it.
 3. `propose_component()` ranks only the predeclared effect and may compute a
    search-aware permutation null.
-4. `confirm_component()` records a separate analyst decision and rationale.
+4. `assess_component_identifiability()` repeats the complete search under
+   design-preserving resampling and aligns every replicate to the frozen
+   discovery basis.
+5. `confirm_component()` records a separate analyst decision and rationale.
 
 ## Synthetic worked example
 
@@ -173,6 +176,53 @@ returns a typed `ComponentAbstention` with
 `permutation-not-identifiable`. A rank-deficient or target-confounded nuisance
 design similarly preserves raw evidence while adjusted nomination abstains.
 
+## Assess whether the proposed axis is recoverable
+
+Association bootstraps quantify uncertainty conditional on a fitted Stage 1
+basis. Axis-identifiability evidence asks a different question: whether the
+complete discovery search recovers the same one-dimensional target structure
+when the biological sampling units are resampled.
+
+The assessment starts from the pre-decomposition `StateTransitionData`, the
+frozen proposal, and the exact `PipelineConfig` used for discovery:
+
+```{r identifiability-interface, eval=FALSE}
+assessed <- assess_component_identifiability(
+  data = raw_data,
+  proposal = proposal,
+  config = discovery_config,
+  non_analytical_fields = "mouse_id",
+  n_resamples = 499L,
+  seed = 8301L
+)
+
+evidence <- proposal_identifiability(assessed)
+evidence$recurrence_summary
+evidence$target_recurrence
+plot_component_identifiability(assessed)
+```
+
+Each replicate reruns the declared decomposition and complete eligible
+component ranking. Cross-sectional observations are resampled as independent
+biological units, destructive time courses within condition-by-time cells, and
+longitudinal data as complete subject trajectories. Duplicated longitudinal
+draws receive fresh subject identifiers.
+
+The ordinary SVD strategy declares feature-loading cosine as its matching
+geometry. A global one-to-one assignment retains the complete similarity
+matrix, selected and competing assignments, margins, unmatched axes, sign
+orientation, index recurrence, proposal-rank recurrence, subspace angles,
+spectral gaps, source sampling units, and failed replicates. Sign correction
+occurs only after matching; no Procrustes rotation is applied.
+
+Before a known-truth calibration is frozen, the structured outcome is
+`not-calibrated` and the evidence remains
+`estimable-exploratory-only`. Singular-value gaps are visible diagnostics, not
+effect weights or universal cutoffs. A later calibrated
+`stable-subspace-no-stable-axis` or `no-stable-target-structure` outcome is a
+successful scientific abstention and cannot be overridden to confirm an
+individual component.
+
 ## Record the analyst decision
 
 ```{r confirmation}
@@ -192,7 +242,9 @@ canonical_digest(confirmed)
 `confirm_component()` is the enforced transition to a confirmed
 `AnalysisSpecification`. Acceptance must use the recommended component. A
 different ranked component requires `decision = "override"` and remains
-explicit. An abstention cannot be confirmed.
+explicit. An abstention cannot be confirmed, and an override cannot bypass a
+calibrated non-axis, invalid-design, outside-operating-region, or
+unique-winner-failure outcome.
 
 ## Independent destructive-sampling time courses
 
@@ -461,9 +513,10 @@ lapply(
 ## Current boundary
 
 These paths do not reinterpret destructive time courses as longitudinal
-subjects, combine molecular layers, or claim axis stability. Bootstrap
-intervals quantify association uncertainty while holding the fitted Stage 1
-basis fixed. The current repeated-subject strategy is linear and frequentist;
+subjects or claim axis stability before calibration. Association-bootstrap
+intervals quantify uncertainty while holding the fitted Stage 1 basis fixed;
+axis-identifiability evidence separately refits Stage 1 and the full component
+search. The current repeated-subject strategy is linear and frequentist;
 nonlinear, marginal, robust, or Bayesian trajectory models require separately
 registered strategies. A real-data confirmation is a documented analyst
 decision, not proof that the selected coordinate is biologically true.

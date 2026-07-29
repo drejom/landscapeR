@@ -1,0 +1,4 @@
+reference_component	nominated_reference	matched_fraction	mean_absolute_similarity	index_recurrence	rank_one_fraction
+1	TRUE	1	0.982490655758635	1	1
+2	FALSE	1	0.969460900769048	0.98989898989899	0
+3	FALSE	1	0.922211260391005	0.98989898989899	0

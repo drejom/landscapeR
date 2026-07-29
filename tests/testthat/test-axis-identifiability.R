@@ -208,7 +208,7 @@ test_that("identifiability assessment repeats the complete discovery search", {
     ) %in% names(evidence$recurrence)))
     expect_true(all(c(
         "matched_fraction", "mean_absolute_similarity",
-        "index_recurrence", "rank_one_fraction"
+        "orientation_recurrence", "index_recurrence", "rank_one_fraction"
     ) %in% names(evidence$recurrence_summary)))
     expect_identical(
         evidence$target_recurrence$reference_component,
@@ -232,6 +232,32 @@ test_that("identifiability assessment repeats the complete discovery search", {
         c(surface$labels$title, surface$labels$subtitle),
         ignore.case = TRUE
     )))
+    plan <- landscapeR:::.identifiability_resampling_plan(
+        fixture$discovery,
+        fixture$config@analysis,
+        n_resamples = 7L,
+        seed = 8301L
+    )
+    reference <- S4Vectors::metadata(fixture$discovery)$stage1
+    forward <- landscapeR:::.new_identifiability_evidence(
+        fixture$proposal,
+        fixture$config,
+        fixture$source,
+        reference,
+        "feature-loading-cosine",
+        plan,
+        evidence$replicates
+    )
+    reverse <- landscapeR:::.new_identifiability_evidence(
+        fixture$proposal,
+        fixture$config,
+        fixture$source,
+        reference,
+        "feature-loading-cosine",
+        plan,
+        rev(evidence$replicates)
+    )
+    expect_identical(forward, reverse)
     calibration_digest <- paste(rep("a", 64L), collapse = "")
     stable <- landscapeR:::.record_identifiability_outcome(
         assessed,
