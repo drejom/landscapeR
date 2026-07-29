@@ -103,6 +103,10 @@ setClass("HogsvdAveraged",
     representation(params = "list")
 )
 
+#' @rdname component_loading_geometry
+setMethod("component_loading_geometry", "HogsvdAveraged",
+    function(strategy) "feature-loading-cosine")
+
 #' @rdname decompose
 setMethod(".decompose_impl", signature("HogsvdAveraged", "StateTransitionData"),
     function(strategy, data, ...) {
@@ -173,6 +177,10 @@ setClass("HogsvdPrereduced",
     contains  = "Decomposer",
     representation(params = "list")
 )
+
+#' @rdname component_loading_geometry
+setMethod("component_loading_geometry", "HogsvdPrereduced",
+    function(strategy) "feature-loading-cosine")
 
 #' @rdname decompose
 setMethod(".decompose_impl", signature("HogsvdPrereduced", "StateTransitionData"),

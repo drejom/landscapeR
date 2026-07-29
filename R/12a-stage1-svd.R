@@ -10,6 +10,10 @@ setClass("SvdDecomposer",
     representation(params = "list")
 )
 
+#' @rdname component_loading_geometry
+setMethod("component_loading_geometry", "SvdDecomposer",
+    function(strategy) "feature-loading-cosine")
+
 #' @rdname decompose
 setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
     function(strategy, data, ...) {
