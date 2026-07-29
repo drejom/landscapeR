@@ -3,6 +3,10 @@
 # These algorithms operate on stored decomposition evidence. They do not apply
 # thresholds or classify scientific support; calibration remains owned by #67.
 
+utils::globalVariables(c(
+    "evidence_index", "focal", "series", "surface", "value"
+))
+
 .finite_loading_matrix <- function(x, name) {
     if (!is.matrix(x) || !is.numeric(x) || !nrow(x) || !ncol(x) ||
         any(!is.finite(x))) {
@@ -1136,7 +1140,7 @@ proposal_identifiability <- function(proposal) {
         function(replicate) {
             angles <- replicate$subspace_angles
             if (!nrow(angles)) return(NULL)
-            maximum <- aggregate(
+            maximum <- stats::aggregate(
                 angle_degrees ~ dimension,
                 data = angles,
                 FUN = max
