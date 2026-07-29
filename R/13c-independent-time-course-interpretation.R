@@ -1773,6 +1773,7 @@ register_strategy(
                 colour = .data[["condition"]]
             ),
             size = 2.7,
+            show.legend = FALSE,
             inherit.aes = FALSE
         ) +
         ggplot2::geom_point(

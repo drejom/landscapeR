@@ -102,7 +102,19 @@ test_that("independent time course fits the declared standardized interaction", 
     )))
     expect_identical(rank_summary$n_complete_searches, rep(19L, 2L))
     expect_equal(sum(rank_summary$rank_one_fraction), 1)
-    expect_s3_class(plot(atlas), "ggplot")
+    atlas_plot <- plot(atlas)
+    expect_s3_class(atlas_plot, "ggplot")
+    text_layers <- vapply(
+        atlas_plot$layers,
+        function(layer) inherits(layer$geom, "GeomText"),
+        logical(1L)
+    )
+    expect_true(any(text_layers))
+    expect_true(all(vapply(
+        atlas_plot$layers[text_layers],
+        function(layer) identical(layer$show.legend, FALSE),
+        logical(1L)
+    )))
 })
 
 test_that("time-course proposal and confirmation use only the primary effect", {
