@@ -33,7 +33,18 @@
     seed
 ) {
     if (n_resamples == 0L) {
-        return(list(indices = list(), digest = NA_character_))
+        policy <- .resampling_policy_plan(
+            lifecycle = "bootstrap",
+            method = "stratified-biological-unit-bootstrap",
+            unit = "independent-biological-observation",
+            n_requested = 0L,
+            seed = seed
+        )
+        return(list(
+            indices = list(),
+            digest = NA_character_,
+            policy = policy
+        ))
     }
     complete <- !is.na(values)
     if (is.numeric(values)) complete <- complete & is.finite(values)
@@ -64,50 +75,69 @@
         factor(rep("all", length(complete_indices)))
     }
     strata_indices <- split(complete_indices, strata, drop = TRUE)
-    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-    if (had_seed) {
-        previous_seed <- get(".Random.seed", envir = .GlobalEnv)
-    }
-    on.exit({
-        if (had_seed) {
-            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
-        } else if (exists(
-            ".Random.seed",
-            envir = .GlobalEnv,
-            inherits = FALSE
-        )) {
-            rm(".Random.seed", envir = .GlobalEnv)
+    policy <- .resampling_policy_plan(
+        lifecycle = "bootstrap",
+        method = "stratified-biological-unit-bootstrap",
+        unit = "independent-biological-observation",
+        n_requested = n_resamples,
+        seed = seed,
+        design = list(strata = strata_indices),
+        draw_factory = function(replicate_index) {
+            unlist(lapply(strata_indices, function(index) {
+                sample(index, length(index), replace = TRUE)
+            }), use.names = FALSE)
         }
-    }, add = TRUE)
-    set.seed(seed)
-    indices <- replicate(n_resamples, {
-        unlist(lapply(strata_indices, function(index) {
-            sample(index, length(index), replace = TRUE)
-        }), use.names = FALSE)
-    }, simplify = FALSE)
+    )
     list(
-        indices = indices,
-        digest = digest::digest(
-            list(seed = seed, strata = strata_indices, indices = indices),
-            algo = "sha256",
-            serialize = TRUE
-        )
+        indices = policy$draws,
+        digest = policy$digest,
+        policy = policy
     )
 }
 
 .resampling_summary <- function(estimates, plan) {
+    policy <- if (inherits(plan, "landscapeR_resampling_plan")) {
+        plan
+    } else {
+        plan$policy
+    }
+    if (!inherits(policy, "landscapeR_resampling_plan")) {
+        .stop_landscapeR_validation(
+            "resampling summary requires a package-owned policy plan"
+        )
+    }
     finite <- estimates[is.finite(estimates)]
     n_resamples <- length(estimates)
     if (!n_resamples) {
+        accounting <- .resampling_policy_account(
+            policy,
+            completed = logical(),
+            failure_codes = character()
+        )
         return(list(
             effect_conf_low = NA_real_,
             effect_conf_high = NA_real_,
             n_resamples = 0L,
             resample_failures = 0L,
             resampling_method = "not-requested",
-            resampling_plan_digest = NA_character_
+            resampling_plan_digest = NA_character_,
+            resampling_account = accounting
         ))
     }
+    if (n_resamples != policy$n_requested) {
+        .stop_landscapeR_validation(
+            "resampling estimates must match the requested policy count"
+        )
+    }
+    accounting <- .resampling_policy_account(
+        policy,
+        completed = is.finite(estimates),
+        failure_codes = ifelse(
+            is.finite(estimates),
+            "",
+            "non-estimable-refit"
+        )
+    )
     interval <- if (length(finite)) {
         stats::quantile(
             finite,
@@ -121,10 +151,11 @@
     list(
         effect_conf_low = interval[[1L]],
         effect_conf_high = interval[[2L]],
-        n_resamples = as.integer(n_resamples),
-        resample_failures = as.integer(n_resamples - length(finite)),
-        resampling_method = "stratified-biological-unit-bootstrap",
-        resampling_plan_digest = plan$digest
+        n_resamples = accounting$n_requested,
+        resample_failures = accounting$n_failed,
+        resampling_method = policy$method,
+        resampling_plan_digest = policy$digest,
+        resampling_account = accounting
     )
 }
 
@@ -1910,6 +1941,51 @@ setValidity("PermutationEvidence", function(object) {
         !.is_scalar_nonempty_text(object@diagnostic)) {
         errors <- c(errors, "incomplete evidence requires a diagnostic")
     }
+    policy_account <- attr(
+        object,
+        "resampling_policy",
+        exact = TRUE
+    )
+    if (!is.null(policy_account)) {
+        policy_error <- tryCatch(
+            {
+                .validate_resampling_policy_account(policy_account)
+                NULL
+            },
+            error = function(condition) conditionMessage(condition)
+        )
+        if (!is.null(policy_error)) {
+            errors <- c(
+                errors,
+                paste("resampling policy account is invalid:", policy_error)
+            )
+        } else {
+            agreement <- c(
+                identical(policy_account$lifecycle, "permutation"),
+                identical(policy_account$status, object@status),
+                identical(
+                    policy_account$n_requested,
+                    object@n_requested
+                ),
+                identical(
+                    policy_account$n_completed,
+                    object@n_completed
+                ),
+                identical(policy_account$seed, object@seed),
+                identical(object@method, "none") ||
+                    identical(policy_account$method, object@method)
+            )
+            if (!all(agreement)) {
+                errors <- c(
+                    errors,
+                    paste(
+                        "resampling policy account does not agree with",
+                        "permutation evidence"
+                    )
+                )
+            }
+        }
+    }
     if (length(errors)) errors else TRUE
 })
 
@@ -1924,7 +2000,8 @@ setValidity("PermutationEvidence", function(object) {
     seed = NA_integer_,
     cohort_digest = NA_character_,
     design_digest = NA_character_,
-    diagnostic = ""
+    diagnostic = "",
+    resampling_policy = NULL
 ) {
     evidence <- new(
         "PermutationEvidence",
@@ -1941,6 +2018,53 @@ setValidity("PermutationEvidence", function(object) {
         design_digest = as.character(design_digest),
         diagnostic = diagnostic
     )
+    validObject(evidence)
+    policy <- resampling_policy %||% .reported_permutation_policy(
+        method = method,
+        status = status,
+        n_requested = as.integer(n_requested),
+        seed = as.integer(seed),
+        diagnostic = diagnostic
+    )
+    if (!identical(policy$method, method) &&
+        !identical(method, "none")) {
+        policy <- .resampling_policy_reframe(
+            policy,
+            method = method,
+            unit = policy$unit
+        )
+    }
+    completed <- if (n_requested) {
+        if (length(null_max_effect) == n_requested) {
+            is.finite(null_max_effect)
+        } else {
+            seq_len(n_requested) <= n_completed
+        }
+    } else {
+        logical()
+    }
+    failure_code <- if (.is_scalar_nonempty_text(diagnostic)) {
+        diagnostic
+    } else {
+        "permutation-refit-failed"
+    }
+    account <- .resampling_policy_account(
+        policy,
+        completed = completed,
+        failure_codes = if (length(completed)) {
+            ifelse(completed, "", failure_code)
+        } else {
+            character()
+        },
+        diagnostic = diagnostic
+    )
+    if (!identical(account$n_completed, as.integer(n_completed)) ||
+        !identical(account$status, status)) {
+        .stop_landscapeR_validation(
+            "permutation evidence and resampling accounting disagree"
+        )
+    }
+    attr(evidence, "resampling_policy") <- account
     validObject(evidence)
     evidence
 }
@@ -2391,26 +2515,20 @@ setValidity("ComponentProposal", function(object) {
 }
 
 .permutation_indices <- function(n_observations, n_permutations, seed) {
-    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-    if (had_seed) {
-        previous_seed <- get(".Random.seed", envir = .GlobalEnv)
-    }
-    on.exit({
-        if (had_seed) {
-            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
-        } else if (exists(
-            ".Random.seed",
-            envir = .GlobalEnv,
-            inherits = FALSE
-        )) {
-            rm(".Random.seed", envir = .GlobalEnv)
+    policy <- .resampling_policy_plan(
+        lifecycle = "permutation",
+        method = "independent-observation-permutation",
+        unit = "independent-biological-observation",
+        n_requested = n_permutations,
+        seed = seed,
+        design = list(n_observations = as.integer(n_observations)),
+        draw_factory = function(replicate_index) {
+            sample.int(n_observations)
         }
-    }, add = TRUE)
-    set.seed(seed)
-    replicate(
-        n_permutations,
-        sample.int(n_observations),
-        simplify = FALSE
+    )
+    structure(
+        policy$draws,
+        resampling_policy = policy
     )
 }
 
@@ -2642,6 +2760,11 @@ setValidity("ComponentProposal", function(object) {
         design_digest <- unique(ranking$design_digest)[[1L]]
     }
     observed <- max(ranking$effect_magnitude)
+    permutation_policy <- .resampling_policy_reframe(
+        attr(permutation_plan, "resampling_policy", exact = TRUE),
+        method = method,
+        unit = "independent-biological-observation"
+    )
     .new_permutation_evidence(
         method = method,
         status = "complete",
@@ -2654,7 +2777,8 @@ setValidity("ComponentProposal", function(object) {
         ) / (n_permutations + 1),
         seed = seed,
         cohort_digest = cohort_digest,
-        design_digest = design_digest
+        design_digest = design_digest,
+        resampling_policy = permutation_policy
     )
 }
 

@@ -131,6 +131,32 @@ targets. `possible-nonmonotone-association` is diagnostic only; it cannot
 rerank a component. A scientifically inadequate monotone declaration causes
 abstention until a separately validated nonlinear strategy is selected.
 
+All bootstrap and permutation implementations use one package-owned resampling
+policy contract. A policy plan records its lifecycle, method, biological unit,
+requested count, deterministic seed, design strata or allocation structure,
+materialized draws, optional replicate seeds, status, and content digest.
+Execution accounting records completed and failed draws against that immutable
+requested denominator, including normalized failure codes and a digest-bound
+status of `complete`, `partial`, `not-identifiable`, or
+`insufficient-support`. Failed eligible refits are never replaced by newly
+generated draws merely to reach a success count.
+
+The policy owns deterministic RNG isolation, identity, validation, accounting,
+and serialization. Small design adapters continue to own the scientific
+exchangeability rule: independent biological observations, independent
+condition-by-time cells, or complete subject trajectories. Repeated draws of
+one source subject receive fresh deterministic replicate-subject identifiers.
+Condition-by-time cells with no observed complete biological units remain
+visible with count zero but contribute no fabricated draw; estimability of the
+declared interaction is assessed separately from the set of observed
+exchangeability strata.
+Invalid assignment structures produce typed unavailable policy records and
+the existing public abstentions; they never fall back to another sampling
+unit. New strategy authors therefore provide a design adapter and refit
+function rather than implementing bespoke seeds, digests, denominators, or
+failure semantics. This is an internal authoring contract and does not add
+steps to the ordinary user-facing workflow.
+
 ### 2. Independent and repeated time courses
 
 Components are deterministically oriented and their scores standardized to SD

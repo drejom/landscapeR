@@ -142,6 +142,22 @@ permutation, plotting, or serialization consumers can use the evidence.
 Registered association strategies still calculate the scientific estimands;
 they do not assemble or validate the surrounding evidence.
 
+### One resampling contract, three scientific adapters
+
+Bootstrap and permutation work share one internal policy for deterministic
+seeds, immutable plan digests, requested and completed counts, failure
+accounting, and typed unavailable outcomes. The requested count is fixed before
+refitting. A failed eligible refit remains in that denominator and is never
+silently replaced with another draw.
+
+The shared mechanics do not erase experimental design. Cross-sectional
+analyses resample independent biological observations, destructive time
+courses resample within condition-by-time cells, and repeated designs resample
+complete subject trajectories. Duplicate trajectory draws receive new
+replicate-subject identifiers so they remain statistically distinct copies of
+one source trajectory. Unsupported exchangeability or insufficient distinct
+assignments produces a typed abstention rather than a fallback sampling rule.
+
 ## Produce an exploratory proposal
 
 ```{r proposal}

@@ -592,6 +592,14 @@ register_strategy(
     }, character(1L))
     strata <- split(names(subject_rows), subject_condition)
     if (n_resamples == 0L) {
+        policy <- .resampling_policy_plan(
+            lifecycle = "bootstrap",
+            method = "condition-stratified-subject-trajectory-bootstrap",
+            unit = "complete-subject",
+            n_requested = 0L,
+            seed = seed,
+            design = list(strata = strata)
+        )
         return(list(
             indices = list(),
             replicate_subject_ids = list(),
@@ -600,50 +608,46 @@ register_strategy(
             method = "condition-stratified-subject-trajectory-bootstrap",
             unit = "complete-subject",
             n_resamples = 0L,
-            seed = seed
+            seed = seed,
+            policy = policy
         ))
     }
-    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-    if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv)
-    on.exit({
-        if (had_seed) {
-            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
-        } else if (exists(
-            ".Random.seed",
-            envir = .GlobalEnv,
-            inherits = FALSE
-        )) {
-            rm(".Random.seed", envir = .GlobalEnv)
-        }
-    }, add = TRUE)
-    set.seed(seed)
-    plans <- lapply(seq_len(n_resamples), function(replicate_index) {
-        sampled <- unlist(lapply(strata, function(ids) {
-            sample(ids, length(ids), replace = TRUE)
-        }), use.names = FALSE)
-        indices <- integer()
-        new_subject <- character()
-        for (draw in seq_along(sampled)) {
-            rows <- subject_rows[[sampled[[draw]]]]
-            indices <- c(indices, rows)
-            new_subject <- c(
-                new_subject,
-                rep(
-                    sprintf(
-                        "bootstrap_%04d_subject_%04d",
-                        replicate_index,
-                        draw
-                    ),
-                    length(rows)
+    policy <- .resampling_policy_plan(
+        lifecycle = "bootstrap",
+        method = "condition-stratified-subject-trajectory-bootstrap",
+        unit = "complete-subject",
+        n_requested = n_resamples,
+        seed = seed,
+        design = list(strata = strata),
+        draw_factory = function(replicate_index) {
+            sampled <- unlist(lapply(strata, function(ids) {
+                sample(ids, length(ids), replace = TRUE)
+            }), use.names = FALSE)
+            indices <- integer()
+            new_subject <- character()
+            for (draw in seq_along(sampled)) {
+                rows <- subject_rows[[sampled[[draw]]]]
+                indices <- c(indices, rows)
+                new_subject <- c(
+                    new_subject,
+                    rep(
+                        sprintf(
+                            "bootstrap_%04d_subject_%04d",
+                            replicate_index,
+                            draw
+                        ),
+                        length(rows)
+                    )
                 )
+            }
+            list(
+                indices = indices,
+                subject = new_subject,
+                source_subject = sampled
             )
         }
-        list(
-            indices = indices,
-            subject = new_subject,
-            source_subject = sampled
-        )
-    })
+    )
+    plans <- policy$draws
     indices <- lapply(plans, `[[`, "indices")
     replicate_subject_ids <- lapply(plans, `[[`, "subject")
     source_subject_ids <- lapply(plans, `[[`, "source_subject")
@@ -651,21 +655,12 @@ register_strategy(
         indices = indices,
         replicate_subject_ids = replicate_subject_ids,
         source_subject_ids = source_subject_ids,
-        digest = digest::digest(
-            list(
-                seed = seed,
-                strata = strata,
-                indices = indices,
-                replicate_subject_ids = replicate_subject_ids,
-                source_subject_ids = source_subject_ids
-            ),
-            algo = "sha256",
-            serialize = TRUE
-        ),
+        digest = policy$digest,
         method = "condition-stratified-subject-trajectory-bootstrap",
         unit = "complete-subject",
         n_resamples = n_resamples,
-        seed = seed
+        seed = seed,
+        policy = policy
     )
 }
 
@@ -700,7 +695,7 @@ register_strategy(
             NA_real_
         }
     }, numeric(1L))
-    summary <- .resampling_summary(estimates, list(digest = plan$digest))
+    summary <- .resampling_summary(estimates, plan)
     summary$resampling_method <- if (length(plan$indices)) {
         plan$method
     } else {
@@ -1333,20 +1328,6 @@ register_strategy(
     subject_condition <- vapply(subject_rows, function(index) {
         unique(as.character(target[index]))[[1L]]
     }, character(1L))
-    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-    if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv)
-    on.exit({
-        if (had_seed) {
-            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
-        } else if (exists(
-            ".Random.seed",
-            envir = .GlobalEnv,
-            inherits = FALSE
-        )) {
-            rm(".Random.seed", envir = .GlobalEnv)
-        }
-    }, add = TRUE)
-    set.seed(seed)
     levels <- if (is.factor(target)) {
         levels(target)
     } else {
@@ -1357,26 +1338,38 @@ register_strategy(
     ]
     comparison_count <- length(comparison_subjects)
     observed_key <- paste(sort(comparison_subjects), collapse = "\r")
-    allocations <- list()
     seen <- new.env(hash = TRUE, parent = emptyenv())
-    while (length(allocations) < n_permutations) {
-        selected <- sort(sample(
-            names(subject_condition),
-            comparison_count,
-            replace = FALSE
-        ))
-        key <- paste(selected, collapse = "\r")
-        if (identical(key, observed_key) ||
-            exists(key, envir = seen, inherits = FALSE)) {
-            next
+    policy <- .resampling_policy_plan(
+        lifecycle = "permutation",
+        method = "between-subject-condition-permutation",
+        unit = "complete-subject",
+        n_requested = n_permutations,
+        seed = seed,
+        design = list(
+            subject_condition = subject_condition,
+            comparison_count = comparison_count
+        ),
+        draw_factory = function(replicate_index) {
+            repeat {
+                selected <- sort(sample(
+                    names(subject_condition),
+                    comparison_count,
+                    replace = FALSE
+                ))
+                key <- paste(selected, collapse = "\r")
+                if (!identical(key, observed_key) &&
+                    !exists(key, envir = seen, inherits = FALSE)) {
+                    break
+                }
+            }
+            assign(key, TRUE, envir = seen)
+            permuted <- rep(levels[[1L]], length(subject_condition))
+            names(permuted) <- names(subject_condition)
+            permuted[selected] <- levels[[2L]]
+            permuted[subject]
         }
-        assign(key, TRUE, envir = seen)
-        permuted <- rep(levels[[1L]], length(subject_condition))
-        names(permuted) <- names(subject_condition)
-        permuted[selected] <- levels[[2L]]
-        allocations[[length(allocations) + 1L]] <- permuted[subject]
-    }
-    allocations
+    )
+    structure(policy$draws, resampling_policy = policy)
 }
 
 .compute_repeated_time_permutation_evidence <- function(
@@ -1517,7 +1510,12 @@ register_strategy(
             n_completed = 0L,
             null_max_effect = rep(NA_real_, n_permutations),
             seed = seed,
-            diagnostic = "failed-subject-level-null-replicate"
+            diagnostic = "failed-subject-level-null-replicate",
+            resampling_policy = attr(
+                plan,
+                "resampling_policy",
+                exact = TRUE
+            )
         ))
     }
     status <- if (n_failures) "partial" else "complete"
@@ -1541,7 +1539,12 @@ register_strategy(
             "some-subject-level-null-refits-failed"
         } else {
             ""
-        }
+        },
+        resampling_policy = attr(
+            plan,
+            "resampling_policy",
+            exact = TRUE
+        )
     )
 }
 

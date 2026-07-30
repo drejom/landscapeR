@@ -453,6 +453,11 @@ test_that("complete-case exclusion does not redefine the study-time scale", {
         unname(provenance$resampling_plan$cell_counts),
         c(4L, 4L, 0L, 4L, 4L, 0L)
     )
+    expect_identical(provenance$resampling_plan$policy$status, "planned")
+    expect_identical(
+        length(provenance$resampling_plan$policy$design$strata),
+        4L
+    )
     expect_s4_class(propose_component(atlas), "ComponentProposal")
 })
 

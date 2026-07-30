@@ -520,13 +520,26 @@ register_strategy(
     )
     counts <- as.integer(table(cell))
     names(counts) <- names(table(cell))
+    policy <- .resampling_policy_reframe(
+        plan$policy,
+        method = "condition-time-cell-bootstrap",
+        unit = "independent-biological-observation",
+        design = c(
+            plan$policy$design,
+            list(
+                study_time_grid = study_time_grid,
+                cell_counts = counts
+            )
+        )
+    )
     list(
         indices = plan$indices,
-        digest = plan$digest,
+        digest = if (n_resamples) policy$digest else NA_character_,
         method = "condition-time-cell-bootstrap",
         cell_counts = counts,
         n_resamples = n_resamples,
-        seed = seed
+        seed = seed,
+        policy = policy
     )
 }
 
@@ -558,10 +571,7 @@ register_strategy(
             NA_real_
         }
     }, numeric(1L))
-    summary <- .resampling_summary(
-        estimates,
-        list(digest = plan$digest)
-    )
+    summary <- .resampling_summary(estimates, plan)
     summary$resampling_method <- if (length(plan$indices)) {
         "condition-time-cell-bootstrap"
     } else {
@@ -1434,27 +1444,22 @@ register_strategy(
     seed
 ) {
     strata <- split(seq_along(observed_time), observed_time, drop = TRUE)
-    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-    if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv)
-    on.exit({
-        if (had_seed) {
-            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
-        } else if (exists(
-            ".Random.seed",
-            envir = .GlobalEnv,
-            inherits = FALSE
-        )) {
-            rm(".Random.seed", envir = .GlobalEnv)
+    policy <- .resampling_policy_plan(
+        lifecycle = "permutation",
+        method = "within-time-permutation",
+        unit = "condition-by-time-cell",
+        n_requested = n_permutations,
+        seed = seed,
+        design = list(strata = strata),
+        draw_factory = function(replicate_index) {
+            index <- seq_along(observed_time)
+            for (stratum in strata) {
+                index[stratum] <- sample(stratum, length(stratum))
+            }
+            index
         }
-    }, add = TRUE)
-    set.seed(seed)
-    replicate(n_permutations, {
-        index <- seq_along(observed_time)
-        for (stratum in strata) {
-            index[stratum] <- sample(stratum, length(stratum))
-        }
-        index
-    }, simplify = FALSE)
+    )
+    structure(policy$draws, resampling_policy = policy)
 }
 
 .time_course_permutation_support <- function(
@@ -1608,14 +1613,25 @@ register_strategy(
         design_digest <- ranking$design_digest[[1L]]
     }
     if (any(!is.finite(null_max))) {
+        permutation_policy <- .resampling_policy_reframe(
+            attr(permutation_plan, "resampling_policy", exact = TRUE),
+            method = method,
+            unit = "condition-by-time-cell"
+        )
         return(.new_permutation_evidence(
             status = "not-identifiable",
             n_requested = n_permutations,
             seed = seed,
-            diagnostic = "failed-time-course-null-replicate"
+            diagnostic = "failed-time-course-null-replicate",
+            resampling_policy = permutation_policy
         ))
     }
     observed <- max(ranking$effect_magnitude)
+    permutation_policy <- .resampling_policy_reframe(
+        attr(permutation_plan, "resampling_policy", exact = TRUE),
+        method = method,
+        unit = "condition-by-time-cell"
+    )
     .new_permutation_evidence(
         method = method,
         status = "complete",
@@ -1628,7 +1644,8 @@ register_strategy(
         ) / (n_permutations + 1),
         seed = seed,
         cohort_digest = ranking$cohort_digest[[1L]],
-        design_digest = design_digest
+        design_digest = design_digest,
+        resampling_policy = permutation_policy
     )
 }
 
