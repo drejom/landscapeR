@@ -9,7 +9,7 @@
         }
         return(NA_character_)
     }
-    if (!is.character(x) || length(x) != 1L || !nzchar(x)) {
+    if (!is.character(x) || length(x) != 1L || !grepl("\\S", x)) {
         .stop_landscapeR_validation(
             paste0(field, " must be one non-empty string or NA")
         )
@@ -17,14 +17,14 @@
     x
 }
 
-.scientific_caption_terms <- function(x, field) {
+.scientific_caption_terms <- function(x, field, deduplicate = TRUE) {
     if (is.null(x)) return(character())
-    if (!is.character(x) || anyNA(x) || any(!nzchar(x))) {
+    if (!is.character(x) || anyNA(x) || any(!grepl("\\S", x))) {
         .stop_landscapeR_validation(
             paste0(field, " must contain only non-empty strings")
         )
     }
-    x[!duplicated(x)]
+    if (isTRUE(deduplicate)) x[!duplicated(x)] else x
 }
 
 .new_scientific_caption_view <- function(
@@ -54,7 +54,9 @@
     .validate = TRUE
 ) {
     state <- match.arg(state)
-    panels <- .scientific_caption_terms(panels, "panels")
+    panels <- .scientific_caption_terms(
+        panels, "panels", deduplicate = FALSE
+    )
     if (length(panels) &&
         (is.null(names(panels)) ||
             any(!grepl("^[A-Z]$", names(panels))) ||
@@ -215,13 +217,16 @@
     )
     if (length(view$panels)) {
         sentences <- c(sentences, paste(
-            paste0("(", names(view$panels), ") ", view$panels, "."),
+            paste0(
+                "(", names(view$panels), ") ",
+                sub("[.]+$", "", view$panels), "."
+            ),
             collapse = " "
         ))
     }
     if (length(view$encodings)) {
         sentences <- c(sentences, paste0(
-            paste(view$encodings, collapse = "; "), "."
+            paste(sub("[.]+$", "", view$encodings), collapse = "; "), "."
         ))
     }
     analysis <- character()

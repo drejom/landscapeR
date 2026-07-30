@@ -127,6 +127,41 @@ test_that("caption contract rejects invented or internal language", {
     )
 })
 
+test_that("caption prose preserves panels and normalizes punctuation", {
+    caption <- landscapeR:::.build_scientific_caption(
+        caption_contract_view(
+            panels = c(
+                A = "Both panels show the same stored evidence.",
+                B = "Both panels show the same stored evidence."
+            ),
+            encodings = "Red marks the nominated coordinate."
+        )
+    )
+    prose <- gsub("\\s+", " ", caption)
+
+    expect_match(prose, "(A) Both panels show", fixed = TRUE)
+    expect_match(prose, "(B) Both panels show", fixed = TRUE)
+    expect_false(grepl("..", prose, fixed = TRUE))
+})
+
+test_that("caption views reject whitespace-only text", {
+    expect_error(
+        caption_contract_view(title = " \t "),
+        "title must be one non-empty string",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        caption_contract_view(claim_boundary = "\n "),
+        "claim_boundary must be one non-empty string",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        caption_contract_view(encodings = c("Valid encoding", " \t")),
+        "encodings must contain only non-empty strings",
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("caption state constrains required stored evidence", {
     expect_error(
         caption_contract_view(
