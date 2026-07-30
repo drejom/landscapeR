@@ -75,10 +75,16 @@ assessed <- assess_component_identifiability(
     seed = 8301L
 )
 evidence <- proposal_identifiability(assessed)
+identifiability_plot <- plot_component_identifiability(assessed)
+caption <- scientific_caption(identifiability_plot)
 
 save_landscapeR_plot(
-    plot_component_identifiability(assessed),
+    identifiability_plot,
     file.path(output_dir, "identifiability-surface.png")
+)
+writeLines(
+    caption,
+    file.path(output_dir, "identifiability-surface-caption.txt")
 )
 write.table(
     evidence$recurrence,
