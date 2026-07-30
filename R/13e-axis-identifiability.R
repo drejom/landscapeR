@@ -1488,7 +1488,8 @@ proposal_identifiability <- function(proposal) {
 #'   `assess_component_identifiability()`
 #' @param view either `"primary"` (the default scientific summary) or
 #'   `"diagnostic"` (the complete audit surface)
-#' @return a `ggplot2` object
+#' @return a `ggplot2` object whose separate scientific figure caption is
+#'   available through [scientific_caption()]
 #' @export
 plot_component_identifiability <- function(
     proposal,
@@ -1534,8 +1535,7 @@ plot_component_identifiability <- function(
             evidence_index = NA_real_,
             value = rep(c(0, 1), length(summary_surfaces))
         )
-        return(
-            ggplot2::ggplot(
+        plot <- ggplot2::ggplot(
                 surface_data,
                 ggplot2::aes(
                     x = evidence_index,
@@ -1584,16 +1584,13 @@ plot_component_identifiability <- function(
                     x = "Discovery component or subspace dimension",
                     y = "Observed value",
                     colour = "Discovery component",
-                    shape = "Discovery component",
-                    caption = caption
+                    shape = "Discovery component"
                 ) +
                 theme_landscapeR(square = FALSE) +
                 ggplot2::theme(
-                    legend.position = "bottom",
-                    plot.caption.position = "plot",
-                    plot.caption = ggplot2::element_text(hjust = 0)
+                    legend.position = "bottom"
                 )
-        )
+        return(.with_scientific_caption(plot, caption))
     }
     binary_limits <- data.frame(
         surface = factor(
@@ -1617,7 +1614,7 @@ plot_component_identifiability <- function(
         length.out = length(series_levels)
     )
     names(series_shapes) <- series_levels
-    ggplot2::ggplot(
+    plot <- ggplot2::ggplot(
         surface_data,
         ggplot2::aes(
             x = evidence_index,
@@ -1719,14 +1716,12 @@ plot_component_identifiability <- function(
             y = "Observed value",
             colour = "Discovery component",
             shape = "Evidence series",
-            size = "Nominated component",
-            caption = caption
+            size = "Nominated component"
         ) +
         theme_landscapeR(square = FALSE) +
         ggplot2::theme(
             legend.position = "bottom",
-            legend.box = "vertical",
-            plot.caption.position = "plot",
-            plot.caption = ggplot2::element_text(hjust = 0)
+            legend.box = "vertical"
         )
+    .with_scientific_caption(plot, caption)
 }

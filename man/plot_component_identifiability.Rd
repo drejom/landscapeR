@@ -14,7 +14,8 @@ plot_component_identifiability(proposal, view = c("primary", "diagnostic"))
 \code{"diagnostic"} (the complete audit surface)}
 }
 \value{
-a \code{ggplot2} object
+a \code{ggplot2} object whose separate scientific figure caption is
+available through \code{\link[=scientific_caption]{scientific_caption()}}
 }
 \description{
 The default primary view summarizes individual-axis recurrence, joint

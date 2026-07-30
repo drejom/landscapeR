@@ -384,12 +384,16 @@ must reject clipping, crowding, ambiguous encodings, or decorative elements
 that do not carry scientific information.
 
 Every exported or otherwise user-facing plotting function returns its
-scientific caption with the `ggplot` object, normally through
-`ggplot2::labs(caption = ...)`. The caption is generated deterministically from
-the same typed evidence rendered by the plot; a renderer cannot require the
-user to consult developer documentation to discover what colours, shapes,
-lines, panels, observations, summaries, missing values, failures, thresholds,
-or structured outcomes mean. Where applicable, the caption states:
+scientific caption as metadata attached to the ordinary `ggplot` object.
+`scientific_caption()` provides the stable public accessor for that text.
+Captions are not drawn inside the plotting area or plot layout by package
+plotting functions. Quarto, R Markdown, manuscript, and other publication
+systems can therefore render the returned text as a true figure caption,
+separate from the graphic. The caption is generated deterministically from the
+same typed evidence rendered by the plot; a renderer cannot require the user
+to consult developer documentation to discover what colours, shapes, lines,
+panels, observations, summaries, missing values, failures, thresholds, or
+structured outcomes mean. Where applicable, the caption states:
 
 - what is plotted and the biological sampling or analysis unit;
 - the meaning of every non-obvious visual encoding, including focal versus
@@ -407,11 +411,11 @@ present in the returned plot. Internal-only diagnostic renders may omit this
 contract only when they are unexported, identified as development diagnostics,
 and not used in user documentation or public workflow examples.
 
-Caption tests inspect the returned `ggplot` object, including
-`plot$labels$caption`, and verify dynamic content for materially different
-designs, evidence states, encodings, and calibrated versus uncalibrated
-boundaries. Captions describe stored evidence and never become a second place
-where scientific results are calculated.
+Caption tests inspect `scientific_caption(plot)`, verify that package plotting
+functions do not populate `plot$labels$caption`, and verify dynamic content for
+materially different designs, evidence states, encodings, and calibrated
+versus uncalibrated boundaries. Captions describe stored evidence and never
+become a second place where scientific results are calculated.
 
 The axis-identifiability surface jointly exposes the spectrum, matching
 similarity and ambiguity, recurrence distributions, subspace angles, and final

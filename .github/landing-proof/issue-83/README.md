@@ -12,8 +12,10 @@ circles retain the remaining search set. The primary surface exposes
 individual-axis recurrence, mean loading-match similarity, assignment
 ambiguity, and enclosing-subspace angles. Its dynamic caption defines the
 encodings, biological resampling unit, joint one-to-one matching rule,
-completion status, and uncalibrated claim boundary. The complete nine-panel
-audit surface remains available through
+completion status, and uncalibrated claim boundary. The caption is kept
+separate from the graphic and is available through
+`scientific_caption(plot)`, ready for use as a true figure caption. The
+complete nine-panel audit surface remains available through
 `plot_component_identifiability(proposal, view = "diagnostic")`, where
 component identity, per-resample recurrence, proposal rank, orientation,
 spectrum, and completion remain visible.

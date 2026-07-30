@@ -223,7 +223,8 @@ test_that("identifiability assessment repeats the complete discovery search", {
     ) %in% names(evidence$subspace_angle_summary)))
     surface <- plot_component_identifiability(assessed)
     expect_s3_class(surface, "ggplot")
-    caption_text <- gsub("\\s+", " ", surface$labels$caption)
+    caption_text <- gsub("\\s+", " ", scientific_caption(surface))
+    expect_null(surface$labels$caption)
     expect_setequal(
         unique(surface$data$surface),
         c(
@@ -258,7 +259,12 @@ test_that("identifiability assessment repeats the complete discovery search", {
         view = "diagnostic"
     )
     expect_s3_class(diagnostic, "ggplot")
-    diagnostic_caption <- gsub("\\s+", " ", diagnostic$labels$caption)
+    diagnostic_caption <- gsub(
+        "\\s+",
+        " ",
+        scientific_caption(diagnostic)
+    )
+    expect_null(diagnostic$labels$caption)
     expect_setequal(
         unique(diagnostic$data$surface),
         c(
@@ -348,7 +354,11 @@ test_that("identifiability assessment repeats the complete discovery search", {
     incomplete_plot <- plot_component_identifiability(
         landscapeR:::.proposal_with_identifiability(assessed, incomplete)
     )
-    incomplete_caption <- gsub("\\s+", " ", incomplete_plot$labels$caption)
+    incomplete_caption <- gsub(
+        "\\s+",
+        " ",
+        scientific_caption(incomplete_plot)
+    )
     expect_match(
         incomplete_caption,
         "5 of 7 independent biological observation resamples completed",
@@ -451,7 +461,7 @@ test_that("identifiability assessment repeats the complete discovery search", {
         outcome_caption <- gsub(
             "\\s+",
             " ",
-            outcome_plot$labels$caption
+            scientific_caption(outcome_plot)
         )
         expect_match(
             outcome_caption,
@@ -504,4 +514,28 @@ test_that("identifiability assessment repeats the complete discovery search", {
         proposal_identifiability(unserialize(serialize(assessed, NULL))),
         evidence
     )
+})
+
+test_that("scientific captions remain separate from plot graphics", {
+    plain_plot <- ggplot2::ggplot(
+        data.frame(x = 1, y = 1),
+        ggplot2::aes(x, y)
+    ) + ggplot2::geom_point()
+
+    expect_null(scientific_caption(plain_plot))
+    expect_error(scientific_caption("not a plot"), "ggplot object")
+    expect_error(
+        landscapeR:::.with_scientific_caption(plain_plot, ""),
+        "non-empty string"
+    )
+
+    captioned <- landscapeR:::.with_scientific_caption(
+        plain_plot,
+        "A separately rendered scientific caption."
+    )
+    expect_identical(
+        scientific_caption(captioned),
+        "A separately rendered scientific caption."
+    )
+    expect_null(captioned$labels$caption)
 })

@@ -1,5 +1,38 @@
 # Canonical publication visual grammar
 
+.landscapeR_scientific_caption_attribute <- "landscapeR_scientific_caption"
+
+.with_scientific_caption <- function(plot, caption) {
+    if (!inherits(plot, "ggplot")) {
+        stop("plot must be a ggplot object", call. = FALSE)
+    }
+    if (!is.character(caption) || length(caption) != 1L ||
+        is.na(caption) || !nzchar(caption)) {
+        stop("caption must be one non-empty string", call. = FALSE)
+    }
+    attr(plot, .landscapeR_scientific_caption_attribute) <- caption
+    plot
+}
+
+#' Retrieve a landscapeR scientific figure caption
+#'
+#' User-facing landscapeR plots carry their dynamically generated scientific
+#' caption as metadata rather than drawing it inside the graphic. This accessor
+#' returns that text for use as a true figure caption in Quarto, R Markdown,
+#' manuscripts, or other publication systems.
+#'
+#' @param plot a ggplot object returned by a landscapeR plotting function.
+#'
+#' @return A single caption string, or `NULL` when the ggplot has no
+#'   landscapeR scientific caption.
+#' @export
+scientific_caption <- function(plot) {
+    if (!inherits(plot, "ggplot")) {
+        stop("plot must be a ggplot object", call. = FALSE)
+    }
+    attr(plot, .landscapeR_scientific_caption_attribute, exact = TRUE)
+}
+
 #' Publication theme for landscapeR figures
 #'
 #' A restrained, publication-oriented theme built on
