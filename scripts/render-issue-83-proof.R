@@ -41,7 +41,7 @@ data <- StateTransitionData(
 )
 data <- declare_sampling_design(data, cross_sectional())
 specification <- analysis_specification(
-    id = "issue-83-identifiability-proof",
+    id = "Synthetic control-treatment axis-identifiability analysis",
     target_field = "condition",
     target_type = "binary",
     reference_level = "control",
@@ -51,7 +51,7 @@ config <- new(
     "PipelineConfig",
     strategies = list(Decomposer = "svd"),
     params = list(svd = list(center = TRUE, k_components = 3L)),
-    dataset = "issue-83-identifiability-proof",
+    dataset = "Synthetic control-treatment expression study",
     analysis = specification
 )
 discovery_result <- decompose(

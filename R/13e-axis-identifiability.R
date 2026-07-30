@@ -1357,7 +1357,81 @@ proposal_identifiability <- function(proposal) {
     primary_data
 }
 
-.identifiability_caption <- function(evidence, view) {
+.identifiability_caption_context <- function(proposal) {
+    provenance <- proposal@provenance
+    dataset <- provenance$dataset_id
+    layer <- provenance$layer
+    target <- proposal@target_field
+    target_type <- provenance$target_type
+    target_context <- switch(
+        target_type,
+        binary = sprintf(
+            "Target contrast: %s (%s versus %s).",
+            target,
+            proposal@comparison_level,
+            proposal@reference_level
+        ),
+        continuous = sprintf(
+            "Continuous target: %s (declared %s direction).",
+            target,
+            provenance$continuous_direction
+        ),
+        ordered = sprintf(
+            "Ordered target: %s (%s).",
+            target,
+            paste(provenance$ordered_levels, collapse = " < ")
+        ),
+        sprintf("Target: %s.", target)
+    )
+    context <- c(
+        if (.is_scalar_nonempty_text(dataset)) {
+            sprintf("Dataset: %s.", dataset)
+        },
+        if (.is_scalar_nonempty_text(layer)) {
+            sprintf("Molecular layer: %s.", layer)
+        },
+        target_context
+    )
+    design <- provenance$sampling_design
+    design_label <- c(
+        cross_sectional = "cross-sectional biological samples",
+        independent_time_course =
+            "independent biological samples collected over time",
+        longitudinal = "repeated observations of complete subject trajectories"
+    )[[design]]
+    if (!is.null(design_label)) {
+        context <- c(context, sprintf("Sampling design: %s.", design_label))
+    }
+    time_field <- provenance$time_field
+    if (.is_scalar_nonempty_text(time_field)) {
+        time_unit <- provenance$time_unit
+        context <- c(context, if (.is_scalar_nonempty_text(time_unit)) {
+            sprintf("Observed time: %s, measured in %s.", time_field, time_unit)
+        } else {
+            sprintf("Observed time: %s.", time_field)
+        })
+    }
+    subject_field <- provenance$subject_field
+    if (.is_scalar_nonempty_text(subject_field)) {
+        context <- c(
+            context,
+            sprintf("Subject identifier: %s.", subject_field)
+        )
+    }
+    nuisance_fields <- provenance$nuisance_fields
+    if (is.character(nuisance_fields) && length(nuisance_fields)) {
+        context <- c(
+            context,
+            sprintf(
+                "Declared nuisance fields: %s.",
+                paste(nuisance_fields, collapse = ", ")
+            )
+        )
+    }
+    paste(context, collapse = " ")
+}
+
+.identifiability_caption <- function(proposal, evidence, view) {
     unit <- gsub("-", " ", evidence$resampling$unit, fixed = TRUE)
     method <- gsub("-", " ", evidence$resampling$method, fixed = TRUE)
     count_phrase <- function(value, singular, plural) {
@@ -1452,6 +1526,7 @@ proposal_identifiability <- function(proposal) {
     }
     caption <- paste(
         c(
+            .identifiability_caption_context(proposal),
             sprintf("%s Resampling used %s.", completion, method),
             incomplete,
             encodings,
@@ -1516,7 +1591,7 @@ plot_component_identifiability <- function(
         evidence$n_completed,
         evidence$n_requested
     ), width = 74L), collapse = "\n")
-    caption <- .identifiability_caption(evidence, view)
+    caption <- .identifiability_caption(proposal, evidence, view)
     colour_scale <- ggplot2::scale_colour_manual(
         values = c(
             `FALSE` = unname(palette[["ink"]]),

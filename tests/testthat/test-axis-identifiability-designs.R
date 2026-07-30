@@ -273,6 +273,19 @@ test_that("time-course designs repeat the complete discovery workflow", {
             gsub("-", " ", expected_units[[design]], fixed = TRUE),
             fixed = TRUE
         )
+        expect_match(
+            caption,
+            "Target contrast: condition (treatment versus control)",
+            fixed = TRUE
+        )
+        expect_match(caption, "Observed time: day, measured in days", fixed = TRUE)
+        if (identical(design, "longitudinal")) {
+            expect_match(
+                caption,
+                "Subject identifier: mouse_id",
+                fixed = TRUE
+            )
+        }
         expect_identical(evidence$n_requested, 3L)
         expect_length(evidence$replicates, 3L)
         expect_true(all(vapply(

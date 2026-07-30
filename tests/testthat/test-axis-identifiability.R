@@ -239,6 +239,22 @@ test_that("identifiability assessment repeats the complete discovery search", {
     )
     expect_match(
         caption_text,
+        "Dataset: axis-identifiability-fixture",
+        fixed = TRUE
+    )
+    expect_match(caption_text, "Molecular layer: rna", fixed = TRUE)
+    expect_match(
+        caption_text,
+        "Target contrast: condition (treatment versus control)",
+        fixed = TRUE
+    )
+    expect_match(
+        caption_text,
+        "Sampling design: cross-sectional biological samples",
+        fixed = TRUE
+    )
+    expect_match(
+        caption_text,
         "independent biological observation",
         fixed = TRUE
     )
@@ -568,4 +584,41 @@ test_that("scientific captions remain separate from plot graphics", {
         "A separately rendered scientific caption."
     )
     expect_null(captioned$labels$caption)
+})
+
+test_that("identifiability caption context respects declared target type", {
+    fixture <- .axis_identifiability_fixture()
+    proposal <- fixture$proposal
+
+    continuous <- proposal
+    continuous@reference_level <- character()
+    continuous@comparison_level <- character()
+    continuous@target_field <- "developmental_age"
+    continuous@provenance$target_type <- "continuous"
+    continuous@provenance$continuous_direction <- "increasing"
+    continuous_context <-
+        landscapeR:::.identifiability_caption_context(continuous)
+    expect_match(
+        continuous_context,
+        paste(
+            "Continuous target: developmental_age",
+            "(declared increasing direction)."
+        ),
+        fixed = TRUE
+    )
+    expect_false(grepl("versus", continuous_context, fixed = TRUE))
+
+    ordered <- proposal
+    ordered@reference_level <- character()
+    ordered@comparison_level <- character()
+    ordered@target_field <- "developmental_stage"
+    ordered@provenance$target_type <- "ordered"
+    ordered@provenance$ordered_levels <- c("early", "middle", "late")
+    ordered_context <- landscapeR:::.identifiability_caption_context(ordered)
+    expect_match(
+        ordered_context,
+        "Ordered target: developmental_stage (early < middle < late).",
+        fixed = TRUE
+    )
+    expect_false(grepl("versus", ordered_context, fixed = TRUE))
 })

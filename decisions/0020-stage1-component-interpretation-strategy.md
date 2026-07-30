@@ -395,6 +395,9 @@ to consult developer documentation to discover what colours, shapes, lines,
 panels, observations, summaries, missing values, failures, thresholds, or
 structured outcomes mean. Where applicable, the caption states:
 
+- the declared dataset or experiment label, molecular layer, target field,
+  oriented contrast labels, time field and unit, subject field, and nuisance
+  fields needed to identify the scientific analysis;
 - what is plotted and the biological sampling or analysis unit;
 - the meaning of every non-obvious visual encoding, including focal versus
   comparison marks;
@@ -402,6 +405,12 @@ structured outcomes mean. Where applicable, the caption states:
 - the meaning and calibration status of any threshold or reference line;
 - the inferential and claim boundary, including exploratory or abstention
   status.
+
+Caption templates substitute exact declared scientific labels from typed
+analysis metadata. They do not silently prettify machine identifiers, infer
+species or biological meaning from field names, or invent missing context.
+Callers therefore own meaningful dataset, target, level, time, subject, layer,
+and nuisance labels at the declaration boundary.
 
 Titles, axis labels, legends, and direct annotations may make a simple plot
 self-explanatory, but omission of a caption from a user-facing function is a

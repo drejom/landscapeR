@@ -7,17 +7,20 @@ threshold, axis recovery, or biological support.
 
 ![Component identifiability evidence](identifiability-surface.png)
 
-*Figure caption.* 99 of 99 independent biological observation resamples
-completed the full assessment; 0 did not. Resampling used target stratified
-biological unit bootstrap. In component-indexed panels, the red triangle marks
-the nominated component and black circles mark comparisons. Components are
-matched jointly one-to-one by maximum total absolute feature-loading cosine.
-Axis recurrence is the fraction assigned to the same discovery axis; higher
-absolute loading cosine indicates a closer match; larger assignment margin
-indicates less ambiguity. Subspace points are per-resample largest principal
-angles for each enclosing dimension. Smaller subspace angles indicate more
-recurrent enclosing subspaces. No stability threshold is applied; evidence is
-descriptive and does not establish biological validity.
+*Figure caption.* Dataset: Synthetic control-treatment expression study.
+Molecular layer: rna. Target contrast: condition (treatment versus control).
+Sampling design: cross-sectional biological samples. 99 of 99 independent
+biological observation resamples completed the full assessment; 0 did not.
+Resampling used target stratified biological unit bootstrap. In
+component-indexed panels, the red triangle marks the nominated component and
+black circles mark comparisons. Components are matched jointly one-to-one by
+maximum total absolute feature-loading cosine. Axis recurrence is the fraction
+assigned to the same discovery axis; higher absolute loading cosine indicates
+a closer match; larger assignment margin indicates less ambiguity. Subspace
+points are per-resample largest principal angles for each enclosing dimension.
+Smaller subspace angles indicate more recurrent enclosing subspaces. No
+stability threshold is applied; evidence is descriptive and does not establish
+biological validity.
 
 The red triangles identify the uniquely nominated discovery component; black
 circles retain the remaining search set. The primary surface exposes
