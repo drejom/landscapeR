@@ -29,6 +29,9 @@ Imports:
     ks,
     ggplot2,
     lme4,
+    clue,
+    future,
+    future.apply,
     rlang,
     viridisLite
 Suggests:
@@ -69,6 +72,7 @@ Collate:
     '13b-component-interpretation.R'
     '13c-independent-time-course-interpretation.R'
     '13d-repeated-time-course-interpretation.R'
+    '13e-axis-identifiability.R'
     '14-stage1-plots.R'
     '15-stage2-kde.R'
     '16-stage2-plots.R'

@@ -3,6 +3,7 @@
 **Stage:** 1 / cross-cutting
 **Status:** accepted
 **Date:** 2026-07-24
+**Amended:** 2026-07-29
 
 ## Context
 
@@ -381,6 +382,62 @@ documentation and do not appear in scientific plot titles, subtitles, axes, or
 captions. Visual review is performed at the canonical 100 mm output size and
 must reject clipping, crowding, ambiguous encodings, or decorative elements
 that do not carry scientific information.
+
+Every newly implemented or migrated user-facing plotting function returns its
+scientific caption as metadata attached to the ordinary `ggplot` object.
+`scientific_caption()` provides the stable public accessor for that text.
+Captions are not drawn inside the plotting area or plot layout by package
+plotting functions. Quarto, R Markdown, manuscript, and other publication
+systems can therefore render the returned text as a true figure caption,
+separate from the graphic. The caption is generated deterministically from the
+same typed evidence rendered by the plot; a renderer cannot require the user
+to consult developer documentation to discover what colours, shapes, lines,
+panels, observations, summaries, missing values, failures, thresholds, or
+structured outcomes mean. Where applicable, the caption states:
+
+- the declared dataset or experiment label, molecular layer, target field,
+  oriented contrast labels, time field and unit, subject field, and nuisance
+  fields needed to identify the scientific analysis;
+- what is plotted and the biological sampling or analysis unit;
+- the meaning of every non-obvious visual encoding, including focal versus
+  comparison marks;
+- the estimand, sampling design, and uncertainty or resampling basis;
+- the meaning and calibration status of any threshold or reference line;
+- the inferential and claim boundary, including exploratory or abstention
+  status.
+
+Caption templates substitute exact declared scientific labels from typed
+analysis metadata. They do not silently prettify machine identifiers, infer
+species or biological meaning from field names, or invent missing context.
+Callers therefore own meaningful dataset, target, level, time, subject, layer,
+and nuisance labels at the declaration boundary.
+
+Multi-panel public figures carry visible letter labels in reading order.
+Publication captions begin with a concise declarative title, integrate relevant
+experimental context into narrative scientific prose, and refer to each panel
+by its visible letter. Captions do not present metadata as a sequence of
+`field: value` labels or describe package implementation. Figure numbering
+remains the responsibility of the manuscript, Quarto document, or other
+publication system.
+
+Titles, axis labels, legends, and direct annotations may make a simple plot
+self-explanatory, but omission of a caption from a user-facing function is a
+documented exception rather than the default. An exception is valid only when
+tests demonstrate that all applicable scientific semantics above are already
+present in the returned plot. Internal-only diagnostic renders may omit this
+contract only when they are unexported, identified as development diagnostics,
+and not used in user documentation or public workflow examples.
+
+The package-wide transition is tracked by issues #106 through #108. Plot
+families that predate this amendment may retain their existing embedded
+captions only until the corresponding migration lands. New plotting work must
+not extend that legacy convention.
+
+Caption tests inspect `scientific_caption(plot)`, verify that package plotting
+functions do not populate `plot$labels$caption`, and verify dynamic content for
+materially different designs, evidence states, encodings, and calibrated
+versus uncalibrated boundaries. Captions describe stored evidence and never
+become a second place where scientific results are calculated.
 
 The axis-identifiability surface jointly exposes the spectrum, matching
 similarity and ambiguity, recurrence distributions, subspace angles, and final

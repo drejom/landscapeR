@@ -3294,9 +3294,12 @@ plot.ComponentAbstention <- function(x, y, ...) {
 #' Confirm a proposed component by an explicit analyst decision
 #'
 #' This is the only public bridge from exploratory component ranking to a
-#' confirmed `AnalysisSpecification`. Acceptance must use the recommended
-#' component; choosing another ranked component requires an explicit override.
-#' A typed abstention cannot be bypassed.
+#' confirmed `AnalysisSpecification`. Before calibration, confirmation records
+#' an exploratory choice only. Once calibrated axis-identifiability evidence is
+#' attached, only a digest-valid `stable-axis` result can be confirmed;
+#' acceptance must use the recommendation and an override is limited to the
+#' calibrated effect-equivalent candidate set. Typed abstention or calibrated
+#' ineligibility cannot be bypassed.
 #'
 #' @param proposal a `ComponentProposal`
 #' @param index positive component index from the proposal ranking
@@ -3322,6 +3325,56 @@ confirm_component <- function(
             "confirm_component(): proposal must be a ComponentProposal"
         )
     }
+    identifiability <- proposal@provenance$axis_identifiability
+    calibrated_axis <- FALSE
+    exploratory_choice <- is.null(identifiability)
+    if (!is.null(identifiability)) {
+        evidence_payload <- identifiability
+        stored_evidence_digest <- evidence_payload$digest
+        evidence_payload$digest <- NULL
+        evidence_digest_valid <- .is_sha256_digest(stored_evidence_digest) &&
+            identical(
+                stored_evidence_digest,
+                digest::digest(
+                    evidence_payload,
+                    algo = "sha256",
+                    serialize = TRUE
+                )
+            )
+        if (!evidence_digest_valid) {
+            .stop_landscapeR_validation(paste0(
+                "confirm_component(): axis-identifiability evidence ",
+                "has an invalid digest"
+            ))
+        }
+        exploratory_choice <- identical(
+            identifiability$structured_outcome,
+            "not-calibrated"
+        ) &&
+            identical(
+                identifiability$status,
+                "estimable-exploratory-only"
+            )
+        calibrated_axis <- identical(
+            identifiability$structured_outcome,
+            "stable-axis"
+        ) &&
+            identical(
+                identifiability$status,
+                "calibrated-axis-eligible"
+            ) &&
+            .is_sha256_digest(identifiability$calibration_digest) &&
+            is.integer(identifiability$effect_equivalent_candidates) &&
+            length(identifiability$effect_equivalent_candidates) >= 1L &&
+            proposal@recommended_component %in%
+                identifiability$effect_equivalent_candidates
+        if (!exploratory_choice && !calibrated_axis) {
+            .stop_landscapeR_validation(paste0(
+                "confirm_component(): axis-identifiability evidence ",
+                "prevents confirmation of a one-dimensional component"
+            ))
+        }
+    }
     if (!is.numeric(index) || length(index) != 1L ||
         is.na(index) || !is.finite(index) ||
         index != as.integer(index) || index < 1L) {
@@ -3334,6 +3387,13 @@ confirm_component <- function(
         .stop_landscapeR_validation(
             "confirm_component(): index must occur in the proposal ranking"
         )
+    }
+    if (calibrated_axis &&
+        !index %in% identifiability$effect_equivalent_candidates) {
+        .stop_landscapeR_validation(paste0(
+            "confirm_component(): index is outside the calibrated ",
+            "effect-equivalent candidate set"
+        ))
     }
     if (missing(decision) ||
         !is.character(decision) || length(decision) != 1L ||
@@ -3422,7 +3482,9 @@ confirm_component <- function(
         } else {
             NULL
         },
-        claim_intent = if (declared_specification) {
+        claim_intent = if (exploratory_choice) {
+            "exploratory"
+        } else if (declared_specification) {
             proposal@provenance$claim_intent
         } else {
             "exploratory"

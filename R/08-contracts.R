@@ -183,6 +183,18 @@ setMethod("decompose", signature("Decomposer", "StateTransitionData"),
 setGeneric(".decompose_impl",
     function(strategy, data, ...) standardGeneric(".decompose_impl"))
 
+#' Declare the loading geometry used to align decomposition components
+#'
+#' Identifiability evidence compares replicate components with a frozen
+#' discovery basis. Each decomposition strategy must explicitly declare the
+#' loading geometry in which that comparison is meaningful.
+#'
+#' @param strategy a `Decomposer` implementation
+#' @return one stable loading-geometry identifier
+#' @export
+setGeneric("component_loading_geometry",
+    function(strategy) standardGeneric("component_loading_geometry"))
+
 # ---------------------------------------------------------------------------
 # Stage 1 — Component interpretation
 # ---------------------------------------------------------------------------

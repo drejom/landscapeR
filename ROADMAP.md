@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#83 — integrate evidence-tier axis
-identifiability across the completed interpretation paths**.
+**Next task after this change lands:** **#93 — deepen the package-owned
+design-preserving resampling policy across interpretation paths**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -189,10 +189,12 @@ confirmation; stable-subspace/no-stable-axis is a valid abstention.
 ### 4a. Architecture debt lane
 
 **Active prefactor:** #91 and its general-contract correction #100 are
-complete. #92 completes on merge, leaving #83 as the next interpretation
-integration task. #93 and #94 remain queued and require an explicit roadmap
-decision before becoming active. #101 reconciles supporting Pogona
-manifests without changing the active task sequence.
+complete. #92 is complete and #83 completes on merge, leaving #93 as the next
+interpretation-policy task. #94 remains queued behind that policy deepening.
+#101 reconciles supporting Pogona manifests without changing the active task
+sequence. The plot audit recorded in #106–#109 does not displace #93: #109
+completes with #83 on merge; #106 is the caption-contract prefactor for the
+queued #94 visual-evidence view and the #107/#108 renderer migrations.
 
 **Parked debt:** #95 deepens stage completion/provenance. #96 establishes shared
 artifact migration policy, with #97 adopting it across the interpretation
@@ -379,16 +381,21 @@ bodies may state dependencies but do not change this ordering.
 | [#80](https://github.com/drejom/landscapeR/issues/80) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
 | [#81](https://github.com/drejom/landscapeR/issues/81) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
 | [#82](https://github.com/drejom/landscapeR/issues/82) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
-| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | active — next |
+| [#83](https://github.com/drejom/landscapeR/issues/83) | Exploratory AML Stage 1 interpretation — #55 integration | complete on merge |
 | [#91](https://github.com/drejom/landscapeR/issues/91) | Interpretation evidence architecture prefactor | complete on merge |
 | [#92](https://github.com/drejom/landscapeR/issues/92) | Time-course interpretation architecture migration | complete on merge |
-| [#93](https://github.com/drejom/landscapeR/issues/93) | Design-preserving resampling policy | queued |
+| [#93](https://github.com/drejom/landscapeR/issues/93) | Design-preserving resampling policy | active — next |
 | [#94](https://github.com/drejom/landscapeR/issues/94) | Typed visual-evidence view | queued |
 | [#95](https://github.com/drejom/landscapeR/issues/95) | Stage completion and provenance architecture | parked |
 | [#96](https://github.com/drejom/landscapeR/issues/96) | Shared artifact migration policy | parked |
 | [#97](https://github.com/drejom/landscapeR/issues/97) | Interpretation evidence-graph migration policy | parked — blocked by #96 |
 | [#100](https://github.com/drejom/landscapeR/issues/100) | Shared interpretation evidence contract correction | complete on merge |
 | [#101](https://github.com/drejom/landscapeR/issues/101) | Pogona master-registry manifest reconciliation | complete |
+| [#104](https://github.com/drejom/landscapeR/issues/104) | Candidate temporal biological dataset | parked — research question |
+| [#106](https://github.com/drejom/landscapeR/issues/106) | Scientific caption contract — visual-evidence prefactor | queued — after #93 |
+| [#107](https://github.com/drejom/landscapeR/issues/107) | Stage 1/2 scientific caption migration | queued — blocked by #106 |
+| [#108](https://github.com/drejom/landscapeR/issues/108) | Component-interpretation caption migration | queued — blocked by #94 and #106 |
+| [#109](https://github.com/drejom/landscapeR/issues/109) | Component-identifiability primary/diagnostic views | complete on merge |
 <!-- issue-map:end -->
 
 ---
