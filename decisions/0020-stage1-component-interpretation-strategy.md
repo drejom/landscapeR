@@ -465,6 +465,18 @@ materially different designs, evidence states, encodings, and calibrated
 versus uncalibrated boundaries. Captions describe stored evidence and never
 become a second place where scientific results are calculated.
 
+The shared implementation seam is
+`landscapeR_scientific_caption_view`, an internal typed formatting view whose
+fields contain only declared context and facts already computed in scientific
+evidence. `.build_scientific_caption()` validates and formats that view; it
+does not inspect raw observations, refit models, calculate thresholds, or
+derive biological labels. The renderer registry records whether each public
+plot family already requires this contract or has a named migration issue.
+The separate exception registry accepts only tested `self-explanatory` or
+unexported `internal-development` cases, with a substantive rationale and test
+reference. A migration entry is transitional scheduling metadata, not a
+scientific-caption exemption.
+
 The axis-identifiability surface jointly exposes the spectrum, matching
 similarity and ambiguity, recurrence distributions, subspace angles, and final
 structured status so a stable rotating plane is visually distinguishable from

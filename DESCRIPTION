@@ -67,6 +67,7 @@ Collate:
     '12-stage1-hogsvd.R'
     '12a-stage1-svd.R'
     '13-stage0-synthetic.R'
+    '13a-scientific-caption-contract.R'
     '13a-plot-theme.R'
     '13a-resampling-policy.R'
     '13b-interpretation-evidence.R'

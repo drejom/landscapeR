@@ -530,6 +530,17 @@ lapply(
 )
 ```
 
+## Scientific captions are separate publication artifacts
+
+User-facing landscapeR renderers return ordinary `ggplot` objects. Migrated
+renderers attach a deterministic caption derived from the same typed evidence
+used by the graphic; retrieve it with `scientific_caption(plot)`. The package
+does not draw this text inside the plot, so Quarto, R Markdown, and manuscript
+systems can render it as a true figure caption. Caption templates preserve
+caller-declared experiment, layer, target, level, time, subject, and nuisance
+labels exactly. They format stored estimands, uncertainty, thresholds,
+missingness, and claim boundaries without recalculating scientific results.
+
 ## Current boundary
 
 These paths do not reinterpret destructive time courses as longitudinal
