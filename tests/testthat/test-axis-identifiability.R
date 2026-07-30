@@ -348,6 +348,14 @@ test_that("identifiability assessment repeats the complete discovery search", {
         1 / 7
     )
     expect_identical(
+        incomplete$failure_summary$n_proposal_abstentions,
+        1L
+    )
+    expect_identical(
+        incomplete$failure_summary$n_nominated_unmatched,
+        1L
+    )
+    expect_identical(
         incomplete$failure_summary$failed_replicates,
         c(1L, 2L)
     )
@@ -436,11 +444,15 @@ test_that("identifiability assessment repeats the complete discovery search", {
         outcome_evidence <- proposal_identifiability(assessed)
         outcome_evidence$structured_outcome <- outcome
         outcome_evidence$status <- if (identical(outcome, "stable-axis")) {
-            "calibrated-eligible"
+            "calibrated-axis-eligible"
         } else {
             "calibrated-ineligible"
         }
         outcome_evidence$calibration_digest <- calibration_digest
+        if (identical(outcome, "stable-axis")) {
+            outcome_evidence$effect_equivalent_candidates <-
+                assessed@recommended_component
+        }
         outcome_evidence$digest <- NULL
         outcome_evidence$digest <- digest::digest(
             outcome_evidence,
@@ -473,6 +485,24 @@ test_that("identifiability assessment repeats the complete discovery search", {
             outcome_caption,
             fixed = TRUE
         ))
+        if (identical(outcome, "stable-axis")) {
+            calibrated <- landscapeR:::.proposal_with_identifiability(
+                assessed,
+                outcome_evidence
+            )
+            confirmed <- confirm_component(
+                calibrated,
+                index = calibrated@recommended_component,
+                decision = "accept",
+                rationale = "Accept the calibrated stable axis."
+            )
+            expect_identical(confirmed@lifecycle, "confirmed")
+            expect_identical(confirmed@proposal_decision, "accepted")
+            expect_identical(
+                confirmed@claim_intent,
+                calibrated@provenance$claim_intent
+            )
+        }
     }
     for (outcome in c(
         "stable-subspace/no-stable-axis",

@@ -383,7 +383,7 @@ captions. Visual review is performed at the canonical 100 mm output size and
 must reject clipping, crowding, ambiguous encodings, or decorative elements
 that do not carry scientific information.
 
-Every exported or otherwise user-facing plotting function returns its
+Every newly implemented or migrated user-facing plotting function returns its
 scientific caption as metadata attached to the ordinary `ggplot` object.
 `scientific_caption()` provides the stable public accessor for that text.
 Captions are not drawn inside the plotting area or plot layout by package
@@ -410,6 +410,11 @@ tests demonstrate that all applicable scientific semantics above are already
 present in the returned plot. Internal-only diagnostic renders may omit this
 contract only when they are unexported, identified as development diagnostics,
 and not used in user documentation or public workflow examples.
+
+The package-wide transition is tracked by issues #106 through #108. Plot
+families that predate this amendment may retain their existing embedded
+captions only until the corresponding migration lands. New plotting work must
+not extend that legacy convention.
 
 Caption tests inspect `scientific_caption(plot)`, verify that package plotting
 functions do not populate `plot$labels$caption`, and verify dynamic content for

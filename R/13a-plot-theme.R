@@ -4,11 +4,13 @@
 
 .with_scientific_caption <- function(plot, caption) {
     if (!inherits(plot, "ggplot")) {
-        stop("plot must be a ggplot object", call. = FALSE)
+        .stop_landscapeR_validation("plot must be a ggplot object")
     }
     if (!is.character(caption) || length(caption) != 1L ||
         is.na(caption) || !nzchar(caption)) {
-        stop("caption must be one non-empty string", call. = FALSE)
+        .stop_landscapeR_validation(
+            "caption must be one non-empty string"
+        )
     }
     attr(plot, .landscapeR_scientific_caption_attribute) <- caption
     plot
@@ -28,7 +30,7 @@
 #' @export
 scientific_caption <- function(plot) {
     if (!inherits(plot, "ggplot")) {
-        stop("plot must be a ggplot object", call. = FALSE)
+        .stop_landscapeR_validation("plot must be a ggplot object")
     }
     attr(plot, .landscapeR_scientific_caption_attribute, exact = TRUE)
 }

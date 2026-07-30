@@ -972,6 +972,14 @@ utils::globalVariables(c(
             n_requested = as.integer(length(replicates)),
             n_completed = as.integer(sum(completed)),
             n_failed = as.integer(sum(!completed)),
+            n_computational_failures =
+                as.integer(sum(!computationally_completed)),
+            n_proposal_abstentions =
+                as.integer(sum(proposal_abstained)),
+            n_proposal_execution_failures =
+                as.integer(sum(proposal_failed)),
+            n_nominated_unmatched =
+                as.integer(sum(matching_reached & !nominated_matched)),
             failure_fraction = mean(!completed),
             computational_failure_fraction =
                 mean(!computationally_completed),
@@ -1363,28 +1371,27 @@ proposal_identifiability <- function(proposal) {
         evidence$n_requested - evidence$n_completed
     )
     incomplete <- if (evidence$n_completed < evidence$n_requested) {
-        n <- evidence$n_requested
         summary <- evidence$failure_summary
         paste(
             "Incomplete evidence included",
             paste0(count_phrase(
-                round(n * summary$computational_failure_fraction),
+                summary$n_computational_failures,
                 "computational failure",
                 "computational failures"
             ), ","),
             paste0(count_phrase(
-                round(n * summary$proposal_abstention_fraction),
+                summary$n_proposal_abstentions,
                 "proposal abstention",
                 "proposal abstentions"
             ), ","),
             paste0(count_phrase(
-                round(n * summary$proposal_execution_failure_fraction),
+                summary$n_proposal_execution_failures,
                 "proposal execution failure",
                 "proposal execution failures"
             ), ","),
             "and",
             paste0(count_phrase(
-                round(n * summary$nominated_unmatched_fraction),
+                summary$n_nominated_unmatched,
                 "unmatched nominated axis",
                 "unmatched nominated axes"
             ), ".")
