@@ -2630,7 +2630,12 @@ setValidity("ComponentProposal", function(object) {
         ,
         drop = FALSE
     ]
-    components <- sort(unique(target_observations$component))
+    components <- sort(unique(
+        ranking$component[
+            ranking$proposal_eligible &
+                is.finite(ranking$effect_magnitude)
+        ]
+    ))
     first <- target_observations[
         target_observations$component == components[[1L]],
         ,
@@ -2759,7 +2764,12 @@ setValidity("ComponentProposal", function(object) {
         method <- "nuisance-only-residual-permutation"
         design_digest <- unique(ranking$design_digest)[[1L]]
     }
-    observed <- max(ranking$effect_magnitude)
+    observed <- max(
+        ranking$effect_magnitude[
+            ranking$proposal_eligible &
+                is.finite(ranking$effect_magnitude)
+        ]
+    )
     permutation_policy <- .resampling_policy_reframe(
         attr(permutation_plan, "resampling_policy", exact = TRUE),
         method = method,

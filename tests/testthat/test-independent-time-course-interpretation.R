@@ -599,3 +599,41 @@ test_that("within-time permutation repeats the complete component search", {
     expect_length(evidence@null_max_effect, 11L)
     expect_true(is.finite(evidence@search_aware_p_value))
 })
+
+test_that("within-time permutation retains partial refit failures", {
+    atlas <- associate_metadata(
+        independent_time_course_fixture(include_nuisance = FALSE),
+        specification = independent_time_course_specification(),
+        non_analytical_fields = "sample_id"
+    )
+    original_fit <- getFromNamespace(
+        ".fit_independent_time_course",
+        "landscapeR"
+    )
+    n_calls <- 0L
+    testthat::local_mocked_bindings(
+        .fit_independent_time_course = function(...) {
+            n_calls <<- n_calls + 1L
+            if (n_calls == 1L) {
+                return(list(
+                    status = "non-identifiable-design",
+                    estimate = NA_real_
+                ))
+            }
+            original_fit(...)
+        },
+        .package = "landscapeR"
+    )
+
+    proposal <- propose_component(atlas, n_permutations = 11L, seed = 8107L)
+    evidence <- proposal_permutation_evidence(proposal)
+    policy <- attr(evidence, "resampling_policy", exact = TRUE)
+
+    expect_s4_class(proposal, "ComponentProposal")
+    expect_identical(evidence@status, "partial")
+    expect_identical(evidence@n_requested, 11L)
+    expect_identical(evidence@n_completed, 10L)
+    expect_identical(sum(is.na(evidence@null_max_effect)), 1L)
+    expect_identical(policy$n_failed, 1L)
+    expect_identical(policy$status, "partial")
+})

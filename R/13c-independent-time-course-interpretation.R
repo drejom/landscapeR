@@ -1498,7 +1498,12 @@ register_strategy(
         ,
         drop = FALSE
     ]
-    components <- sort(unique(observations$component))
+    components <- sort(unique(
+        ranking$component[
+            ranking$proposal_eligible &
+                is.finite(ranking$effect_magnitude)
+        ]
+    ))
     first <- observations[
         observations$component == components[[1L]],
         ,
@@ -1563,7 +1568,11 @@ register_strategy(
                     NA_real_
                 }
             })
-            max(abs(effects), na.rm = TRUE)
+            if (length(effects) && all(is.finite(effects))) {
+                max(abs(effects))
+            } else {
+                NA_real_
+            }
         }, numeric(1L))
         method <- "within-time-label-permutation"
         design_digest <- NA_character_
@@ -1607,44 +1616,59 @@ register_strategy(
                     NA_real_
                 }
             }, numeric(1L))
-            max(abs(effects), na.rm = TRUE)
+            if (length(effects) && all(is.finite(effects))) {
+                max(abs(effects))
+            } else {
+                NA_real_
+            }
         }, numeric(1L))
         method <- "within-time-reduced-model-residual-permutation"
         design_digest <- ranking$design_digest[[1L]]
     }
-    if (any(!is.finite(null_max))) {
-        permutation_policy <- .resampling_policy_reframe(
-            attr(permutation_plan, "resampling_policy", exact = TRUE),
-            method = method,
-            unit = "condition-by-time-cell"
-        )
-        return(.new_permutation_evidence(
-            status = "not-identifiable",
-            n_requested = n_permutations,
-            seed = seed,
-            diagnostic = "failed-time-course-null-replicate",
-            resampling_policy = permutation_policy
-        ))
-    }
-    observed <- max(ranking$effect_magnitude)
+    null_max[!is.finite(null_max)] <- NA_real_
+    n_completed <- sum(is.finite(null_max))
     permutation_policy <- .resampling_policy_reframe(
         attr(permutation_plan, "resampling_policy", exact = TRUE),
         method = method,
         unit = "condition-by-time-cell"
     )
+    if (!n_completed) {
+        return(.new_permutation_evidence(
+            method = method,
+            status = "not-identifiable",
+            n_requested = n_permutations,
+            n_completed = 0L,
+            null_max_effect = null_max,
+            seed = seed,
+            diagnostic = "failed-time-course-null-replicate",
+            resampling_policy = permutation_policy
+        ))
+    }
+    observed <- max(
+        ranking$effect_magnitude[
+            ranking$proposal_eligible &
+                is.finite(ranking$effect_magnitude)
+        ]
+    )
+    n_failures <- n_permutations - n_completed
     .new_permutation_evidence(
         method = method,
-        status = "complete",
+        status = if (n_failures) "partial" else "complete",
         n_requested = n_permutations,
-        n_completed = n_permutations,
+        n_completed = n_completed,
         observed_max_effect = observed,
         null_max_effect = null_max,
         search_aware_p_value = (
-            1 + sum(null_max >= observed)
+            1 + sum(null_max >= observed, na.rm = TRUE)
         ) / (n_permutations + 1),
         seed = seed,
         cohort_digest = ranking$cohort_digest[[1L]],
         design_digest = design_digest,
+        diagnostic = if (n_failures) {
+            "some-time-course-null-refits-failed"
+        } else {
+            ""
+        },
         resampling_policy = permutation_policy
     )
 }
