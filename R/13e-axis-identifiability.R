@@ -1366,31 +1366,35 @@ proposal_identifiability <- function(proposal) {
     target_context <- switch(
         target_type,
         binary = sprintf(
-            "Target contrast: %s (%s versus %s).",
-            target,
+            "the %s versus %s contrast",
             proposal@comparison_level,
             proposal@reference_level
         ),
         continuous = sprintf(
-            "Continuous target: %s (declared %s direction).",
-            target,
-            provenance$continuous_direction
+            "the declared %s association with %s",
+            provenance$continuous_direction,
+            target
         ),
         ordered = sprintf(
-            "Ordered target: %s (%s).",
+            "differences across %s in the declared order %s",
             target,
             paste(provenance$ordered_levels, collapse = " < ")
         ),
-        sprintf("Target: %s.", target)
+        target
     )
-    context <- c(
-        if (.is_scalar_nonempty_text(dataset)) {
-            sprintf("Dataset: %s.", dataset)
-        },
+    context <- sprintf(
+        "Axis identifiability was assessed for %s%s%s.",
+        target_context,
         if (.is_scalar_nonempty_text(layer)) {
-            sprintf("Molecular layer: %s.", layer)
+            sprintf(" using %s data", layer)
+        } else {
+            ""
         },
-        target_context
+        if (.is_scalar_nonempty_text(dataset)) {
+            sprintf(" from the %s", dataset)
+        } else {
+            ""
+        }
     )
     design <- provenance$sampling_design
     design_label <- c(
@@ -1400,22 +1404,32 @@ proposal_identifiability <- function(proposal) {
         longitudinal = "repeated observations of complete subject trajectories"
     )[[design]]
     if (!is.null(design_label)) {
-        context <- c(context, sprintf("Sampling design: %s.", design_label))
+        context <- c(
+            context,
+            sprintf("The analysis used %s.", design_label)
+        )
     }
     time_field <- provenance$time_field
     if (.is_scalar_nonempty_text(time_field)) {
         time_unit <- provenance$time_unit
         context <- c(context, if (.is_scalar_nonempty_text(time_unit)) {
-            sprintf("Observed time: %s, measured in %s.", time_field, time_unit)
+            sprintf(
+                "Observed time was recorded as %s in %s.",
+                time_field,
+                time_unit
+            )
         } else {
-            sprintf("Observed time: %s.", time_field)
+            sprintf("Observed time was recorded as %s.", time_field)
         })
     }
     subject_field <- provenance$subject_field
     if (.is_scalar_nonempty_text(subject_field)) {
         context <- c(
             context,
-            sprintf("Subject identifier: %s.", subject_field)
+            sprintf(
+                "Repeated observations were grouped by %s.",
+                subject_field
+            )
         )
     }
     nuisance_fields <- provenance$nuisance_fields
@@ -1423,7 +1437,7 @@ proposal_identifiability <- function(proposal) {
         context <- c(
             context,
             sprintf(
-                "Declared nuisance fields: %s.",
+                "The analysis adjusted for %s.",
                 paste(nuisance_fields, collapse = ", ")
             )
         )
@@ -1432,111 +1446,207 @@ proposal_identifiability <- function(proposal) {
 }
 
 .identifiability_caption <- function(proposal, evidence, view) {
-    unit <- gsub("-", " ", evidence$resampling$unit, fixed = TRUE)
-    method <- gsub("-", " ", evidence$resampling$method, fixed = TRUE)
+    resampling_description <- c(
+        `target-stratified-biological-unit-bootstrap` =
+            paste(
+                "a stratified bootstrap of biological sampling units",
+                "within target groups"
+            ),
+        `condition-time-cell-bootstrap` =
+            paste(
+                "a bootstrap of biological sampling units within",
+                "condition-by-time cells"
+            ),
+        `condition-stratified-subject-trajectory-bootstrap` =
+            paste(
+                "a stratified bootstrap of complete subject trajectories",
+                "within conditions"
+            )
+    )[[evidence$resampling$method]]
+    if (is.null(resampling_description)) {
+        resampling_description <- evidence$resampling$method
+    }
     count_phrase <- function(value, singular, plural) {
         sprintf("%d %s", value, if (value == 1L) singular else plural)
     }
-    completion <- sprintf(
-        "%s of %s %s resamples completed the full assessment; %s did not.",
-        evidence$n_completed,
-        evidence$n_requested,
-        unit,
-        evidence$n_requested - evidence$n_completed
-    )
+    completion <- if (evidence$n_completed == evidence$n_requested) {
+        sprintf(
+            "All %s bootstrap replicates completed the full assessment.",
+            evidence$n_requested
+        )
+    } else {
+        sprintf(
+            paste(
+                "Of %s bootstrap replicates, %s completed the full",
+                "assessment; %s did not."
+            ),
+            evidence$n_requested,
+            evidence$n_completed,
+            evidence$n_requested - evidence$n_completed
+        )
+    }
     incomplete <- if (evidence$n_completed < evidence$n_requested) {
         summary <- evidence$failure_summary
         paste(
-            "Incomplete evidence included",
+            "The incomplete assessments comprised",
             paste0(count_phrase(
                 summary$n_computational_failures,
-                "computational failure",
-                "computational failures"
+                "resample in which decomposition could not be evaluated",
+                "resamples in which decomposition could not be evaluated"
             ), ","),
             paste0(count_phrase(
                 summary$n_proposal_abstentions,
-                "proposal abstention",
-                "proposal abstentions"
+                "resample in which no component could be nominated",
+                "resamples in which no component could be nominated"
             ), ","),
             paste0(count_phrase(
                 summary$n_proposal_execution_failures,
-                "proposal execution failure",
-                "proposal execution failures"
+                "resample in which component nomination could not be evaluated",
+                "resamples in which component nomination could not be evaluated"
             ), ","),
             "and",
             paste0(count_phrase(
                 summary$n_nominated_unmatched,
-                "unmatched nominated axis",
-                "unmatched nominated axes"
+                "resample in which the nominated axis could not be matched",
+                "resamples in which the nominated axis could not be matched"
             ), ".")
         )
     } else {
         NULL
     }
-    encodings <- if (identical(view, "primary")) {
+    panel_description <- if (identical(view, "primary")) {
         paste(
-            "In component-indexed panels, the red triangle marks the",
-            "nominated component and black circles mark comparisons."
+            "(A) Axis recurrence is the proportion of resamples assigned",
+            "to the corresponding discovery axis.",
+            "(B) Mean absolute feature-loading cosine similarity measures",
+            "agreement between matched resampled and discovery axes;",
+            "values approaching one indicate closer agreement.",
+            "(C) Assignment margins are shown for individual resamples;",
+            "smaller values indicate greater ambiguity between competing",
+            "one-to-one assignments.",
+            "(D) The largest principal angle is shown for each enclosing",
+            "subspace dimension; smaller angles indicate greater subspace",
+            "recurrence."
         )
     } else {
         paste(
-            "In component-indexed panels, larger red points mark the",
-            "nominated component and smaller black points mark comparisons."
+            "(A) The singular-value spectrum is shown for each molecular",
+            "layer.",
+            "(B) Absolute feature-loading cosine similarity measures",
+            "agreement between matched axes.",
+            "(C) Assignment margins quantify ambiguity between competing",
+            "one-to-one assignments.",
+            "(D) Individual-axis recurrence records, for every discovery",
+            "component, whether its axis was recovered in each resample.",
+            "(E) Component-index recurrence records whether its original",
+            "component index was retained.",
+            "(F) Orientation recurrence records whether each sign-corrected",
+            "biological-effect direction agrees with its discovery estimate.",
+            "(G) Proposal rank records the repeated biological-effect",
+            "ranking.",
+            "(H) Largest principal angles summarize recurrence of each",
+            "enclosing subspace dimension.",
+            "(I) Replicate completion equals one only when the complete",
+            "assessment succeeded."
         )
     }
-    interpretation <- paste(
-        "Components are matched jointly one-to-one by maximum total",
-        "absolute feature-loading cosine.",
-        "Axis recurrence is the fraction assigned to the same discovery",
-        "axis; higher absolute loading cosine indicates a closer match;",
-        "larger assignment margin indicates less ambiguity. Subspace",
-        "points are per-resample largest principal angles for each",
-        "enclosing dimension."
+    encodings <- paste(
+        if (identical(view, "primary")) {
+            paste(
+                "Red triangles denote the nominated component and black",
+                "circles denote the remaining candidate components in",
+                "panels A-C."
+            )
+        } else {
+            paste(
+                "Larger red points denote the nominated component and",
+                "smaller black points denote the remaining candidate",
+                "components in component-indexed panels."
+            )
+        },
+        "Components were matched jointly by maximizing total absolute",
+        "feature-loading cosine similarity."
     )
     calibrated <- !identical(evidence$structured_outcome, "not-calibrated") &&
         is.character(evidence$calibration_digest) &&
         length(evidence$calibration_digest) == 1L &&
         !is.na(evidence$calibration_digest) &&
         nzchar(evidence$calibration_digest)
-    boundary <- if (calibrated) {
-        paste(
-            "Digest-bound calibration thresholds produced the stored",
-            "evidence outcome; the renderer does not reclassify it.",
-            "The evidence does not by itself establish biological validity."
-        )
-    } else {
-        paste(
-            "Smaller subspace angles indicate more recurrent enclosing",
-            "subspaces. No stability threshold is applied; evidence is",
-            "descriptive and does not establish biological validity."
-        )
-    }
-    detail <- if (identical(view, "diagnostic")) {
-        paste(
-            "In the diagnostic view, the spectrum shows stored singular",
-            "values; individual-axis recurrence marks matched axes;",
-            "index recurrence marks repeated component indices;",
-            "orientation recurrence marks repeated corrected effect",
-            "direction; proposal rank is the resampled biological-effect",
-            "rank; and completion equals one only when the full assessment",
-            "completed. Point shapes identify evidence series."
-        )
-    } else {
-        NULL
-    }
+    boundary <- .identifiability_caption_conclusion(evidence, calibrated)
     caption <- paste(
         c(
+            "Component-axis identifiability under design-preserving resampling.",
             .identifiability_caption_context(proposal),
-            sprintf("%s Resampling used %s.", completion, method),
+            sprintf(
+                "%s Resampling used %s.",
+                completion,
+                resampling_description
+            ),
             incomplete,
+            panel_description,
             encodings,
-            interpretation,
-            boundary,
-            detail
+            boundary
         ),
         collapse = " "
     )
     paste(strwrap(caption, width = 96L), collapse = "\n")
+}
+
+.identifiability_caption_conclusion <- function(evidence, calibrated) {
+    conclusions <- c(
+        `not-calibrated` = paste(
+            "No stability threshold was applied. The nominated axis",
+            "therefore remains exploratory and must not be interpreted as",
+            "stably recovered."
+        ),
+        `stable-axis` = paste(
+            "Under the prespecified calibrated criteria, the nominated",
+            "individual axis was recovered and is eligible for",
+            "one-dimensional interpretation."
+        ),
+        `stable-subspace/no-stable-axis` = paste(
+            "Under the prespecified calibrated criteria, the enclosing",
+            "subspace was recovered but no individual axis was recovered;",
+            "interpretation must therefore remain at the subspace level."
+        ),
+        `no-stable-target-structure` = paste(
+            "Under the prespecified calibrated criteria, no stable",
+            "target-associated axis or enclosing subspace was recovered."
+        ),
+        `outside-calibrated-operating-region` = paste(
+            "The design lies outside the prespecified calibrated operating",
+            "region, so no calibrated recovery claim can be made."
+        ),
+        `unique-winner-failure` = paste(
+            "The biological-effect ranking did not identify a unique",
+            "candidate component, so no individual axis can be nominated."
+        ),
+        `non-identifiable-design` = paste(
+            "The sampling design does not identify an individual axis, so",
+            "one-dimensional interpretation is not supported."
+        )
+    )
+    conclusion <- unname(conclusions[[evidence$structured_outcome]])
+    if (is.null(conclusion)) {
+        conclusion <- sprintf(
+            "The recorded assessment outcome was %s.",
+            .identifiability_outcome_label(evidence$structured_outcome)
+        )
+    }
+    paste(
+        conclusion,
+        if (calibrated) {
+            paste(
+                "This numerical result does not, by itself, establish",
+                "biological validity."
+            )
+        } else {
+            paste(
+                "These results describe numerical identifiability and do",
+                "not, by themselves, establish biological validity."
+            )
+        }
+    )
 }
 
 .identifiability_outcome_label <- function(outcome) {
@@ -1609,6 +1719,12 @@ plot_component_identifiability <- function(
             name = "Discovery component"
         )
         summary_surfaces <- c("Axis recurrence", "Matching similarity")
+        primary_panel_labels <- c(
+            `Axis recurrence` = "A  Axis recurrence",
+            `Matching similarity` = "B  Matching similarity",
+            `Assignment margin` = "C  Assignment margin",
+            `Subspace angle` = "D  Subspace angle"
+        )
         bounded <- data.frame(
             surface = factor(
                 rep(summary_surfaces, each = 2L),
@@ -1656,7 +1772,8 @@ plot_component_identifiability <- function(
                 ggplot2::facet_wrap(
                     ggplot2::vars(surface),
                     scales = "free_y",
-                    ncol = 2L
+                    ncol = 2L,
+                    labeller = ggplot2::as_labeller(primary_panel_labels)
                 ) +
                 colour_scale +
                 shape_scale +
@@ -1696,6 +1813,17 @@ plot_component_identifiability <- function(
         length.out = length(series_levels)
     )
     names(series_shapes) <- series_levels
+    diagnostic_panel_labels <- c(
+        Spectrum = "A  Spectrum",
+        `Matching similarity` = "B  Matching similarity",
+        `Assignment margin` = "C  Assignment margin",
+        `Individual-axis recurrence` = "D  Individual-axis recurrence",
+        `Index recurrence` = "E  Index recurrence",
+        `Orientation recurrence` = "F  Orientation recurrence",
+        `Proposal rank` = "G  Proposal rank",
+        `Subspace angle` = "H  Subspace angle",
+        `Replicate completion` = "I  Replicate completion"
+    )
     plot <- ggplot2::ggplot(
         surface_data,
         ggplot2::aes(
@@ -1768,7 +1896,7 @@ plot_component_identifiability <- function(
             ggplot2::vars(surface),
             scales = "free",
             ncol = 3L,
-            labeller = ggplot2::label_wrap_gen(width = 18L)
+            labeller = ggplot2::as_labeller(diagnostic_panel_labels)
         ) +
         colour_scale +
         ggplot2::scale_shape_manual(

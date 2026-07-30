@@ -22,19 +22,23 @@ expression <- rbind(
     gene_6 = seq(0.3, -0.3, length.out = n)
 )
 colnames(expression) <- assay_ids
+proof_metadata <- S4Vectors::DataFrame(
+    condition = condition,
+    sample_id = primary,
+    row.names = primary
+)
 data <- StateTransitionData(
     experiments = list(
-        rna = SummarizedExperiment::SummarizedExperiment(
+        `RNA expression` = SummarizedExperiment::SummarizedExperiment(
             assays = list(logcounts = expression)
         )
     ),
-    colData = S4Vectors::DataFrame(
-        condition = condition,
-        sample_id = primary,
-        row.names = primary
-    ),
+    colData = proof_metadata,
     sampleMap = S4Vectors::DataFrame(
-        assay = factor(rep("rna", n), levels = "rna"),
+        assay = factor(
+            rep("RNA expression", n),
+            levels = "RNA expression"
+        ),
         primary = primary,
         colname = assay_ids
     )

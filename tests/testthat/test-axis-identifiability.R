@@ -234,38 +234,45 @@ test_that("identifiability assessment repeats the complete discovery search", {
     )
     expect_match(
         caption_text,
-        "red triangle marks the nominated component",
+        "Red triangles denote the nominated component",
         ignore.case = TRUE
     )
     expect_match(
         caption_text,
-        "Dataset: axis-identifiability-fixture",
+        "from the axis-identifiability-fixture",
         fixed = TRUE
     )
-    expect_match(caption_text, "Molecular layer: rna", fixed = TRUE)
+    expect_match(caption_text, "using rna data", fixed = TRUE)
     expect_match(
         caption_text,
-        "Target contrast: condition (treatment versus control)",
-        fixed = TRUE
-    )
-    expect_match(
-        caption_text,
-        "Sampling design: cross-sectional biological samples",
+        "treatment versus control contrast",
         fixed = TRUE
     )
     expect_match(
         caption_text,
-        "independent biological observation",
+        "analysis used cross-sectional biological samples",
+        fixed = TRUE
+    )
+    expect_match(caption_text, "(A) Axis recurrence", fixed = TRUE)
+    expect_match(caption_text, "(D) The largest principal angle", fixed = TRUE)
+    expect_match(
+        caption_text,
+        "All 7 bootstrap replicates completed the full assessment",
         fixed = TRUE
     )
     expect_match(
         caption_text,
-        "target stratified biological unit bootstrap",
+        "stratified bootstrap of biological sampling units within target groups",
         fixed = TRUE
     )
     expect_match(
         caption_text,
-        "No stability threshold is applied",
+        "No stability threshold was applied",
+        fixed = TRUE
+    )
+    expect_match(
+        caption_text,
+        "remains exploratory and must not be interpreted as stably recovered",
         fixed = TRUE
     )
     expect_identical(surface$labels$colour, "Discovery component")
@@ -292,12 +299,38 @@ test_that("identifiability assessment repeats the complete discovery search", {
     )
     expect_match(
         diagnostic_caption,
-        "In the diagnostic view",
+        "(A) The singular-value spectrum",
+        fixed = TRUE
+    )
+    diagnostic_panels <- c(
+        "(B) Absolute feature-loading cosine similarity",
+        "(C) Assignment margins",
+        "(D) Individual-axis recurrence",
+        "(E) Component-index recurrence",
+        "(F) Orientation recurrence",
+        "(G) Proposal rank",
+        "(H) Largest principal angles",
+        "(I) Replicate completion"
+    )
+    for (panel_description in diagnostic_panels) {
+        expect_match(diagnostic_caption, panel_description, fixed = TRUE)
+    }
+    expect_match(
+        diagnostic_caption,
+        "for every discovery component, whether its axis was recovered",
         fixed = TRUE
     )
     expect_match(
         diagnostic_caption,
-        "larger red points mark the nominated component",
+        paste(
+            "sign-corrected biological-effect direction agrees with its",
+            "discovery estimate"
+        ),
+        fixed = TRUE
+    )
+    expect_match(
+        diagnostic_caption,
+        "Larger red points denote the nominated component",
         fixed = TRUE
     )
     expect_identical(diagnostic$labels$colour, "Discovery component")
@@ -385,11 +418,23 @@ test_that("identifiability assessment repeats the complete discovery search", {
     )
     expect_match(
         incomplete_caption,
-        "5 of 7 independent biological observation resamples completed",
+        "Of 7 bootstrap replicates, 5 completed",
         fixed = TRUE
     )
-    expect_match(incomplete_caption, "1 proposal abstention", fixed = TRUE)
-    expect_match(incomplete_caption, "1 unmatched nominated axis", fixed = TRUE)
+    expect_match(
+        incomplete_caption,
+        "1 resample in which no component could be nominated",
+        fixed = TRUE
+    )
+    expect_match(
+        incomplete_caption,
+        "1 resample in which the nominated axis could not be matched",
+        fixed = TRUE
+    )
+    expect_false(grepl(
+        "computational failure|proposal abstention|proposal execution failure",
+        incomplete_caption
+    ))
     incomplete_axis <- incomplete_plot$data[
         incomplete_plot$data$surface == "Axis recurrence" &
             incomplete_plot$data$focal,
@@ -456,6 +501,20 @@ test_that("identifiability assessment repeats the complete discovery search", {
         `non-identifiable-design` =
             "Design does not identify an individual axis"
     )
+    outcome_conclusions <- c(
+        `stable-axis` =
+            "individual axis was recovered and is eligible for one-dimensional interpretation",
+        `stable-subspace/no-stable-axis` =
+            "interpretation must therefore remain at the subspace level",
+        `no-stable-target-structure` =
+            "no stable target-associated axis or enclosing subspace was recovered",
+        `outside-calibrated-operating-region` =
+            "no calibrated recovery claim can be made",
+        `unique-winner-failure` =
+            "no individual axis can be nominated",
+        `non-identifiable-design` =
+            "one-dimensional interpretation is not supported"
+    )
     for (outcome in names(outcome_labels)) {
         outcome_evidence <- proposal_identifiability(assessed)
         outcome_evidence$structured_outcome <- outcome
@@ -493,11 +552,11 @@ test_that("identifiability assessment repeats the complete discovery search", {
         )
         expect_match(
             outcome_caption,
-            "Digest-bound calibration thresholds produced the stored evidence outcome",
+            outcome_conclusions[[outcome]],
             fixed = TRUE
         )
         expect_false(grepl(
-            "No stability threshold is applied",
+            "No stability threshold was applied",
             outcome_caption,
             fixed = TRUE
         ))
@@ -600,10 +659,7 @@ test_that("identifiability caption context respects declared target type", {
         landscapeR:::.identifiability_caption_context(continuous)
     expect_match(
         continuous_context,
-        paste(
-            "Continuous target: developmental_age",
-            "(declared increasing direction)."
-        ),
+        "declared increasing association with developmental_age",
         fixed = TRUE
     )
     expect_false(grepl("versus", continuous_context, fixed = TRUE))
@@ -617,7 +673,10 @@ test_that("identifiability caption context respects declared target type", {
     ordered_context <- landscapeR:::.identifiability_caption_context(ordered)
     expect_match(
         ordered_context,
-        "Ordered target: developmental_stage (early < middle < late).",
+        paste(
+            "differences across developmental_stage in the declared order",
+            "early < middle < late"
+        ),
         fixed = TRUE
     )
     expect_false(grepl("versus", ordered_context, fixed = TRUE))

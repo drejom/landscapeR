@@ -412,6 +412,14 @@ species or biological meaning from field names, or invent missing context.
 Callers therefore own meaningful dataset, target, level, time, subject, layer,
 and nuisance labels at the declaration boundary.
 
+Multi-panel public figures carry visible letter labels in reading order.
+Publication captions begin with a concise declarative title, integrate relevant
+experimental context into narrative scientific prose, and refer to each panel
+by its visible letter. Captions do not present metadata as a sequence of
+`field: value` labels or describe package implementation. Figure numbering
+remains the responsibility of the manuscript, Quarto document, or other
+publication system.
+
 Titles, axis labels, legends, and direct annotations may make a simple plot
 self-explanatory, but omission of a caption from a user-facing function is a
 documented exception rather than the default. An exception is valid only when

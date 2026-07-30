@@ -7,19 +7,25 @@ threshold, axis recovery, or biological support.
 
 ![Component identifiability evidence](identifiability-surface.png)
 
-*Figure caption.* Dataset: Synthetic control-treatment expression study.
-Molecular layer: rna. Target contrast: condition (treatment versus control).
-Sampling design: cross-sectional biological samples. 99 of 99 independent
-biological observation resamples completed the full assessment; 0 did not.
-Resampling used target stratified biological unit bootstrap. In
-component-indexed panels, the red triangle marks the nominated component and
-black circles mark comparisons. Components are matched jointly one-to-one by
-maximum total absolute feature-loading cosine. Axis recurrence is the fraction
-assigned to the same discovery axis; higher absolute loading cosine indicates
-a closer match; larger assignment margin indicates less ambiguity. Subspace
-points are per-resample largest principal angles for each enclosing dimension.
-Smaller subspace angles indicate more recurrent enclosing subspaces. No
-stability threshold is applied; evidence is descriptive and does not establish
+*Figure caption.* **Component-axis identifiability under design-preserving
+resampling.** Axis identifiability was assessed for the treatment versus control
+contrast using RNA expression data from the Synthetic control-treatment
+expression study. The analysis used cross-sectional biological samples. All 99
+bootstrap replicates completed the full assessment. Resampling used a
+stratified bootstrap of biological sampling units within target groups.
+**(A)** Axis recurrence is the proportion of resamples assigned to the
+corresponding discovery axis. **(B)** Mean absolute feature-loading cosine
+similarity measures agreement between matched resampled and discovery axes;
+values approaching one indicate closer agreement. **(C)** Assignment margins
+are shown for individual resamples; smaller values indicate greater ambiguity
+between competing one-to-one assignments. **(D)** The largest principal angle
+is shown for each enclosing subspace dimension; smaller angles indicate greater
+subspace recurrence. Red triangles denote the nominated component and black
+circles denote the remaining candidate components in panels A-C. Components
+were matched jointly by maximizing total absolute feature-loading cosine
+similarity. No stability threshold was applied. The nominated axis therefore
+remains exploratory and must not be interpreted as stably recovered. These
+results describe numerical identifiability and do not, by themselves, establish
 biological validity.
 
 The red triangles identify the uniquely nominated discovery component; black

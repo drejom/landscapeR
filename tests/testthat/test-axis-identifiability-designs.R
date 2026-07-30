@@ -270,19 +270,18 @@ test_that("time-course designs repeat the complete discovery workflow", {
         expect_null(plot$labels$caption)
         expect_match(
             caption,
-            gsub("-", " ", expected_units[[design]], fixed = TRUE),
+            "treatment versus control contrast",
             fixed = TRUE
         )
         expect_match(
             caption,
-            "Target contrast: condition (treatment versus control)",
+            "Observed time was recorded as day in days",
             fixed = TRUE
         )
-        expect_match(caption, "Observed time: day, measured in days", fixed = TRUE)
         if (identical(design, "longitudinal")) {
             expect_match(
                 caption,
-                "Subject identifier: mouse_id",
+                "Repeated observations were grouped by mouse_id",
                 fixed = TRUE
             )
         }
