@@ -1,0 +1,8 @@
+Scientific-caption contract across resampling outcomes. The Pogona sex-development series
+experiment uses the RNA abundance layer to assess the declared genotype target contrasts ZW
+with ZZ. (A) Bars retain the requested denominator for complete, partial, and abstention
+outcomes. Red shows completed resamples and black outlines show requests. The analysis unit is
+independent embryo; the design is stage-stratified biological-unit bootstrap. Failed resamples
+are retained rather than regenerated. Six of twenty requested resamples did not complete. No
+acceptance threshold is applied. The visualization is descriptive and does not establish
+biological validity.
