@@ -1,0 +1,9 @@
+Design-preserving resampling outcomes under a shared package policy. Bars show 20 requested
+bootstrap replicates for representative cross-sectional, independent time-course, and
+repeated-subject designs; red segments show completed refits, black outlines mark the fixed
+requested denominator, and labels report status and completion. The cross-sectional plan
+completed all 20 refits, the condition-by-time-cell plan retained six failed refits and
+therefore reported partial evidence, and the complete-subject-trajectory plan retained all 20
+failed refits and reported a non-identifiable outcome. These synthetic outcomes demonstrate
+deterministic accounting and typed failure semantics only; no scientific stability threshold is
+applied.

@@ -193,24 +193,6 @@ utils::globalVariables(c(
     geometry
 }
 
-.identifiability_rng <- function(seed, expression) {
-    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-    if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv)
-    on.exit({
-        if (had_seed) {
-            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
-        } else if (exists(
-            ".Random.seed",
-            envir = .GlobalEnv,
-            inherits = FALSE
-        )) {
-            rm(".Random.seed", envir = .GlobalEnv)
-        }
-    }, add = TRUE)
-    set.seed(seed)
-    force(expression)
-}
-
 .identifiability_resampling_plan <- function(
     discovery,
     specification,
@@ -324,34 +306,25 @@ utils::globalVariables(c(
         )
     }
 
-    generated <- .identifiability_rng(seed, {
-        draws <- lapply(seq_len(n_resamples), make_draw)
-        replicate_seeds <- sample.int(
-            .Machine$integer.max,
-            n_resamples,
-            replace = FALSE
-        )
-        list(draws = draws, seeds = replicate_seeds)
-    })
+    policy <- .resampling_policy_plan(
+        lifecycle = "bootstrap",
+        method = method,
+        unit = unit,
+        n_requested = n_resamples,
+        seed = seed,
+        design = list(kind = kind, strata = strata),
+        draw_factory = make_draw,
+        materialize_replicate_seeds = TRUE
+    )
     list(
-        draws = generated$draws,
-        replicate_seeds = as.integer(generated$seeds),
+        draws = policy$draws,
+        replicate_seeds = policy$replicate_seeds,
         method = method,
         unit = unit,
         seed = as.integer(seed),
         n_resamples = as.integer(n_resamples),
-        digest = digest::digest(
-            list(
-                kind = kind,
-                method = method,
-                unit = unit,
-                seed = seed,
-                draws = generated$draws,
-                replicate_seeds = generated$seeds
-            ),
-            algo = "sha256",
-            serialize = TRUE
-        )
+        digest = policy$digest,
+        policy = policy
     )
 }
 

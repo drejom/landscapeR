@@ -276,6 +276,13 @@ test_that("permutation evidence uses the finite proposal search set", {
     expect_equal(evidence@observed_max_effect, max(finite_effects))
     expect_true(is.finite(evidence@search_aware_p_value))
     expect_gt(evidence@n_completed, 0L)
+    policy_account <- landscapeR:::.permutation_resampling_account(evidence)
+    expect_identical(policy_account$n_requested, 5L)
+    expect_identical(policy_account$n_completed, evidence@n_completed)
+    expect_identical(
+        policy_account$n_failed,
+        evidence@n_requested - evidence@n_completed
+    )
     expect_true(any(
         ranking$component == 2L &
             !is.finite(ranking$effect_magnitude)
@@ -346,6 +353,12 @@ test_that("insufficient subject permutations are not fabricated", {
         abstention@permutation_evidence@diagnostic,
         "insufficient-subject-level-rearrangements"
     )
+    policy_account <- landscapeR:::.permutation_resampling_account(
+        abstention@permutation_evidence
+    )
+    expect_identical(policy_account$status, "insufficient-support")
+    expect_identical(policy_account$n_requested, 25L)
+    expect_identical(policy_account$n_completed, 0L)
 })
 
 test_that("repeated-model provenance freezes the complete scientific contract", {

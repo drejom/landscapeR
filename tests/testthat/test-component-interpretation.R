@@ -617,6 +617,39 @@ test_that("unadjusted permutation repeats the complete component search", {
     )
 })
 
+test_that("cross-sectional permutation excludes finite ineligible components", {
+    specification <- analysis_specification(
+        id = "binary-mixed-eligibility",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment"
+    )
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    ineligible <- atlas@associations$metadata_field == "condition" &
+        atlas@associations$component == 2L
+    atlas@associations$proposal_eligible[ineligible] <- FALSE
+    altered <- atlas
+    altered_rows <- altered@observations$metadata_field == "condition" &
+        altered@observations$component == 2L
+    altered@observations$score[altered_rows] <-
+        c(8, 1, 7, 2, 6, 3, 5, 4)
+
+    first <- propose_component(atlas, n_permutations = 19L, seed = 8009L)
+    second <- propose_component(altered, n_permutations = 19L, seed = 8009L)
+
+    expect_identical(proposal_ranking(first)$component, 1L)
+    expect_identical(proposal_ranking(second)$component, 1L)
+    expect_identical(
+        proposal_permutation_evidence(first)@null_max_effect,
+        proposal_permutation_evidence(second)@null_max_effect
+    )
+})
+
 test_that("adjusted permutation uses nuisance-only score residuals", {
     specification <- analysis_specification(
         id = "adjusted-permutation",
