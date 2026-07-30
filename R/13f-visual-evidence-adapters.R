@@ -1,0 +1,950 @@
+# Object-specific visual-evidence adapters.
+#
+# These adapters normalize stored scientific evidence for rendering. They do
+# not define a generalized renderer and do not grant alternative renderers any
+# authority to alter scientific results.
+
+.flexible_fit_data <- function(data) {
+    numeric <- data[
+        data$available &
+            data$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    if (!nrow(numeric)) {
+        return(data.frame(
+            metadata_field = character(),
+            component_label = character(),
+            metadata_numeric = numeric(),
+            flexible_fitted = numeric(),
+            stringsAsFactors = FALSE
+        ))
+    }
+    groups <- interaction(
+        numeric$metadata_field,
+        numeric$component_label,
+        drop = TRUE,
+        lex.order = TRUE
+    )
+    fitted <- lapply(split(numeric, groups, drop = TRUE), function(group) {
+        x <- sort(unique(group$metadata_numeric))
+        if (length(x) < 3L) return(NULL)
+        model <- tryCatch(
+            stats::loess(
+                score ~ metadata_numeric,
+                data = group,
+                control = stats::loess.control(surface = "direct")
+            ),
+            error = function(condition) NULL
+        )
+        if (is.null(model)) return(NULL)
+        y <- unname(stats::predict(model, newdata = data.frame(
+            metadata_numeric = x
+        )))
+        keep <- is.finite(y)
+        data.frame(
+            metadata_field = group$metadata_field[[1L]],
+            component_label = group$component_label[[1L]],
+            metadata_numeric = x[keep],
+            flexible_fitted = y[keep],
+            stringsAsFactors = FALSE
+        )
+    })
+    fitted <- Filter(Negate(is.null), fitted)
+    if (!length(fitted)) {
+        return(data.frame(
+            metadata_field = character(),
+            component_label = character(),
+            metadata_numeric = numeric(),
+            flexible_fitted = numeric(),
+            stringsAsFactors = FALSE
+        ))
+    }
+    do.call(rbind, fitted)
+}
+
+.cross_sectional_visual_display <- function(
+    observations,
+    associations,
+    ranking = NULL,
+    recommended_component = NA_integer_,
+    comparison_level = NA_character_
+) {
+    available <- observations[observations$available, , drop = FALSE]
+    categorical <- available[
+        available$metadata_type == "categorical",
+        ,
+        drop = FALSE
+    ]
+    numeric <- available[
+        available$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    diagnostic_keys <- unique(associations[
+        associations$evidence_variant == "unadjusted" &
+            associations$diagnostic == "possible-nonmonotone-association",
+        c("metadata_field", "component_label"),
+        drop = FALSE
+    ])
+    diagnostics <- unique(observations[
+        ,
+        c("metadata_field", "component_label"),
+        drop = FALSE
+    ])
+    diagnostic_match <- paste(
+        diagnostics$metadata_field,
+        diagnostics$component_label,
+        sep = "\r"
+    ) %in% paste(
+        diagnostic_keys$metadata_field,
+        diagnostic_keys$component_label,
+        sep = "\r"
+    )
+    diagnostics$diagnostic <- ifelse(
+        diagnostic_match,
+        "possible-nonmonotone-association",
+        ""
+    )
+    diagnostics$display_label <- ifelse(
+        diagnostic_match,
+        "\u25b3 non-monotone",
+        ""
+    )
+    max_atom_count <- if (nrow(available)) {
+        max(available$atom_count)
+    } else {
+        1L
+    }
+    display <- list(
+        categorical_observations = categorical,
+        numeric_observations = numeric,
+        monotone_fit = .monotone_fit_data(observations),
+        flexible_fit = .flexible_fit_data(observations),
+        diagnostic_labels = diagnostics,
+        max_atom_count = max_atom_count,
+        show_atom_guide = any(available$atom_count > 1L)
+    )
+    if (!is.null(ranking) && nrow(ranking)) {
+        display$facet_labels <- stats::setNames(
+            sprintf(
+                "%s  |  rank %d  |  |effect| = %.2f",
+                ranking$component_label,
+                ranking$proposal_rank,
+                ranking$effect_magnitude
+            ),
+            ranking$component_label
+        )
+        recommended <- available[
+            available$component == recommended_component,
+            ,
+            drop = FALSE
+        ]
+        marker_range <- diff(range(recommended$score))
+        if (!is.finite(marker_range) || marker_range == 0) marker_range <- 1
+        display$categorical_marker <- if (nrow(categorical)) {
+            data.frame(
+                component_label = unique(recommended$component_label),
+                metadata_value = if (.is_scalar_nonempty_text(
+                    comparison_level
+                )) {
+                    comparison_level
+                } else {
+                    recommended$metadata_value[[1L]]
+                },
+                score = max(recommended$score) + 0.12 * marker_range,
+                stringsAsFactors = FALSE
+            )
+        } else {
+            data.frame(
+                component_label = character(),
+                metadata_value = character(),
+                score = numeric()
+            )
+        }
+        display$numeric_marker <- if (nrow(numeric)) {
+            data.frame(
+                component_label = unique(recommended$component_label),
+                metadata_numeric = max(
+                    recommended$metadata_numeric,
+                    na.rm = TRUE
+                ),
+                score = max(recommended$score) + 0.12 * marker_range,
+                stringsAsFactors = FALSE
+            )
+        } else {
+            data.frame(
+                component_label = character(),
+                metadata_numeric = numeric(),
+                score = numeric()
+            )
+        }
+    }
+    list(display = display, diagnostics = diagnostics)
+}
+
+#' @rdname visual_evidence
+#' @export
+setMethod("visual_evidence", "MetadataAssociationAtlas", function(x) {
+    if (x@sampling_design@kind %in% c(
+        "independent_time_course", "longitudinal"
+    )) {
+        return(.time_course_visual_evidence(x))
+    }
+    prepared <- .cross_sectional_visual_display(
+        x@observations,
+        x@associations
+    )
+    caption_view <- .new_scientific_caption_view(
+        title = "Metadata association atlas",
+        experiment_label = x@dataset_id,
+        molecular_layer = x@provenance$layer,
+        sampling_unit = "independent biological observation",
+        nuisance_fields = x@provenance$nuisance_fields,
+        encodings = paste(
+            "Black monotone fits and red flexible fits expose agreement or",
+            "possible non-monotone structure; point size records coincident",
+            "observations"
+        ),
+        estimand = "prespecified component-metadata association",
+        design = x@sampling_design@kind,
+        uncertainty = "Stored intervals and diagnostics remain descriptive",
+        threshold = "No acceptance threshold is applied",
+        claim_boundary = paste(
+            "The atlas is exploratory and does not nominate a biological",
+            "coordinate"
+        ),
+        state = "uncalibrated"
+    )
+    .new_visual_evidence_view(
+        surface = "atlas",
+        state = "uncalibrated",
+        observations = x@observations,
+        summaries = x@associations,
+        diagnostics = prepared$diagnostics,
+        display_data = prepared$display,
+        caption_view = caption_view
+    )
+})
+
+#' @rdname visual_evidence
+#' @export
+setMethod("visual_evidence", "ComponentProposal", function(x) {
+    if (x@provenance$sampling_design %in% c(
+        "independent_time_course", "longitudinal"
+    )) {
+        return(.time_course_visual_evidence(x))
+    }
+    prepared <- .cross_sectional_visual_display(
+        x@observations,
+        x@ranking,
+        ranking = x@ranking,
+        recommended_component = x@recommended_component,
+        comparison_level = x@comparison_level
+    )
+    prepared$display$title <- sprintf(
+        "Component proposal for %s",
+        x@target_field
+    )
+    oriented <- if (
+        .is_scalar_nonempty_text(x@reference_level) &&
+            .is_scalar_nonempty_text(x@comparison_level)
+    ) {
+        c(x@reference_level, x@comparison_level)
+    } else {
+        character()
+    }
+    caption_view <- .new_scientific_caption_view(
+        title = "Effect-first component proposal",
+        experiment_label = x@provenance$dataset_id,
+        molecular_layer = x@provenance$layer,
+        target_field = x@target_field,
+        oriented_levels = oriented,
+        sampling_unit = "independent biological observation",
+        nuisance_fields = x@provenance$nuisance_fields,
+        encodings = paste(
+            "The red diamond marks the uniquely nominated component;",
+            "black and white marks retain the complete ranked search"
+        ),
+        estimand = x@ranking$estimand[[1L]],
+        design = x@provenance$sampling_design,
+        uncertainty = "Facet labels report stored effect rank and magnitude",
+        threshold = "No acceptance threshold is applied",
+        claim_boundary = paste(
+            "The proposal is exploratory and does not confirm biological",
+            "validity"
+        ),
+        state = "uncalibrated"
+    )
+    .new_visual_evidence_view(
+        surface = "proposal",
+        state = "uncalibrated",
+        observations = x@observations,
+        summaries = x@ranking,
+        diagnostics = prepared$diagnostics,
+        display_data = prepared$display,
+        caption_view = caption_view
+    )
+})
+
+.time_course_visual_evidence <- function(x) {
+    is_atlas <- is(x, "MetadataAssociationAtlas")
+    is_proposal <- is(x, "ComponentProposal")
+    is_abstention <- is(x, "ComponentAbstention")
+    if (!is_atlas && !is_proposal && !is_abstention) {
+        .stop_landscapeR_validation(
+            "time-course visual evidence requires an atlas, proposal, or abstention"
+        )
+    }
+    provenance <- x@provenance
+    ranking <- if (is_proposal || is_abstention) x@ranking else NULL
+    observations <- x@observations
+    data <- merge(
+        observations,
+        provenance$time_course_observations,
+        by = "primary_sample",
+        all.x = TRUE,
+        sort = FALSE
+    )
+    data <- data[data$available, , drop = FALSE]
+    lines <- provenance$time_course_display_lines
+    summaries <- provenance$time_course_effect_summary
+    rank_summary <- provenance$time_course_rank_summary
+    repeated <- identical(provenance$sampling_design, "longitudinal")
+    surface <- if (repeated) {
+        "repeated_time_course"
+    } else {
+        "independent_time_course"
+    }
+    has_trajectories <- nrow(lines) > 0L
+    interval_text <- ifelse(
+        is.finite(summaries$effect_conf_low) &
+            is.finite(summaries$effect_conf_high),
+        sprintf(
+            "%.2f [%.2f, %.2f]",
+            summaries$estimate,
+            summaries$effect_conf_low,
+            summaries$effect_conf_high
+        ),
+        sprintf("%.2f [not estimated]", summaries$estimate)
+    )
+    names(interval_text) <- summaries$component_label
+    if (repeated) {
+        rank_text <- stats::setNames(
+            ifelse(
+                is.finite(rank_summary$rank_one_fraction),
+                sprintf(
+                    "effect rank 1 in %.0f%% | fit failures %d/%d",
+                    100 * rank_summary$rank_one_fraction,
+                    rank_summary$component_fit_failures,
+                    rank_summary$n_resamples
+                ),
+                "association resampling not requested"
+            ),
+            rank_summary$component_label
+        )
+    } else {
+        rank_text <- stats::setNames(
+            ifelse(
+                is.finite(rank_summary$rank_one_fraction),
+                sprintf(
+                    "effect rank 1 in %.0f%% of resamples",
+                    100 * rank_summary$rank_one_fraction
+                ),
+                "resampling not requested"
+            ),
+            rank_summary$component_label
+        )
+    }
+    resampling_requested <- nrow(rank_summary) &&
+        any(rank_summary$n_resamples > 0L)
+    requested_searches <- if (resampling_requested) {
+        max(rank_summary$n_resamples)
+    } else {
+        0L
+    }
+    complete_searches <- if (resampling_requested) {
+        min(rank_summary$n_complete_searches)
+    } else {
+        0L
+    }
+    partial_resampling <- resampling_requested &&
+        complete_searches < requested_searches
+    facet_labels <- if (!has_trajectories) {
+        stats::setNames(
+            paste0(
+                summaries$component_label,
+                "\ninteraction not estimated"
+            ),
+            summaries$component_label
+        )
+    } else if (!is.null(ranking) && nrow(ranking)) {
+        stats::setNames(
+            sprintf(
+                "%s\nrank %d | interaction %s\n%s",
+                ranking$component_label,
+                ranking$proposal_rank,
+                interval_text[ranking$component_label],
+                rank_text[ranking$component_label]
+            ),
+            ranking$component_label
+        )
+    } else {
+        stats::setNames(
+            sprintf(
+                "%s\ninteraction %s",
+                summaries$component_label,
+                interval_text
+            ),
+            summaries$component_label
+        )
+    }
+    title <- if (is_abstention) {
+        sprintf("No component nominated for %s", x@target_field)
+    } else if (is_proposal) {
+        sprintf(
+            "Component ranking for %s across observed time",
+            x@target_field
+        )
+    } else if (!has_trajectories) {
+        if (repeated) {
+            "Repeated-subject model not estimable"
+        } else {
+            "Observed destructive-time-course design"
+        }
+    } else if (repeated) {
+        "Repeated-subject time-course evidence"
+    } else {
+        "Independent destructive-time-course evidence"
+    }
+    diagnostic_values <- unique(summaries$diagnostic)
+    diagnostic_values <- diagnostic_values[nzchar(diagnostic_values)]
+    subtitle <- if (is_abstention) {
+        .public_abstention_message(x@reason, diagnostic_values)
+    } else if (is_proposal) {
+        "Ranked by the prespecified condition-by-time interaction"
+    } else if (!has_trajectories) {
+        if (repeated) {
+            .public_abstention_message(
+                "non-identifiable-design",
+                diagnostic_values
+            )
+        } else {
+            paste(
+                "Condition-by-time interaction is not estimable from",
+                "this sampling grid"
+            )
+        }
+    } else if (repeated) {
+        "Individual trajectories and population-level linear divergence"
+    } else {
+        "Observed time is fixed; trajectories are exploratory linear fits"
+    }
+    display <- list(
+        trajectories = lines,
+        facet_labels = facet_labels,
+        reference_level = provenance$reference_level,
+        comparison_level = provenance$comparison_level,
+        time_field = provenance$time_field,
+        title = title,
+        subtitle = subtitle,
+        has_trajectories = has_trajectories
+    )
+    missingness <- NA_character_
+    if (repeated) {
+        endpoint <- ave(
+            data$scaled_time,
+            interaction(
+                data$component_label,
+                data$subject,
+                drop = TRUE
+            ),
+            FUN = max
+        )
+        display$dropout_points <- data[
+            data$dropout & data$scaled_time == endpoint,
+            ,
+            drop = FALSE
+        ]
+        if (nrow(display$dropout_points)) {
+            missingness <- sprintf(
+                "%d subject endpoints are marked as ending before the final observed study time",
+                nrow(display$dropout_points)
+            )
+        }
+    } else {
+        cells <- provenance$time_course_cells
+        score_range <- range(data$score)
+        score_span <- diff(score_range)
+        if (!is.finite(score_span) || score_span == 0) score_span <- 1
+        offsets <- stats::setNames(
+            c(-0.08, -0.18) * score_span,
+            c(provenance$reference_level, provenance$comparison_level)
+        )
+        cells$label_y <- score_range[[1L]] + offsets[cells$condition]
+        cells$label <- paste0("n=", cells$count)
+        display$cells <- cells
+        display$missing_cells <- cells[
+            cells$count == 0L,
+            ,
+            drop = FALSE
+        ]
+        if (nrow(display$missing_cells)) {
+            missingness <- sprintf(
+                "%d unobserved condition-by-time cells are marked with crosses",
+                nrow(display$missing_cells)
+            )
+        }
+    }
+    state <- if (is_abstention) {
+        "abstention"
+    } else if (!has_trajectories) {
+        "missing"
+    } else if (partial_resampling) {
+        "partial"
+    } else {
+        "uncalibrated"
+    }
+    resampling_account <- paste(
+        "Facet labels report stored interaction intervals and",
+        "resampling recurrence"
+    )
+    if (partial_resampling) {
+        resampling_account <- paste0(
+            resampling_account,
+            sprintf(
+                "; %d of %d requested complete-search resamples succeeded; %d were incomplete",
+                complete_searches,
+                requested_searches,
+                requested_searches - complete_searches
+            )
+        )
+    }
+    oriented <- c(
+        provenance$reference_level,
+        provenance$comparison_level
+    )
+    caption_view <- .new_scientific_caption_view(
+        title = title,
+        experiment_label = provenance$dataset_id,
+        molecular_layer = provenance$layer,
+        target_field = provenance$target_field,
+        oriented_levels = oriented,
+        sampling_unit = if (repeated) {
+            "complete subject trajectory"
+        } else {
+            "independent biological observation"
+        },
+        time_field = provenance$time_field,
+        subject_field = if (repeated) provenance$subject_field else NA_character_,
+        nuisance_fields = provenance$nuisance_fields,
+        encodings = if (repeated) {
+            paste(
+                "Thin lines connect repeated observations from each subject;",
+                "bold lines show stored population trajectories from the",
+                "rank-scale model with subject-specific random intercepts and",
+                "time slopes; red crosses mark recorded early endpoints"
+            )
+        } else {
+            paste(
+                "Points show independent observations; labels give biological",
+                "sample counts per design cell; crosses mark unobserved cells;",
+                "lines show stored population trajectories"
+            )
+        },
+        estimand = "condition-by-time interaction on the rank scale",
+        design = provenance$sampling_design,
+        uncertainty = resampling_account,
+        missingness = if (identical(state, "missing")) {
+            "The declared condition-by-time interaction is not estimable"
+        } else if (identical(state, "partial")) {
+            paste(
+                "Incomplete resamples remain in the requested denominator;",
+                "available trajectories and intervals are retained"
+            )
+        } else {
+            missingness
+        },
+        threshold = "No acceptance threshold is applied",
+        claim_boundary = if (is_abstention || !has_trajectories) {
+            "No unique biological coordinate is identified"
+        } else {
+            paste(
+                "Trajectory evidence is exploratory and does not establish",
+                "biological validity"
+            )
+        },
+        state = state
+    )
+    .new_visual_evidence_view(
+        surface = surface,
+        state = state,
+        observations = data,
+        summaries = summaries,
+        diagnostics = data.frame(
+            diagnostic = diagnostic_values,
+            stringsAsFactors = FALSE
+        ),
+        display_data = display,
+        caption_view = caption_view
+    )
+}
+
+.render_time_course_visual_evidence <- function(view) {
+    data <- visual_evidence_observations(view)
+    lines <- visual_evidence_display(view, "trajectories")
+    reference <- visual_evidence_display(view, "reference_level")
+    comparison <- visual_evidence_display(view, "comparison_level")
+    repeated <- identical(
+        visual_evidence_surface(view),
+        "repeated_time_course"
+    )
+    plot <- ggplot2::ggplot(
+        data,
+        ggplot2::aes(
+            x = .data[["scaled_time"]],
+            y = .data[["score"]],
+            group = if (repeated) .data[["subject"]] else NULL
+        )
+    )
+    if (repeated) {
+        plot <- plot +
+            ggplot2::geom_line(
+                ggplot2::aes(colour = .data[["condition"]]),
+                linewidth = 0.35,
+                alpha = 0.32
+            ) +
+            ggplot2::geom_point(
+                data = visual_evidence_display(view, "dropout_points"),
+                ggplot2::aes(
+                    x = .data[["scaled_time"]],
+                    y = .data[["score"]]
+                ),
+                shape = 4,
+                size = 2.7,
+                stroke = 0.8,
+                colour = "#B2182B",
+                inherit.aes = FALSE
+            )
+    }
+    plot <- plot +
+        ggplot2::geom_line(
+            data = lines,
+            ggplot2::aes(
+                x = .data[["scaled_time"]],
+                y = .data[["fitted_score"]],
+                colour = .data[["condition"]],
+                group = .data[["condition"]]
+            ),
+            linewidth = if (repeated) 1 else 0.75,
+            inherit.aes = FALSE
+        ) +
+        ggplot2::geom_point(
+            ggplot2::aes(
+                shape = .data[["condition"]],
+                fill = .data[["condition"]]
+            ),
+            size = if (repeated) 1.7 else 2.2,
+            stroke = 0.5,
+            colour = "#111111"
+        )
+    if (!repeated) {
+        cells <- visual_evidence_display(view, "cells")
+        plot <- plot +
+            ggplot2::geom_text(
+                data = cells,
+                ggplot2::aes(
+                    x = .data[["scaled_time"]],
+                    y = .data[["label_y"]],
+                    label = .data[["label"]],
+                    colour = .data[["condition"]]
+                ),
+                size = 2.7,
+                show.legend = FALSE,
+                inherit.aes = FALSE
+            ) +
+            ggplot2::geom_point(
+                data = visual_evidence_display(view, "missing_cells"),
+                ggplot2::aes(
+                    x = .data[["scaled_time"]],
+                    y = .data[["label_y"]]
+                ),
+                shape = 4,
+                size = 3,
+                stroke = 0.8,
+                colour = "#B2182B",
+                inherit.aes = FALSE
+            )
+    }
+    plot <- plot +
+        ggplot2::scale_colour_manual(values = stats::setNames(
+            c("#111111", "#B2182B"), c(reference, comparison)
+        )) +
+        ggplot2::scale_fill_manual(values = stats::setNames(
+            c("#FFFFFF", "#B2182B"), c(reference, comparison)
+        )) +
+        ggplot2::scale_shape_manual(values = stats::setNames(
+            c(21, 24), c(reference, comparison)
+        )) +
+        ggplot2::facet_wrap(
+            ggplot2::vars(component_label),
+            labeller = ggplot2::labeller(
+                component_label = visual_evidence_display(
+                    view, "facet_labels"
+                )
+            )
+        ) +
+        ggplot2::labs(
+            title = visual_evidence_display(view, "title"),
+            subtitle = paste(
+                strwrap(
+                    visual_evidence_display(view, "subtitle"),
+                    width = 72L
+                ),
+                collapse = "\n"
+            ),
+            x = sprintf(
+                "Observed time, scaled 0\u20131 (%s)",
+                visual_evidence_display(view, "time_field")
+            ),
+            y = "Standardized oriented component score",
+            colour = "Condition",
+            fill = "Condition",
+            shape = "Condition"
+        ) +
+        theme_landscapeR()
+    if (!repeated) {
+        plot <- plot + ggplot2::coord_cartesian(
+            xlim = c(-0.08, 1.08),
+            clip = "off"
+        )
+    }
+    .with_scientific_caption(plot, visual_evidence_caption(view))
+}
+
+#' @rdname visual_evidence
+#' @export
+setMethod("visual_evidence", "PermutationEvidence", function(x) {
+    state <- switch(
+        x@status,
+        complete = "complete",
+        partial = "partial",
+        "missing"
+    )
+    observations <- data.frame(
+        replicate = seq_along(x@null_max_effect),
+        max_effect = as.numeric(x@null_max_effect),
+        available = is.finite(x@null_max_effect),
+        stringsAsFactors = FALSE
+    )
+    summaries <- data.frame(
+        observed_max_effect = x@observed_max_effect,
+        search_aware_p_value = x@search_aware_p_value,
+        n_requested = x@n_requested,
+        n_completed = x@n_completed,
+        n_failed = x@n_requested - x@n_completed,
+        stringsAsFactors = FALSE
+    )
+    diagnostics <- data.frame(
+        status = x@status,
+        diagnostic = x@diagnostic,
+        stringsAsFactors = FALSE
+    )
+    uncertainty <- if (x@n_requested > 0L) {
+        completion <- sprintf(
+            "%d of %d requested null refits completed; %d failed",
+            x@n_completed,
+            x@n_requested,
+            x@n_requested - x@n_completed
+        )
+        if (is.finite(x@search_aware_p_value)) {
+            paste0(
+                completion,
+                sprintf(
+                    "; the search-aware p-value is %.3g",
+                    x@search_aware_p_value
+                )
+            )
+        } else {
+            completion
+        }
+    } else {
+        "No permutation refits were requested"
+    }
+    missingness <- if (identical(state, "partial")) {
+        sprintf(
+            "%d failed null refits remain in the requested denominator",
+            x@n_requested - x@n_completed
+        )
+    } else if (identical(state, "missing")) {
+        "No search-aware permutation distribution is available"
+    } else {
+        NA_character_
+    }
+    caption_view <- .new_scientific_caption_view(
+        title = "Search-aware permutation evidence",
+        encodings = if (state %in% c("complete", "partial")) {
+            paste(
+                "The histogram shows the stored null distribution of the",
+                "maximum absolute target effect across the eligible search;",
+                "the red vertical line marks the stored observed maximum"
+            )
+        } else {
+            "Red text identifies the recorded non-estimable outcome"
+        },
+        estimand = "maximum absolute target effect",
+        design = x@method,
+        uncertainty = uncertainty,
+        missingness = missingness,
+        threshold = "No acceptance threshold is applied",
+        claim_boundary = if (identical(state, "missing")) {
+            "No search-aware p-value is reported"
+        } else {
+            "Permutation evidence does not alter the prespecified point ranking"
+        },
+        state = state
+    )
+    .new_visual_evidence_view(
+        surface = "permutation",
+        state = state,
+        observations = observations,
+        summaries = summaries,
+        diagnostics = diagnostics,
+        display_data = list(
+            null_distribution = observations[
+                observations$available,
+                ,
+                drop = FALSE
+            ],
+            observed_line = summaries[
+                is.finite(summaries$observed_max_effect),
+                ,
+                drop = FALSE
+            ]
+        ),
+        caption_view = caption_view
+    )
+})
+
+#' @rdname visual_evidence
+#' @export
+setMethod("visual_evidence", "AssociationAbstention", function(x) {
+    diagnostics <- data.frame(
+        reason = x@reason,
+        diagnostic = x@diagnostic,
+        stringsAsFactors = FALSE
+    )
+    public_reason <- if (identical(
+        x@reason,
+        "inappropriate-target-type"
+    )) {
+        "Declared target type does not match the observed metadata"
+    } else {
+        "Declared adjustment is not identifiable"
+    }
+    caption_view <- .new_scientific_caption_view(
+        title = sprintf(
+            "Association not estimated for %s",
+            x@target_field
+        ),
+        target_field = x@target_field,
+        encodings = paste(
+            "The annotation explains why the association was not estimated;",
+            "red subtitle text identifies the recorded reason"
+        ),
+        design = x@sampling_design@kind,
+        missingness = x@diagnostic,
+        threshold = paste(
+            "No acceptance threshold applies because no association",
+            "estimand is available"
+        ),
+        claim_boundary = paste(
+            "No target type or association is substituted and no biological",
+            "association is reported"
+        ),
+        state = "abstention"
+    )
+    .new_visual_evidence_view(
+        surface = "abstention",
+        state = "abstention",
+        diagnostics = diagnostics,
+        display_data = list(
+            annotation = x@diagnostic,
+            title = sprintf(
+                "Association not estimated for %s",
+                x@target_field
+            ),
+            subtitle = public_reason
+        ),
+        caption_view = caption_view
+    )
+})
+
+#' @rdname visual_evidence
+#' @export
+setMethod("visual_evidence", "ComponentAbstention", function(x) {
+    if (x@provenance$sampling_design %in% c(
+        "independent_time_course", "longitudinal"
+    )) {
+        return(.time_course_visual_evidence(x))
+    }
+    finite <- x@ranking[
+        is.finite(x@ranking$effect_magnitude),
+        ,
+        drop = FALSE
+    ]
+    diagnostics <- data.frame(
+        reason = x@reason,
+        diagnostic = unique(x@ranking$diagnostic),
+        stringsAsFactors = FALSE
+    )
+    caption_view <- .new_scientific_caption_view(
+        title = sprintf("No component nominated for %s", x@target_field),
+        experiment_label = x@provenance$dataset_id,
+        molecular_layer = x@provenance$layer,
+        target_field = x@target_field,
+        nuisance_fields = x@provenance$nuisance_fields,
+        encodings = if (nrow(finite)) {
+            paste(
+                "Grey bars retain finite effects from the complete eligible",
+                "search; no bar is highlighted as a nominated coordinate"
+            )
+        } else {
+            "Text reports that no adjusted effect is estimable"
+        },
+        estimand = if (nrow(x@ranking)) {
+            x@ranking$estimand[[1L]]
+        } else {
+            NA_character_
+        },
+        design = x@provenance$sampling_design,
+        missingness = if (!nrow(finite)) {
+            "No estimable adjusted effect is available"
+        } else {
+            NA_character_
+        },
+        threshold = "No acceptance threshold is applied",
+        claim_boundary = paste(
+            "No component is eligible for nomination and no runner-up is",
+            "promoted"
+        ),
+        state = "abstention"
+    )
+    .new_visual_evidence_view(
+        surface = "abstention",
+        state = "abstention",
+        observations = x@observations,
+        summaries = x@ranking,
+        diagnostics = diagnostics,
+        display_data = list(
+            finite_ranking = finite,
+            title = sprintf(
+                "No component nominated for %s",
+                x@target_field
+            ),
+            subtitle = x@reason,
+            empty_annotation = "No estimable adjusted effect"
+        ),
+        caption_view = caption_view
+    )
+})

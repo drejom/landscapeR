@@ -507,9 +507,18 @@ test_that("repeated plots expose uncertainty dropout and model diagnostics", {
     proposal <- propose_component(atlas)
     atlas_plot <- plot(atlas)
     proposal_plot <- plot(proposal)
+    atlas_caption <- gsub(
+        "[[:space:]]+",
+        " ",
+        scientific_caption(atlas_plot)
+    )
 
-    expect_match(atlas_plot$labels$caption, "random\\s+intercepts")
-    expect_match(atlas_plot$labels$caption, "crosses mark subjects")
+    expect_match(atlas_caption, "random intercepts", fixed = TRUE)
+    expect_match(
+        atlas_caption,
+        "crosses mark recorded early endpoints",
+        fixed = TRUE
+    )
     expect_false(grepl(
         "singular-random-effects-covariance|non-identifiable-design",
         plot(propose_component(associate_metadata(

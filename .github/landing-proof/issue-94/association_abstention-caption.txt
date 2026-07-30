@@ -1,0 +1,6 @@
+Association not estimated for condition. The analysis assesses the declared condition target.
+The annotation explains why the association was not estimated; red subtitle text identifies the
+recorded reason. The design is cross_sectional. Continuous target must be finite numeric
+metadata with non-zero variance. No acceptance threshold applies because no association
+estimand is available. No target type or association is substituted and no biological
+association is reported.

@@ -175,7 +175,39 @@ test_that("inappropriate declared target type returns a typed abstention", {
         association_abstention_diagnostic(abstention),
         "continuous target must be finite numeric"
     )
-    expect_s3_class(plot(abstention), "ggplot")
+    abstention_plot <- plot(abstention)
+    abstention_view <- visual_evidence(abstention)
+    expect_s3_class(abstention_plot, "ggplot")
+    expect_identical(
+        visual_evidence_state(abstention_view),
+        "abstention"
+    )
+    expect_null(abstention_plot$labels$caption)
+    expect_match(
+        scientific_caption(abstention_plot),
+        "No[[:space:]]+target type or association is substituted"
+    )
+    expect_match(
+        scientific_caption(abstention_plot),
+        "design is cross_sectional"
+    )
+    expect_match(
+        scientific_caption(abstention_plot),
+        "no association[[:space:]]+estimand is available"
+    )
+    expect_identical(
+        abstention_plot$labels$subtitle,
+        "Declared target type does not match the observed metadata"
+    )
+    abstention_path <- tempfile(fileext = ".png")
+    save_landscapeR_plot(
+        abstention_plot,
+        abstention_path,
+        width_mm = 100,
+        height_mm = 100,
+        dpi = 72
+    )
+    expect_gt(file.info(abstention_path)$size, 0)
     restored <- unserialize(serialize(abstention, NULL))
     expect_identical(restored@digest, abstention@digest)
 })
@@ -356,11 +388,16 @@ test_that("non-monotone warning remains visual and cannot rerank", {
     expect_identical(proposal@recommended_component, 2L)
 
     atlas_plot <- plot(atlas)
+    atlas_view <- visual_evidence(atlas)
     diagnostics <- unlist(lapply(
         atlas_plot$layers,
         function(layer) layer$data$diagnostic
     ))
     expect_true("possible-nonmonotone-association" %in% diagnostics)
+    expect_true(
+        "possible-nonmonotone-association" %in%
+            visual_evidence_diagnostics(atlas_view)$diagnostic
+    )
 })
 
 test_that("continuous and ordered specifications can nominate components", {
@@ -537,7 +574,18 @@ test_that("target-confounded adjustment abstains without replacing raw evidence"
     abstention <- propose_component(atlas)
     expect_s4_class(abstention, "ComponentAbstention")
     expect_identical(abstention@reason, "non-identifiable-design")
-    expect_s3_class(plot(abstention), "ggplot")
+    abstention_plot <- plot(abstention)
+    abstention_view <- visual_evidence(abstention)
+    expect_s3_class(abstention_plot, "ggplot")
+    expect_identical(
+        visual_evidence_state(abstention_view),
+        "abstention"
+    )
+    expect_null(abstention_plot$labels$caption)
+    expect_match(
+        scientific_caption(abstention_plot),
+        "no runner-up is promoted"
+    )
 })
 
 test_that("component proposal ranks only by sign-invariant biological effect", {
@@ -883,8 +931,22 @@ test_that("interpretation evidence has tidy accessors and ggplot views", {
 
     atlas_plot <- plot(atlas)
     proposal_plot <- plot(proposal)
+    atlas_view <- visual_evidence(atlas)
+    proposal_view <- visual_evidence(proposal)
+    permutation_view <- visual_evidence(
+        proposal_permutation_evidence(proposal)
+    )
     expect_s3_class(atlas_plot, "ggplot")
     expect_s3_class(proposal_plot, "ggplot")
+    expect_s4_class(atlas_view, "VisualEvidenceView")
+    expect_s4_class(proposal_view, "VisualEvidenceView")
+    expect_s4_class(permutation_view, "VisualEvidenceView")
+    expect_identical(visual_evidence_surface(atlas_view), "atlas")
+    expect_identical(visual_evidence_surface(proposal_view), "proposal")
+    expect_identical(
+        visual_evidence_surface(permutation_view),
+        "permutation"
+    )
     expect_identical(
         atlas_plot$data,
         atlas_observations(atlas)
@@ -900,6 +962,26 @@ test_that("interpretation evidence has tidy accessors and ggplot views", {
             any(layer$shape == 23),
         logical(1L)
     )))
+    canonical_paths <- vapply(
+        list(
+            atlas_plot,
+            proposal_plot,
+            plot(proposal_permutation_evidence(proposal))
+        ),
+        function(figure) {
+            path <- tempfile(fileext = ".png")
+            save_landscapeR_plot(
+                figure,
+                path,
+                width_mm = 100,
+                height_mm = 100,
+                dpi = 72
+            )
+            path
+        },
+        character(1L)
+    )
+    expect_true(all(file.info(canonical_paths)$size > 0))
 })
 
 test_that("continuous atlas plot exposes monotone and flexible fits", {
@@ -919,9 +1001,12 @@ test_that("continuous atlas plot exposes monotone and flexible fits", {
         severity$metadata_numeric[severity$component == 1L],
         c(1, 2, 2, 4, 5, 6, 7, 8)
     )
-    smooth_layers <- vapply(
+    flexible_layers <- vapply(
         atlas_plot$layers,
-        function(layer) inherits(layer$geom, "GeomSmooth"),
+        function(layer) {
+            inherits(layer$geom, "GeomLine") &&
+                "flexible_fitted" %in% names(layer$data)
+        },
         logical(1L)
     )
     monotone_layers <- vapply(
@@ -932,16 +1017,15 @@ test_that("continuous atlas plot exposes monotone and flexible fits", {
         },
         logical(1L)
     )
-    expect_identical(sum(smooth_layers), 1L)
+    expect_identical(sum(flexible_layers), 1L)
     expect_identical(sum(monotone_layers), 1L)
+    view <- visual_evidence(atlas)
     expect_identical(
-        unname(vapply(
-            atlas_plot$layers[smooth_layers],
-            function(layer) layer$stat_params$method,
-            character(1L)
-        )),
-        "loess"
+        atlas_plot$layers[[which(flexible_layers)]]$data,
+        visual_evidence_display(view, "flexible_fit")
     )
+    expect_null(atlas_plot$labels$caption)
+    expect_match(scientific_caption(atlas_plot), "exploratory")
 })
 
 test_that("coincident continuous observations expose atom mass", {
@@ -988,13 +1072,18 @@ test_that("continuous proposal plot preserves the numeric decision surface", {
         non_analytical_fields = "mouse_id"
     )
     proposal_plot <- plot(propose_component(atlas))
-    smooth_layers <- vapply(
+    flexible_layers <- vapply(
         proposal_plot$layers,
-        function(layer) inherits(layer$geom, "GeomSmooth"),
+        function(layer) {
+            inherits(layer$geom, "GeomLine") &&
+                "flexible_fitted" %in% names(layer$data)
+        },
         logical(1L)
     )
 
-    expect_identical(sum(smooth_layers), 1L)
+    expect_identical(sum(flexible_layers), 1L)
+    expect_null(proposal_plot$labels$caption)
+    expect_match(scientific_caption(proposal_plot), "red diamond")
     expect_true(any(vapply(
         proposal_plot$layers,
         function(layer) {

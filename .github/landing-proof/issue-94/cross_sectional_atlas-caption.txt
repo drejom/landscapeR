@@ -1,0 +1,6 @@
+Metadata association atlas. The Pogona genotype series experiment uses the rna layer. Black
+monotone fits and red flexible fits expose agreement or possible non-monotone structure; point
+size records coincident observations. The analysis unit is independent biological observation;
+the design is cross_sectional; the estimand is prespecified component-metadata association.
+Stored intervals and diagnostics remain descriptive. No acceptance threshold is applied. The
+atlas is exploratory and does not nominate a biological coordinate.

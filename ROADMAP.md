@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#94 — deepen the typed visual-evidence
-view now that the shared scientific-caption contract is complete**.
+**Next task after this change lands:** **#107 — migrate Stage 1 and Stage 2
+figures to the shared scientific-caption contract**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -189,8 +189,9 @@ confirmation; stable-subspace/no-stable-axis is a valid abstention.
 ### 4a. Architecture debt lane
 
 **Active prefactor:** #91 and its general-contract correction #100 are
-complete. #92, #83, and #93 are complete. #106 completes on merge, making #94
-the next task for typed visual evidence.
+complete. #92, #83, #93, and #106 are complete. #94 completes on merge,
+including the component-interpretation caption migration in #108, making #107
+the next task.
 #101 reconciles supporting Pogona manifests without changing the active task
 sequence. With #93 complete on merge, the plot audit recorded in #106–#109
 resumes: #106 is the caption-contract prefactor for the queued #94
@@ -385,7 +386,7 @@ bodies may state dependencies but do not change this ordering.
 | [#91](https://github.com/drejom/landscapeR/issues/91) | Interpretation evidence architecture prefactor | complete on merge |
 | [#92](https://github.com/drejom/landscapeR/issues/92) | Time-course interpretation architecture migration | complete on merge |
 | [#93](https://github.com/drejom/landscapeR/issues/93) | Design-preserving resampling policy | complete on merge |
-| [#94](https://github.com/drejom/landscapeR/issues/94) | Typed visual-evidence view | active — next |
+| [#94](https://github.com/drejom/landscapeR/issues/94) | Typed visual-evidence view | complete on merge |
 | [#95](https://github.com/drejom/landscapeR/issues/95) | Stage completion and provenance architecture | parked |
 | [#96](https://github.com/drejom/landscapeR/issues/96) | Shared artifact migration policy | parked |
 | [#97](https://github.com/drejom/landscapeR/issues/97) | Interpretation evidence-graph migration policy | parked — blocked by #96 |
@@ -393,8 +394,8 @@ bodies may state dependencies but do not change this ordering.
 | [#101](https://github.com/drejom/landscapeR/issues/101) | Pogona master-registry manifest reconciliation | complete |
 | [#104](https://github.com/drejom/landscapeR/issues/104) | Candidate temporal biological dataset | parked — research question |
 | [#106](https://github.com/drejom/landscapeR/issues/106) | Scientific caption contract — visual-evidence prefactor | complete on merge |
-| [#107](https://github.com/drejom/landscapeR/issues/107) | Stage 1/2 scientific caption migration | queued |
-| [#108](https://github.com/drejom/landscapeR/issues/108) | Component-interpretation caption migration | queued — blocked by #94 and #106 |
+| [#107](https://github.com/drejom/landscapeR/issues/107) | Stage 1/2 scientific caption migration | active — next |
+| [#108](https://github.com/drejom/landscapeR/issues/108) | Component-interpretation caption migration | complete on merge with #94 |
 | [#109](https://github.com/drejom/landscapeR/issues/109) | Component-identifiability primary/diagnostic views | complete on merge |
 <!-- issue-map:end -->
 

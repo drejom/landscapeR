@@ -258,14 +258,23 @@
         ))
     }
     if (length(analysis)) {
+        analysis_text <- paste(analysis, collapse = "; ")
+        substr(analysis_text, 1L, 1L) <- toupper(
+            substr(analysis_text, 1L, 1L)
+        )
         sentences <- c(sentences, paste0(
-            paste(analysis, collapse = "; "), "."
+            analysis_text, "."
         ))
     }
     optional <- c(
         view$uncertainty, view$missingness, view$threshold,
         view$claim_boundary
     )
+    optional <- vapply(optional, function(sentence) {
+        if (is.na(sentence)) return(NA_character_)
+        substr(sentence, 1L, 1L) <- toupper(substr(sentence, 1L, 1L))
+        sentence
+    }, character(1L))
     sentences <- c(sentences, paste0(
         sub("[.]$", "", optional[!is.na(optional)]), "."
     ))
@@ -332,11 +341,13 @@
     ),
     policy = c(
         "caption-required",
-        rep("migration-pending", 9L)
+        rep("migration-pending", 4L),
+        rep("caption-required", 5L)
     ),
     tracking_issue = c(
         NA_integer_,
-        rep(c(107L, 108L), c(4L, 5L))
+        rep(107L, 4L),
+        rep(NA_integer_, 5L)
     ),
     stringsAsFactors = FALSE
 )

@@ -1,0 +1,11 @@
+Repeated-subject time-course evidence. The Repeated developmental series experiment uses the
+rna layer to assess the declared condition target contrasts treatment with control. Thin lines
+connect repeated observations from each subject; bold lines show stored population trajectories
+from the rank-scale model with subject-specific random intercepts and time slopes; red crosses
+mark recorded early endpoints. The analysis unit is complete subject trajectory; the design is
+longitudinal; the estimand is condition-by-time interaction on the rank scale; time is recorded
+as day; subjects are identified by mouse_id; adjustment uses batch. Facet labels report stored
+interaction intervals and resampling recurrence; 16 of 19 requested complete-search resamples
+succeeded; 3 were incomplete. Incomplete resamples remain in the requested denominator;
+available trajectories and intervals are retained. No acceptance threshold is applied.
+Trajectory evidence is exploratory and does not establish biological validity.

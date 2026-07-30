@@ -280,3 +280,20 @@ test_that("renderer and exception registries are explicit and valid", {
         "exception registry is invalid"
     )
 })
+
+test_that("analysis details form a grammatical caption sentence", {
+    view <- landscapeR:::.new_scientific_caption_view(
+        title = "Search-aware evidence",
+        design = "label permutation",
+        estimand = "maximum absolute target effect",
+        claim_boundary = "Evidence is descriptive",
+        state = "complete"
+    )
+    caption <- landscapeR:::.build_scientific_caption(view)
+
+    expect_match(
+        caption,
+        "The design is label permutation; the estimand is maximum",
+        fixed = TRUE
+    )
+})
