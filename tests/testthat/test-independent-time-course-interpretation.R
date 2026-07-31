@@ -103,7 +103,41 @@ test_that("independent time course fits the declared standardized interaction", 
     expect_identical(rank_summary$n_complete_searches, rep(19L, 2L))
     expect_equal(sum(rank_summary$rank_one_fraction), 1)
     atlas_plot <- plot(atlas)
+    atlas_view <- visual_evidence(atlas)
     expect_s3_class(atlas_plot, "ggplot")
+    expect_identical(
+        visual_evidence_surface(atlas_view),
+        "independent_time_course"
+    )
+    expect_true(nrow(visual_evidence_display(atlas_view, "cells")) > 0L)
+    expect_null(atlas_plot$labels$caption)
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(atlas_plot)),
+        "independent biological observation"
+    )
+    partial_atlas <- atlas
+    partial_atlas@provenance$time_course_rank_summary$n_complete_searches <-
+        rep(18L, 2L)
+    partial_atlas@provenance$time_course_display_state$complete_searches <-
+        18L
+    partial_atlas@provenance$time_course_display_state$partial_resampling <-
+        TRUE
+    partial_view <- visual_evidence(partial_atlas)
+    expect_identical(visual_evidence_state(partial_view), "partial")
+    expect_match(
+        gsub("\\s+", " ", visual_evidence_caption(partial_view)),
+        "18 of 19 requested complete-search resamples succeeded",
+        fixed = TRUE
+    )
+    canonical_path <- tempfile(fileext = ".png")
+    save_landscapeR_plot(
+        atlas_plot,
+        canonical_path,
+        width_mm = 100,
+        height_mm = 100,
+        dpi = 72
+    )
+    expect_gt(file.info(canonical_path)$size, 0)
     text_layers <- vapply(
         atlas_plot$layers,
         function(layer) inherits(layer$geom, "GeomText"),
@@ -372,9 +406,10 @@ test_that("a singly replicated overlapping cell causes design abstention", {
         "Observed destructive-time-course design"
     )
     expect_match(design_plot$labels$subtitle, "not estimable")
+    expect_null(design_plot$labels$caption)
     expect_match(
-        design_plot$labels$caption,
-        "no fitted\\s+trajectory is shown"
+        scientific_caption(design_plot),
+        "interaction is not estimable"
     )
     expect_s4_class(propose_component(atlas), "ComponentAbstention")
 })
@@ -440,6 +475,31 @@ test_that("complete-case exclusion does not redefine the study-time scale", {
     expect_identical(provenance$time_range, c(0, 2))
     expect_equal(range(provenance$scaled_time), c(0, 0.5))
     expect_identical(endpoint_cells$count, c(0L, 0L))
+    view <- visual_evidence(atlas)
+    expect_setequal(
+        paste(
+            visual_evidence_display(view, "missing_cells")$condition,
+            visual_evidence_display(view, "missing_cells")$observed_time
+        ),
+        paste(
+            provenance$time_course_missing_cells$condition,
+            provenance$time_course_missing_cells$observed_time
+        )
+    )
+    expect_identical(provenance$time_course_missing_cell_count, 2L)
+    invalid_missing_count <- atlas
+    invalid_missing_count@provenance$time_course_missing_cell_count <- 3L
+    expect_error(
+        validObject(invalid_missing_count),
+        "missing-cell evidence is invalid"
+    )
+    invalid_display_state <- atlas
+    invalid_display_state@provenance$
+        time_course_display_state$partial_resampling <- TRUE
+    expect_error(
+        validObject(invalid_display_state),
+        "display state does not match"
+    )
     expect_equal(endpoint_cells$scaled_time, c(1, 1))
     expect_equal(
         as.numeric(tapply(

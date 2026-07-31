@@ -1667,6 +1667,15 @@ associate_metadata <- function(
             "associate_metadata(): dataset_id must be one non-empty string"
         )
     }
+    visual_observations <- if (length(observation_rows)) {
+        do.call(rbind, observation_rows)
+    } else {
+        data.frame()
+    }
+    stored_visual_evidence <- list(
+        monotone_fit = .monotone_fit_data(visual_observations),
+        flexible_fit = .flexible_fit_data(visual_observations)
+    )
     evidence <- .new_cross_sectional_evidence(
         association_rows = association_rows,
         observation_rows = observation_rows,
@@ -1682,7 +1691,8 @@ associate_metadata <- function(
             state_space_digest = state_space_digest,
             dataset_id = dataset_id,
             exchangeability = exchangeability,
-            interpretation_module = .cross_sectional_evidence_version
+            interpretation_module = .cross_sectional_evidence_version,
+            visual_evidence = stored_visual_evidence
         ), specification_provenance)
     )
     atlas <- new(
@@ -3090,24 +3100,28 @@ plot.PermutationEvidence <- function(x, y, ...) {
     if (!is(x, "PermutationEvidence")) {
         stop("plot.PermutationEvidence(): x must be PermutationEvidence")
     }
-    data <- data.frame(
-        max_effect = x@null_max_effect[is.finite(x@null_max_effect)]
-    )
+    view <- visual_evidence(x)
+    data <- visual_evidence_display(view, "null_distribution")
+    summary <- visual_evidence_summaries(view)
+    diagnostic <- visual_evidence_diagnostics(view)
     plot <- ggplot2::ggplot(
         data,
         ggplot2::aes(x = .data[["max_effect"]])
     )
-    if (x@status %in% c("complete", "partial")) {
+    if (visual_evidence_state(view) %in% c("complete", "partial")) {
         plot <- plot +
             ggplot2::geom_histogram(
-                bins = min(30L, max(5L, floor(sqrt(x@n_completed)))),
+                bins = min(
+                    30L,
+                    max(5L, floor(sqrt(summary$n_completed)))
+                ),
                 boundary = 0,
                 colour = "#111111",
                 fill = "#D9D9D9",
                 linewidth = 0.4
             ) +
             ggplot2::geom_vline(
-                xintercept = x@observed_max_effect,
+                xintercept = summary$observed_max_effect,
                 colour = "#B2182B",
                 linewidth = 0.8
             )
@@ -3116,45 +3130,22 @@ plot.PermutationEvidence <- function(x, y, ...) {
             "text",
             x = 0,
             y = 0,
-            label = x@diagnostic,
+            label = diagnostic$diagnostic,
             colour = "#B2182B"
         )
     }
-    plot +
+    plot <- plot +
         ggplot2::labs(
             title = "Search-aware permutation evidence",
             subtitle = paste(
                 "Null maximum across the complete component search;",
-                x@status
+                diagnostic$status
             ),
             x = "Maximum absolute target effect",
-            y = "Permutation count",
-            caption = if (x@status %in% c("complete", "partial")) {
-                paste(
-                    sprintf(
-                        "Observed maximum in red; search-aware p = %.3f.",
-                        x@search_aware_p_value
-                    ),
-                    sprintf(
-                        "%d of %d requested null refits completed; %d failed.",
-                        x@n_completed,
-                        x@n_requested,
-                        x@n_requested - x@n_completed
-                    )
-                )
-            } else if (x@n_requested > 0L) {
-                sprintf(
-                    paste(
-                        "No search-aware p-value was fabricated;",
-                        "0 of %d requested null refits completed"
-                    ),
-                    x@n_requested
-                )
-            } else {
-                "No search-aware p-value was fabricated"
-            }
+            y = "Permutation count"
         ) +
         theme_landscapeR()
+    .with_scientific_caption(plot, visual_evidence_caption(view))
 }
 
 #' @export
@@ -3296,7 +3287,8 @@ plot.AssociationAbstention <- function(x, y, ...) {
     if (!is(x, "AssociationAbstention")) {
         stop("plot.AssociationAbstention(): x must be AssociationAbstention")
     }
-    ggplot2::ggplot(data.frame(x = 0, y = 0)) +
+    view <- visual_evidence(x)
+    plot <- ggplot2::ggplot(data.frame(x = 0, y = 0)) +
         ggplot2::geom_blank(ggplot2::aes(
             x = .data[["x"]],
             y = .data[["y"]]
@@ -3305,24 +3297,30 @@ plot.AssociationAbstention <- function(x, y, ...) {
             "text",
             x = 0,
             y = 0,
-            label = x@diagnostic,
+            label = paste(
+                strwrap(
+                    visual_evidence_display(view, "annotation"),
+                    width = 46L
+                ),
+                collapse = "\n"
+            ),
             colour = "#111111",
-            size = 3.4
+            size = 3.2
         ) +
         ggplot2::labs(
-            title = sprintf(
-                "Association abstained for %s",
-                x@target_field
-            ),
-            subtitle = x@reason,
+            title = visual_evidence_display(view, "title"),
+            subtitle = visual_evidence_display(view, "subtitle"),
             x = NULL,
-            y = NULL,
-            caption = "No target type or association was substituted"
+            y = NULL
         ) +
         theme_landscapeR() +
         ggplot2::theme(
-            plot.subtitle = ggplot2::element_text(colour = "#B2182B")
+            plot.subtitle = ggplot2::element_text(colour = "#B2182B"),
+            axis.text = ggplot2::element_blank(),
+            axis.ticks = ggplot2::element_blank(),
+            axis.line = ggplot2::element_blank()
         )
+    .with_scientific_caption(plot, visual_evidence_caption(view))
 }
 
 #' Plot a component-nomination abstention
@@ -3340,43 +3338,14 @@ plot.ComponentAbstention <- function(x, y, ...) {
     if (!is(x, "ComponentAbstention")) {
         stop("plot.ComponentAbstention(): x must be ComponentAbstention")
     }
-    if (identical(
-        x@provenance$sampling_design,
-        "independent_time_course"
+    view <- visual_evidence(x)
+    if (visual_evidence_surface(view) %in% c(
+        "independent_time_course",
+        "repeated_time_course"
     )) {
-        diagnostic <- unique(x@ranking$diagnostic)
-        diagnostic <- diagnostic[nzchar(diagnostic)]
-        return(.plot_independent_time_course(
-            observations = x@observations,
-            provenance = x@provenance,
-            ranking = x@ranking,
-            title = sprintf(
-                "No component nominated for %s",
-                x@target_field
-            ),
-            subtitle = .public_abstention_message(x@reason, diagnostic)
-        ))
+        return(.render_time_course_visual_evidence(view))
     }
-    if (identical(x@provenance$sampling_design, "longitudinal")) {
-        diagnostic <- unique(x@ranking$diagnostic)
-        diagnostic <- diagnostic[nzchar(diagnostic)]
-        return(.plot_repeated_time_course(
-            observations = x@observations,
-            provenance = x@provenance,
-            ranking = x@ranking,
-            title = sprintf(
-                "No component nominated for %s",
-                x@target_field
-            ),
-            subtitle = .public_abstention_message(x@reason, diagnostic)
-        ))
-    }
-    ranking <- abstention_ranking(x)
-    finite <- ranking[
-        is.finite(ranking$effect_magnitude),
-        ,
-        drop = FALSE
-    ]
+    finite <- visual_evidence_display(view, "finite_ranking")
     if (nrow(finite)) {
         plot <- ggplot2::ggplot(
             finite,
@@ -3404,25 +3373,24 @@ plot.ComponentAbstention <- function(x, y, ...) {
                 "text",
                 x = 0,
                 y = 0,
-                label = "No estimable adjusted effect",
+                label = visual_evidence_display(
+                    view, "empty_annotation"
+                ),
                 colour = "#111111"
             )
     }
-    plot +
+    plot <- plot +
         ggplot2::labs(
-            title = sprintf("No component nominated for %s", x@target_field),
-            subtitle = x@reason,
+            title = visual_evidence_display(view, "title"),
+            subtitle = visual_evidence_display(view, "subtitle"),
             x = "Recovered component",
-            y = "Absolute target effect",
-            caption = paste(
-                "Evidence is retained; no runner-up is promoted and",
-                "no component is eligible for nomination"
-            )
+            y = "Absolute target effect"
         ) +
         theme_landscapeR() +
         ggplot2::theme(
             plot.subtitle = ggplot2::element_text(colour = "#B2182B")
         )
+    .with_scientific_caption(plot, visual_evidence_caption(view))
 }
 
 #' Confirm a proposed component by an explicit analyst decision
@@ -3634,8 +3602,13 @@ confirm_component <- function(
         drop = FALSE
     ]
     if (!nrow(numeric)) {
-        numeric$monotone_fitted <- numeric$score
-        return(numeric)
+        return(data.frame(
+            metadata_field = character(),
+            component_label = character(),
+            metadata_numeric = numeric(),
+            monotone_fitted = numeric(),
+            stringsAsFactors = FALSE
+        ))
     }
     groups <- interaction(
         numeric$metadata_field,
@@ -3682,6 +3655,65 @@ confirm_component <- function(
     do.call(rbind, fitted)
 }
 
+.flexible_fit_data <- function(data) {
+    numeric <- data[
+        data$available &
+            data$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    if (!nrow(numeric)) {
+        return(data.frame(
+            metadata_field = character(),
+            component_label = character(),
+            metadata_numeric = numeric(),
+            flexible_fitted = numeric(),
+            stringsAsFactors = FALSE
+        ))
+    }
+    groups <- interaction(
+        numeric$metadata_field,
+        numeric$component_label,
+        drop = TRUE,
+        lex.order = TRUE
+    )
+    fitted <- lapply(split(numeric, groups, drop = TRUE), function(group) {
+        x <- sort(unique(group$metadata_numeric))
+        if (length(x) < 3L) return(NULL)
+        model <- tryCatch(
+            stats::loess(
+                score ~ metadata_numeric,
+                data = group,
+                control = stats::loess.control(surface = "direct")
+            ),
+            error = function(condition) NULL
+        )
+        if (is.null(model)) return(NULL)
+        y <- unname(stats::predict(model, newdata = data.frame(
+            metadata_numeric = x
+        )))
+        keep <- is.finite(y)
+        data.frame(
+            metadata_field = group$metadata_field[[1L]],
+            component_label = group$component_label[[1L]],
+            metadata_numeric = x[keep],
+            flexible_fitted = y[keep],
+            stringsAsFactors = FALSE
+        )
+    })
+    fitted <- Filter(Negate(is.null), fitted)
+    if (!length(fitted)) {
+        return(data.frame(
+            metadata_field = character(),
+            component_label = character(),
+            metadata_numeric = numeric(),
+            flexible_fitted = numeric(),
+            stringsAsFactors = FALSE
+        ))
+    }
+    do.call(rbind, fitted)
+}
+
 #' Plot a metadata-association atlas
 #'
 #' Displays the raw component-score distributions for every eligible metadata
@@ -3695,76 +3727,28 @@ confirm_component <- function(
 #' @return a `ggplot` object
 #' @export
 plot.MetadataAssociationAtlas <- function(x, y, ...) {
-    if (identical(
-        x@sampling_design@kind,
-        "independent_time_course"
+    view <- visual_evidence(x)
+    if (visual_evidence_surface(view) %in% c(
+        "independent_time_course",
+        "repeated_time_course"
     )) {
-        return(.plot_independent_time_course(
-            observations = x@observations,
-            provenance = x@provenance
-        ))
+        return(.render_time_course_visual_evidence(view))
     }
-    if (identical(x@sampling_design@kind, "longitudinal")) {
-        return(.plot_repeated_time_course(
-            observations = x@observations,
-            provenance = x@provenance
-        ))
-    }
-    data <- atlas_observations(x)
-    diagnostics <- atlas_associations(x)
-    diagnostic_keys <- unique(diagnostics[
-        diagnostics$evidence_variant == "unadjusted" &
-            diagnostics$diagnostic == "possible-nonmonotone-association",
-        c("metadata_field", "component_label"),
-        drop = FALSE
-    ])
-    diagnostics <- unique(data[
-        ,
-        c("metadata_field", "component_label"),
-        drop = FALSE
-    ])
-    diagnostic_match <- paste(
-        diagnostics$metadata_field,
-        diagnostics$component_label,
-        sep = "\r"
-    ) %in% paste(
-        diagnostic_keys$metadata_field,
-        diagnostic_keys$component_label,
-        sep = "\r"
+    data <- visual_evidence_observations(view)
+    diagnostics <- visual_evidence_diagnostics(view)
+    categorical <- visual_evidence_display(
+        view, "categorical_observations"
     )
-    diagnostics$diagnostic <- ifelse(
-        diagnostic_match,
-        "possible-nonmonotone-association",
-        ""
-    )
-    diagnostics$display_label <- ifelse(
-        diagnostic_match,
-        "\u25b3 non-monotone",
-        ""
-    )
-    available <- data[data$available, , drop = FALSE]
-    categorical <- available[
-        available$metadata_type == "categorical",
-        ,
-        drop = FALSE
-    ]
-    numeric <- available[
-        available$metadata_type %in% c("continuous", "ordered"),
-        ,
-        drop = FALSE
-    ]
-    monotone <- .monotone_fit_data(data)
-    max_atom_count <- if (nrow(available)) {
-        max(available$atom_count)
-    } else {
-        1L
-    }
-    atom_guide <- if (any(available$atom_count > 1L)) {
+    numeric <- visual_evidence_display(view, "numeric_observations")
+    monotone <- visual_evidence_display(view, "monotone_fit")
+    flexible <- visual_evidence_display(view, "flexible_fit")
+    max_atom_count <- visual_evidence_display(view, "max_atom_count")
+    atom_guide <- if (visual_evidence_display(view, "show_atom_guide")) {
         ggplot2::waiver()
     } else {
         "none"
     }
-    ggplot2::ggplot(data) +
+    plot <- ggplot2::ggplot(data) +
         ggplot2::geom_boxplot(
             data = categorical,
             mapping = ggplot2::aes(
@@ -3815,15 +3799,12 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             colour = "#111111",
             linewidth = 0.6
         ) +
-        ggplot2::geom_smooth(
-            data = numeric,
+        ggplot2::geom_line(
+            data = flexible,
             mapping = ggplot2::aes(
                 x = .data[["metadata_numeric"]],
-                y = .data[["score"]]
+                y = .data[["flexible_fitted"]]
             ),
-            method = "loess",
-            formula = y ~ x,
-            se = FALSE,
             colour = "#B2182B",
             linewidth = 0.7
         ) +
@@ -3861,6 +3842,7 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             y = "Component score"
         ) +
         theme_landscapeR()
+    .with_scientific_caption(plot, visual_evidence_caption(view))
 }
 
 #' Plot an effect-first component proposal
@@ -3875,114 +3857,33 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
 #' @return a `ggplot` object
 #' @export
 plot.ComponentProposal <- function(x, y, ...) {
-    if (identical(
-        x@provenance$sampling_design,
-        "independent_time_course"
+    view <- visual_evidence(x)
+    if (visual_evidence_surface(view) %in% c(
+        "independent_time_course",
+        "repeated_time_course"
     )) {
-        return(.plot_independent_time_course(
-            observations = x@observations,
-            provenance = x@provenance,
-            ranking = x@ranking,
-            title = sprintf(
-                "Component ranking for %s across observed time",
-                x@target_field
-            ),
-            subtitle =
-                "Ranked by the prespecified condition-by-time interaction"
-        ))
+        return(.render_time_course_visual_evidence(view))
     }
-    if (identical(x@provenance$sampling_design, "longitudinal")) {
-        return(.plot_repeated_time_course(
-            observations = x@observations,
-            provenance = x@provenance,
-            ranking = x@ranking,
-            title = sprintf(
-                "Component ranking for %s across observed time",
-                x@target_field
-            ),
-            subtitle =
-                "Ranked by the prespecified condition-by-time interaction"
-        ))
-    }
-    data <- proposal_observations(x)
-    available <- data[data$available, , drop = FALSE]
-    categorical <- available[
-        available$metadata_type == "categorical",
-        ,
-        drop = FALSE
-    ]
-    numeric <- available[
-        available$metadata_type %in% c("continuous", "ordered"),
-        ,
-        drop = FALSE
-    ]
-    monotone <- .monotone_fit_data(data)
-    max_atom_count <- if (nrow(available)) {
-        max(available$atom_count)
-    } else {
-        1L
-    }
-    atom_guide <- if (any(available$atom_count > 1L)) {
+    data <- visual_evidence_observations(view)
+    categorical <- visual_evidence_display(
+        view, "categorical_observations"
+    )
+    numeric <- visual_evidence_display(view, "numeric_observations")
+    monotone <- visual_evidence_display(view, "monotone_fit")
+    flexible <- visual_evidence_display(view, "flexible_fit")
+    max_atom_count <- visual_evidence_display(view, "max_atom_count")
+    atom_guide <- if (visual_evidence_display(view, "show_atom_guide")) {
         ggplot2::waiver()
     } else {
         "none"
     }
-    ranking <- proposal_ranking(x)
-    facet_labels <- stats::setNames(
-        sprintf(
-            "%s  |  rank %d  |  |effect| = %.2f",
-            ranking$component_label,
-            ranking$proposal_rank,
-            ranking$effect_magnitude
-        ),
-        ranking$component_label
+    facet_labels <- visual_evidence_display(view, "facet_labels")
+    categorical_marker <- visual_evidence_display(
+        view, "categorical_marker"
     )
-    recommended_data <- available[
-        available$component == x@recommended_component,
-        ,
-        drop = FALSE
-    ]
-    marker_range <- diff(range(recommended_data$score))
-    if (!is.finite(marker_range) || marker_range == 0) marker_range <- 1
-    categorical_marker <- if (nrow(categorical)) {
-        data.frame(
-            component_label = unique(recommended_data$component_label),
-            metadata_value = if (.is_scalar_nonempty_text(
-                x@comparison_level
-            )) {
-                x@comparison_level
-            } else {
-                recommended_data$metadata_value[[1L]]
-            },
-            score = max(recommended_data$score) + 0.12 * marker_range,
-            stringsAsFactors = FALSE
-        )
-    } else {
-        data.frame(
-            component_label = character(),
-            metadata_value = character(),
-            score = numeric()
-        )
-    }
-    numeric_marker <- if (nrow(numeric)) {
-        data.frame(
-            component_label = unique(recommended_data$component_label),
-            metadata_numeric = max(
-                recommended_data$metadata_numeric,
-                na.rm = TRUE
-            ),
-            score = max(recommended_data$score) + 0.12 * marker_range,
-            stringsAsFactors = FALSE
-        )
-    } else {
-        data.frame(
-            component_label = character(),
-            metadata_numeric = numeric(),
-            score = numeric()
-        )
-    }
+    numeric_marker <- visual_evidence_display(view, "numeric_marker")
 
-    ggplot2::ggplot(data) +
+    plot <- ggplot2::ggplot(data) +
         ggplot2::geom_boxplot(
             data = categorical,
             mapping = ggplot2::aes(
@@ -4033,15 +3934,12 @@ plot.ComponentProposal <- function(x, y, ...) {
             colour = "#111111",
             linewidth = 0.6
         ) +
-        ggplot2::geom_smooth(
-            data = numeric,
+        ggplot2::geom_line(
+            data = flexible,
             mapping = ggplot2::aes(
                 x = .data[["metadata_numeric"]],
-                y = .data[["score"]]
+                y = .data[["flexible_fitted"]]
             ),
-            method = "loess",
-            formula = y ~ x,
-            se = FALSE,
             colour = "#B2182B",
             linewidth = 0.7
         ) +
@@ -4086,20 +3984,14 @@ plot.ComponentProposal <- function(x, y, ...) {
             expand = ggplot2::expansion(mult = c(0.05, 0.16))
         ) +
         ggplot2::labs(
-            title = sprintf(
-                "Component proposal for %s",
-                x@target_field
-            ),
+            title = visual_evidence_display(view, "title"),
             subtitle = paste(
                 "Raw target observations;",
                 "ranked by absolute biological effect only"
             ),
             x = "Target value",
-            y = "Component score",
-            caption = paste(
-                "The red diamond marks the proposed component;",
-                "confirmation requires a documented analyst rationale"
-            )
+            y = "Component score"
         ) +
         theme_landscapeR()
+    .with_scientific_caption(plot, visual_evidence_caption(view))
 }

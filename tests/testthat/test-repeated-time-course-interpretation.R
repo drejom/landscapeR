@@ -83,7 +83,44 @@ test_that("repeated time course fits the registered random-slope strategy", {
         },
         logical(1L)
     )))
-    expect_s3_class(plot(atlas), "ggplot")
+    atlas_plot <- plot(atlas)
+    atlas_view <- visual_evidence(atlas)
+    expect_s3_class(atlas_plot, "ggplot")
+    expect_identical(
+        visual_evidence_surface(atlas_view),
+        "repeated_time_course"
+    )
+    expect_true(
+        "subject" %in% names(visual_evidence_observations(atlas_view))
+    )
+    expect_null(atlas_plot$labels$caption)
+    expect_match(
+        scientific_caption(atlas_plot),
+        "complete subject trajectory"
+    )
+    partial_atlas <- atlas
+    partial_atlas@provenance$time_course_rank_summary$n_complete_searches <-
+        rep(8L, 2L)
+    partial_atlas@provenance$time_course_display_state$complete_searches <-
+        8L
+    partial_atlas@provenance$time_course_display_state$partial_resampling <-
+        TRUE
+    partial_view <- visual_evidence(partial_atlas)
+    expect_identical(visual_evidence_state(partial_view), "partial")
+    expect_match(
+        gsub("\\s+", " ", visual_evidence_caption(partial_view)),
+        "8 of 9 requested complete-search resamples succeeded",
+        fixed = TRUE
+    )
+    canonical_path <- tempfile(fileext = ".png")
+    save_landscapeR_plot(
+        atlas_plot,
+        canonical_path,
+        width_mm = 100,
+        height_mm = 100,
+        dpi = 72
+    )
+    expect_gt(file.info(canonical_path)$size, 0)
     proposal <- propose_component(atlas)
     expect_s4_class(proposal, "ComponentProposal")
     expect_identical(proposal@recommended_component, 1L)
@@ -317,6 +354,51 @@ test_that("irregular schedules and dropout remain visible by subject", {
             atlas
         )$time_course_observations$subject) >= 3L
     ))
+    view <- visual_evidence(atlas)
+    expect_identical(
+        atlas_provenance(atlas)$time_course_dropout_subject_count,
+        2L
+    )
+    expect_identical(
+        nrow(visual_evidence_display(view, "dropout_points")),
+        4L
+    )
+    expect_match(
+        visual_evidence_caption(view),
+        "2 subject endpoints"
+    )
+    partial_dropout <- atlas
+    partial_dropout@provenance$
+        time_course_rank_summary$n_complete_searches <- rep(2L, 2L)
+    partial_dropout@provenance$
+        time_course_display_state$complete_searches <- 2L
+    partial_dropout@provenance$
+        time_course_display_state$partial_resampling <- TRUE
+    partial_caption <- visual_evidence_caption(
+        visual_evidence(partial_dropout)
+    )
+    expect_match(partial_caption, "2 subject endpoints")
+    expect_match(
+        partial_caption,
+        "2 of 3 requested complete-search resamples succeeded"
+    )
+    missing_dropout <- atlas
+    missing_dropout@provenance$time_course_display_state$has_trajectories <-
+        FALSE
+    missing_caption <- visual_evidence_caption(
+        visual_evidence(missing_dropout)
+    )
+    expect_match(missing_caption, "2 subject endpoints")
+    expect_match(
+        missing_caption,
+        "condition-by-time interaction is not estimable"
+    )
+    invalid_dropout_count <- atlas
+    invalid_dropout_count@provenance$time_course_dropout_subject_count <- 4L
+    expect_error(
+        validObject(invalid_dropout_count),
+        "dropout endpoint evidence is invalid"
+    )
     expect_s3_class(plot(atlas), "ggplot")
 })
 

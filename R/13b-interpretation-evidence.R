@@ -64,7 +64,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
     associations,
     observations,
     exclusions,
-    cohort_members
+    cohort_members,
+    visual_evidence
 ) {
     .new_interpretation_contract(
         .cross_sectional_evidence_version,
@@ -72,7 +73,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
         associations,
         observations,
         exclusions,
-        cohort_members
+        cohort_members,
+        visual_evidence
     )
 }
 
@@ -82,7 +84,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
     associations,
     observations,
     exclusions,
-    cohort_members
+    cohort_members,
+    display_evidence
 ) {
     list(
         version = version,
@@ -96,7 +99,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
             associations = .evidence_table_digest(associations),
             observations = .evidence_table_digest(observations),
             exclusions = .evidence_table_digest(exclusions),
-            cohort_members = .evidence_table_digest(cohort_members)
+            cohort_members = .evidence_table_digest(cohort_members),
+            display_evidence = .evidence_table_digest(display_evidence)
         ),
         cohorts = .interpretation_cohort_summary(associations),
         cohort_members = cohort_members
@@ -133,6 +137,47 @@ utils::globalVariables(c("metadata_field", "component_label"))
     )
     if (!is.list(contract) || !all(required %in% names(contract))) {
         return("cross-sectional evidence contract is missing required fields")
+    }
+    visual <- provenance$visual_evidence
+    visual_columns <- list(
+        monotone_fit = c(
+            "metadata_field", "component_label", "metadata_numeric",
+            "monotone_fitted"
+        ),
+        flexible_fit = c(
+            "metadata_field", "component_label", "metadata_numeric",
+            "flexible_fitted"
+        )
+    )
+    visual_valid <- is.list(visual) &&
+        all(names(visual_columns) %in% names(visual)) &&
+        all(vapply(names(visual_columns), function(name) {
+            fitted_column <- visual_columns[[name]][[4L]]
+            is.data.frame(visual[[name]]) &&
+                all(visual_columns[[name]] %in% names(visual[[name]])) &&
+                all(is.finite(visual[[name]]$metadata_numeric)) &&
+                all(is.finite(visual[[name]][[fitted_column]]))
+        }, logical(1L)))
+    if (!visual_valid) {
+        errors <- c(
+            errors,
+            "cross-sectional stored visual evidence is invalid"
+        )
+    } else {
+        observation_keys <- unique(paste(
+            observations$metadata_field,
+            observations$component_label,
+            sep = "\r"
+        ))
+        visual_keys <- unique(unlist(lapply(visual, function(table) {
+            paste(table$metadata_field, table$component_label, sep = "\r")
+        }), use.names = FALSE))
+        if (!all(visual_keys %in% observation_keys)) {
+            errors <- c(
+                errors,
+                "cross-sectional stored visual evidence lacks observations"
+            )
+        }
     }
     if (!identical(
         contract$version,
@@ -192,7 +237,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
         associations,
         observations,
         exclusions,
-        contract$cohort_members
+        contract$cohort_members,
+        provenance$visual_evidence
     )
     if (!identical(contract$row_counts, expected$row_counts)) {
         errors <- c(
@@ -414,7 +460,8 @@ utils::globalVariables(c("metadata_field", "component_label"))
         associations,
         observations,
         exclusions,
-        members
+        members,
+        .time_course_display_evidence(provenance, sampling_design)
     )
     if (!identical(contract$row_counts, expected$row_counts)) {
         errors <- c(
@@ -530,6 +577,27 @@ utils::globalVariables(c("metadata_field", "component_label"))
                 "independent time-course sampling cells are not recorded"
             )
         }
+        cells <- provenance$time_course_cells
+        missing_cells <- provenance$time_course_missing_cells
+        missing_count <- provenance$time_course_missing_cell_count
+        cell_columns <- c(
+            "condition", "observed_time", "scaled_time", "count"
+        )
+        missing_valid <- is.data.frame(cells) &&
+            is.data.frame(missing_cells) &&
+            all(cell_columns %in% names(cells)) &&
+            all(cell_columns %in% names(missing_cells)) &&
+            identical(
+                missing_cells,
+                cells[cells$count == 0L, , drop = FALSE]
+            ) &&
+            identical(missing_count, as.integer(nrow(missing_cells)))
+        if (!missing_valid) {
+            errors <- c(
+                errors,
+                "independent time-course missing-cell evidence is invalid"
+            )
+        }
     } else if (identical(sampling_design, "longitudinal")) {
         required <- c("subject", "condition", "observed_time")
         structure_valid <- all(required %in% names(design))
@@ -546,8 +614,116 @@ utils::globalVariables(c("metadata_field", "component_label"))
                 "repeated-subject trajectory structure is not recorded"
             )
         }
+        endpoints <- provenance$time_course_dropout_endpoints
+        endpoint_count <- provenance$time_course_dropout_subject_count
+        endpoint_columns <- c(
+            "primary_sample", "subject", "condition", "observed_time",
+            "scaled_time", "dropout"
+        )
+        endpoint_valid <- is.data.frame(endpoints) &&
+            all(endpoint_columns %in% names(endpoints)) &&
+            all(endpoints$dropout) &&
+            all(endpoints$primary_sample %in% design$primary_sample) &&
+            identical(
+                endpoint_count,
+                as.integer(length(unique(endpoints$subject)))
+            )
+        if (endpoint_valid) {
+            expected_endpoints <- design[design$dropout, , drop = FALSE]
+            endpoint_time <- ave(
+                expected_endpoints$scaled_time,
+                expected_endpoints$subject,
+                FUN = max
+            )
+            expected_endpoints <- expected_endpoints[
+                expected_endpoints$scaled_time == endpoint_time,
+                ,
+                drop = FALSE
+            ]
+            endpoint_valid <- identical(endpoints, expected_endpoints)
+        }
+        if (!endpoint_valid) {
+            errors <- c(
+                errors,
+                "repeated time-course dropout endpoint evidence is invalid"
+            )
+        }
+    }
+    state <- provenance$time_course_display_state
+    state_fields <- c(
+        "has_trajectories", "resampling_requested", "requested_searches",
+        "complete_searches", "partial_resampling"
+    )
+    state_valid <- is.list(state) &&
+        all(state_fields %in% names(state)) &&
+        is.logical(state$has_trajectories) &&
+        length(state$has_trajectories) == 1L &&
+        is.logical(state$resampling_requested) &&
+        length(state$resampling_requested) == 1L &&
+        is.integer(state$requested_searches) &&
+        length(state$requested_searches) == 1L &&
+        is.integer(state$complete_searches) &&
+        length(state$complete_searches) == 1L &&
+        is.logical(state$partial_resampling) &&
+        length(state$partial_resampling) == 1L
+    if (!state_valid) {
+        errors <- c(errors, "time-course display state is invalid")
+    } else {
+        expected_state <- .new_time_course_display_state(
+            provenance$time_course_display_lines,
+            provenance$time_course_rank_summary
+        )
+        if (!identical(state, expected_state)) {
+            errors <- c(
+                errors,
+                "time-course display state does not match stored evidence"
+            )
+        }
     }
     errors
+}
+
+.new_time_course_display_state <- function(lines, rank_summary) {
+    resampling_requested <- nrow(rank_summary) > 0L &&
+        any(rank_summary$n_resamples > 0L)
+    requested_searches <- if (resampling_requested) {
+        max(rank_summary$n_resamples)
+    } else {
+        0L
+    }
+    complete_searches <- if (resampling_requested) {
+        min(rank_summary$n_complete_searches)
+    } else {
+        0L
+    }
+    list(
+        has_trajectories = nrow(lines) > 0L,
+        resampling_requested = resampling_requested,
+        requested_searches = as.integer(requested_searches),
+        complete_searches = as.integer(complete_searches),
+        partial_resampling = resampling_requested &&
+            complete_searches < requested_searches
+    )
+}
+
+.time_course_display_evidence <- function(provenance, sampling_design) {
+    common <- list(
+        display_lines = provenance$time_course_display_lines,
+        rank_summary = provenance$time_course_rank_summary,
+        display_state = provenance$time_course_display_state
+    )
+    if (identical(sampling_design, "independent_time_course")) {
+        return(c(common, list(
+            cells = provenance$time_course_cells,
+            missing_cells = provenance$time_course_missing_cells,
+            missing_cell_count = provenance$time_course_missing_cell_count
+        )))
+    }
+    c(common, list(
+        dropout_endpoints = provenance$time_course_dropout_endpoints,
+        dropout_subject_count =
+            provenance$time_course_dropout_subject_count
+    ))
 }
 
 .interpretation_evidence_errors <- function(
@@ -713,7 +889,8 @@ setValidity("InterpretationEvidence", function(object) {
         associations,
         observations,
         exclusions,
-        cohort_members
+        cohort_members,
+        provenance$visual_evidence
     )
     evidence <- new(
         "InterpretationEvidence",
@@ -747,7 +924,8 @@ setValidity("InterpretationEvidence", function(object) {
         associations,
         observations,
         exclusions,
-        cohort_members
+        cohort_members,
+        .time_course_display_evidence(provenance, sampling_design)
     )
     evidence <- new(
         "InterpretationEvidence",

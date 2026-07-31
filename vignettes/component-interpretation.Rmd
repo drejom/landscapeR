@@ -541,6 +541,28 @@ caller-declared experiment, layer, target, level, time, subject, and nuisance
 labels exactly. They format stored estimands, uncertainty, thresholds,
 missingness, and claim boundaries without recalculating scientific results.
 
+The same boundary is available directly through `visual_evidence()`. It returns
+a validated `VisualEvidenceView` used by the canonical ggplot renderer:
+
+```{r visual-evidence-view, eval=FALSE}
+view <- visual_evidence(proposal)
+
+visual_evidence_surface(view)
+visual_evidence_state(view)
+visual_evidence_observations(view)
+visual_evidence_summaries(view)
+visual_evidence_diagnostics(view)
+visual_evidence_caption(view)
+```
+
+Design-specific display tables are retrieved by their recorded names with
+`visual_evidence_display()`. They contain already-computed trajectories,
+interval labels, missing-cell markers, dropout endpoints, or fitted diagnostic
+curves as applicable. Plotting code does not inspect private provenance or
+reconstruct those scientific results. The view can support a future compatible
+interactive adapter, but ggplot2 remains the canonical reproducible output and
+interactive software cannot alter a proposal or abstention.
+
 ## Current boundary
 
 These paths do not reinterpret destructive time courses as longitudinal

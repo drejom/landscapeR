@@ -1,0 +1,6 @@
+Search-aware permutation evidence. The histogram shows the stored null distribution of the
+maximum absolute target effect across the eligible search; the red vertical line marks the
+stored observed maximum. The design is label-permutation; the estimand is maximum absolute
+target effect. 49 of 49 requested null refits completed; 0 failed; the search-aware p-value is
+0.02. No acceptance threshold is applied. Permutation evidence does not alter the prespecified
+point ranking.

@@ -1,0 +1,8 @@
+artifact	class	surface	state	observations	summaries	diagnostics	display_items	caption_characters
+cross_sectional_atlas	VisualEvidenceView	atlas	uncalibrated	20	2	2	categorical_observations;numeric_observations;monotone_fit;flexible_fit;diagnostic_labels;max_atom_count;show_atom_guide	534
+component_proposal	VisualEvidenceView	proposal	uncalibrated	20	2	2	categorical_observations;numeric_observations;monotone_fit;flexible_fit;diagnostic_labels;max_atom_count;show_atom_guide;facet_labels;categorical_marker;numeric_marker;title	550
+permutation_uncertainty	VisualEvidenceView	permutation	complete	49	1	1	null_distribution;observed_line	477
+association_abstention	VisualEvidenceView	abstention	abstention	0	0	1	annotation;title;subtitle	477
+component_abstention	VisualEvidenceView	abstention	abstention	20	2	1	finite_ranking;title;subtitle;empty_annotation	426
+independent_time_course	VisualEvidenceView	independent_time_course	uncalibrated	48	2	0	trajectories;facet_labels;reference_level;comparison_level;time_field;title;subtitle;has_trajectories;cells;missing_cells	752
+repeated_time_course	VisualEvidenceView	repeated_time_course	partial	128	2	0	trajectories;facet_labels;reference_level;comparison_level;time_field;title;subtitle;has_trajectories;dropout_points	1012

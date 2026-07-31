@@ -1,0 +1,9 @@
+Independent destructive-time-course evidence. The Independent developmental series experiment
+uses the rna layer to assess the declared condition target contrasts treatment with control.
+Points show independent observations; labels give biological sample counts per design cell;
+crosses mark unobserved cells; lines show stored population trajectories. The analysis unit is
+independent biological observation; the design is independent_time_course; the estimand is
+condition-by-time interaction on the rank scale; time is recorded as day; adjustment uses
+batch. Facet labels report stored interaction intervals and resampling recurrence. No
+acceptance threshold is applied. Trajectory evidence is exploratory and does not establish
+biological validity.

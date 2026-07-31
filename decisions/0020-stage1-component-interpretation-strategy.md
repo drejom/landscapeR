@@ -477,6 +477,21 @@ unexported `internal-development` cases, with a substantive rationale and test
 reference. A migration entry is transitional scheduling metadata, not a
 scientific-caption exemption.
 
+Canonical interpretation renderers consume a public `VisualEvidenceView`
+obtained through `visual_evidence()`. The view contains normalized
+observations, stored estimand and uncertainty summaries, diagnostics,
+structured completeness or abstention state, design-specific display tables,
+and the validated caption facts used by the same figure. Stable accessors expose
+those fields without exposing private provenance. This is the package boundary
+for future compatible adapters: a renderer may shape aesthetics and layout, but
+it may not refit a model, recompute a smoother, rerank a component, reinterpret
+missingness, or change an abstention.
+
+The view is not a generalized renderer abstraction. The canonical reproducible
+adapter remains ggplot2 until a second concrete adapter demonstrates a need for
+shared rendering machinery. Plotly and Shiny may later consume the same typed
+view, but they receive no independent scientific decision authority.
+
 The axis-identifiability surface jointly exposes the spectrum, matching
 similarity and ambiguity, recurrence distributions, subspace angles, and final
 structured status so a stable rotating plane is visually distinguishable from
