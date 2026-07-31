@@ -342,3 +342,62 @@ test_that("Stage 1 renderers derive component availability from stored evidence"
     expect_false(grepl("\\bmetadata\\s*\\(", renderer_text))
     expect_false(grepl("dr_coords_k\\s*\\(", renderer_text))
 })
+
+test_that("numerically degenerate slices are retained as rug-only evidence", {
+    std <- synthetic_control(
+        n = 20L, p = 60L, K = 1L, signal = 20, seed = 126L
+    )
+    stage1 <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "svd")(), std)
+    )@value
+    md <- metadata(stage1)
+    md$stage1@coords_k[[1L]][, 1L] <- 0
+    metadata(stage1) <- md
+
+    expect_silent(
+        stage1 <- prepare_plot_evidence(stage1, stage = "stage1")
+    )
+    densities <- metadata(stage1)$stage1_plot_evidence@
+        displays$component_densities[[1L]]
+    component_one <- densities[densities$component == "PC1", , drop = FALSE]
+    expect_false(any(component_one$density_available))
+    expect_match(
+        gsub(
+            "\\s+",
+            " ",
+            scientific_caption(plot_components(stage1))
+        ),
+        "numerically degenerate.*rugs only",
+        ignore.case = TRUE
+    )
+})
+
+test_that("degenerate grouped densities retain their component and group identity", {
+    std <- synthetic_control(
+        n = 20L, p = 60L, K = 1L, signal = 20, seed = 127L
+    )
+    stage1 <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "svd")(), std)
+    )@value
+    group <- as.character(colData(stage1)$planted_group)
+    focal_group <- unique(group)[[1L]]
+    focal <- which(group == focal_group)
+    md <- metadata(stage1)
+    md$stage1@coords_k[[1L]][focal, 1L] <-
+        10 + seq_along(focal) * 1e-9
+    metadata(stage1) <- md
+    stage1 <- prepare_plot_evidence(stage1, stage = "stage1")
+
+    caption <- gsub(
+        "\\s+",
+        " ",
+        scientific_caption(
+            plot_components(stage1, colour_by = "planted_group")
+        )
+    )
+    expect_match(
+        caption,
+        sprintf("PC1 \\(planted_group = %s\\)", focal_group)
+    )
+    expect_match(caption, "numerically degenerate", ignore.case = TRUE)
+})
