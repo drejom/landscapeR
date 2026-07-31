@@ -170,6 +170,12 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         ,
         drop = FALSE
     ]
+    density_partition <- .partition_density_evidence(density_df)
+    unavailable_components <- unique(
+        density_partition$unavailable$component
+    )
+    unavailable_density_slices <- unavailable_components
+    density_df <- density_partition$available
 
     df <- coordinate_evidence[
         coordinate_evidence$component <= k_show,
@@ -253,6 +259,20 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             ,
             drop = FALSE
         ]
+        grouped_partition <- .partition_density_evidence(grouped_density)
+        unavailable_grouped <- grouped_partition$unavailable
+        if (nrow(unavailable_grouped)) {
+            unavailable_density_slices <- union(
+                unavailable_density_slices,
+                sprintf(
+                    "%s (%s = %s)",
+                    unavailable_grouped$component,
+                    colour_by,
+                    unavailable_grouped$metadata_value
+                )
+            )
+        }
+        grouped_density <- grouped_partition$available
         p <- p +
             ggplot2::geom_area(
                 data = grouped_density,
@@ -316,6 +336,19 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             )
         }
     }
+    if (length(unavailable_density_slices)) {
+        density_note <- paste0(
+            "Numerically degenerate density slices (",
+            paste(unavailable_density_slices, collapse = ", "),
+            ") have insufficient coordinate spread for kernel-density ",
+            "estimation at sqrt(machine precision) x max(1, maximum ",
+            "absolute coordinate); those slices appear as rugs only"
+        )
+        missingness <- paste(
+            c(missingness, density_note),
+            collapse = "; "
+        )
+    }
 
     p <- p +
         ggplot2::geom_vline(
@@ -374,6 +407,18 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         state = "uncalibrated"
     )
     .with_scientific_caption(p, .build_scientific_caption(view))
+}
+
+.partition_density_evidence <- function(density_frame) {
+    available <- if ("density_available" %in% names(density_frame)) {
+        density_frame$density_available
+    } else {
+        rep(TRUE, nrow(density_frame))
+    }
+    list(
+        available = density_frame[available, , drop = FALSE],
+        unavailable = density_frame[!available, , drop = FALSE]
+    )
 }
 
 .component_gallery_metadata <- function(

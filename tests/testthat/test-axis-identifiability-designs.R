@@ -287,6 +287,11 @@ test_that("time-course designs repeat the complete discovery workflow", {
         }
         expect_identical(evidence$n_requested, 3L)
         expect_length(evidence$replicates, 3L)
+        expect_false(any(vapply(
+            evidence$replicates,
+            function(x) identical(x$diagnostic, "'bw' is not positive."),
+            logical(1L)
+        )))
         expect_true(all(vapply(
             evidence$replicates,
             function(x) {

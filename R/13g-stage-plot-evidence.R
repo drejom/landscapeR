@@ -159,6 +159,18 @@
                         ),
                         c("coord", "density")
                     ))
+                    density_frame <- displays$component_densities[[layer]]
+                    if ("density_available" %in% names(density_frame) &&
+                        (!is.logical(density_frame$density_available) ||
+                            anyNA(density_frame$density_available))) {
+                        errors <- c(
+                            errors,
+                            paste(
+                                "Stage 1 component density availability is",
+                                "invalid for", layer
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -203,6 +215,18 @@
                             ),
                             c("coord", "density")
                         ))
+                        density_frame <- grouped[[layer]][[field]]
+                        if ("density_available" %in% names(density_frame) &&
+                            (!is.logical(density_frame$density_available) ||
+                                anyNA(density_frame$density_available))) {
+                            errors <- c(
+                                errors,
+                                paste(
+                                    "Stage 1 grouped-density availability",
+                                    "is invalid", layer, field
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -594,13 +618,33 @@ setValidity("StagePlotEvidence", function(object) {
 
 .density_rows <- function(values, component, metadata_field = NA_character_,
                           metadata_value = NA_character_) {
-    estimate <- stats::density(values)
+    finite_values <- values[is.finite(values)]
+    magnitude <- if (length(finite_values)) {
+        max(1, abs(finite_values))
+    } else {
+        1
+    }
+    density_available <- length(finite_values) >= 2L &&
+        diff(range(finite_values)) > sqrt(.Machine$double.eps) * magnitude
+    if (!density_available) {
+        return(data.frame(
+            coord = if (length(finite_values)) mean(finite_values) else 0,
+            density = 0,
+            component = component,
+            metadata_field = metadata_field,
+            metadata_value = metadata_value,
+            density_available = FALSE,
+            stringsAsFactors = FALSE
+        ))
+    }
+    estimate <- stats::density(finite_values)
     data.frame(
         coord = estimate$x,
         density = estimate$y,
         component = component,
         metadata_field = metadata_field,
         metadata_value = metadata_value,
+        density_available = TRUE,
         stringsAsFactors = FALSE
     )
 }
