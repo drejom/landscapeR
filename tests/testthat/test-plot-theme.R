@@ -167,7 +167,11 @@ test_that("component galleries mark and label missing metadata explicitly", {
 
     plot <- plot_components(std, colour_by = "planted_group")
 
-    expect_match(plot$labels$caption, "Dashed rug.*missing")
+    expect_null(plot$labels$caption)
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(plot)),
+        "Dashed rugs? mark.*missing"
+    )
     expect_true(any(vapply(
         plot$layers,
         function(layer) {
@@ -194,7 +198,11 @@ test_that("potential plots mark and label missing metadata explicitly", {
 
     plot <- plot_potential(std, colour_by = "planted_group")
 
-    expect_match(plot$labels$caption, "Dashed rug.*missing")
+    expect_null(plot$labels$caption)
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(plot)),
+        "Dashed rug marks.*missing"
+    )
     expect_true(any(vapply(
         plot$layers,
         function(layer) {

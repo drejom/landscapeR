@@ -2,6 +2,10 @@ test_that("plot_spectrum returns a ggplot on a fresh StateTransitionData", {
     std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
     p <- plot_spectrum(std)
     expect_s3_class(p, "gg")
+    caption <- scientific_caption(p)
+    expect_match(caption, "BBP")
+    expect_match(caption, "model-based\\s+detectability reference")
+    expect_match(caption, "layer1")
 })
 
 test_that("plot_components returns a ggplot after Stage 1 has run", {
@@ -10,6 +14,10 @@ test_that("plot_components returns a ggplot after Stage 1 has run", {
     std2 <- suppressWarnings(decompose(ctor(), std))@value
     p <- plot_components(std2, colour_by = "planted_group")
     expect_s3_class(p, "gg")
+    caption <- scientific_caption(p)
+    expect_match(caption, "categorical\\s+planted_group")
+    expect_match(caption, "does not rank or nominate")
+    expect_null(p$labels$caption)
 })
 
 test_that("plot_decomposition returns a ggplot after Stage 1 has run", {
@@ -18,6 +26,68 @@ test_that("plot_decomposition returns a ggplot after Stage 1 has run", {
     std2 <- suppressWarnings(decompose(ctor(), std))@value
     p <- plot_decomposition(std2)
     expect_s3_class(p, "gg")
+    expect_false(grepl("Supply synthetic_control", p$labels$subtitle))
+    caption <- scientific_caption(p)
+    expect_match(caption, "rank-ordered")
+    expect_match(caption, "ground-truth angle")
+})
+
+test_that("plot captions retain declared destructive and longitudinal design fields", {
+    independent <- synthetic_control(
+        n = 20L, p = 60L, K = 1L, signal = 20, seed = 10L
+    )
+    independent_cd <- colData(independent)
+    independent_cd$collection_day <- seq_len(nrow(independent_cd))
+    colData(independent) <- independent_cd
+    independent <- declare_sampling_design(
+        independent,
+        independent_time_course("collection_day", "days")
+    )
+
+    longitudinal_data <- synthetic_control(
+        n = 20L, p = 60L, K = 1L, signal = 20, seed = 11L
+    )
+    longitudinal_cd <- colData(longitudinal_data)
+    longitudinal_cd$animal_id <- rep(sprintf("animal_%02d", 1:5), each = 4L)
+    longitudinal_cd$collection_day <- rep(1:4, times = 5L)
+    colData(longitudinal_data) <- longitudinal_cd
+    longitudinal_data <- declare_sampling_design(
+        longitudinal_data,
+        longitudinal("animal_id", "collection_day", "days")
+    )
+
+    independent_caption <- scientific_caption(plot_spectrum(independent))
+    longitudinal_caption <- scientific_caption(plot_spectrum(longitudinal_data))
+    expect_match(independent_caption, "collection_day")
+    expect_match(independent_caption, "days")
+    expect_match(longitudinal_caption, "collection_day")
+    expect_match(longitudinal_caption, "days")
+    expect_match(longitudinal_caption, "animal_id")
+})
+
+test_that("plot_decomposition uses one effective component across unequal ranks", {
+    std <- synthetic_control(
+        n = 30L, p = 100L, K = 3L, signal = 25, seed = 12L
+    )
+    std <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std)
+    )@value
+    md <- metadata(std)
+    original <- dr_coords_k(md$stage1)
+    md$stage1@coords_k[[2L]] <- original[[2L]][, 1:2, drop = FALSE]
+    metadata(std) <- md
+
+    expect_warning(
+        plot <- plot_decomposition(std, component = 3L),
+        "plotting component 2"
+    )
+    expected <- unlist(
+        lapply(original, function(coordinates) coordinates[, 2L]),
+        use.names = FALSE
+    )
+    expect_equal(plot$data$coord, expected)
+    expect_match(scientific_caption(plot), "component 2")
+    expect_identical(plot$labels$y, "Component 2 coordinate")
 })
 
 test_that("plot_decomposition with component=2 returns a ggplot", {
@@ -28,13 +98,16 @@ test_that("plot_decomposition with component=2 returns a ggplot", {
     expect_s3_class(p, "gg")
 })
 
-test_that("plot_decomposition component=2 annotation uses component-2 axis", {
+test_that("plot_decomposition omits an angle without matching stored truth", {
     std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
     ctor <- get_strategy("Decomposer", "hogsvd_averaged")
     std2 <- suppressWarnings(decompose(ctor(), std))@value
     p <- plot_decomposition(std2, component = 2L)
-    subtitle <- p$labels$subtitle
-    expect_match(subtitle, "component 2")
+    expect_identical(
+        p$labels$subtitle,
+        "Layers show rank-ordered sample coordinates"
+    )
+    expect_false(grepl("ground-truth angle", scientific_caption(p)))
 })
 
 test_that("plot_spectrum errors on empty StateTransitionData", {
@@ -125,7 +198,9 @@ test_that("plot_decomposition renders continuous metadata and marks missing valu
     p <- plot_decomposition(std, colour_by = "sample_weeks")
 
     expect_s3_class(p$scales$get_scales("colour"), "ScaleContinuous")
-    expect_match(p$labels$caption, "Cross marks 1 observation")
+    expect_null(p$labels$caption)
+    expect_match(scientific_caption(p), "Crosses mark 1 observation")
+    expect_match(scientific_caption(p), "continuous sample_weeks")
     expect_true(any(vapply(
         p$layers,
         function(layer) {
@@ -154,9 +229,11 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
     )
     expect_identical(
         p$labels$title,
-        "Stage 1 component gallery \u2014 layer 1"
+        "Stage 1 component gallery: rna"
     )
     expect_false("bc" %in% names(p$data))
+    expect_match(scientific_caption(p), "rna layer")
+    expect_match(scientific_caption(p), "categorical condition")
 })
 
 test_that("plot_components visibly renders continuous MAE metadata", {
@@ -181,6 +258,7 @@ test_that("plot_components visibly renders continuous MAE metadata", {
         function(layer) inherits(layer$geom, "GeomRug"),
         logical(1L)
     )))
+    expect_match(scientific_caption(p), "continuous sample_weeks")
 })
 
 test_that("metadata field names cannot overwrite gallery coordinates or facets", {

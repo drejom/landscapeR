@@ -61,6 +61,19 @@ marks; and explicit categorical or continuous scales. The public helpers are
 defaults to a 100 mm square, 450 dpi figure; pass explicit dimensions when a
 journal layout requires another aspect ratio.
 
+Every public scientific plot carries a separate, state-derived caption. Keep
+the graphic uncluttered and retrieve the corresponding publication text with
+`scientific_caption(plot)`, for example:
+
+```r
+potential_plot <- plot_potential(std2)
+scientific_caption(potential_plot)
+```
+
+The caption names the plotted layer or component, metadata and missingness
+encodings, applicable sampling-design fields, model references or uncalibrated
+diagnostics, and the scientific claim boundary.
+
 For destructive-sampling developmental designs,
 `synthetic_branching_control()` provides a disclosed two-branch visualisation
 and development control. It is not validation evidence. Reproducible source

@@ -27,8 +27,8 @@ recovered by Stage 1.  When the object carries a \code{SubspaceGroundTruth}
 annotated.
 }
 \details{
-Call this after running Stage 1 to confirm that disease-group separation
-was recovered before feeding coordinates into Stage 2.
+This is a descriptive display. It neither selects a component nor confirms
+biological separation.
 }
 \examples{
 std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)

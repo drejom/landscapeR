@@ -54,6 +54,26 @@ test_that("typed caption views produce separate deterministic captions", {
     expect_match(first, "(B)", fixed = TRUE)
 })
 
+test_that("layer cardinality is structural rather than inferred from punctuation", {
+    one <- caption_contract_view(
+        molecular_layer = "RNA, poly(A)",
+        molecular_layer_count = 1L
+    )
+    two <- caption_contract_view(
+        molecular_layer = "RNA, poly(A), protein",
+        molecular_layer_count = 2L
+    )
+
+    expect_match(
+        landscapeR:::.build_scientific_caption(one),
+        "uses the RNA, poly\\(A\\) layer"
+    )
+    expect_match(
+        landscapeR:::.build_scientific_caption(two),
+        "uses molecular layers RNA, poly\\(A\\), protein"
+    )
+})
+
 test_that("caption states expose stored uncertainty and claim boundaries", {
     cases <- list(
         partial = list(
@@ -201,7 +221,7 @@ test_that("renderer and exception registries are explicit and valid", {
         "caption-required"
     )
     pending <- registry[registry$policy == "migration-pending", ]
-    expect_true(all(pending$tracking_issue %in% c(107L, 108L)))
+    expect_equal(nrow(pending), 0L)
     expect_identical(
         names(landscapeR:::.scientific_caption_exceptions),
         c(

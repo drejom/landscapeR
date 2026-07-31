@@ -2,7 +2,7 @@
 % Please edit documentation in R/14-stage1-plots.R
 \name{plot_spectrum}
 \alias{plot_spectrum}
-\title{Plot singular value spectra with the BBP detectability threshold}
+\title{Plot singular value spectra with a BBP model reference}
 \usage{
 plot_spectrum(std, n_sv = 20L)
 }
@@ -17,12 +17,13 @@ a \code{ggplot} object
 \description{
 Shows the top singular values for each omic layer as a line plot, with a
 horizontal reference line at the Baik-Ben Arous-Peche (BBP) phase-transition
-threshold \eqn{(n \cdot p)^{1/4}}.  Signal components above the threshold
-are detectable; those below are indistinguishable from noise.
+value \eqn{(n \cdot p)^{1/4}} computed from the first layer. This is a
+model-based visual reference under spiked white-noise assumptions, not
+empirical proof that a component is recoverable or biologically valid.
 }
 \details{
-Call this before running Stage 1 to confirm that the state-transition axis is
-detectable at the current sample size.
+Use the returned scientific caption to report the assumptions and claim
+boundary alongside the figure.
 }
 \examples{
 std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)

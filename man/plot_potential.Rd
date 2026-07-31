@@ -24,6 +24,9 @@ a \code{ggplot} object
 Shows U(x) = -log p(x) along the state-transition axis. Point-estimate
 critical-point classifications and barrier heights are omitted by default;
 they require explicit diagnostic opt-in until uncertainty is available.
+The returned scientific caption describes the selected component, plotted
+encodings, missing observations, and exploratory claim boundary separately
+from the graphic.
 }
 \examples{
 \dontrun{
