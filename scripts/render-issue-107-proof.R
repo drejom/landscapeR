@@ -12,10 +12,10 @@ md <- metadata(std)
 md$dataset_id <- "Synthetic developmental state series"
 metadata(std) <- md
 
-plots <- list(spectrum = plot_spectrum(std))
 std <- suppressWarnings(
     decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std)
 )@value
+plots <- list(spectrum = plot_spectrum(std))
 plots$components <- plot_components(
     std, colour_by = "planted_group", n_components = 4L
 )

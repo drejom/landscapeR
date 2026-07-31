@@ -1,0 +1,7 @@
+Stage 1 component distributions. The Synthetic developmental state series experiment uses the
+layer1 layer. Facets show components 1-4 in decomposition order; stored densities summarize
+sample-coordinate distributions; rugs mark sample coordinates; dotted vertical lines mark zero;
+Density fills, outlines, and rug colours encode categorical planted_group. The analysis unit is
+independent biological observation; the design is cross_sectional; the estimand is the
+descriptive distribution of sample coordinates. No component-selection threshold is applied.
+This descriptive gallery does not rank or nominate a biological coordinate.

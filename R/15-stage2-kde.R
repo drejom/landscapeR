@@ -61,6 +61,7 @@ setMethod(".estimate_dynamics_impl",
         } else {
             idx   <- min(as.integer(p$layer), length(coords_list))
             x_obs <- coords_list[[idx]]
+            p$layer <- idx
         }
         x_obs <- as.numeric(x_obs)
 

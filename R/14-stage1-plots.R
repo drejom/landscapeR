@@ -58,8 +58,8 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 # Typical interactive use:
 #
 #   std <- synthetic_control(n=40, p=500, K=2, signal=30, seed=1)
-#   plot_spectrum(std)
 #   std2 <- decompose(get_strategy("Decomposer","hogsvd_averaged")(), std)@value
+#   plot_spectrum(std2)
 #   plot_decomposition(std2, colour_by = "group")
 #
 # In vignettes and @examples, assign the returned ggplot and print it.
@@ -79,14 +79,13 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 #' Component gallery coloured by canonically aligned sample metadata
 #'
 #' Shows the sample-coordinate distribution for each of the first
-#' \code{n_components} components as density and rug panels in decomposition
+#' \code{n_components} components as stored density and rug panels in decomposition
 #' order. Metadata are read from MAE-level \code{colData} and aligned to the
 #' selected assay through its canonical \code{sampleMap}; row position is never
 #' treated as sample identity.
 #'
-#' Categorical metadata group the descriptive densities and rugs. Continuous
-#' metadata colour the rug with a continuous gradient while retaining the
-#' overall density. The gallery does not calculate association scores or rank
+#' Categorical and continuous metadata colour the rugs while retaining the
+#' stored overall density. The gallery does not calculate association scores or rank
 #' components; those responsibilities belong to the metadata atlas and proposal
 #' workflow.
 #'
@@ -109,25 +108,41 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         .stop_landscapeR_validation(
             "plot_components(): std must be a StateTransitionData object"
         )
-    s1 <- metadata(std)$stage1
-    if (is.null(s1))
-        .stop_landscapeR_validation(
-            "Stage 1 has not been run on this object. Call decompose() first."
-        )
-
-    coords <- dr_coords_k(s1)
     expt_list <- as.list(experiments(std))
+    evidence <- .stage_plot_evidence(std, "stage1")
+    if (is.null(evidence@displays$decomposition)) {
+        .stop_plot_evidence_unavailable(paste0(
+            "Stage 1 component evidence is unavailable; run decompose() ",
+            "before plotting components"
+        ))
+    }
+    coordinate_evidence <- evidence@displays$decomposition$coordinates
+    evidence_layers <- unique(coordinate_evidence$layer)
     if (!is.numeric(layer) || length(layer) != 1L || !is.finite(layer) ||
-        layer != as.integer(layer) || layer < 1L || layer > length(coords) ||
+        layer != as.integer(layer) || layer < 1L ||
+        layer > length(evidence_layers) ||
         layer > length(expt_list)) {
         .stop_landscapeR_validation(sprintf(
             "plot_components(): layer must be an integer from 1 to %d",
-            min(length(coords), length(expt_list))
+            min(length(evidence_layers), length(expt_list))
         ))
     }
     idx <- as.integer(layer)
-    cmat <- coords[[idx]]
-    if (!is.matrix(cmat) || nrow(cmat) != ncol(expt_list[[idx]])) {
+    layer_name <- evidence_layers[[idx]]
+    expt_idx <- match(layer_name, names(expt_list))
+    if (is.na(expt_idx)) {
+        .stop_plot_evidence_unavailable(sprintf(
+            "Stored Stage 1 coordinates reference unknown layer '%s'",
+            layer_name
+        ))
+    }
+    coordinate_evidence <- coordinate_evidence[
+        coordinate_evidence$layer == layer_name,
+        ,
+        drop = FALSE
+    ]
+    if (length(unique(coordinate_evidence$sample)) !=
+        ncol(expt_list[[expt_idx]])) {
         .stop_landscapeR_validation(sprintf(
             paste0(
                 "plot_components(): Stage 1 coordinates for layer %d do not ",
@@ -143,19 +158,28 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             "plot_components(): n_components must be a positive integer"
         )
     }
-    k_show <- min(as.integer(n_components), ncol(cmat))
-    meta_col <- .component_gallery_metadata(std, idx, colour_by)
+    k_show <- min(
+        as.integer(n_components),
+        max(coordinate_evidence$component)
+    )
+    meta_col <- .component_gallery_metadata(std, expt_idx, colour_by)
+    density_df <-
+        evidence@displays$component_densities[[layer_name]]
+    density_df <- density_df[
+        density_df$component %in% sprintf("PC%d", seq_len(k_show)),
+        ,
+        drop = FALSE
+    ]
 
-    rows <- lapply(seq_len(k_show), function(j) {
-        df <- data.frame(
-            coord = cmat[, j],
-            component = sprintf("PC%d", j),
-            stringsAsFactors = FALSE
-        )
-        if (!is.null(meta_col)) df$metadata_value <- meta_col
-        df
-    })
-    df <- do.call(rbind, rows)
+    df <- coordinate_evidence[
+        coordinate_evidence$component <= k_show,
+        c("sample", "coord", "component"),
+        drop = FALSE
+    ]
+    df$component <- sprintf("PC%d", df$component)
+    if (!is.null(meta_col)) {
+        df$metadata_value <- meta_col[df$sample]
+    }
     df$component <- factor(
         df$component,
         levels = sprintf("PC%d", seq_len(k_show))
@@ -172,8 +196,13 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     p <- ggplot2::ggplot(df, ggplot2::aes(x = coord))
     if (is.null(meta_col)) {
         p <- p +
-            ggplot2::geom_density(
-                fill = "grey80", colour = "grey35", alpha = 0.55,
+            ggplot2::geom_area(
+                data = density_df,
+                ggplot2::aes(x = .data$coord, y = .data$density),
+                inherit.aes = FALSE,
+                fill = "grey85",
+                colour = "grey35",
+                alpha = 0.55,
                 linewidth = 0.5
             ) +
             ggplot2::geom_rug(colour = "grey35", alpha = 0.45, sides = "b")
@@ -181,8 +210,13 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         observed <- df[!is.na(df$metadata_value), , drop = FALSE]
         missing <- df[is.na(df$metadata_value), , drop = FALSE]
         p <- p +
-            ggplot2::geom_density(
-                fill = "grey85", colour = "grey35", alpha = 0.55,
+            ggplot2::geom_area(
+                data = density_df,
+                ggplot2::aes(x = .data$coord, y = .data$density),
+                inherit.aes = FALSE,
+                fill = "grey85",
+                colour = "grey35",
+                alpha = 0.55,
                 linewidth = 0.5
             ) +
             ggplot2::geom_rug(
@@ -204,16 +238,44 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     } else {
         observed <- df[!is.na(df$metadata_value), , drop = FALSE]
         missing <- df[is.na(df$metadata_value), , drop = FALSE]
-        p <- ggplot2::ggplot(
-            observed,
-            ggplot2::aes(
-                x = coord,
-                fill = .data[["metadata_value"]],
-                colour = .data[["metadata_value"]]
-            )
-        ) +
-            ggplot2::geom_density(alpha = 0.35, linewidth = 0.5) +
-            ggplot2::geom_rug(alpha = 0.55, sides = "b") +
+        grouped_by_layer <-
+            evidence@displays$component_group_densities[[layer_name]]
+        grouped_density <- grouped_by_layer[[colour_by]]
+        if (is.null(grouped_density)) {
+            .stop_plot_evidence_unavailable(sprintf(
+                "Stored Stage 1 grouped-density evidence lacks '%s'",
+                colour_by
+            ))
+        }
+        grouped_density <- grouped_density[
+            grouped_density$component %in%
+                sprintf("PC%d", seq_len(k_show)),
+            ,
+            drop = FALSE
+        ]
+        p <- p +
+            ggplot2::geom_area(
+                data = grouped_density,
+                ggplot2::aes(
+                    x = .data$coord,
+                    y = .data$density,
+                    fill = .data$metadata_value,
+                    colour = .data$metadata_value
+                ),
+                inherit.aes = FALSE,
+                alpha = 0.35,
+                linewidth = 0.5,
+                position = "identity"
+            ) +
+            ggplot2::geom_rug(
+                data = observed,
+                ggplot2::aes(
+                    x = coord,
+                    colour = .data[["metadata_value"]]
+                ),
+                alpha = 0.55,
+                sides = "b"
+            ) +
             scale_fill_landscapeR("categorical") +
             scale_colour_landscapeR("categorical")
         if (nrow(missing)) {
@@ -238,6 +300,22 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     } else {
         NULL
     }
+    if (!is.null(meta_col) && !is.numeric(meta_col)) {
+        status_by_layer <-
+            evidence@displays$component_group_density_status[[layer_name]]
+        status <- status_by_layer[[colour_by]]
+        unavailable <- status$metadata_value[!status$density_available]
+        if (length(unavailable)) {
+            density_note <- sprintf(
+                "Levels with fewer than two observations (%s) appear as rugs only",
+                paste(unavailable, collapse = ", ")
+            )
+            missingness <- paste(
+                c(missingness, density_note),
+                collapse = "; "
+            )
+        }
+    }
 
     p <- p +
         ggplot2::geom_vline(
@@ -248,22 +326,22 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         ggplot2::labs(
             title = sprintf(
                 "Stage 1 component gallery: %s",
-                names(expt_list)[[idx]]
+                layer_name
             ),
             subtitle = subtitle,
             x = "Coordinate",
             y = "Density",
-            fill = colour_by,
-            colour = colour_by
+            colour = colour_by,
+            fill = colour_by
         ) +
         theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 
-    context <- .plot_caption_context(std, idx)
-    metadata_marks <- if (is.numeric(meta_col)) {
-        "Rug colours"
+    context <- .plot_caption_context(std, expt_idx)
+    metadata_marks <- if (!is.null(meta_col) && !is.numeric(meta_col)) {
+        "Density fills, outlines, and rug colours"
     } else {
-        "Density fills and rug colours"
+        "Rug colours"
     }
     view <- .new_scientific_caption_view(
         title = "Stage 1 component distributions",
@@ -278,7 +356,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         encodings = c(
             paste0(
                 "Facets show components 1-", k_show,
-                " in decomposition order; densities summarize sample-coordinate ",
+                " in decomposition order; stored densities summarize sample-coordinate ",
                 "distributions; rugs mark sample coordinates; dotted vertical ",
                 "lines mark zero"
             ),
@@ -320,7 +398,9 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
 
 #' Plot singular value spectra with a BBP model reference
 #'
-#' Shows the top singular values for each omic layer as a line plot, with a
+#' Shows the top singular values of each raw, uncentred assay as a line plot,
+#' preserving the legacy descriptive estimand separately from any centred or
+#' pre-reduced spectrum used internally by the decomposition strategy. A
 #' horizontal reference line at the Baik-Ben Arous-Peche (BBP) phase-transition
 #' value \eqn{(n \cdot p)^{1/4}} computed from the first layer. This is a
 #' model-based visual reference under spiked white-noise assumptions, not
@@ -329,34 +409,37 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
 #' Use the returned scientific caption to report the assumptions and claim
 #' boundary alongside the figure.
 #'
-#' @param std \code{StateTransitionData}
+#' @param std \code{StateTransitionData} carrying stored Stage 1 plot evidence.
+#'   Fresh legacy objects can be upgraded with
+#'   \code{\link{prepare_plot_evidence}}.
 #' @param n_sv integer number of singular values to show per layer (default 20)
 #' @return a \code{ggplot} object
 #'
 #' @examples
 #' std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+#' std <- prepare_plot_evidence(std, stage = "stage1")
 #' plot_spectrum(std)
 #'
 #' @export
 plot_spectrum <- function(std, n_sv = 20L) {
     stopifnot(is(std, "StateTransitionData"))
-    expt_list <- as.list(experiments(std))
-    n <- ncol(expt_list[[1L]])
-    p <- nrow(expt_list[[1L]])
-    bbp <- (as.numeric(n) * as.numeric(p))^0.25
-
-    rows <- lapply(seq_along(expt_list), function(i) {
-        X  <- t(assay(expt_list[[i]]))          # n x p
-        sv <- svd(X, nu = 0L, nv = 0L)$d
-        k  <- min(n_sv, length(sv))
-        data.frame(
-            layer = names(expt_list)[i],
-            rank  = seq_len(k),
-            sv    = sv[seq_len(k)],
-            stringsAsFactors = FALSE
+    if (!is.numeric(n_sv) || length(n_sv) != 1L || !is.finite(n_sv) ||
+        n_sv != as.integer(n_sv) || n_sv < 1L) {
+        .stop_landscapeR_validation(
+            "plot_spectrum(): n_sv must be a positive integer"
         )
-    })
-    df <- do.call(rbind, rows)
+    }
+    expt_list <- as.list(experiments(std))
+    evidence <- .stage_plot_evidence(std, "stage1")
+    spectrum <- evidence@displays$spectrum
+    n <- spectrum$n
+    p <- spectrum$p
+    bbp <- spectrum$bbp
+    df <- spectrum$values[
+        spectrum$values$rank <= as.integer(n_sv),
+        ,
+        drop = FALSE
+    ]
 
     plot <- ggplot2::ggplot(
         df,
@@ -366,7 +449,7 @@ plot_spectrum <- function(std, n_sv = 20L) {
         ggplot2::geom_point(size = 1.5) +
         ggplot2::geom_hline(yintercept = bbp, linetype = "dashed",
                              colour = "grey40", linewidth = 0.6) +
-        ggplot2::annotate("text", x = n_sv * 0.7, y = bbp,
+        ggplot2::annotate("text", x = max(df$rank) * 0.7, y = bbp,
                            label = sprintf("BBP = %.1f", bbp),
                            vjust = -0.5, colour = "grey40", size = 3.2) +
         scale_colour_landscapeR("categorical") +
@@ -392,7 +475,8 @@ plot_spectrum <- function(std, n_sv = 20L) {
         subject_field = context$subject_field,
         encodings = c(
             paste0(
-                "Lines and points show ordered singular values for layer traces: ",
+                "Lines and points show ordered raw-assay singular values ",
+                "for layer traces: ",
                 paste(names(expt_list), collapse = ", ")
             ),
             sprintf(
@@ -400,7 +484,10 @@ plot_spectrum <- function(std, n_sv = 20L) {
                 bbp
             )
         ),
-        estimand = "the singular-value spectrum of each molecular layer",
+        estimand = paste0(
+            "the raw, uncentred assay singular-value spectrum of each ",
+            "molecular layer"
+        ),
         threshold = paste0(
             "The BBP line uses (n x p)^(1/4) from the first layer under a ",
             "spiked white-noise model; it is a model-based detectability ",
@@ -447,61 +534,77 @@ plot_spectrum <- function(std, n_sv = 20L) {
 #' @export
 plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
     stopifnot(is(std, "StateTransitionData"))
-    s1 <- metadata(std)$stage1
-    if (is.null(s1))
-        stop("Stage 1 has not been run on this object. Call decompose() first.")
-
-    comp_idx  <- as.integer(component)
-    n_layers  <- length(dr_coords_k(s1))
-    layer_nms <- names(experiments(std))
+    evidence <- .stage_plot_evidence(std, "stage1")
+    if (is.null(evidence@displays$decomposition)) {
+        .stop_plot_evidence_unavailable(paste0(
+            "Stage 1 decomposition evidence is unavailable; run decompose() ",
+            "before plotting decomposition coordinates"
+        ))
+    }
+    decomposition <- evidence@displays$decomposition
+    coordinates <- decomposition$coordinates
+    layer_nms <- unique(coordinates$layer)
+    n_layers <- length(layer_nms)
+    if (!is.numeric(component) || length(component) != 1L ||
+        !is.finite(component) || component != as.integer(component) ||
+        component < 1L) {
+        .stop_landscapeR_validation(
+            "plot_decomposition(): component must be a positive integer"
+        )
+    }
+    comp_idx <- as.integer(component)
 
     # Effective component index: clip to minimum k across all layers and warn once.
-    k_min    <- min(vapply(dr_coords_k(s1), ncol, integer(1L)))
+    k_min <- min(vapply(layer_nms, function(layer_name) {
+        max(coordinates$component[coordinates$layer == layer_name])
+    }, integer(1L)))
     plot_idx <- min(comp_idx, k_min)
     if (comp_idx > k_min)
         warning(paste0("component ", comp_idx, " requested but only ",
                        k_min, " available; plotting component ", k_min))
 
+    df <- coordinates[
+        coordinates$component == plot_idx,
+        ,
+        drop = FALSE
+    ]
     rows <- lapply(seq_len(n_layers), function(i) {
-        cmat    <- dr_coords_k(s1)[[i]]
-        coord   <- cmat[, plot_idx]
-        df <- data.frame(
-            sample = seq_along(coord),
-            layer  = layer_nms[i],
-            coord  = coord,
-            stringsAsFactors = FALSE
-        )
+        layer_df <- df[df$layer == layer_nms[i], , drop = FALSE]
         if (!is.null(colour_by)) {
-            df[[colour_by]] <- .component_gallery_metadata(
+            experiment_index <- match(
+                layer_nms[[i]],
+                names(as.list(experiments(std)))
+            )
+            if (is.na(experiment_index)) {
+                .stop_plot_evidence_unavailable(sprintf(
+                    "Stored Stage 1 coordinates reference unknown layer '%s'",
+                    layer_nms[[i]]
+                ))
+            }
+            layer_df[[colour_by]] <- .component_gallery_metadata(
                 std,
-                i,
+                experiment_index,
                 colour_by,
                 caller = "plot_decomposition"
             )
         }
-        df
+        layer_df
     })
     df <- do.call(rbind, rows)
 
-    # Subspace angle annotation (synthetic data only)
     angle_label <- NULL
-    if (!is.null(std@ground_truth) &&
-        is(std@ground_truth, "SubspaceGroundTruth") &&
-        plot_idx <= ncol(std@ground_truth@shared)) {
-        v_true  <- std@ground_truth@shared[, plot_idx, drop = TRUE]
-        v_hat   <- shared_axis(s1, j = plot_idx)
-        cos_a   <- min(1, abs(sum(v_true * v_hat) /
-                              (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
+    angle_row <- decomposition$truth_angles[
+        decomposition$truth_angles$component == plot_idx,
+        ,
+        drop = FALSE
+    ]
+    if (nrow(angle_row)) {
         angle_label <- sprintf(
             "Stored ground-truth angle for component %d: %.1f\u00b0",
             plot_idx,
-            acos(cos_a) * 180 / pi
+            angle_row$angle_degrees[[1L]]
         )
     }
-
-    # x-axis: sample index (rank-ordered within each layer for readability)
-    df$sample_ord <- ave(df$coord, df$layer,
-                         FUN = function(x) rank(x, ties.method = "first"))
 
     palette <- landscapeR_palette("semantic")
     p <- ggplot2::ggplot(

@@ -191,7 +191,9 @@ confirmation; stable-subspace/no-stable-axis is a valid abstention.
 **Active prefactor:** #91 and its general-contract correction #100 are
 complete. #92, #83, #93, #94, #106, and #108 are complete. #107 completes on
 merge, closing the public scientific-caption migration and returning the active
-sequence to the #67 calibration lane.
+sequence to the #67 calibration lane. #114 completes on merge, moving the
+legacy Stage 1/2 plot calculations behind stored typed evidence without
+reordering that lane.
 #101 reconciles supporting Pogona manifests without changing the active task
 sequence. With #93 complete on merge, the plot audit recorded in #106–#109
 resumes: #106 is the caption-contract prefactor for the queued #94
@@ -200,8 +202,7 @@ visual-evidence view and the #107/#108 renderer migrations.
 **Parked debt:** #95 deepens stage completion/provenance. #96 establishes shared
 artifact migration policy, with #97 adopting it across the interpretation
 evidence graph. These issues remain parked until the active #55/#83
-interpretation lane lands. #114 moves legacy Stage 1/2 plot calculations into
-stored typed evidence; it remains parked behind the active #67 calibration lane.
+interpretation lane lands.
 
 ### 5. AML-shaped synthetic control — #67 calibration lane
 
@@ -398,7 +399,7 @@ bodies may state dependencies but do not change this ordering.
 | [#107](https://github.com/drejom/landscapeR/issues/107) | Stage 1/2 scientific caption migration | complete on merge |
 | [#108](https://github.com/drejom/landscapeR/issues/108) | Component-interpretation caption migration | complete on merge with #94 |
 | [#109](https://github.com/drejom/landscapeR/issues/109) | Component-identifiability primary/diagnostic views | complete on merge |
-| [#114](https://github.com/drejom/landscapeR/issues/114) | Legacy Stage 1/2 typed plot evidence | parked |
+| [#114](https://github.com/drejom/landscapeR/issues/114) | Legacy Stage 1/2 typed plot evidence | complete on merge |
 <!-- issue-map:end -->
 
 ---

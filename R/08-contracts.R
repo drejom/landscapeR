@@ -163,7 +163,14 @@ setMethod("decompose", signature("Decomposer", "StateTransitionData"),
     function(strategy, data, ...) {
         bv <- validate_boundary(data, stage = "decompose")
         if (is(bv, "StageResult")) return(bv)
-        .decompose_impl(strategy, bv, ...)
+        result <- .decompose_impl(strategy, bv, ...)
+        if (is(result, "StageResult") &&
+            identical(result@status, "success") &&
+            is(result@value, "StateTransitionData") &&
+            is(metadata(result@value)[["stage1"]], "DecompositionResult")) {
+            result@value <- .store_stage1_plot_evidence(result@value)
+        }
+        result
     }
 )
 
@@ -302,7 +309,14 @@ setMethod("estimate_dynamics", signature("DynamicsEstimator", "StateTransitionDa
                 if (length(supported)) paste(supported, collapse = ", ") else "none"
             )))
 
-        .estimate_dynamics_impl(strategy, bv, ...)
+        result <- .estimate_dynamics_impl(strategy, bv, ...)
+        if (is(result, "StageResult") &&
+            identical(result@status, "success") &&
+            is(result@value, "StateTransitionData") &&
+            !is.null(metadata(result@value)[["stage2"]])) {
+            result@value <- .store_stage2_plot_evidence(result@value)
+        }
+        result
     }
 )
 

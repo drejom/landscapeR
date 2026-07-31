@@ -7,7 +7,9 @@
 plot_spectrum(std, n_sv = 20L)
 }
 \arguments{
-\item{std}{\code{StateTransitionData}}
+\item{std}{\code{StateTransitionData} carrying stored Stage 1 plot evidence.
+Fresh legacy objects can be upgraded with
+\code{\link{prepare_plot_evidence}}.}
 
 \item{n_sv}{integer number of singular values to show per layer (default 20)}
 }
@@ -15,7 +17,9 @@ plot_spectrum(std, n_sv = 20L)
 a \code{ggplot} object
 }
 \description{
-Shows the top singular values for each omic layer as a line plot, with a
+Shows the top singular values of each raw, uncentred assay as a line plot,
+preserving the legacy descriptive estimand separately from any centred or
+pre-reduced spectrum used internally by the decomposition strategy. A
 horizontal reference line at the Baik-Ben Arous-Peche (BBP) phase-transition
 value \eqn{(n \cdot p)^{1/4}} computed from the first layer. This is a
 model-based visual reference under spiked white-noise assumptions, not
@@ -27,6 +31,7 @@ boundary alongside the figure.
 }
 \examples{
 std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+std <- prepare_plot_evidence(std, stage = "stage1")
 plot_spectrum(std)
 
 }
