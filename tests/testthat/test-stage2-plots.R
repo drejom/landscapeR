@@ -34,6 +34,7 @@ test_that("plot_potential rug draws from coords_k when coords slot is empty", {
     md <- metadata(std3)
     md$stage1 <- s1_empty_coords
     metadata(std3) <- md
+    std3 <- prepare_plot_evidence(std3, stage = "stage2")
     # Should still render (using coords_k fallback), not silently drop the rug
     expect_s3_class(plot_potential(std3), "gg")
 })
@@ -93,6 +94,7 @@ test_that("plot_potential reports an empty requested critical-point overlay", {
     md$stage2$wells <- numeric()
     md$stage2$barriers <- numeric()
     metadata(std) <- md
+    std <- prepare_plot_evidence(std, stage = "stage2")
 
     plot <- plot_potential(std, show_critical_points = TRUE)
     caption <- gsub("\\s+", " ", scientific_caption(plot))
@@ -114,6 +116,7 @@ test_that("plot_potential describes wells without claiming barrier heights", {
     md$stage2$wells <- 0
     md$stage2$barriers <- numeric()
     metadata(std) <- md
+    std <- prepare_plot_evidence(std, stage = "stage2")
 
     plot <- plot_potential(std, show_critical_points = TRUE)
     caption <- gsub("\\s+", " ", scientific_caption(plot))
@@ -138,6 +141,7 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     cd <- colData(std)
     cd$planted_group[[1L]] <- NA
     colData(std) <- cd
+    std <- prepare_plot_evidence(std, stage = "stage2")
 
     plot <- plot_potential(std, colour_by = "planted_group")
 
@@ -148,7 +152,11 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
 
 test_that("plot_potential errors when Stage 2 is absent", {
     std <- synthetic_control(n = 10L, p = 20L, K = 2L, signal = 30, seed = 1L)
-    expect_error(plot_potential(std), "Stage 2 has not been run")
+    expect_error(
+        plot_potential(std),
+        "plot evidence is unavailable",
+        class = "landscapeR_plot_evidence_unavailable"
+    )
 })
 
 test_that("plot_potential scopes metadata validation to its own caller", {

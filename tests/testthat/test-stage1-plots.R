@@ -1,5 +1,6 @@
 test_that("plot_spectrum returns a ggplot on a fresh StateTransitionData", {
     std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+    std <- prepare_plot_evidence(std, stage = "stage1")
     p <- plot_spectrum(std)
     expect_s3_class(p, "gg")
     caption <- scientific_caption(p)
@@ -43,6 +44,7 @@ test_that("plot captions retain declared destructive and longitudinal design fie
         independent,
         independent_time_course("collection_day", "days")
     )
+    independent <- prepare_plot_evidence(independent, stage = "stage1")
 
     longitudinal_data <- synthetic_control(
         n = 20L, p = 60L, K = 1L, signal = 20, seed = 11L
@@ -54,6 +56,10 @@ test_that("plot captions retain declared destructive and longitudinal design fie
     longitudinal_data <- declare_sampling_design(
         longitudinal_data,
         longitudinal("animal_id", "collection_day", "days")
+    )
+    longitudinal_data <- prepare_plot_evidence(
+        longitudinal_data,
+        stage = "stage1"
     )
 
     independent_caption <- scientific_caption(plot_spectrum(independent))
@@ -76,6 +82,7 @@ test_that("plot_decomposition uses one effective component across unequal ranks"
     original <- dr_coords_k(md$stage1)
     md$stage1@coords_k[[2L]] <- original[[2L]][, 1:2, drop = FALSE]
     metadata(std) <- md
+    std <- prepare_plot_evidence(std, stage = "stage1")
 
     expect_warning(
         plot <- plot_decomposition(std, component = 3L),
@@ -117,15 +124,19 @@ test_that("plot_spectrum errors on empty StateTransitionData", {
 
 test_that("plot_decomposition errors when Stage 1 is absent", {
     std <- synthetic_control(n = 10L, p = 20L, K = 2L, signal = 30, seed = 1L)
-    expect_error(plot_decomposition(std), "Stage 1 has not been run")
+    expect_error(
+        plot_decomposition(std),
+        "plot evidence is unavailable",
+        class = "landscapeR_plot_evidence_unavailable"
+    )
 })
 
 test_that("plot_components errors when Stage 1 is absent", {
     std <- synthetic_control(n = 10L, p = 20L, K = 2L, signal = 30, seed = 1L)
     expect_error(
         plot_components(std),
-        "Stage 1 has not been run",
-        class = "landscapeR_validation_error"
+        "plot evidence is unavailable",
+        class = "landscapeR_plot_evidence_unavailable"
     )
 })
 
@@ -186,7 +197,7 @@ component_gallery_fixture <- function() {
         k = 3L
     )
     metadata(std) <- md
-    std
+    prepare_plot_evidence(std, stage = "stage1")
 }
 
 test_that("plot_decomposition renders continuous metadata and marks missing values", {
@@ -194,6 +205,7 @@ test_that("plot_decomposition renders continuous metadata and marks missing valu
     cd <- colData(std)
     cd$sample_weeks[1L] <- NA_real_
     colData(std) <- cd
+    std <- prepare_plot_evidence(std, stage = "stage1")
 
     p <- plot_decomposition(std, colour_by = "sample_weeks")
 
@@ -223,6 +235,12 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
     expect_identical(p$data$metadata_value[seq_along(expected)], expected)
     expect_s3_class(p$scales$get_scales("colour"), "ScaleDiscrete")
     expect_s3_class(p$scales$get_scales("fill"), "ScaleDiscrete")
+    density_layer <- p$layers[[1L]]$data
+    expect_setequal(
+        unique(density_layer$metadata_value),
+        unique(expected)
+    )
+    expect_true(all(c("coord", "density") %in% names(density_layer)))
     expect_identical(
         levels(p$data$component),
         c("PC1", "PC2", "PC3")
@@ -234,6 +252,7 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
     expect_false("bc" %in% names(p$data))
     expect_match(scientific_caption(p), "rna layer")
     expect_match(scientific_caption(p), "categorical condition")
+    expect_match(scientific_caption(p), "Density fills")
 })
 
 test_that("plot_components visibly renders continuous MAE metadata", {
@@ -250,7 +269,7 @@ test_that("plot_components visibly renders continuous MAE metadata", {
     expect_null(p$scales$get_scales("fill"))
     expect_true(any(vapply(
         p$layers,
-        function(layer) inherits(layer$geom, "GeomDensity"),
+        function(layer) inherits(layer$geom, "GeomArea"),
         logical(1L)
     )))
     expect_true(any(vapply(
@@ -267,6 +286,7 @@ test_that("metadata field names cannot overwrite gallery coordinates or facets",
     cd$coord <- cd$sample_weeks
     cd$component <- cd$condition
     colData(std) <- cd
+    std <- prepare_plot_evidence(std, stage = "stage1")
     sm <- as.data.frame(MultiAssayExperiment::sampleMap(std))
     assay_samples <- colnames(experiments(std)[[1L]])
     map_idx <- match(assay_samples, sm$colname)
@@ -301,8 +321,8 @@ test_that("plot_components rejects missing and duplicate metadata fields", {
     colData(duplicate) <- cd
     expect_error(
         plot_components(duplicate, colour_by = "condition"),
-        "ambiguous in MAE-level colData",
-        class = "landscapeR_validation_error"
+        "plot evidence is stale",
+        class = "landscapeR_plot_evidence_unavailable"
     )
 })
 
@@ -312,8 +332,8 @@ test_that("plot_components rejects missing and ambiguous canonical mappings", {
     missing@sampleMap <- missing@sampleMap[-1L, ]
     expect_error(
         plot_components(missing, colour_by = "condition"),
-        "missing canonical sample mapping",
-        class = "landscapeR_validation_error"
+        "plot evidence is stale",
+        class = "landscapeR_plot_evidence_unavailable"
     )
 
     ambiguous <- std
@@ -323,7 +343,7 @@ test_that("plot_components rejects missing and ambiguous canonical mappings", {
     sampleMap(ambiguous) <- rbind(sm, duplicate_row)
     expect_error(
         plot_components(ambiguous, colour_by = "condition"),
-        "ambiguous canonical sample mapping",
-        class = "landscapeR_validation_error"
+        "plot evidence is stale",
+        class = "landscapeR_plot_evidence_unavailable"
     )
 })

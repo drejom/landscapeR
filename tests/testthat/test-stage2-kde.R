@@ -188,6 +188,28 @@ test_that("pool_layers=FALSE uses single layer", {
     expect_equal(s2$n_obs, length(x_samp))
 })
 
+test_that("single-layer evidence records the effective available layer", {
+    std <- synthetic_control(
+        n = 20L, p = 60L, K = 2L, signal = 20, seed = 125L
+    )
+    stage1 <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std)
+    )@value
+    result <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(
+            params = list(pool_layers = FALSE, layer = 99L)
+        ),
+        stage1
+    )
+
+    expect_identical(result@status, "success")
+    stage2 <- metadata(result@value)$stage2
+    evidence <- metadata(result@value)$stage2_plot_evidence
+    expect_identical(stage2$params$layer, 2L)
+    expect_identical(evidence@displays$layers, 2L)
+    expect_true(nrow(evidence@displays$rug) > 0L)
+})
+
 test_that("barrier_heights is a named list of 2-element left/right vectors", {
     # Double-well with 1 barrier should yield a list of length 1, each element
     # a named numeric(2) with "left" and "right" heights.

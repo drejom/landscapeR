@@ -147,6 +147,7 @@ test_that("existing scientific plots use the landscapeR theme", {
     std <- synthetic_control(
         n = 20L, p = 60L, K = 1L, signal = 20, seed = 1L
     )
+    std <- prepare_plot_evidence(std, stage = "stage1")
     plot <- plot_spectrum(std, n_sv = 5L)
 
     expect_identical(plot$theme$aspect.ratio, 1)

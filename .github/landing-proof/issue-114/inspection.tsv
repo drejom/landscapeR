@@ -1,0 +1,5 @@
+plot	width_mm	height_mm	caption_outside_plot
+spectrum	100	100	TRUE
+components	100	100	TRUE
+decomposition	100	100	TRUE
+potential	100	100	TRUE

@@ -133,8 +133,8 @@ plot_spectrum(std1)
 ```
 
 The component gallery aligns MAE-level metadata through each assay's canonical
-sample map. Categorical metadata group the observed distributions; continuous
-metadata colour the rug beneath the same overall density.
+sample map. Categorical and continuous metadata colour rugs beneath the stored
+overall density, so rendering never refits a descriptive smoother.
 
 ```{r component-gallery, fig.cap=c("Categorical descriptive gallery: planted synthetic groups colour densities and rugs after canonical sample alignment.", "Continuous descriptive gallery: the planted continuous coordinate colours the rug while the overall component density remains visible.")}
 plot_components(

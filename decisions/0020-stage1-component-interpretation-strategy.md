@@ -492,6 +492,20 @@ adapter remains ggplot2 until a second concrete adapter demonstrates a need for
 shared rendering machinery. Plotly and Shiny may later consume the same typed
 view, but they receive no independent scientific decision authority.
 
+Legacy Stage 1 and Stage 2 plot families use the same rule through
+digest-bound `StagePlotEvidence`. The structural Stage 1 wrapper owns the
+legacy raw, uncentred assay spectrum as a descriptive estimand distinct from
+any centred or pre-reduced strategy spectrum. Decomposition owns
+component-density curves, decomposition-coordinate tables, and synthetic
+ground-truth angles; dynamics estimation owns potential curves,
+critical-point coordinates, barrier-height segments, and coordinate rugs.
+New results store this evidence as part of their responsible scientific stage.
+`prepare_plot_evidence()` is the explicit, provenance-recorded migration
+operation for legacy or manually modified objects. Missing or stale evidence
+returns a typed unavailable condition; renderers never silently refit an SVD,
+estimate a density, compare against ground truth, interpolate a critical point,
+or calculate a barrier segment.
+
 The axis-identifiability surface jointly exposes the spectrum, matching
 similarity and ambiguity, recurrence distributions, subspace angles, and final
 structured status so a stable rotating plane is visually distinguishable from

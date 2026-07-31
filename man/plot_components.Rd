@@ -21,15 +21,14 @@ a \code{ggplot} object faceted over components in decomposition order
 }
 \description{
 Shows the sample-coordinate distribution for each of the first
-\code{n_components} components as density and rug panels in decomposition
+\code{n_components} components as stored density and rug panels in decomposition
 order. Metadata are read from MAE-level \code{colData} and aligned to the
 selected assay through its canonical \code{sampleMap}; row position is never
 treated as sample identity.
 }
 \details{
-Categorical metadata group the descriptive densities and rugs. Continuous
-metadata colour the rug with a continuous gradient while retaining the
-overall density. The gallery does not calculate association scores or rank
+Categorical and continuous metadata colour the rugs while retaining the
+stored overall density. The gallery does not calculate association scores or rank
 components; those responsibilities belong to the metadata atlas and proposal
 workflow.
 }

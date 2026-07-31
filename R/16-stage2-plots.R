@@ -37,105 +37,35 @@ plot_potential <- function(std, colour_by = NULL,
     if (!is.logical(show_critical_points) ||
         length(show_critical_points) != 1L || is.na(show_critical_points))
         stop("show_critical_points must be a single non-missing logical")
-    s2 <- metadata(std)$stage2
-    if (is.null(s2))
-        stop("Stage 2 has not been run on this object. Call estimate_dynamics() first.")
-
-    # Expected stage2 structure (set by the DynamicsEstimator contract):
-    #   s2$x         numeric vector -- state-transition axis grid
-    #   s2$U         numeric vector -- quasi-potential values on grid
-    #   s2$wells     numeric vector -- x positions of stable critical points
-    #   s2$barriers  numeric vector -- x positions of unstable critical points
-    required <- c("x", "U", "wells", "barriers")
-    missing_fields <- setdiff(required, names(s2))
-    if (length(missing_fields))
-        stop(sprintf("metadata()$stage2 is missing: %s",
-                     paste(missing_fields, collapse = ", ")))
-
-    curve_df <- data.frame(x = s2$x, U = s2$U)
-
-    # Critical-point annotations (guard against empty wells/barriers)
-    cp_rows <- list()
-    if (length(s2$wells) > 0L)
-        cp_rows[[1]] <- data.frame(x = s2$wells,
-                                    U = approx(s2$x, s2$U, s2$wells)$y,
-                                    type = "well", stringsAsFactors = FALSE)
-    if (length(s2$barriers) > 0L)
-        cp_rows[[2]] <- data.frame(x = s2$barriers,
-                                    U = approx(s2$x, s2$U, s2$barriers)$y,
-                                    type = "barrier", stringsAsFactors = FALSE)
-    cp_df <- if (length(cp_rows)) do.call(rbind, cp_rows) else
-        data.frame(x = numeric(0), U = numeric(0), type = character(0),
-                   stringsAsFactors = FALSE)
-
-    # Barrier-height segments
-    seg_rows <- list()
-    for (b in s2$barriers) {
-        U_b   <- approx(s2$x, s2$U, b)$y
-        wells_left  <- s2$wells[s2$wells < b]
-        wells_right <- s2$wells[s2$wells > b]
-        if (length(wells_left))  {
-            U_wl <- approx(s2$x, s2$U, max(wells_left))$y
-            seg_rows[[length(seg_rows)+1]] <- data.frame(
-                x = max(wells_left), xend = max(wells_left),
-                y = U_wl, yend = U_b)
-        }
-        if (length(wells_right)) {
-            U_wr <- approx(s2$x, s2$U, min(wells_right))$y
-            seg_rows[[length(seg_rows)+1]] <- data.frame(
-                x = min(wells_right), xend = min(wells_right),
-                y = U_wr, yend = U_b)
-        }
-    }
+    evidence <- .stage_plot_evidence(std, "stage2")
+    displays <- evidence@displays
+    curve_df <- displays$curve
+    cp_df <- displays$critical_points
+    seg_df <- displays$barrier_segments
 
     # Sample rug — component-aware with fallback (#14 + #16)
-    s1 <- metadata(std)$stage1
-    rug_df <- NULL
-    layer_indices <- integer()
-    comp <- s2$params$component %||% 1L
-    if (!is.null(s1)) {
-        if (length(dr_coords_k(s1))) {
-            if (isTRUE(s2$params$pool_layers)) {
-                layer_indices <- seq_along(dr_coords_k(s1))
-                rug_x <- unlist(lapply(
-                    dr_coords_k(s1),
-                    function(m) drop(m[, comp])
-                ))
-            } else {
-                layer_idx <- s2$params$layer %||% 1L
-                layer_indices <- layer_idx
-                rug_x <- drop(dr_coords_k(s1)[[layer_idx]][, comp])
-            }
-        } else if (length(dr_coords(s1))) {
-            warning("Using coords fallback for rug positions (coords_k empty)")
-            layer_indices <- 1L
-            rug_x <- dr_coords(s1)[[1L]]
-        } else {
-            warning("No coordinate data available for rug")
-            rug_x <- NULL
-        }
-        if (!is.null(rug_x)) {
-            rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
-            if (!is.null(colour_by)) {
-                aligned_metadata <- lapply(
-                    layer_indices,
-                    function(layer) {
-                        .component_gallery_metadata(
-                            std,
-                            layer,
-                            colour_by,
-                            caller = "plot_potential"
-                        )
-                    }
-                )
-                rug_df[[colour_by]] <- unlist(
-                    aligned_metadata, use.names = FALSE
-                )
-                rug_df$.primary_sample <- unlist(
-                    lapply(aligned_metadata, names), use.names = FALSE
+    rug_df <- displays$rug
+    if (!nrow(rug_df)) rug_df <- NULL
+    layer_indices <- displays$layers
+    comp <- displays$component
+    if (!is.null(rug_df) && !is.null(colour_by)) {
+        aligned_metadata <- lapply(
+            layer_indices,
+            function(layer) {
+                .component_gallery_metadata(
+                    std,
+                    layer,
+                    colour_by,
+                    caller = "plot_potential"
                 )
             }
-        }
+        )
+        rug_df[[colour_by]] <- unlist(
+            aligned_metadata, use.names = FALSE
+        )
+        rug_df$.primary_sample <- unlist(
+            lapply(aligned_metadata, names), use.names = FALSE
+        )
     }
 
     palette <- landscapeR_palette("semantic")
@@ -168,8 +98,7 @@ plot_potential <- function(std, colour_by = NULL,
     }
 
     # Barrier-height segments
-    if (isTRUE(show_critical_points) && length(seg_rows)) {
-        seg_df <- do.call(rbind, seg_rows)
+    if (isTRUE(show_critical_points) && nrow(seg_df)) {
         p <- p + ggplot2::geom_segment(
             data = seg_df,
             ggplot2::aes(x = x, xend = xend, y = y, yend = yend),
@@ -254,7 +183,7 @@ plot_potential <- function(std, colour_by = NULL,
     }
     critical_encoding <- if (!isTRUE(show_critical_points)) {
         "Critical-point symbols and barrier-height segments are omitted"
-    } else if (!nrow(cp_df) && !length(seg_rows)) {
+    } else if (!nrow(cp_df) && !nrow(seg_df)) {
         paste0(
             "Critical-point overlays were requested, but no stored wells, ",
             "barriers, or barrier-height segments are available"
@@ -267,7 +196,7 @@ plot_potential <- function(std, colour_by = NULL,
             if (any(cp_df$type == "barrier")) {
                 "Exploratory upward triangles mark stored barriers"
             },
-            if (length(seg_rows)) {
+            if (nrow(seg_df)) {
                 paste0(
                     "Dotted vertical segments show point-estimate barrier ",
                     "heights"
@@ -306,7 +235,7 @@ plot_potential <- function(std, colour_by = NULL,
         ),
         estimand = "the density-derived quasi-potential along the selected component",
         uncertainty = if (isTRUE(show_critical_points) && nrow(cp_df)) {
-            if (length(seg_rows)) {
+            if (nrow(seg_df)) {
                 paste0(
                     "Critical-point classifications and barrier heights are ",
                     "point estimates without uncertainty"
@@ -328,5 +257,13 @@ plot_potential <- function(std, colour_by = NULL,
         ),
         state = "uncalibrated"
     )
+    if (!is.null(colour_by) && isTRUE(show_critical_points) && nrow(cp_df)) {
+        p <- p +
+            ggplot2::guides(
+                colour = ggplot2::guide_legend(order = 1L),
+                shape = ggplot2::guide_legend(order = 2L)
+            ) +
+            ggplot2::theme(legend.box = "vertical")
+    }
     .with_scientific_caption(p, .build_scientific_caption(view))
 }

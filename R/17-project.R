@@ -95,6 +95,7 @@ project_into <- function(std_primary, std_secondary,
     md <- metadata(std_secondary)
     md$stage1 <- s1_out
     metadata(std_secondary) <- md
+    std_secondary <- .store_stage1_plot_evidence(std_secondary)
 
     std_secondary
 }

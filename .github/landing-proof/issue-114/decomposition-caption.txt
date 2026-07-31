@@ -1,0 +1,8 @@
+Stage 1 decomposition coordinates. The Synthetic developmental state series experiment uses
+molecular layers layer1, layer2. Facets identify molecular layers; points show component 1
+sample coordinates rank-ordered within each layer; the dotted horizontal line marks zero; Point
+colours encode categorical planted_group; The subtitle reports the stored synthetic
+ground-truth angle for component 1. The analysis unit is independent biological observation;
+the design is cross_sectional; the estimand is the descriptive sample coordinate on component
+1. No component-selection threshold is applied. This display does not select a component or
+establish biological interpretation.
