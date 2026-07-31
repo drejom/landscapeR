@@ -367,6 +367,32 @@ test_that("irregular schedules and dropout remain visible by subject", {
         visual_evidence_caption(view),
         "2 subject endpoints"
     )
+    partial_dropout <- atlas
+    partial_dropout@provenance$
+        time_course_rank_summary$n_complete_searches <- rep(2L, 2L)
+    partial_dropout@provenance$
+        time_course_display_state$complete_searches <- 2L
+    partial_dropout@provenance$
+        time_course_display_state$partial_resampling <- TRUE
+    partial_caption <- visual_evidence_caption(
+        visual_evidence(partial_dropout)
+    )
+    expect_match(partial_caption, "2 subject endpoints")
+    expect_match(
+        partial_caption,
+        "2 of 3 requested complete-search resamples succeeded"
+    )
+    missing_dropout <- atlas
+    missing_dropout@provenance$time_course_display_state$has_trajectories <-
+        FALSE
+    missing_caption <- visual_evidence_caption(
+        visual_evidence(missing_dropout)
+    )
+    expect_match(missing_caption, "2 subject endpoints")
+    expect_match(
+        missing_caption,
+        "condition-by-time interaction is not estimable"
+    )
     invalid_dropout_count <- atlas
     invalid_dropout_count@provenance$time_course_dropout_subject_count <- 4L
     expect_error(

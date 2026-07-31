@@ -459,6 +459,30 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
             )
         )
     }
+    missingness_notes <- c(
+        missingness,
+        if (identical(state, "missing")) {
+            "The declared condition-by-time interaction is not estimable"
+        } else {
+            NA_character_
+        },
+        if (identical(state, "partial")) {
+            paste(
+                "Incomplete resamples remain in the requested denominator;",
+                "available trajectories and intervals are retained"
+            )
+        } else {
+            NA_character_
+        }
+    )
+    missingness_notes <- missingness_notes[
+        !is.na(missingness_notes) & nzchar(missingness_notes)
+    ]
+    missingness_account <- if (length(missingness_notes)) {
+        paste(missingness_notes, collapse = ". ")
+    } else {
+        NA_character_
+    }
     oriented <- c(
         provenance$reference_level,
         provenance$comparison_level
@@ -494,16 +518,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         estimand = "condition-by-time interaction on the rank scale",
         design = provenance$sampling_design,
         uncertainty = resampling_account,
-        missingness = if (identical(state, "missing")) {
-            "The declared condition-by-time interaction is not estimable"
-        } else if (identical(state, "partial")) {
-            paste(
-                "Incomplete resamples remain in the requested denominator;",
-                "available trajectories and intervals are retained"
-            )
-        } else {
-            missingness
-        },
+        missingness = missingness_account,
         threshold = "No acceptance threshold is applied",
         claim_boundary = if (is_abstention || !has_trajectories) {
             "No unique biological coordinate is identified"
