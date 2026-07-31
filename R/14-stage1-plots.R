@@ -1,6 +1,55 @@
 # Stage 1 diagnostic plot functions for StateTransitionData
 
 utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
+
+.plot_caption_context <- function(std, layers = seq_along(experiments(std))) {
+    layer_names <- names(as.list(experiments(std)))[layers]
+    dataset_id <- metadata(std)$dataset_id
+    if (!.is_scalar_nonempty_text(dataset_id)) dataset_id <- NA_character_
+    design <- std@sampling_design@kind
+    sampling_unit <- switch(
+        design,
+        longitudinal = paste0(
+            "biological observation nested within a complete subject trajectory"
+        ),
+        cross_sectional = "independent biological observation",
+        independent_time_course = paste0(
+            "independent biological observation at observed time"
+        ),
+        "biological observation"
+    )
+    time_field <- if (length(std@sampling_design@time_col)) {
+        std@sampling_design@time_col
+    } else {
+        NA_character_
+    }
+    time_unit <- if (length(std@sampling_design@time_unit)) {
+        std@sampling_design@time_unit
+    } else {
+        NA_character_
+    }
+    subject_field <- if (length(std@sampling_design@subject_id_col)) {
+        std@sampling_design@subject_id_col
+    } else {
+        NA_character_
+    }
+    list(
+        experiment_label = dataset_id,
+        molecular_layer = paste(layer_names, collapse = ", "),
+        molecular_layer_count = length(layer_names),
+        sampling_unit = sampling_unit,
+        design = design,
+        time_field = time_field,
+        time_unit = time_unit,
+        subject_field = subject_field
+    )
+}
+
+.plot_metadata_encoding <- function(values, field, marks) {
+    if (is.null(values)) return(paste0(marks, " do not encode sample metadata"))
+    type <- if (is.numeric(values)) "continuous" else "categorical"
+    paste0(marks, " encode ", type, " ", field)
+}
 #
 # All functions take a StateTransitionData object and return a ggplot.
 # colour_by is always optional -- omit it for unlabelled exploratory plots,
@@ -113,17 +162,11 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     )
 
     subtitle <- if (is.null(meta_col)) {
-        "Components shown in decomposition order; add colour_by to overlay metadata"
+        "Components shown in decomposition order"
     } else if (is.numeric(meta_col)) {
-        sprintf(
-            "Components shown in decomposition order; continuous %s colours the rug",
-            colour_by
-        )
+        sprintf("Decomposition order; rug colour shows %s", colour_by)
     } else {
-        sprintf(
-            "Components shown in decomposition order; %s groups densities and rugs",
-            colour_by
-        )
+        sprintf("Decomposition order; colour shows %s", colour_by)
     }
 
     p <- ggplot2::ggplot(df, ggplot2::aes(x = coord))
@@ -186,9 +229,9 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         }
     }
 
-    caption <- if (!is.null(meta_col) && anyNA(meta_col)) {
+    missingness <- if (!is.null(meta_col) && anyNA(meta_col)) {
         sprintf(
-            "Dashed rug marks %d observation(s) with missing %s",
+            "Dashed rugs mark %d observations with missing %s",
             sum(is.na(meta_col)),
             colour_by
         )
@@ -196,23 +239,63 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         NULL
     }
 
-    p +
+    p <- p +
         ggplot2::geom_vline(
             xintercept = 0, linetype = "dotted",
             colour = "grey60", linewidth = 0.4
         ) +
         ggplot2::facet_wrap(~ component, scales = "free") +
         ggplot2::labs(
-            title = sprintf("Stage 1 component gallery \u2014 layer %d", idx),
+            title = sprintf(
+                "Stage 1 component gallery: %s",
+                names(expt_list)[[idx]]
+            ),
             subtitle = subtitle,
             x = "Coordinate",
             y = "Density",
             fill = colour_by,
-            colour = colour_by,
-            caption = caption
+            colour = colour_by
         ) +
         theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
+
+    context <- .plot_caption_context(std, idx)
+    metadata_marks <- if (is.numeric(meta_col)) {
+        "Rug colours"
+    } else {
+        "Density fills and rug colours"
+    }
+    view <- .new_scientific_caption_view(
+        title = "Stage 1 component distributions",
+        experiment_label = context$experiment_label,
+        molecular_layer = context$molecular_layer,
+        molecular_layer_count = context$molecular_layer_count,
+        sampling_unit = context$sampling_unit,
+        design = context$design,
+        time_field = context$time_field,
+        time_unit = context$time_unit,
+        subject_field = context$subject_field,
+        encodings = c(
+            paste0(
+                "Facets show components 1-", k_show,
+                " in decomposition order; densities summarize sample-coordinate ",
+                "distributions; rugs mark sample coordinates; dotted vertical ",
+                "lines mark zero"
+            ),
+            .plot_metadata_encoding(
+                meta_col, colour_by, metadata_marks
+            )
+        ),
+        estimand = "the descriptive distribution of sample coordinates",
+        missingness = missingness,
+        threshold = "No component-selection threshold is applied",
+        claim_boundary = paste0(
+            "This descriptive gallery does not rank or nominate a biological ",
+            "coordinate"
+        ),
+        state = "uncalibrated"
+    )
+    .with_scientific_caption(p, .build_scientific_caption(view))
 }
 
 .component_gallery_metadata <- function(
@@ -235,15 +318,16 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
 # plot_spectrum(): singular value spectrum per layer + BBP threshold
 # ---------------------------------------------------------------------------
 
-#' Plot singular value spectra with the BBP detectability threshold
+#' Plot singular value spectra with a BBP model reference
 #'
 #' Shows the top singular values for each omic layer as a line plot, with a
 #' horizontal reference line at the Baik-Ben Arous-Peche (BBP) phase-transition
-#' threshold \eqn{(n \cdot p)^{1/4}}.  Signal components above the threshold
-#' are detectable; those below are indistinguishable from noise.
+#' value \eqn{(n \cdot p)^{1/4}} computed from the first layer. This is a
+#' model-based visual reference under spiked white-noise assumptions, not
+#' empirical proof that a component is recoverable or biologically valid.
 #'
-#' Call this before running Stage 1 to confirm that the state-transition axis is
-#' detectable at the current sample size.
+#' Use the returned scientific caption to report the assumptions and claim
+#' boundary alongside the figure.
 #'
 #' @param std \code{StateTransitionData}
 #' @param n_sv integer number of singular values to show per layer (default 20)
@@ -274,8 +358,10 @@ plot_spectrum <- function(std, n_sv = 20L) {
     })
     df <- do.call(rbind, rows)
 
-    ggplot2::ggplot(df, ggplot2::aes(x = rank, y = sv,
-                                      colour = layer, group = layer)) +
+    plot <- ggplot2::ggplot(
+        df,
+        ggplot2::aes(x = rank, y = sv, colour = layer, group = layer)
+    ) +
         ggplot2::geom_line(linewidth = 0.8) +
         ggplot2::geom_point(size = 1.5) +
         ggplot2::geom_hline(yintercept = bbp, linetype = "dashed",
@@ -292,6 +378,41 @@ plot_spectrum <- function(std, n_sv = 20L) {
             colour  = "Layer"
         ) +
         theme_landscapeR()
+
+    context <- .plot_caption_context(std)
+    view <- .new_scientific_caption_view(
+        title = "Singular-value spectra",
+        experiment_label = context$experiment_label,
+        molecular_layer = context$molecular_layer,
+        molecular_layer_count = context$molecular_layer_count,
+        sampling_unit = context$sampling_unit,
+        design = context$design,
+        time_field = context$time_field,
+        time_unit = context$time_unit,
+        subject_field = context$subject_field,
+        encodings = c(
+            paste0(
+                "Lines and points show ordered singular values for layer traces: ",
+                paste(names(expt_list), collapse = ", ")
+            ),
+            sprintf(
+                "The dashed horizontal line marks the BBP reference at %.2f",
+                bbp
+            )
+        ),
+        estimand = "the singular-value spectrum of each molecular layer",
+        threshold = paste0(
+            "The BBP line uses (n x p)^(1/4) from the first layer under a ",
+            "spiked white-noise model; it is a model-based detectability ",
+            "reference, not empirical proof"
+        ),
+        claim_boundary = paste0(
+            "Position relative to this reference does not establish recovery ",
+            "or biological validity of an axis"
+        ),
+        state = "uncalibrated"
+    )
+    .with_scientific_caption(plot, .build_scientific_caption(view))
 }
 
 # ---------------------------------------------------------------------------
@@ -305,8 +426,8 @@ plot_spectrum <- function(std, n_sv = 20L) {
 #' (synthetic data), the angle between the recovered axis and the true axis is
 #' annotated.
 #'
-#' Call this after running Stage 1 to confirm that disease-group separation
-#' was recovered before feeding coordinates into Stage 2.
+#' This is a descriptive display. It neither selects a component nor confirms
+#' biological separation.
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage1} present
 #' @param colour_by character column name in \code{colData(std)} to colour
@@ -343,9 +464,7 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
 
     rows <- lapply(seq_len(n_layers), function(i) {
         cmat    <- dr_coords_k(s1)[[i]]
-        k_avail <- ncol(cmat)
-        j       <- min(comp_idx, k_avail)
-        coord   <- cmat[, j]
+        coord   <- cmat[, plot_idx]
         df <- data.frame(
             sample = seq_along(coord),
             layer  = layer_nms[i],
@@ -367,15 +486,17 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
     # Subspace angle annotation (synthetic data only)
     angle_label <- NULL
     if (!is.null(std@ground_truth) &&
-        is(std@ground_truth, "SubspaceGroundTruth")) {
-        gt_ncol <- ncol(std@ground_truth@shared)
-        gt_j    <- min(comp_idx, gt_ncol)
-        v_true  <- std@ground_truth@shared[, gt_j, drop = TRUE]
-        v_hat   <- shared_axis(s1, j = comp_idx)
+        is(std@ground_truth, "SubspaceGroundTruth") &&
+        plot_idx <= ncol(std@ground_truth@shared)) {
+        v_true  <- std@ground_truth@shared[, plot_idx, drop = TRUE]
+        v_hat   <- shared_axis(s1, j = plot_idx)
         cos_a   <- min(1, abs(sum(v_true * v_hat) /
                               (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
-        angle_label <- sprintf("component %d angle to v_true = %.1f\u00b0",
-                               comp_idx, acos(cos_a) * 180 / pi)
+        angle_label <- sprintf(
+            "Stored ground-truth angle for component %d: %.1f\u00b0",
+            plot_idx,
+            acos(cos_a) * 180 / pi
+        )
     }
 
     # x-axis: sample index (rank-ordered within each layer for readability)
@@ -392,7 +513,7 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         ggplot2::labs(
             title    = sprintf("Sample coordinates on component %d", plot_idx),
             subtitle = if (!is.null(angle_label)) angle_label else
-                       "Supply synthetic_control() output to annotate ground-truth angle",
+                "Layers show rank-ordered sample coordinates",
             x        = "Sample (rank-ordered by coordinate)",
             y        = sprintf("Component %d coordinate", plot_idx),
             colour   = colour_by
@@ -400,47 +521,75 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 
+    missingness <- NULL
     if (is.null(colour_by)) {
-        return(p + ggplot2::geom_point(size = 2, alpha = 0.75))
-    }
-
-    observed <- df[!is.na(df[[colour_by]]), , drop = FALSE]
-    missing <- df[is.na(df[[colour_by]]), , drop = FALSE]
-    p <- p +
-        ggplot2::geom_point(
-            data = observed,
-            ggplot2::aes(colour = .data[[colour_by]]),
-            size = 2,
-            alpha = 0.75
-        )
-    if (is.numeric(df[[colour_by]])) {
-        p <- p + scale_colour_landscapeR(
-            "continuous",
-            name = colour_by
-        )
+        p <- p + ggplot2::geom_point(size = 2, alpha = 0.75)
+        meta_col <- NULL
     } else {
-        p <- p + scale_colour_landscapeR(
-            "categorical",
-            name = colour_by
-        )
-    }
-    if (nrow(missing)) {
         p <- p +
             ggplot2::geom_point(
-                data = missing,
-                shape = 4,
-                colour = unname(palette[["ink"]]),
-                size = 2.4,
-                stroke = 0.7
-            ) +
-            ggplot2::labs(
-                caption = sprintf(
-                    "Cross marks %d observation(s) with missing %s",
-                    nrow(missing),
-                    colour_by
-                )
+                data = df[!is.na(df[[colour_by]]), , drop = FALSE],
+                ggplot2::aes(colour = .data[[colour_by]]),
+                size = 2, alpha = 0.75
             )
+        meta_col <- df[[colour_by]]
+        p <- p + scale_colour_landscapeR(
+            if (is.numeric(meta_col)) "continuous" else "categorical",
+            name = colour_by
+        )
+        missing <- df[is.na(meta_col), , drop = FALSE]
+        if (nrow(missing)) {
+            p <- p + ggplot2::geom_point(
+                data = missing, shape = 4,
+                colour = unname(palette[["ink"]]),
+                size = 2.4, stroke = 0.7
+            )
+            missingness <- sprintf(
+                "Crosses mark %d observations with missing %s",
+                nrow(missing), colour_by
+            )
+        }
     }
 
-    p
+    context <- .plot_caption_context(std)
+    encodings <- c(
+        paste0(
+            "Facets identify molecular layers; points show component ", plot_idx,
+            " sample coordinates rank-ordered within each layer; the dotted ",
+            "horizontal line marks zero"
+        ),
+        .plot_metadata_encoding(meta_col, colour_by, "Point colours")
+    )
+    if (!is.null(angle_label)) {
+        encodings <- c(
+            encodings,
+            paste0(
+                "The subtitle reports the stored synthetic ground-truth angle ",
+                "for component ", plot_idx
+            )
+        )
+    }
+    view <- .new_scientific_caption_view(
+        title = "Stage 1 decomposition coordinates",
+        experiment_label = context$experiment_label,
+        molecular_layer = context$molecular_layer,
+        molecular_layer_count = context$molecular_layer_count,
+        sampling_unit = context$sampling_unit,
+        design = context$design,
+        time_field = context$time_field,
+        time_unit = context$time_unit,
+        subject_field = context$subject_field,
+        encodings = encodings,
+        estimand = paste0(
+            "the descriptive sample coordinate on component ", plot_idx
+        ),
+        missingness = missingness,
+        threshold = "No component-selection threshold is applied",
+        claim_boundary = paste0(
+            "This display does not select a component or establish biological ",
+            "interpretation"
+        ),
+        state = "uncalibrated"
+    )
+    .with_scientific_caption(p, .build_scientific_caption(view))
 }

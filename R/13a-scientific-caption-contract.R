@@ -31,6 +31,7 @@
     title,
     experiment_label = NA_character_,
     molecular_layer = NA_character_,
+    molecular_layer_count = NA_integer_,
     target_field = NA_character_,
     oriented_levels = character(),
     direction = NA_character_,
@@ -73,6 +74,20 @@
         molecular_layer = .scientific_caption_text(
             molecular_layer, "molecular_layer"
         ),
+        molecular_layer_count = if (
+            length(molecular_layer_count) == 1L &&
+                is.numeric(molecular_layer_count) &&
+                (is.na(molecular_layer_count) ||
+                    (is.finite(molecular_layer_count) &&
+                        molecular_layer_count == as.integer(molecular_layer_count) &&
+                        molecular_layer_count > 0L))
+        ) {
+            as.integer(molecular_layer_count)
+        } else {
+            .stop_landscapeR_validation(
+                "molecular_layer_count must be one positive integer or NA"
+            )
+        },
         target_field = .scientific_caption_text(
             target_field, "target_field"
         ),
@@ -148,6 +163,12 @@
             "time_unit requires a declared time_field"
         )
     }
+    if (!is.na(view$molecular_layer_count) &&
+        is.na(view$molecular_layer)) {
+        .stop_landscapeR_validation(
+            "molecular_layer_count requires molecular_layer"
+        )
+    }
     if (!is.na(view$direction) && is.na(view$target_field)) {
         .stop_landscapeR_validation(
             "direction requires a declared target_field"
@@ -181,12 +202,29 @@
     if (!is.na(view$experiment_label)) {
         context <- paste0("The ", view$experiment_label, " experiment")
         if (!is.na(view$molecular_layer)) {
-            context <- paste0(
-                context, " uses the ", view$molecular_layer, " layer"
-            )
+            context <- if (
+                !is.na(view$molecular_layer_count) &&
+                    view$molecular_layer_count > 1L
+            ) {
+                paste0(
+                    context, " uses molecular layers ",
+                    view$molecular_layer
+                )
+            } else {
+                paste0(
+                    context, " uses the ", view$molecular_layer, " layer"
+                )
+            }
         }
     } else if (!is.na(view$molecular_layer)) {
-        context <- paste0("The ", view$molecular_layer, " layer")
+        context <- if (
+            !is.na(view$molecular_layer_count) &&
+                view$molecular_layer_count > 1L
+        ) {
+            paste0("Molecular layers ", view$molecular_layer)
+        } else {
+            paste0("The ", view$molecular_layer, " layer")
+        }
     }
     if (!is.na(view$target_field)) {
         target <- paste0("the declared ", view$target_field, " target")
@@ -340,14 +378,10 @@
         "plot.ComponentAbstention"
     ),
     policy = c(
-        "caption-required",
-        rep("migration-pending", 4L),
-        rep("caption-required", 5L)
+        rep("caption-required", 10L)
     ),
     tracking_issue = c(
-        NA_integer_,
-        rep(107L, 4L),
-        rep(NA_integer_, 5L)
+        rep(NA_integer_, 10L)
     ),
     stringsAsFactors = FALSE
 )

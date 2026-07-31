@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#107 — migrate Stage 1 and Stage 2
-figures to the shared scientific-caption contract**.
+**Next task after this change lands:** **#67 — calibrate the AML-shaped
+synthetic control without consuming frozen acceptance seeds**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -189,9 +189,9 @@ confirmation; stable-subspace/no-stable-axis is a valid abstention.
 ### 4a. Architecture debt lane
 
 **Active prefactor:** #91 and its general-contract correction #100 are
-complete. #92, #83, #93, and #106 are complete. #94 completes on merge,
-including the component-interpretation caption migration in #108, making #107
-the next task.
+complete. #92, #83, #93, #94, #106, and #108 are complete. #107 completes on
+merge, closing the public scientific-caption migration and returning the active
+sequence to the #67 calibration lane.
 #101 reconciles supporting Pogona manifests without changing the active task
 sequence. With #93 complete on merge, the plot audit recorded in #106–#109
 resumes: #106 is the caption-contract prefactor for the queued #94
@@ -200,7 +200,8 @@ visual-evidence view and the #107/#108 renderer migrations.
 **Parked debt:** #95 deepens stage completion/provenance. #96 establishes shared
 artifact migration policy, with #97 adopting it across the interpretation
 evidence graph. These issues remain parked until the active #55/#83
-interpretation lane lands.
+interpretation lane lands. #114 moves legacy Stage 1/2 plot calculations into
+stored typed evidence; it remains parked behind the active #67 calibration lane.
 
 ### 5. AML-shaped synthetic control — #67 calibration lane
 
@@ -375,7 +376,7 @@ bodies may state dependencies but do not change this ordering.
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
 | [#65](https://github.com/drejom/landscapeR/issues/65) | Longitudinal extensions | parked |
 | [#66](https://github.com/drejom/landscapeR/issues/66) | Longitudinal observation design | queued |
-| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active |
+| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — next |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
@@ -394,9 +395,10 @@ bodies may state dependencies but do not change this ordering.
 | [#101](https://github.com/drejom/landscapeR/issues/101) | Pogona master-registry manifest reconciliation | complete |
 | [#104](https://github.com/drejom/landscapeR/issues/104) | Candidate temporal biological dataset | parked — research question |
 | [#106](https://github.com/drejom/landscapeR/issues/106) | Scientific caption contract — visual-evidence prefactor | complete on merge |
-| [#107](https://github.com/drejom/landscapeR/issues/107) | Stage 1/2 scientific caption migration | active — next |
+| [#107](https://github.com/drejom/landscapeR/issues/107) | Stage 1/2 scientific caption migration | complete on merge |
 | [#108](https://github.com/drejom/landscapeR/issues/108) | Component-interpretation caption migration | complete on merge with #94 |
 | [#109](https://github.com/drejom/landscapeR/issues/109) | Component-identifiability primary/diagnostic views | complete on merge |
+| [#114](https://github.com/drejom/landscapeR/issues/114) | Legacy Stage 1/2 typed plot evidence | parked |
 <!-- issue-map:end -->
 
 ---

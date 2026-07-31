@@ -11,6 +11,9 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 #' Shows U(x) = -log p(x) along the state-transition axis. Point-estimate
 #' critical-point classifications and barrier heights are omitted by default;
 #' they require explicit diagnostic opt-in until uncertainty is available.
+#' The returned scientific caption describes the selected component, plotted
+#' encodings, missing observations, and exploratory claim boundary separately
+#' from the graphic.
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage2} present
 #' @param colour_by character column name in \code{colData(std)} to colour
@@ -88,8 +91,9 @@ plot_potential <- function(std, colour_by = NULL,
     # Sample rug — component-aware with fallback (#14 + #16)
     s1 <- metadata(std)$stage1
     rug_df <- NULL
+    layer_indices <- integer()
+    comp <- s2$params$component %||% 1L
     if (!is.null(s1)) {
-        comp <- s2$params$component %||% 1L
         if (length(dr_coords_k(s1))) {
             if (isTRUE(s2$params$pool_layers)) {
                 layer_indices <- seq_along(dr_coords_k(s1))
@@ -113,7 +117,7 @@ plot_potential <- function(std, colour_by = NULL,
         if (!is.null(rug_x)) {
             rug_df <- data.frame(x = rug_x, stringsAsFactors = FALSE)
             if (!is.null(colour_by)) {
-                rug_df[[colour_by]] <- unlist(lapply(
+                aligned_metadata <- lapply(
                     layer_indices,
                     function(layer) {
                         .component_gallery_metadata(
@@ -123,7 +127,13 @@ plot_potential <- function(std, colour_by = NULL,
                             caller = "plot_potential"
                         )
                     }
-                ), use.names = FALSE)
+                )
+                rug_df[[colour_by]] <- unlist(
+                    aligned_metadata, use.names = FALSE
+                )
+                rug_df$.primary_sample <- unlist(
+                    lapply(aligned_metadata, names), use.names = FALSE
+                )
             }
         }
     }
@@ -207,16 +217,6 @@ plot_potential <- function(std, colour_by = NULL,
                         linetype = "dashed",
                         linewidth = 0.7,
                         inherit.aes = FALSE
-                    ) +
-                    ggplot2::labs(
-                        caption = sprintf(
-                            paste0(
-                                "Dashed rug marks %d observation(s) ",
-                                "with missing %s"
-                            ),
-                            nrow(missing_rug),
-                            colour_by
-                        )
                     )
             }
         } else {
@@ -229,5 +229,104 @@ plot_potential <- function(std, colour_by = NULL,
         }
     }
 
-    p
+    context <- .plot_caption_context(
+        std,
+        if (length(layer_indices)) layer_indices else seq_along(experiments(std))
+    )
+    metadata_values <- if (
+        !is.null(rug_df) &&
+            !is.null(colour_by) &&
+            colour_by %in% colnames(rug_df)
+    ) {
+        rug_df[[colour_by]]
+    } else {
+        NULL
+    }
+    rug_encoding <- if (is.null(rug_df)) {
+        "Sample-coordinate rug marks are omitted because Stage 1 coordinates are unavailable"
+    } else if (is.null(metadata_values)) {
+        "Grey rug marks show observed sample coordinates without metadata encoding"
+    } else {
+        paste0(
+            "Rug marks show observed sample coordinates; ",
+            .plot_metadata_encoding(metadata_values, colour_by, "rug colours")
+        )
+    }
+    critical_encoding <- if (!isTRUE(show_critical_points)) {
+        "Critical-point symbols and barrier-height segments are omitted"
+    } else if (!nrow(cp_df) && !length(seg_rows)) {
+        paste0(
+            "Critical-point overlays were requested, but no stored wells, ",
+            "barriers, or barrier-height segments are available"
+        )
+    } else {
+        c(
+            if (any(cp_df$type == "well")) {
+                "Exploratory downward triangles mark stored wells"
+            },
+            if (any(cp_df$type == "barrier")) {
+                "Exploratory upward triangles mark stored barriers"
+            },
+            if (length(seg_rows)) {
+                paste0(
+                    "Dotted vertical segments show point-estimate barrier ",
+                    "heights"
+                )
+            }
+        )
+    }
+    missingness <- if (!is.null(metadata_values) && anyNA(metadata_values)) {
+        missing_units <- unique(
+            rug_df$.primary_sample[is.na(metadata_values)]
+        )
+        sprintf(
+            "Dashed rug marks %d observations with missing %s",
+            length(missing_units), colour_by
+        )
+    } else {
+        NULL
+    }
+    view <- .new_scientific_caption_view(
+        title = "Density-derived quasi-potential landscape",
+        experiment_label = context$experiment_label,
+        molecular_layer = context$molecular_layer,
+        molecular_layer_count = context$molecular_layer_count,
+        sampling_unit = context$sampling_unit,
+        design = context$design,
+        time_field = context$time_field,
+        time_unit = context$time_unit,
+        subject_field = context$subject_field,
+        encodings = c(
+            paste0(
+                "The black curve shows U(x) = -log p(x), derived from the ",
+                "stored density estimate for component ", comp
+            ),
+            rug_encoding,
+            critical_encoding
+        ),
+        estimand = "the density-derived quasi-potential along the selected component",
+        uncertainty = if (isTRUE(show_critical_points) && nrow(cp_df)) {
+            if (length(seg_rows)) {
+                paste0(
+                    "Critical-point classifications and barrier heights are ",
+                    "point estimates without uncertainty"
+                )
+            } else {
+                paste0(
+                    "Critical-point classifications are point estimates ",
+                    "without uncertainty"
+                )
+            }
+        } else {
+            NA_character_
+        },
+        missingness = missingness,
+        threshold = "No calibrated critical-point or barrier threshold is applied",
+        claim_boundary = paste0(
+            "The landscape is an exploratory description and does not by ",
+            "itself establish a biological state transition"
+        ),
+        state = "uncalibrated"
+    )
+    .with_scientific_caption(p, .build_scientific_caption(view))
 }
