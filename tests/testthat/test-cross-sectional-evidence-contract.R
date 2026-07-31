@@ -61,7 +61,10 @@ test_that("cross-sectional workflow exposes its complete evidence contract", {
     )
     expect_named(
         contract$digests,
-        c("associations", "observations", "exclusions", "cohort_members")
+        c(
+            "associations", "observations", "exclusions", "cohort_members",
+            "display_evidence"
+        )
     )
     expect_true(all(grepl("^[[:xdigit:]]{64}$", contract$digests)))
     expect_identical(

@@ -1020,9 +1020,35 @@ test_that("continuous atlas plot exposes monotone and flexible fits", {
     expect_identical(sum(flexible_layers), 1L)
     expect_identical(sum(monotone_layers), 1L)
     view <- visual_evidence(atlas)
+    stored_visual_evidence <- atlas_provenance(atlas)$visual_evidence
+    expect_identical(
+        visual_evidence_display(view, "monotone_fit"),
+        stored_visual_evidence$monotone_fit
+    )
     expect_identical(
         atlas_plot$layers[[which(flexible_layers)]]$data,
         visual_evidence_display(view, "flexible_fit")
+    )
+    expect_identical(
+        visual_evidence_display(view, "flexible_fit"),
+        stored_visual_evidence$flexible_fit
+    )
+    testthat::local_mocked_bindings(
+        .monotone_fit_data = function(...) {
+            stop("adapter recomputed monotone fit")
+        },
+        .flexible_fit_data = function(...) {
+            stop("adapter recomputed flexible fit")
+        },
+        .package = "landscapeR"
+    )
+    expect_s4_class(visual_evidence(atlas), "VisualEvidenceView")
+    invalid_visual <- atlas
+    invalid_visual@provenance$visual_evidence$flexible_fit <-
+        data.frame()
+    expect_error(
+        validObject(invalid_visual),
+        "stored visual evidence is invalid"
     )
     expect_null(atlas_plot$labels$caption)
     expect_match(scientific_caption(atlas_plot), "exploratory")

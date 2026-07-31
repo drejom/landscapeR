@@ -1131,6 +1131,24 @@ register_strategy(
         c("subject", "condition", "dropout"),
         drop = FALSE
     ])
+    dropout_subjects <- subject_summary$subject[subject_summary$dropout]
+    dropout_endpoints <- trajectory_data[
+        trajectory_data$subject %in% dropout_subjects,
+        ,
+        drop = FALSE
+    ]
+    if (nrow(dropout_endpoints)) {
+        endpoint_time <- ave(
+            dropout_endpoints$scaled_time,
+            dropout_endpoints$subject,
+            FUN = max
+        )
+        dropout_endpoints <- dropout_endpoints[
+            dropout_endpoints$scaled_time == endpoint_time,
+            ,
+            drop = FALSE
+        ]
+    }
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
     dataset_id <- .time_course_dataset_id(std, input_digest, dataset_id)
@@ -1157,6 +1175,11 @@ register_strategy(
             character(1L)
         ),
         stringsAsFactors = FALSE
+    )
+    display_line_table <- do.call(rbind, display_lines)
+    display_state <- .new_time_course_display_state(
+        display_line_table,
+        resample_ranks$summary
     )
     atlas <- .new_time_course_atlas(
         module = .repeated_time_evidence_version,
@@ -1300,9 +1323,14 @@ register_strategy(
             analysis_cohort_exclusions = excluded_cohort,
             time_course_models = model_records,
             time_course_observations = trajectory_data,
-            time_course_display_lines = do.call(rbind, display_lines),
+            time_course_display_lines = display_line_table,
             time_course_effect_summary = effect_summary,
             subject_summary = subject_summary,
+            time_course_dropout_endpoints = dropout_endpoints,
+            time_course_dropout_subject_count = as.integer(length(
+                unique(dropout_endpoints$subject)
+            )),
+            time_course_display_state = display_state,
             subject_condition_assignment = unique(data.frame(
                 subject = subject,
                 condition = as.character(target),

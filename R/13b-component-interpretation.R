@@ -1667,6 +1667,15 @@ associate_metadata <- function(
             "associate_metadata(): dataset_id must be one non-empty string"
         )
     }
+    visual_observations <- if (length(observation_rows)) {
+        do.call(rbind, observation_rows)
+    } else {
+        data.frame()
+    }
+    stored_visual_evidence <- list(
+        monotone_fit = .monotone_fit_data(visual_observations),
+        flexible_fit = .flexible_fit_data(visual_observations)
+    )
     evidence <- .new_cross_sectional_evidence(
         association_rows = association_rows,
         observation_rows = observation_rows,
@@ -1682,7 +1691,8 @@ associate_metadata <- function(
             state_space_digest = state_space_digest,
             dataset_id = dataset_id,
             exchangeability = exchangeability,
-            interpretation_module = .cross_sectional_evidence_version
+            interpretation_module = .cross_sectional_evidence_version,
+            visual_evidence = stored_visual_evidence
         ), specification_provenance)
     )
     atlas <- new(
@@ -3592,8 +3602,13 @@ confirm_component <- function(
         drop = FALSE
     ]
     if (!nrow(numeric)) {
-        numeric$monotone_fitted <- numeric$score
-        return(numeric)
+        return(data.frame(
+            metadata_field = character(),
+            component_label = character(),
+            metadata_numeric = numeric(),
+            monotone_fitted = numeric(),
+            stringsAsFactors = FALSE
+        ))
     }
     groups <- interaction(
         numeric$metadata_field,
@@ -3637,6 +3652,65 @@ confirm_component <- function(
             stringsAsFactors = FALSE
         )
     })
+    do.call(rbind, fitted)
+}
+
+.flexible_fit_data <- function(data) {
+    numeric <- data[
+        data$available &
+            data$metadata_type %in% c("continuous", "ordered"),
+        ,
+        drop = FALSE
+    ]
+    if (!nrow(numeric)) {
+        return(data.frame(
+            metadata_field = character(),
+            component_label = character(),
+            metadata_numeric = numeric(),
+            flexible_fitted = numeric(),
+            stringsAsFactors = FALSE
+        ))
+    }
+    groups <- interaction(
+        numeric$metadata_field,
+        numeric$component_label,
+        drop = TRUE,
+        lex.order = TRUE
+    )
+    fitted <- lapply(split(numeric, groups, drop = TRUE), function(group) {
+        x <- sort(unique(group$metadata_numeric))
+        if (length(x) < 3L) return(NULL)
+        model <- tryCatch(
+            stats::loess(
+                score ~ metadata_numeric,
+                data = group,
+                control = stats::loess.control(surface = "direct")
+            ),
+            error = function(condition) NULL
+        )
+        if (is.null(model)) return(NULL)
+        y <- unname(stats::predict(model, newdata = data.frame(
+            metadata_numeric = x
+        )))
+        keep <- is.finite(y)
+        data.frame(
+            metadata_field = group$metadata_field[[1L]],
+            component_label = group$component_label[[1L]],
+            metadata_numeric = x[keep],
+            flexible_fitted = y[keep],
+            stringsAsFactors = FALSE
+        )
+    })
+    fitted <- Filter(Negate(is.null), fitted)
+    if (!length(fitted)) {
+        return(data.frame(
+            metadata_field = character(),
+            component_label = character(),
+            metadata_numeric = numeric(),
+            flexible_fitted = numeric(),
+            stringsAsFactors = FALSE
+        ))
+    }
     do.call(rbind, fitted)
 }
 

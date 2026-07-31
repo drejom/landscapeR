@@ -4,68 +4,10 @@
 # not define a generalized renderer and do not grant alternative renderers any
 # authority to alter scientific results.
 
-.flexible_fit_data <- function(data) {
-    numeric <- data[
-        data$available &
-            data$metadata_type %in% c("continuous", "ordered"),
-        ,
-        drop = FALSE
-    ]
-    if (!nrow(numeric)) {
-        return(data.frame(
-            metadata_field = character(),
-            component_label = character(),
-            metadata_numeric = numeric(),
-            flexible_fitted = numeric(),
-            stringsAsFactors = FALSE
-        ))
-    }
-    groups <- interaction(
-        numeric$metadata_field,
-        numeric$component_label,
-        drop = TRUE,
-        lex.order = TRUE
-    )
-    fitted <- lapply(split(numeric, groups, drop = TRUE), function(group) {
-        x <- sort(unique(group$metadata_numeric))
-        if (length(x) < 3L) return(NULL)
-        model <- tryCatch(
-            stats::loess(
-                score ~ metadata_numeric,
-                data = group,
-                control = stats::loess.control(surface = "direct")
-            ),
-            error = function(condition) NULL
-        )
-        if (is.null(model)) return(NULL)
-        y <- unname(stats::predict(model, newdata = data.frame(
-            metadata_numeric = x
-        )))
-        keep <- is.finite(y)
-        data.frame(
-            metadata_field = group$metadata_field[[1L]],
-            component_label = group$component_label[[1L]],
-            metadata_numeric = x[keep],
-            flexible_fitted = y[keep],
-            stringsAsFactors = FALSE
-        )
-    })
-    fitted <- Filter(Negate(is.null), fitted)
-    if (!length(fitted)) {
-        return(data.frame(
-            metadata_field = character(),
-            component_label = character(),
-            metadata_numeric = numeric(),
-            flexible_fitted = numeric(),
-            stringsAsFactors = FALSE
-        ))
-    }
-    do.call(rbind, fitted)
-}
-
 .cross_sectional_visual_display <- function(
     observations,
     associations,
+    stored_visual_evidence,
     ranking = NULL,
     recommended_component = NA_integer_,
     comparison_level = NA_character_
@@ -119,8 +61,8 @@
     display <- list(
         categorical_observations = categorical,
         numeric_observations = numeric,
-        monotone_fit = .monotone_fit_data(observations),
-        flexible_fit = .flexible_fit_data(observations),
+        monotone_fit = stored_visual_evidence$monotone_fit,
+        flexible_fit = stored_visual_evidence$flexible_fit,
         diagnostic_labels = diagnostics,
         max_atom_count = max_atom_count,
         show_atom_guide = any(available$atom_count > 1L)
@@ -193,7 +135,8 @@ setMethod("visual_evidence", "MetadataAssociationAtlas", function(x) {
     }
     prepared <- .cross_sectional_visual_display(
         x@observations,
-        x@associations
+        x@associations,
+        x@provenance$visual_evidence
     )
     caption_view <- .new_scientific_caption_view(
         title = "Metadata association atlas",
@@ -238,6 +181,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     prepared <- .cross_sectional_visual_display(
         x@observations,
         x@ranking,
+        x@provenance$visual_evidence,
         ranking = x@ranking,
         recommended_component = x@recommended_component,
         comparison_level = x@comparison_level
@@ -310,13 +254,14 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     lines <- provenance$time_course_display_lines
     summaries <- provenance$time_course_effect_summary
     rank_summary <- provenance$time_course_rank_summary
+    display_state <- provenance$time_course_display_state
     repeated <- identical(provenance$sampling_design, "longitudinal")
     surface <- if (repeated) {
         "repeated_time_course"
     } else {
         "independent_time_course"
     }
-    has_trajectories <- nrow(lines) > 0L
+    has_trajectories <- display_state$has_trajectories
     interval_text <- ifelse(
         is.finite(summaries$effect_conf_low) &
             is.finite(summaries$effect_conf_high),
@@ -356,20 +301,9 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
             rank_summary$component_label
         )
     }
-    resampling_requested <- nrow(rank_summary) &&
-        any(rank_summary$n_resamples > 0L)
-    requested_searches <- if (resampling_requested) {
-        max(rank_summary$n_resamples)
-    } else {
-        0L
-    }
-    complete_searches <- if (resampling_requested) {
-        min(rank_summary$n_complete_searches)
-    } else {
-        0L
-    }
-    partial_resampling <- resampling_requested &&
-        complete_searches < requested_searches
+    requested_searches <- display_state$requested_searches
+    complete_searches <- display_state$complete_searches
+    partial_resampling <- display_state$partial_resampling
     facet_labels <- if (!has_trajectories) {
         stats::setNames(
             paste0(
@@ -452,24 +386,22 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     )
     missingness <- NA_character_
     if (repeated) {
-        endpoint <- ave(
-            data$scaled_time,
-            interaction(
-                data$component_label,
-                data$subject,
-                drop = TRUE
-            ),
-            FUN = max
-        )
+        endpoint_keys <- provenance$time_course_dropout_endpoints
         display$dropout_points <- data[
-            data$dropout & data$scaled_time == endpoint,
+            paste(data$primary_sample, data$subject, sep = "\r") %in%
+                paste(
+                    endpoint_keys$primary_sample,
+                    endpoint_keys$subject,
+                    sep = "\r"
+                ),
             ,
             drop = FALSE
         ]
-        if (nrow(display$dropout_points)) {
+        dropout_count <- provenance$time_course_dropout_subject_count
+        if (dropout_count > 0L) {
             missingness <- sprintf(
                 "%d subject endpoints are marked as ending before the final observed study time",
-                nrow(display$dropout_points)
+                dropout_count
             )
         }
     } else {
@@ -484,15 +416,22 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         cells$label_y <- score_range[[1L]] + offsets[cells$condition]
         cells$label <- paste0("n=", cells$count)
         display$cells <- cells
+        missing_keys <- provenance$time_course_missing_cells
         display$missing_cells <- cells[
-            cells$count == 0L,
+            paste(cells$condition, cells$observed_time, sep = "\r") %in%
+                paste(
+                    missing_keys$condition,
+                    missing_keys$observed_time,
+                    sep = "\r"
+                ),
             ,
             drop = FALSE
         ]
-        if (nrow(display$missing_cells)) {
+        missing_cell_count <- provenance$time_course_missing_cell_count
+        if (missing_cell_count > 0L) {
             missingness <- sprintf(
                 "%d unobserved condition-by-time cells are marked with crosses",
-                nrow(display$missing_cells)
+                missing_cell_count
             )
         }
     }

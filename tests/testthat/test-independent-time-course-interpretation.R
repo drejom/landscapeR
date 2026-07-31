@@ -118,6 +118,10 @@ test_that("independent time course fits the declared standardized interaction", 
     partial_atlas <- atlas
     partial_atlas@provenance$time_course_rank_summary$n_complete_searches <-
         rep(18L, 2L)
+    partial_atlas@provenance$time_course_display_state$complete_searches <-
+        18L
+    partial_atlas@provenance$time_course_display_state$partial_resampling <-
+        TRUE
     partial_view <- visual_evidence(partial_atlas)
     expect_identical(visual_evidence_state(partial_view), "partial")
     expect_match(
@@ -471,6 +475,31 @@ test_that("complete-case exclusion does not redefine the study-time scale", {
     expect_identical(provenance$time_range, c(0, 2))
     expect_equal(range(provenance$scaled_time), c(0, 0.5))
     expect_identical(endpoint_cells$count, c(0L, 0L))
+    view <- visual_evidence(atlas)
+    expect_setequal(
+        paste(
+            visual_evidence_display(view, "missing_cells")$condition,
+            visual_evidence_display(view, "missing_cells")$observed_time
+        ),
+        paste(
+            provenance$time_course_missing_cells$condition,
+            provenance$time_course_missing_cells$observed_time
+        )
+    )
+    expect_identical(provenance$time_course_missing_cell_count, 2L)
+    invalid_missing_count <- atlas
+    invalid_missing_count@provenance$time_course_missing_cell_count <- 3L
+    expect_error(
+        validObject(invalid_missing_count),
+        "missing-cell evidence is invalid"
+    )
+    invalid_display_state <- atlas
+    invalid_display_state@provenance$
+        time_course_display_state$partial_resampling <- TRUE
+    expect_error(
+        validObject(invalid_display_state),
+        "display state does not match"
+    )
     expect_equal(endpoint_cells$scaled_time, c(1, 1))
     expect_equal(
         as.numeric(tapply(

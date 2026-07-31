@@ -1306,6 +1306,11 @@ register_strategy(
         ),
         drop = FALSE
     ]
+    display_line_table <- do.call(rbind, display_lines)
+    display_state <- .new_time_course_display_state(
+        display_line_table,
+        resample_ranks$summary
+    )
     atlas <- .new_time_course_atlas(
         module = .independent_time_evidence_version,
         contract_sampling_design = "independent_time_course",
@@ -1425,9 +1430,18 @@ register_strategy(
                 scaled_time = scaled_time,
                 stringsAsFactors = FALSE
             ),
-            time_course_display_lines = do.call(rbind, display_lines),
+            time_course_display_lines = display_line_table,
             time_course_effect_summary = effect_summary,
             time_course_cells = time_cells,
+            time_course_missing_cells = time_cells[
+                time_cells$count == 0L,
+                ,
+                drop = FALSE
+            ],
+            time_course_missing_cell_count = as.integer(sum(
+                time_cells$count == 0L
+            )),
+            time_course_display_state = display_state,
             time_course_resample_rankings = resample_ranks$rankings,
             time_course_rank_summary = resample_ranks$summary,
             resampling_plan = plan

@@ -101,6 +101,10 @@ test_that("repeated time course fits the registered random-slope strategy", {
     partial_atlas <- atlas
     partial_atlas@provenance$time_course_rank_summary$n_complete_searches <-
         rep(8L, 2L)
+    partial_atlas@provenance$time_course_display_state$complete_searches <-
+        8L
+    partial_atlas@provenance$time_course_display_state$partial_resampling <-
+        TRUE
     partial_view <- visual_evidence(partial_atlas)
     expect_identical(visual_evidence_state(partial_view), "partial")
     expect_match(
@@ -350,6 +354,25 @@ test_that("irregular schedules and dropout remain visible by subject", {
             atlas
         )$time_course_observations$subject) >= 3L
     ))
+    view <- visual_evidence(atlas)
+    expect_identical(
+        atlas_provenance(atlas)$time_course_dropout_subject_count,
+        2L
+    )
+    expect_identical(
+        nrow(visual_evidence_display(view, "dropout_points")),
+        4L
+    )
+    expect_match(
+        visual_evidence_caption(view),
+        "2 subject endpoints"
+    )
+    invalid_dropout_count <- atlas
+    invalid_dropout_count@provenance$time_course_dropout_subject_count <- 4L
+    expect_error(
+        validObject(invalid_dropout_count),
+        "dropout endpoint evidence is invalid"
+    )
     expect_s3_class(plot(atlas), "ggplot")
 })
 
