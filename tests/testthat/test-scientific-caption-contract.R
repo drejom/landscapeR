@@ -221,7 +221,16 @@ test_that("renderer and exception registries are explicit and valid", {
         "caption-required"
     )
     pending <- registry[registry$policy == "migration-pending", ]
-    expect_equal(nrow(pending), 0L)
+    expect_identical(
+        pending$renderer,
+        c(
+            "plot_components",
+            "plot_spectrum",
+            "plot_decomposition",
+            "plot_potential"
+        )
+    )
+    expect_identical(pending$tracking_issue, rep(114L, 4L))
     expect_identical(
         names(landscapeR:::.scientific_caption_exceptions),
         c(

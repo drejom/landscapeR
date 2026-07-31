@@ -100,6 +100,31 @@ test_that("plot_potential reports an empty requested critical-point overlay", {
     expect_false(grepl("triangles mark", caption))
 })
 
+test_that("plot_potential describes wells without claiming barrier heights", {
+    std <- synthetic_control(
+        n = 30L, p = 100L, K = 1L, signal = 20, seed = 14L
+    )
+    std <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "svd")(), std)
+    )@value
+    std <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std
+    )@value
+    md <- metadata(std)
+    md$stage2$wells <- 0
+    md$stage2$barriers <- numeric()
+    metadata(std) <- md
+
+    plot <- plot_potential(std, show_critical_points = TRUE)
+    caption <- gsub("\\s+", " ", scientific_caption(plot))
+    expect_match(caption, "downward triangles mark stored wells")
+    expect_match(
+        caption,
+        "Critical-point classifications are point estimates without uncertainty"
+    )
+    expect_false(grepl("barrier heights are point estimates", caption))
+})
+
 test_that("plot_potential caption combines metadata and missing-rug evidence", {
     std <- synthetic_control(
         n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L

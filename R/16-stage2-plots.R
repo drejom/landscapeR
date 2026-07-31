@@ -305,14 +305,18 @@ plot_potential <- function(std, colour_by = NULL,
             critical_encoding
         ),
         estimand = "the density-derived quasi-potential along the selected component",
-        uncertainty = if (
-            isTRUE(show_critical_points) &&
-                (nrow(cp_df) || length(seg_rows))
-        ) {
-            paste0(
-                "Critical-point classifications and barrier heights are point ",
-                "estimates without uncertainty"
-            )
+        uncertainty = if (isTRUE(show_critical_points) && nrow(cp_df)) {
+            if (length(seg_rows)) {
+                paste0(
+                    "Critical-point classifications and barrier heights are ",
+                    "point estimates without uncertainty"
+                )
+            } else {
+                paste0(
+                    "Critical-point classifications are point estimates ",
+                    "without uncertainty"
+                )
+            }
         } else {
             NA_character_
         },

@@ -378,10 +378,14 @@
         "plot.ComponentAbstention"
     ),
     policy = c(
-        rep("caption-required", 10L)
+        "caption-required",
+        rep("migration-pending", 4L),
+        rep("caption-required", 5L)
     ),
     tracking_issue = c(
-        rep(NA_integer_, 10L)
+        NA_integer_,
+        rep(114L, 4L),
+        rep(NA_integer_, 5L)
     ),
     stringsAsFactors = FALSE
 )
