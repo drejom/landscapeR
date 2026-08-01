@@ -2,6 +2,7 @@ import os
 import stat
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -52,11 +53,12 @@ class PkgdownStackBalanceGuardTests(unittest.TestCase):
         self.assertIn("Site build failed", result.stderr)
 
     def test_concurrent_builds_use_distinct_logs(self):
+        existing_logs = set((REPO_ROOT / ".scratch").glob("pkgdown-build.*"))
         with tempfile.TemporaryDirectory() as temp_dir:
             fake_rscript = Path(temp_dir) / "Rscript"
             fake_rscript.write_text(
                 "#!/usr/bin/env bash\n"
-                "sleep 0.2\n"
+                "sleep 1\n"
                 "printf '%s\\n' 'site complete'\n",
                 encoding="utf-8",
             )
@@ -74,11 +76,28 @@ class PkgdownStackBalanceGuardTests(unittest.TestCase):
                 )
                 for _ in range(2)
             ]
+            deadline = time.monotonic() + 2
+            active_logs = set()
+            while time.monotonic() < deadline:
+                active_logs = (
+                    set((REPO_ROOT / ".scratch").glob("pkgdown-build.*"))
+                    - existing_logs
+                )
+                if len(active_logs) == 2:
+                    break
+                time.sleep(0.05)
             results = [process.communicate() for process in processes]
 
+        self.assertEqual(
+            len(active_logs), 2, f"expected two distinct active logs, got {active_logs}"
+        )
         for process, (stdout, stderr) in zip(processes, results):
             self.assertEqual(process.returncode, 0, stderr)
             self.assertIn("completed without protection-stack imbalance", stdout)
+        remaining_logs = (
+            set((REPO_ROOT / ".scratch").glob("pkgdown-build.*")) - existing_logs
+        )
+        self.assertEqual(remaining_logs, set())
 
 
 if __name__ == "__main__":
