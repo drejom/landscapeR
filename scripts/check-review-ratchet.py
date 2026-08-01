@@ -18,6 +18,7 @@ REQUIRED_SECTIONS = (
 )
 DISPOSITIONS = ("Unchanged", "Updated", "Corrected", "Deduplicated", "Graduated")
 PLACEHOLDERS = {"", "n/a", "na", "none", "tbd", "todo", "placeholder"}
+WHITESPACE_PREFIX_PLACEHOLDERS = {"n/a", "tbd", "todo", "placeholder"}
 MINIMUM_RATIONALE_LENGTH = 24
 
 
@@ -31,7 +32,16 @@ def substantive(value: str | None) -> bool:
         return False
     value = re.sub(r"<!--.*?-->", "", value, flags=re.DOTALL)
     normalized = re.sub(r"[`*_]", "", value).strip().lower()
-    return len(normalized) >= MINIMUM_RATIONALE_LENGTH and normalized not in PLACEHOLDERS
+    starts_with_placeholder = any(
+        normalized == token
+        or re.match(rf"^{re.escape(token)}\s*(?::|-|—)", normalized) is not None
+        or (
+            token in WHITESPACE_PREFIX_PLACEHOLDERS
+            and re.match(rf"^{re.escape(token)}\s", normalized) is not None
+        )
+        for token in PLACEHOLDERS if token
+    )
+    return len(normalized) >= MINIMUM_RATIONALE_LENGTH and not starts_with_placeholder
 
 
 def section(text: str, heading: str) -> str | None:

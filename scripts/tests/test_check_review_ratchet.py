@@ -152,6 +152,35 @@ class ReviewRatchetCheckerTests(unittest.TestCase):
         ))
         self.assertIn("substantive rationale", result.stderr)
 
+    def test_placeholder_prefixed_rationales_fail(self):
+        for placeholder in (
+            "N/A - this text only pads the rejected placeholder",
+            "TODO: replace this with a real rationale later",
+            "None — because no substantive explanation was supplied",
+        ):
+            with self.subTest(placeholder=placeholder):
+                body = VALID_BODY.replace(
+                    "Added the incident-backed rule earned by this pull request.",
+                    placeholder,
+                )
+                result = self.run_checker(VALID_DOCUMENT, body)
+                self.assertIn("substantive rationale", result.stderr)
+
+    def test_ordinary_prose_beginning_with_placeholder_words_passes(self):
+        for rationale in (
+            "None of the review findings changed the governed rule, so the "
+            "ratchet remains unchanged.",
+            "NA handling was unchanged because this pull request did not touch "
+            "the package data boundary.",
+        ):
+            with self.subTest(rationale=rationale):
+                body = VALID_BODY.replace(
+                    "Added the incident-backed rule earned by this pull request.",
+                    rationale,
+                )
+                result = self.run_checker(VALID_DOCUMENT, body)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_multiline_disposition_rationale_passes(self):
         multiline = VALID_BODY.replace(
             "**Ratchet rationale:** Added the incident-backed rule earned by this pull request.",
