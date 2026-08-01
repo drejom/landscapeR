@@ -44,7 +44,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Build pkgdown site
-        run: Rscript -e 'pkgdown::build_site()'
+        run: bash scripts/build-pkgdown-site.sh
 
       - name: Check pkgdown article images
         run: |
@@ -129,7 +129,7 @@ jobs:
           extra-packages: any::pkgdown
 
       - name: Build pkgdown site
-        run: Rscript -e 'pkgdown::build_site()'
+        run: bash scripts/build-pkgdown-site.sh
 
       - uses: actions/upload-pages-artifact@v3
         with:
