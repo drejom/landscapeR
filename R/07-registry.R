@@ -9,6 +9,24 @@
     paste(contract, name, sep = ":")
 }
 
+.normalize_strategy_identifier <- function(value, label) {
+    if (!is.character(value) || length(value) != 1L ||
+        is.na(value) || !nzchar(trimws(value))) {
+        .stop_landscapeR_validation(sprintf(
+            "%s must be a single non-empty character value",
+            label
+        ))
+    }
+    value <- trimws(value)
+    if (grepl(":", value, fixed = TRUE)) {
+        .stop_landscapeR_validation(sprintf(
+            "%s must not contain the reserved ':' registry delimiter",
+            label
+        ))
+    }
+    value
+}
+
 .is_stable_strategy_environment <- function(environment) {
     isNamespace(environment) ||
         identical(environment, baseenv())
@@ -226,8 +244,9 @@
 #'   Primitive functions are unsupported because their implementation state
 #'   cannot satisfy the registry fingerprint contract.
 #' @param replace logical; whether to deliberately replace a different
-#'   constructor already registered under the same key. Re-registering the
-#'   identical constructor is an idempotent no-op.
+#'   constructor already registered under the same key. Re-registering a
+#'   fingerprint-equivalent constructor, with the same code and
+#'   behavior-relevant captured state, is an idempotent no-op.
 #' @param reason non-empty character rationale required when \code{replace} is
 #'   \code{TRUE}; retained in registry provenance.
 #' @return invisible NULL
@@ -235,28 +254,8 @@
 register_strategy <- function(
     contract, name, constructor, replace = FALSE, reason = NULL
 ) {
-    if (!is.character(contract) || length(contract) != 1L ||
-        is.na(contract) || !nzchar(trimws(contract))) {
-        .stop_landscapeR_validation(
-            "contract must be a single non-empty character value"
-        )
-    }
-    if (grepl(":", contract, fixed = TRUE)) {
-        .stop_landscapeR_validation(
-            "contract must not contain the reserved ':' registry delimiter"
-        )
-    }
-    if (!is.character(name) || length(name) != 1L ||
-        is.na(name) || !nzchar(trimws(name))) {
-        .stop_landscapeR_validation(
-            "name must be a single non-empty character value"
-        )
-    }
-    if (grepl(":", name, fixed = TRUE)) {
-        .stop_landscapeR_validation(
-            "name must not contain the reserved ':' registry delimiter"
-        )
-    }
+    contract <- .normalize_strategy_identifier(contract, "contract")
+    name <- .normalize_strategy_identifier(name, "name")
     if (!is.function(constructor))
         .stop_landscapeR_validation("constructor must be a function")
     if (!is.logical(replace) || length(replace) != 1L || is.na(replace))
@@ -277,7 +276,7 @@ register_strategy <- function(
                 key
             ))
         }
-        if (identical(existing, constructor))
+        if (identical(registered_fingerprint, fingerprint))
             return(invisible(NULL))
         if (!replace) {
             .stop_strategy_registry_collision(
@@ -338,10 +337,14 @@ strategy_registration_history <- function(contract = NULL, name = NULL) {
     }
     out <- do.call(rbind, lapply(records, as.data.frame,
                                  stringsAsFactors = FALSE))
-    if (!is.null(contract))
+    if (!is.null(contract)) {
+        contract <- .normalize_strategy_identifier(contract, "contract")
         out <- out[out$contract %in% contract, , drop = FALSE]
-    if (!is.null(name))
+    }
+    if (!is.null(name)) {
+        name <- .normalize_strategy_identifier(name, "name")
         out <- out[out$name %in% name, , drop = FALSE]
+    }
     rownames(out) <- NULL
     out
 }
@@ -353,6 +356,8 @@ strategy_registration_history <- function(contract = NULL, name = NULL) {
 #' @return constructor function
 #' @export
 get_strategy <- function(contract, name) {
+    contract <- .normalize_strategy_identifier(contract, "contract")
+    name <- .normalize_strategy_identifier(name, "name")
     key <- .strategy_registry_key(contract, name)
     if (!exists(key, envir = .registry, inherits = FALSE))
         stop(sprintf(
@@ -369,7 +374,9 @@ get_strategy <- function(contract, name) {
 #' @export
 list_strategies <- function(contract = NULL) {
     keys <- ls(.registry, all.names = TRUE)
-    if (!is.null(contract))
+    if (!is.null(contract)) {
+        contract <- .normalize_strategy_identifier(contract, "contract")
         keys <- keys[startsWith(keys, paste0(contract, ":"))]
+    }
     keys
 }

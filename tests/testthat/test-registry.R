@@ -66,15 +66,21 @@ test_that("duplicate strategy registration is a typed non-mutating error", {
     )
 })
 
-test_that("identical strategy registration is an idempotent no-op", {
-    constructor <- function(p) list(type = "stable")
+test_that("fingerprint-equivalent registration is an idempotent no-op", {
+    constructor_factory <- function(type) {
+        force(type)
+        function(p) list(type = type)
+    }
+    constructor <- constructor_factory("stable")
     register_strategy("_IdempotentContract", "stable", constructor)
     before <- strategy_registration_history(
         "_IdempotentContract", "stable"
     )
 
+    equivalent_constructor <- constructor_factory("stable")
+    expect_false(identical(constructor, equivalent_constructor))
     expect_invisible(register_strategy(
-        "_IdempotentContract", "stable", constructor
+        "_IdempotentContract", "stable", equivalent_constructor
     ))
     after <- strategy_registration_history("_IdempotentContract", "stable")
 
@@ -83,6 +89,28 @@ test_that("identical strategy registration is an idempotent no-op", {
         get_strategy("_IdempotentContract", "stable"),
         constructor
     )
+})
+
+test_that("strategy identifiers have one whitespace-normalized identity", {
+    constructor <- function(p) list(type = "canonical")
+    register_strategy(
+        "  _WhitespaceContract  ",
+        "  canonical  ",
+        constructor
+    )
+    expect_identical(
+        get_strategy(" _WhitespaceContract ", " canonical "),
+        constructor
+    )
+    expect_identical(
+        list_strategies(" _WhitespaceContract "),
+        "_WhitespaceContract:canonical"
+    )
+    history <- strategy_registration_history(
+        " _WhitespaceContract ", " canonical "
+    )
+    expect_identical(history$contract, "_WhitespaceContract")
+    expect_identical(history$name, "canonical")
 })
 
 test_that("explicit replacement requires and retains a rationale", {

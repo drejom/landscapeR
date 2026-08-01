@@ -569,9 +569,10 @@ interactive software cannot alter a proposal or abstention.
 Method authors register an R closure under one `contract:name` key with
 `register_strategy()`. Keys are write-once by default: a different constructor
 under an existing key raises a typed collision error and leaves the accepted
-method unchanged, while re-registering the identical constructor is an
-idempotent no-op. Primitive functions are unsupported because they cannot meet
-the inspectable fingerprint contract.
+method unchanged, while re-registering a fingerprint-equivalent constructor
+with the same code and behavior-relevant captured state is an idempotent no-op.
+Primitive functions are unsupported because they cannot meet the inspectable
+fingerprint contract.
 
 A deliberate correction uses `replace = TRUE` with a non-empty rationale. The
 accepted registration and any replacement remain inspectable with

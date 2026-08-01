@@ -17,8 +17,9 @@ Primitive functions are unsupported because their implementation state
 cannot satisfy the registry fingerprint contract.}
 
 \item{replace}{logical; whether to deliberately replace a different
-constructor already registered under the same key. Re-registering the
-identical constructor is an idempotent no-op.}
+constructor already registered under the same key. Re-registering a
+fingerprint-equivalent constructor, with the same code and
+behavior-relevant captured state, is an idempotent no-op.}
 
 \item{reason}{non-empty character rationale required when \code{replace} is
 \code{TRUE}; retained in registry provenance.}
