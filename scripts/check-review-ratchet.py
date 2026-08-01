@@ -104,7 +104,9 @@ def validate_pr_body(path: Path) -> list[str]:
     if len(selected) != 1:
         errors.append("select exactly one review-ratchet disposition")
     rationale = re.search(
-        r"^\*\*Ratchet rationale:\*\*\s*(.*?)\s*$", ratchet, re.MULTILINE
+        r"^\*\*Ratchet rationale:\*\*\s*(.*?)\s*\Z",
+        ratchet,
+        flags=re.MULTILINE | re.DOTALL,
     )
     if not substantive(rationale.group(1) if rationale else None):
         errors.append("review-ratchet disposition requires a substantive rationale")

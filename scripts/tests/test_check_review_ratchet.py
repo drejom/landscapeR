@@ -132,6 +132,15 @@ class ReviewRatchetCheckerTests(unittest.TestCase):
         ))
         self.assertIn("substantive rationale", result.stderr)
 
+    def test_multiline_disposition_rationale_passes(self):
+        multiline = VALID_BODY.replace(
+            "**Ratchet rationale:** Added the incident-backed rule earned by this pull request.",
+            "**Ratchet rationale:**\nAdded the incident-backed rule earned by\n"
+            "this pull request after verifying the concrete review incident.",
+        )
+        result = self.run_checker(VALID_DOCUMENT, multiline)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

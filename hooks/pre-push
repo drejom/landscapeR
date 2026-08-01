@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-push: mirrors the CI check job.
+# pre-push: mirrors locally available CI checks. PR-body policy is CI-only.
 # Roadmap integrity, repository hygiene, and review ratchet always run; package
 # checks are scoped to changed files.
 #
