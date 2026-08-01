@@ -151,7 +151,10 @@ setMethod("visual_evidence", "MetadataAssociationAtlas", function(x) {
         ),
         estimand = "prespecified component-metadata association",
         design = x@sampling_design@kind,
-        uncertainty = "Stored intervals and diagnostics remain descriptive",
+        uncertainty = paste(
+            "Stored intervals and diagnostics remain descriptive.",
+            .association_multiplicity_caption(x@provenance)
+        ),
         threshold = "No acceptance threshold is applied",
         claim_boundary = paste(
             "The atlas is exploratory and does not nominate a biological",
@@ -212,7 +215,10 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         ),
         estimand = x@ranking$estimand[[1L]],
         design = x@provenance$sampling_design,
-        uncertainty = "Facet labels report stored effect rank and magnitude",
+        uncertainty = paste(
+            "Facet labels report stored effect rank and magnitude.",
+            .association_multiplicity_caption(x@provenance)
+        ),
         threshold = "No acceptance threshold is applied",
         claim_boundary = paste(
             "The proposal is exploratory and does not confirm biological",
@@ -446,7 +452,8 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     }
     resampling_account <- paste(
         "Facet labels report stored interaction intervals and",
-        "resampling recurrence"
+        "resampling recurrence.",
+        .association_multiplicity_caption(provenance)
     )
     if (partial_resampling) {
         resampling_account <- paste0(

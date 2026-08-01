@@ -98,6 +98,7 @@ test_that("cross-sectional binary metadata produces a typed association atlas", 
         "cross_sectional"
     )
     expect_identical(atlas_provenance(atlas)$dataset_id, "synthetic-control")
+    expect_holm_multiplicity(atlas)
 
     associations <- atlas_associations(atlas)
     expect_s3_class(associations, "data.frame")

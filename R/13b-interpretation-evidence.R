@@ -23,6 +23,61 @@ utils::globalVariables(c("metadata_field", "component_label"))
 .independent_time_evidence_version <- "independent-time-course-v1"
 .repeated_time_evidence_version <- "repeated-time-course-v1"
 
+.association_multiplicity_contract <- function() {
+    list(
+        method = "holm",
+        method_label = "Holm",
+        family_columns = c("metadata_field", "evidence_variant"),
+        family_description = paste(
+            "declared components within each metadata field and",
+            "evidence variant"
+        )
+    )
+}
+
+.adjust_association_multiplicity <- function(associations) {
+    contract <- .association_multiplicity_contract()
+    required <- c(contract$family_columns, "p_value", "q_value")
+    missing <- setdiff(required, names(associations))
+    if (length(missing)) {
+        .stop_landscapeR_validation(paste(
+            "association multiplicity input is missing:",
+            paste(missing, collapse = ", ")
+        ))
+    }
+    if (!nrow(associations)) return(associations)
+
+    family <- do.call(
+        interaction,
+        c(
+            lapply(associations[contract$family_columns], as.character),
+            list(drop = TRUE, lex.order = TRUE)
+        )
+    )
+    for (family_level in levels(family)) {
+        index <- family == family_level
+        associations$q_value[index] <- stats::p.adjust(
+            associations$p_value[index],
+            method = contract$method
+        )
+    }
+    associations
+}
+
+.association_multiplicity_caption <- function(provenance) {
+    contract <- provenance$multiplicity
+    if (!is.list(contract) ||
+        !.is_scalar_nonempty_text(contract$method_label) ||
+        !.is_scalar_nonempty_text(contract$family_description)) {
+        return("Multiplicity provenance is unavailable")
+    }
+    sprintf(
+        "Raw p-values are retained; q-values use %s correction across %s",
+        contract$method_label,
+        contract$family_description
+    )
+}
+
 .interpretation_evidence_versions <- c(
     cross_sectional = .cross_sectional_evidence_version,
     independent_time_course = .independent_time_evidence_version,

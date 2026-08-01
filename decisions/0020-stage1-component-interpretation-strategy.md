@@ -3,7 +3,7 @@
 **Stage:** 1 / cross-cutting
 **Status:** accepted
 **Date:** 2026-07-24
-**Amended:** 2026-07-29
+**Amended:** 2026-07-31
 
 ## Context
 
@@ -35,7 +35,7 @@ analysis as calibration or accepted scientific evidence.
 | Near ties | Calibrated effect-equivalent candidate set | Numerically forcing a unique winner |
 | Axis validity | Separate identifiability and stability gate | Treating a large biological effect as sufficient; forcing an axis out of a stable rotating subspace |
 | Bootstrap alignment | Joint optimal one-to-one matching in strategy-declared geometry | Greedy matching; forced weak matches; Procrustes rotation |
-| Multiplicity | Descriptive BH adjustment plus proposal-level maximum-effect null | Claiming outcome-blind decomposition removes the component search |
+| Multiplicity | Descriptive Holm adjustment plus proposal-level maximum-effect null | Claiming outcome-blind decomposition removes the component search |
 | Human decision | Separate auditable confirmation call | Implicit confirmation inside proposal generation; human override of mathematical abstention |
 | Visualization | Typed evidence with canonical ggplot2 decision surfaces | Plot-owned calculations; mandatory interactive dependency |
 
@@ -242,10 +242,12 @@ calibrated near-tie margin may define an **effect-equivalent candidate set**.
 Stability does not enter an opaque composite score and cannot privately rerank
 components.
 
-The descriptive atlas reports raw p-values and BH-adjusted q-values across the
-eligible component family for each metadata field. A proposal for one
-predeclared target additionally reports the null distribution of the maximum
-absolute target effect across all eligible components.
+The descriptive atlas reports unchanged raw p-values and Holm-adjusted q-values
+across the declared component family for each metadata field and evidence
+variant. This family definition and correction method apply consistently to
+cross-sectional, independent-time-course, and repeated-time-course designs. A
+proposal for one predeclared target additionally reports the null distribution
+of the maximum absolute target effect across all eligible components.
 
 Permutation is permitted only under defensible exchangeability:
 

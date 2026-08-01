@@ -1509,10 +1509,7 @@ associate_metadata <- function(
         field_rows <- Filter(Negate(is.null), field_rows)
         if (length(field_rows)) {
             field_table <- do.call(rbind, field_rows)
-            field_table$q_value <- stats::p.adjust(
-                field_table$p_value,
-                method = "BH"
-            )
+            field_table <- .adjust_association_multiplicity(field_table)
             association_rows[[length(association_rows) + 1L]] <- field_table
             if (!is.null(specification) &&
                 identical(field, specification@target_field) &&
@@ -1593,10 +1590,8 @@ associate_metadata <- function(
                 adjusted_rows <- Filter(Negate(is.null), adjusted_rows)
                 if (length(adjusted_rows)) {
                     adjusted_table <- do.call(rbind, adjusted_rows)
-                    adjusted_table$q_value <- stats::p.adjust(
-                        adjusted_table$p_value,
-                        method = "BH"
-                    )
+                    adjusted_table <-
+                        .adjust_association_multiplicity(adjusted_table)
                     association_rows[[length(association_rows) + 1L]] <-
                         adjusted_table
                 }
@@ -1691,6 +1686,7 @@ associate_metadata <- function(
             state_space_digest = state_space_digest,
             dataset_id = dataset_id,
             exchangeability = exchangeability,
+            multiplicity = .association_multiplicity_contract(),
             interpretation_module = .cross_sectional_evidence_version,
             visual_evidence = stored_visual_evidence
         ), specification_provenance)
