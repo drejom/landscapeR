@@ -140,7 +140,8 @@ stage1_development_manifest <- function() {
 }
 
 .stage1_init_workspace <- function(workspace, identity, tasks) {
-    workspace <- if (is.null(workspace)) tempfile("landscapeR-stage1-", tmpdir = tempdir()) else workspace
+    workspace <- if (is.null(workspace))
+        tempfile("landscapeR-stage1-", tmpdir = .landscapeR_scratch_root()) else workspace
     metadata_path <- .stage1_workspace_metadata_path(workspace)
     if (dir.exists(workspace)) {
         if (!file.exists(metadata_path))
@@ -452,7 +453,9 @@ stage1_benchmark_progress <- function(workspace) {
 
 #' Run the fast non-evidentiary Stage 1 development tier
 #'
-#' @param workspace optional local checkpoint workspace; defaults under [tempdir()].
+#' @param workspace optional local checkpoint workspace; defaults under the
+#'   repository `.scratch/` directory, configurable with the
+#'   `landscapeR.scratch_root` option.
 #' @param workers positive number of local worker processes.
 #' @param progress one of `"auto"`, `"bar"`, `"log"`, or `"none"`.
 #' @param keep_workspace retain local checkpoints after completion.
@@ -489,7 +492,9 @@ execute_stage1_benchmark_development <- function(workspace = NULL, workers = 1L,
 #'
 #' @param artifact_root directory in which to publish a new content-addressed artifact.
 #' @param workers positive number of Unix worker processes; use `1` for sequential execution.
-#' @param workspace optional local checkpoint workspace; defaults under [tempdir()].
+#' @param workspace optional local checkpoint workspace; defaults under the
+#'   repository `.scratch/` directory, configurable with the
+#'   `landscapeR.scratch_root` option.
 #' @param progress one of `"auto"`, `"bar"`, `"log"`, or `"none"`.
 #' @param keep_workspace retain local checkpoints after final artifact verification.
 #' @return path to the immutable artifact directory.

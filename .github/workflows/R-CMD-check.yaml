@@ -83,6 +83,9 @@ jobs:
           printf '%s' "$PR_BODY" > /tmp/pr_body.txt
           python3 scripts/check-figure-review.py /tmp/pr_body.txt
 
+      - name: Repository hygiene
+        run: bash scripts/check-repo-hygiene.sh
+
   pkgdown:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [R-CMD-check, lint]

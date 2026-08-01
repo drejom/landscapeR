@@ -17,7 +17,9 @@ execute_stage1_benchmark_full(
 
 \item{workers}{positive number of Unix worker processes; use \code{1} for sequential execution.}
 
-\item{workspace}{optional local checkpoint workspace; defaults under \code{\link[=tempdir]{tempdir()}}.}
+\item{workspace}{optional local checkpoint workspace; defaults under the
+repository \verb{.scratch/} directory, configurable with the
+\code{landscapeR.scratch_root} option.}
 
 \item{progress}{one of \code{"auto"}, \code{"bar"}, \code{"log"}, or \code{"none"}.}
 

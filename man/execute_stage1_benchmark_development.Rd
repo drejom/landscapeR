@@ -12,7 +12,9 @@ execute_stage1_benchmark_development(
 )
 }
 \arguments{
-\item{workspace}{optional local checkpoint workspace; defaults under \code{\link[=tempdir]{tempdir()}}.}
+\item{workspace}{optional local checkpoint workspace; defaults under the
+repository \verb{.scratch/} directory, configurable with the
+\code{landscapeR.scratch_root} option.}
 
 \item{workers}{positive number of local worker processes.}
 
