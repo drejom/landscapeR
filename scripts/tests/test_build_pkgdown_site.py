@@ -11,12 +11,15 @@ BUILD_SCRIPT = REPO_ROOT / "scripts" / "build-pkgdown-site.sh"
 
 
 class PkgdownStackBalanceGuardTests(unittest.TestCase):
-    def run_with_fake_rscript(self, output: str) -> subprocess.CompletedProcess[str]:
+    def run_with_fake_rscript(
+        self, output: str, exit_code: int = 0
+    ) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as temp_dir:
             fake_rscript = Path(temp_dir) / "Rscript"
             fake_rscript.write_text(
                 "#!/usr/bin/env bash\n"
-                f"printf '%s\\n' {output!r}\n",
+                f"printf '%s\\n' {output!r}\n"
+                f"exit {exit_code}\n",
                 encoding="utf-8",
             )
             fake_rscript.chmod(fake_rscript.stat().st_mode | stat.S_IXUSR)
@@ -42,6 +45,11 @@ class PkgdownStackBalanceGuardTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("protection-stack imbalance detected", result.stderr)
+
+    def test_underlying_build_failure_is_propagated(self):
+        result = self.run_with_fake_rscript("installation failed", exit_code=7)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Site build failed", result.stderr)
 
 
 if __name__ == "__main__":

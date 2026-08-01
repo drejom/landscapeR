@@ -17,7 +17,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
 cd "$REPO_ROOT"
 
 mkdir -p .scratch
-LOG_FILE=$(mktemp .scratch/pkgdown-build.XXXXXX.log)
+LOG_FILE=$(mktemp .scratch/pkgdown-build.XXXXXX)
 trap 'rm -f "$LOG_FILE"' EXIT
 
 if ! Rscript -e '
