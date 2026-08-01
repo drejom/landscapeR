@@ -501,7 +501,7 @@ bodies may state dependencies but do not change this ordering.
 | [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | conditional — blocked by #132/#133 |
 | [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | conditional — blocked by #134 |
 | [#138](https://github.com/drejom/landscapeR/issues/138) | Cross-cutting governance — incident-backed review ratchet | complete |
-| [#144](https://github.com/drejom/landscapeR/issues/144) | Maintenance — pkgdown stack-imbalance warnings | active — stop-the-line before #123 |
+| [#144](https://github.com/drejom/landscapeR/issues/144) | Maintenance — pkgdown stack-imbalance warnings | complete on merge; then resume #123 |
 <!-- issue-map:end -->
 
 ---

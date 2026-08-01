@@ -67,7 +67,7 @@
 - [ ] `devtools::test()` passes locally
 - [ ] `R CMD check --no-manual` produces no new warnings
 - [ ] PR-policy checker tests pass
-- [ ] `pkgdown::build_site()` passes when current documentation changed
+- [ ] `bash scripts/build-pkgdown-site.sh` passes when current documentation changed
 - [ ] Every acceptance-threshold figure has a labelled threshold line
 - [ ] Figure axes and labels are human-readable
 - [ ] Scientific captions state what is plotted, what any threshold means, and what the reader should conclude

@@ -66,7 +66,7 @@ Rscript -e 'devtools::test(stop_on_failure = TRUE)'
 python3 scripts/check-adr-coverage.py
 bash scripts/check-registry-compliance.sh
 python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
-Rscript -e 'pkgdown::build_site()'
+bash scripts/build-pkgdown-site.sh
 ```
 
 For package-level verification, mirror CI:
