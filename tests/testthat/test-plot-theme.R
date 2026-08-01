@@ -20,6 +20,15 @@ test_that("publication visual helpers use typed validation", {
     for (invalid_call in invalid_calls) {
         expect_error(invalid_call(), class = "landscapeR_validation_error")
     }
+
+    expect_error(
+        save_landscapeR_plot(
+            ggplot2::ggplot(data.frame(x = 1, y = 1), ggplot2::aes(x, y)) +
+                ggplot2::geom_point(),
+            tempfile(fileext = ".unsupported")
+        ),
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("landscapeR palettes have stable semantic roles", {

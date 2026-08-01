@@ -372,7 +372,7 @@ save_landscapeR_plot <- function(
         .stop_landscapeR_validation("dpi must be one positive finite number")
     }
 
-    ggplot2::ggsave(
+    .with_landscapeR_validation(ggplot2::ggsave(
         filename = filename,
         plot = plot,
         width = width_mm,
@@ -381,6 +381,6 @@ save_landscapeR_plot <- function(
         dpi = dpi,
         bg = bg,
         ...
-    )
+    ))
     invisible(normalizePath(filename))
 }
