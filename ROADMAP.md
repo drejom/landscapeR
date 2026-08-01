@@ -206,11 +206,11 @@ interpretation lane lands.
 
 ### 4b. Audited architecture, correctness, and execution backlog
 
-The 2026-07-31 whole-codebase technical-debt audit and follow-up architecture
-and HPC reviews are fully represented by issues. They do not displace #67 as
-the single next task. Agent-ready items may run only as a deliberately opened
-parallel maintenance lane; issue labels do not independently change this
-schedule.
+The [2026-07-31 whole-codebase technical-debt audit](docs/archive/technical-debt-audit-2026-07-31.md)
+and follow-up architecture and HPC reviews are fully represented by issues.
+They do not displace #67 as the single next task. Agent-ready items may run only
+as a deliberately opened parallel maintenance lane; issue labels do not
+independently change this schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -251,9 +251,9 @@ provenance, and artifact/evidence migration policy.
 **Governance and contributor safeguards:** #129 resolves duplicate ADR
 authority and status drift; #130 makes package-test selection automatic for
 source-affecting changes; #131 removes duplicated repository authorities and
-documents hook and subsystem safeguards. ADR 0021 governs repository hygiene
-and ephemeral artifacts; it is a decision and enforcement change rather than a
-separate scheduled implementation issue.
+documents hook and subsystem safeguards. Repository hygiene and ephemeral
+artifacts are handled by a separate reviewed cross-cutting decision and
+enforcement change rather than a scheduled implementation issue in this PR.
 
 **Scalable execution:** #57 is the future-backed repetition and run-level RNG
 prefactor. #132 migrates association bootstrap/permutation workloads and #133
@@ -272,7 +272,7 @@ backend through the same future seam.
 | Stage 1 publication and K=1 identifiability coverage | #125, #126 |
 | Core construction, provenance, stage completion and migration | #127, #95, #96, #97 |
 | Projection invariants and AML discovery/validation separation | #24 |
-| ADR authority, CI selection, contributor/repository governance | #129, #130, #131, ADR 0021 |
+| ADR authority, CI selection, contributor/repository governance | #129, #130, #131; separate repository-hygiene decision |
 | Future-backed repetition, deterministic RNG, HPC and orchestration | #57, #132, #133, #134, #135 |
 
 ### 5. AML-shaped synthetic control — #67 calibration lane
