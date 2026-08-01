@@ -124,8 +124,9 @@ plot(atlas)
 
 The table keeps unadjusted and adjusted rows separate. Each row records its
 complete-cohort and design digests, missingness, tied score and target counts,
-bootstrap interval, failed-resample count, raw p-value, and within-field BH
-q-value. Bootstrap draws preserve discrete target and nuisance-cell counts and
+bootstrap interval, failed-resample count, raw p-value, and Holm-adjusted
+q-value. The correction family is the declared component set within each
+metadata field and evidence variant. Bootstrap draws preserve discrete target and nuisance-cell counts and
 resample complete independent biological units rather than features or
 technical replicates.
 

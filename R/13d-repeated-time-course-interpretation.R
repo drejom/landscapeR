@@ -1078,13 +1078,7 @@ register_strategy(
         )
     }
     associations <- do.call(rbind, rows)
-    for (variant in unique(associations$evidence_variant)) {
-        index <- associations$evidence_variant == variant
-        associations$q_value[index] <- stats::p.adjust(
-            associations$p_value[index],
-            method = "BH"
-        )
-    }
+    associations <- .adjust_association_multiplicity(associations)
     observations <- do.call(rbind, observations)
     rownames(associations) <- NULL
     rownames(observations) <- NULL
@@ -1217,6 +1211,7 @@ register_strategy(
             state_space_digest = state_space_digest,
             dataset_id = dataset_id,
             exchangeability = exchangeability,
+            multiplicity = .association_multiplicity_contract(),
             analysis_specification_id = specification@id,
             analysis_specification_digest = canonical_digest(specification),
             target_field = specification@target_field,

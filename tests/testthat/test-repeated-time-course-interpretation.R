@@ -27,6 +27,7 @@ test_that("repeated time course fits the registered random-slope strategy", {
     )
     expect_identical(provenance$model_reml, FALSE)
     expect_identical(provenance$model_na_action, "stats::na.fail")
+    expect_holm_multiplicity(atlas)
     expect_identical(
         provenance$scientific_random_formula,
         "(1 + scaled_time | subject)"
@@ -377,6 +378,7 @@ test_that("irregular schedules and dropout remain visible by subject", {
     partial_caption <- visual_evidence_caption(
         visual_evidence(partial_dropout)
     )
+    partial_caption <- gsub("\\s+", " ", partial_caption)
     expect_match(partial_caption, "2 subject endpoints")
     expect_match(
         partial_caption,
@@ -388,6 +390,7 @@ test_that("irregular schedules and dropout remain visible by subject", {
     missing_caption <- visual_evidence_caption(
         visual_evidence(missing_dropout)
     )
+    missing_caption <- gsub("\\s+", " ", missing_caption)
     expect_match(missing_caption, "2 subject endpoints")
     expect_match(
         missing_caption,

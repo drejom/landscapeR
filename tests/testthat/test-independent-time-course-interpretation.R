@@ -42,6 +42,7 @@ test_that("independent time course fits the declared standardized interaction", 
     )
     expect_true(validObject(atlas))
     expect_identical(atlas_provenance(atlas)$model_engine, "stats::lm")
+    expect_holm_multiplicity(atlas)
     expect_match(
         atlas_provenance(atlas)$scientific_model_formula_adjusted,
         "condition \\* scaled_time"

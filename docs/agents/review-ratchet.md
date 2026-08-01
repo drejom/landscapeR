@@ -55,6 +55,14 @@ semantic variants instead of requiring one exact bullet, spacing, or case style.
 **Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) initially
 rejected valid indented and alternate-bullet disposition checkboxes.
 
+### RR-004 — Monitor asynchronous review gates
+
+After requesting an asynchronous reviewer, keep an active monitor on the pull
+request. Do not end with a static “pending” report and rely on the user to poll.
+
+**Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) required
+repeated manual status prompts while successive Copilot reviews were pending.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A
