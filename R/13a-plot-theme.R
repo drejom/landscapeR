@@ -175,10 +175,10 @@ landscapeR_palette <- function(
 }
 
 .landscapeR_call_scale <- function(scale_fun, defaults, dots) {
-    do.call(
+    .with_landscapeR_validation(do.call(
         scale_fun,
         utils::modifyList(defaults, dots, keep.null = TRUE)
-    )
+    ))
 }
 
 .landscapeR_scale <- function(aesthetic, palette, reference_level = NULL,

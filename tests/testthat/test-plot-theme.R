@@ -29,6 +29,14 @@ test_that("publication visual helpers use typed validation", {
         ),
         class = "landscapeR_validation_error"
     )
+    expect_error(
+        scale_colour_landscapeR(
+            "categorical",
+            definitely_not_an_argument = 1
+        ),
+        "unused argument",
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("landscapeR palettes have stable semantic roles", {
