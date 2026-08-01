@@ -389,3 +389,134 @@ test_that("kde_logdensity rejects unspecified and longitudinal designs", {
     expect_equal(res_longitudinal@status, "failure")
     expect_match(res_longitudinal@reason, "longitudinal")
 })
+
+# ---------------------------------------------------------------------------
+# Issue #123: sweepable bandwidth and typed KDE failures
+# ---------------------------------------------------------------------------
+
+test_that("kde_logdensity rejects invalid estimator configuration with typed failures", {
+    std <- potential_with_stage1()
+    ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+    cases <- list(
+        list(params = list(n_grid = 2L), diagnostic = "n_grid"),
+        list(params = list(n_grid = 32.5), diagnostic = "n_grid"),
+        list(params = list(poly_degree = -1L), diagnostic = "poly_degree"),
+        list(params = list(poly_degree = 2.5), diagnostic = "poly_degree"),
+        list(params = list(bandwidth_method = "unknown"), diagnostic = "bandwidth_method"),
+        list(
+            params = list(bandwidth_method = "explicit"),
+            diagnostic = "bandwidth_value"
+        ),
+        list(
+            params = list(bandwidth_method = "explicit", bandwidth_value = 0),
+            diagnostic = "bandwidth_value"
+        ),
+        list(
+            params = list(bandwidth_method = "hpi", bandwidth_value = 0.2),
+            diagnostic = "bandwidth_value"
+        )
+    )
+
+    for (case in cases) {
+        result <- estimate_dynamics(ctor(params = case$params), std)
+        expect_s4_class(result, "StageResult")
+        expect_identical(result@status, "failure")
+        expect_match(result@reason, case$diagnostic, fixed = TRUE)
+    }
+})
+
+test_that("kde_logdensity returns a typed failure for degenerate coordinate support", {
+    std <- potential_with_stage1()
+    stage1 <- metadata(std)$stage1
+    stage1@coords_k <- lapply(
+        stage1@coords_k,
+        function(coords) matrix(1, nrow = nrow(coords), ncol = ncol(coords))
+    )
+    metadata(std)$stage1 <- stage1
+
+    result <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(),
+        std
+    )
+
+    expect_s4_class(result, "StageResult")
+    expect_identical(result@status, "failure")
+    expect_match(result@reason, "coordinate support", fixed = TRUE)
+})
+
+test_that("kde_logdensity wraps bandwidth and density backend failures", {
+    ctor <- get_strategy("DynamicsEstimator", "kde_logdensity")
+    bandwidth_data <- potential_with_stage1(n = 5L)
+    stage1 <- metadata(bandwidth_data)$stage1
+    stage1@coords_k <- list(matrix((0:4) * 1e-300, ncol = 1L))
+    metadata(bandwidth_data)$stage1 <- stage1
+
+    bandwidth_result <- estimate_dynamics(ctor(), bandwidth_data)
+    expect_s4_class(bandwidth_result, "StageResult")
+    expect_identical(bandwidth_result@status, "failure")
+    expect_identical(
+        bandwidth_result@reason,
+        paste0(
+            "estimate_dynamics: KDE bandwidth selection failed for ",
+            "bandwidth_method = 'hpi'."
+        )
+    )
+
+    density_result <- testthat::with_mocked_bindings(
+        estimate_dynamics(
+            ctor(params = list(
+                bandwidth_method = "explicit",
+                bandwidth_value = 0.25
+            )),
+            potential_with_stage1(n = 20L)
+        ),
+        kde = function(...) stop("backend detail must not escape"),
+        .package = "ks"
+    )
+    expect_s4_class(density_result, "StageResult")
+    expect_identical(density_result@status, "failure")
+    expect_identical(
+        density_result@reason,
+        "estimate_dynamics: KDE density estimation failed."
+    )
+})
+
+test_that("explicit KDE bandwidth is fitted and recorded for Stage 0 sweeps", {
+    std <- potential_with_stage1(n = 80L, seed = 123L)
+    strategy <- get_strategy("DynamicsEstimator", "kde_logdensity")(
+        params = list(bandwidth_method = "explicit", bandwidth_value = 0.25)
+    )
+
+    result <- estimate_dynamics(strategy, std)
+
+    expect_identical(result@status, "success")
+    stage2 <- metadata(result@value)$stage2
+    expect_identical(stage2$bandwidth_method, "explicit")
+    expect_identical(stage2$bandwidth_value, 0.25)
+    expect_identical(stage2$h_bandwidth, 0.25)
+    expect_identical(stage2$params$bandwidth_method, "explicit")
+    expect_identical(stage2$params$bandwidth_value, 0.25)
+    expect_identical(result@provenance[[1L]]@params$bandwidth_method, "explicit")
+    expect_identical(result@provenance[[1L]]@params$bandwidth_value, 0.25)
+})
+
+test_that("default hpi bandwidth remains deterministic and records its resolved value", {
+    std <- potential_with_stage1(n = 80L, seed = 124L)
+    strategy <- get_strategy("DynamicsEstimator", "kde_logdensity")()
+
+    first <- estimate_dynamics(strategy, std)
+    second <- estimate_dynamics(strategy, std)
+
+    expect_identical(first@status, "success")
+    expect_identical(second@status, "success")
+    first_stage2 <- metadata(first@value)$stage2
+    second_stage2 <- metadata(second@value)$stage2
+    expect_identical(first_stage2$bandwidth_method, "hpi")
+    expect_identical(first_stage2$bandwidth_value, first_stage2$h_bandwidth)
+    expect_identical(first_stage2$x, second_stage2$x)
+    expect_identical(first_stage2$U, second_stage2$U)
+    expect_identical(
+        first@provenance[[1L]]@params$bandwidth_value,
+        first_stage2$h_bandwidth
+    )
+})
