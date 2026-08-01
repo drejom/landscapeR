@@ -48,8 +48,8 @@ jobs:
 
       - name: Check pkgdown article images
         run: |
-          python3 scripts/check-pkgdown-images.py --site-root _site _site/articles/development-log.html
-          python3 scripts/check-pkgdown-images.py --site-root _site _site/articles/stage1-evidence.html
+          python3 scripts/check-pkgdown-images.py --site-root .scratch/site .scratch/site/articles/development-log.html
+          python3 scripts/check-pkgdown-images.py --site-root .scratch/site .scratch/site/articles/stage1-evidence.html
 
   lint:
     runs-on: ubuntu-latest
@@ -122,7 +122,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: .scratch/site
 
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -1,7 +1,7 @@
 # Documentation map
 
 This directory contains **source documentation only**. Generated pkgdown output
-is built under `_site/` and deployed by CI; it is not committed here.
+is built under `.scratch/site/` and deployed by CI; it is not committed here.
 
 ## Authority and purpose
 
@@ -36,8 +36,8 @@ milestones should remain deliberately sketched until their decisions are due.
 
 ## Generated documentation
 
-The authoritative pkgdown configuration writes to `_site/`. The CI workflow
-builds and checks that site on pull requests and deploys it from `main`.
+The authoritative pkgdown configuration writes to `.scratch/site/`. The CI
+workflow builds and checks that site on pull requests and deploys it from `main`.
 Historical generated files under `docs/` were removed because they duplicated
 root/source documents, obscured ownership, and mixed build output with planning
 records.
