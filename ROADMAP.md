@@ -235,8 +235,9 @@ sole scientific next task, #67.
 
 **Review memory:** #138 established the incident-backed Ratchet Principle before
 the audited backlog proceeded, so review knowledge earned by #119 onward remains
-available to later cold-start agents. #119, #120, and #121 have landed; #122 is
-the active maintenance task and #123 becomes active when #122 merges.
+available to later cold-start agents. #119 through #122 have landed. #144 is a
+stop-the-line documentation-toolchain investigation opened from the #122 merge
+evidence; resolve it before returning to the ordered maintenance lane at #123.
 
 **Scientific correctness and safety:** #119 centralizes the ADR-declared Holm
 correction; #120 protects registry identity; #121 hardens the legacy HO-GSVD
@@ -500,6 +501,7 @@ bodies may state dependencies but do not change this ordering.
 | [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | conditional — blocked by #132/#133 |
 | [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | conditional — blocked by #134 |
 | [#138](https://github.com/drejom/landscapeR/issues/138) | Cross-cutting governance — incident-backed review ratchet | complete |
+| [#144](https://github.com/drejom/landscapeR/issues/144) | Maintenance — pkgdown stack-imbalance warnings | active — stop-the-line before #123 |
 <!-- issue-map:end -->
 
 ---
