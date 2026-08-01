@@ -42,6 +42,163 @@ test_that("hogsvd_prereduced returns stage_success", {
     expect_equal(result@status, "success")
 })
 
+make_hogsvd_test_data <- function(feature_counts = c(8L, 8L),
+                                  non_finite = FALSE,
+                                  second_feature_ids = NULL,
+                                  scale_factor = 1) {
+    set.seed(121L)
+    sample_ids <- paste0("s", seq_len(6L))
+    experiments <- lapply(seq_along(feature_counts), function(i) {
+        values <- matrix(
+            scale_factor * stats::rnorm(
+                feature_counts[[i]] * length(sample_ids)
+            ),
+            nrow = feature_counts[[i]],
+            dimnames = list(
+                paste0("g", seq_len(feature_counts[[i]])), sample_ids
+            )
+        )
+        if (i == 2L && !is.null(second_feature_ids))
+            rownames(values) <- second_feature_ids
+        if (non_finite && i == 2L) values[[1L]] <- NA_real_
+        SummarizedExperiment::SummarizedExperiment(
+            assays = list(counts = values)
+        )
+    })
+    names(experiments) <- paste0("layer", seq_along(experiments))
+    mae <- MultiAssayExperiment::MultiAssayExperiment(
+        experiments = MultiAssayExperiment::ExperimentList(experiments),
+        colData = S4Vectors::DataFrame(row.names = sample_ids)
+    )
+    as(mae, "StateTransitionData")
+}
+
+test_that("legacy HO-GSVD adapters expose supported and unsupported outcomes", {
+    cases <- list(
+        supported = make_hogsvd_test_data(),
+        heterogeneous_features = make_hogsvd_test_data(c(8L, 7L)),
+        non_finite = make_hogsvd_test_data(non_finite = TRUE)
+    )
+
+    for (strategy_name in c("hogsvd_averaged", "hogsvd_prereduced")) {
+        ctor <- get_strategy("Decomposer", strategy_name)
+        supported <- suppressWarnings(decompose(ctor(), cases$supported))
+        heterogeneous <- decompose(ctor(), cases$heterogeneous_features)
+        non_finite <- decompose(ctor(), cases$non_finite)
+
+        expect_equal(supported@status, "success", info = strategy_name)
+        expect_equal(heterogeneous@status, "failure", info = strategy_name)
+        expect_match(heterogeneous@reason, "heterogeneous feature spaces")
+        expect_equal(non_finite@status, "failure", info = strategy_name)
+        expect_match(non_finite@reason, "finite numeric")
+    }
+})
+
+test_that("legacy HO-GSVD BBP warnings are stored and emitted on one line", {
+    std <- make_hogsvd_test_data(scale_factor = 1e-6)
+    for (strategy_name in c("hogsvd_averaged", "hogsvd_prereduced")) {
+        ctor <- get_strategy("Decomposer", strategy_name)
+        emitted <- NULL
+        result <- withCallingHandlers(
+            decompose(ctor(), std),
+            warning = function(w) {
+                emitted <<- c(emitted, conditionMessage(w))
+                invokeRestart("muffleWarning")
+            }
+        )
+        stored <- dr_warnings(metadata(result@value)$stage1)
+        expect_length(stored, 1L)
+        expect_identical(emitted, stored)
+        expect_match(stored, "\\(n=6, p=8\\)")
+        expect_false(any(grepl("\n", stored, fixed = TRUE)))
+        expect_false(any(grepl("\r", stored, fixed = TRUE)))
+    }
+})
+
+test_that("legacy HO-GSVD adapters require identical ordered feature identities", {
+    cases <- list(
+        different = paste0("other", seq_len(8L)),
+        reordered = rev(paste0("g", seq_len(8L))),
+        duplicated = rep("g", 8L)
+    )
+    for (strategy_name in c("hogsvd_averaged", "hogsvd_prereduced")) {
+        ctor <- get_strategy("Decomposer", strategy_name)
+        for (feature_ids in cases) {
+            result <- decompose(
+                ctor(), make_hogsvd_test_data(second_feature_ids = feature_ids)
+            )
+            expect_equal(result@status, "failure", info = strategy_name)
+            expect_match(result@reason, "identical, unique, ordered")
+        }
+    }
+})
+
+test_that("legacy HO-GSVD adapters validate shared parameters consistently", {
+    std <- make_hogsvd_test_data()
+    bad_params <- list(
+        list(center = NA),
+        list(k_components = 0L),
+        list(k_components = 1.5),
+        list(k_components = Inf)
+    )
+    for (strategy_name in c("hogsvd_averaged", "hogsvd_prereduced")) {
+        ctor <- get_strategy("Decomposer", strategy_name)
+        for (params in bad_params) {
+            result <- decompose(ctor(params), std)
+            expect_equal(result@status, "failure", info = strategy_name)
+        }
+    }
+})
+
+test_that("legacy HO-GSVD adapters type external numerical failures", {
+    testthat::local_mocked_bindings(
+        .preReduce = function(...) stop("numerical backend unavailable")
+    )
+    std <- make_hogsvd_test_data()
+    for (strategy_name in c("hogsvd_averaged", "hogsvd_prereduced")) {
+        ctor <- get_strategy("Decomposer", strategy_name)
+        result <- decompose(ctor(), std)
+        expect_s4_class(result, "StageResult")
+        expect_equal(result@status, "failure")
+        expect_match(result@reason, "numerical backend unavailable")
+    }
+})
+
+test_that("shared legacy execution preserves supported numerical results", {
+    std <- make_hogsvd_test_data()
+    matrices <- lapply(as.list(experiments(std)), function(e) t(assay(e)))
+    svds <- .preReduce(matrices, center = TRUE)
+
+    averaged <- suppressWarnings(decompose(
+        get_strategy("Decomposer", "hogsvd_averaged")(list(k_components = 3L)),
+        std
+    ))
+    sigma2 <- vapply(svds, function(s) s$d[[1L]]^2, numeric(1L))
+    expected <- drop(vapply(svds, function(s) s$v[, 1L], numeric(8L)) %*% sigma2)
+    expected <- expected / sqrt(sum(expected^2))
+    expect_equal(dr_V_star(metadata(averaged@value)$stage1), expected)
+
+    expected_V_k <- vapply(seq_len(3L), function(j) {
+        weights <- vapply(svds, function(s) s$d[[j]]^2, numeric(1L))
+        axis <- drop(vapply(svds, function(s) s$v[, j], numeric(8L)) %*% weights)
+        axis / sqrt(sum(axis^2))
+    }, numeric(8L))
+    expect_equal(metadata(averaged@value)$stage1@V_k, expected_V_k)
+
+    prereduced <- suppressWarnings(decompose(
+        get_strategy("Decomposer", "hogsvd_prereduced")(list(k_components = 3L)),
+        std
+    ))
+    best <- which.max(vapply(svds, function(s) s$d[[1L]], numeric(1L)))
+    expect_equal(
+        dr_V_star(metadata(prereduced@value)$stage1), svds[[best]]$v[, 1L]
+    )
+    expect_equal(
+        metadata(prereduced@value)$stage1@V_k,
+        svds[[best]]$v[, seq_len(3L), drop = FALSE]
+    )
+})
+
 test_that("hogsvd_averaged angle improves with signal (above BBP)", {
     # p=50, n=20: BBP = (20*50)^0.25 = 5.6; use signals 10 and 50
     bm_lo <- suppressWarnings(
