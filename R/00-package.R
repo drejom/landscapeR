@@ -22,6 +22,12 @@
         return(configured)
     }
 
+    if (!is.character(start) || length(start) != 1L || is.na(start) ||
+        !nzchar(start) || !dir.exists(start))
+        .stop_landscapeR_validation(
+            "scratch-root search start must be one existing directory",
+            call = sys.call(-1L)
+        )
     current <- normalizePath(start, mustWork = TRUE)
     repeat {
         git_marker <- file.path(current, ".git")

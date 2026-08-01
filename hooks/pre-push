@@ -13,6 +13,12 @@
 
 set -euo pipefail
 
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "[pre-push] Cannot resolve the repository root." >&2
+  exit 1
+}
+cd "$REPO_ROOT"
+
 # ── Collect pushed commits ──────────────────────────────────────────────────
 COMMITS=()
 while read -r local_ref local_sha _remote_ref remote_sha; do

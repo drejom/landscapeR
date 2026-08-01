@@ -56,6 +56,17 @@ test_that("scratch root resolves once for every package module", {
         "repository root could not be resolved",
         class = "landscapeR_validation_error"
     )
+    missing_directory <- file.path(outside_repository, "missing")
+    expect_error(
+        landscapeR:::.landscapeR_scratch_root(missing_directory),
+        "scratch-root search start must be one existing directory",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        landscapeR:::.landscapeR_scratch_root(character()),
+        "scratch-root search start must be one existing directory",
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("local development workspace resumes complete task payloads", {
