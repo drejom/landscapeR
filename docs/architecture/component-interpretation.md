@@ -46,6 +46,15 @@ observations. Atlases serialized before this contract remain readable.
 - Non-identifiable adjustment remains typed evidence and produces a typed
   abstention rather than a fallback.
 - Strategies remain registry adapters.
+- Strategy keys are write-once by default. Re-registering the identical
+  constructor is an idempotent no-op; a different constructor raises a typed
+  collision error without mutating the registry. Method authors who genuinely
+  need to replace an implementation must state that intent with
+  `replace = TRUE` and supply a non-empty rationale. The accepted registration
+  and replacement fingerprints and rationale remain inspectable through
+  `strategy_registration_history()`. Constructors must be R closures;
+  primitive functions cannot provide the inspectable implementation state this
+  fingerprint contract requires.
 - Evidence validation cannot select a component, promote a runner-up, change a
   scientific estimand, or create an acceptance threshold.
 
