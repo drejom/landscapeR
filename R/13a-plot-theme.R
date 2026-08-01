@@ -53,14 +53,14 @@ theme_landscapeR <- function(base_size = 7, base_family = "Helvetica",
                              square = TRUE) {
     if (!is.numeric(base_size) || length(base_size) != 1L ||
         !is.finite(base_size) || base_size <= 0) {
-        stop("base_size must be one positive finite number", call. = FALSE)
+        .stop_landscapeR_validation("base_size must be one positive finite number")
     }
     if (!is.character(base_family) || length(base_family) != 1L ||
         is.na(base_family) || !nzchar(base_family)) {
-        stop("base_family must be one non-empty string", call. = FALSE)
+        .stop_landscapeR_validation("base_family must be one non-empty string")
     }
     if (!is.logical(square) || length(square) != 1L || is.na(square)) {
-        stop("square must be TRUE or FALSE", call. = FALSE)
+        .stop_landscapeR_validation("square must be TRUE or FALSE")
     }
 
     ggplot2::theme_minimal(
@@ -130,7 +130,7 @@ landscapeR_palette <- function(
     palette = c("semantic", "binary", "categorical"),
     n = NULL
 ) {
-    palette <- match.arg(palette)
+    palette <- .with_landscapeR_validation(match.arg(palette))
     semantic <- c(
         ink = "#111111",
         focal = "#C43C39",
@@ -140,9 +140,8 @@ landscapeR_palette <- function(
     )
 
     if (!identical(palette, "categorical") && !is.null(n)) {
-        stop(
-            "n is supported only for the categorical palette",
-            call. = FALSE
+        .stop_landscapeR_validation(
+            "n is supported only for the categorical palette"
         )
     }
     if (identical(palette, "semantic")) return(semantic)
@@ -155,7 +154,7 @@ landscapeR_palette <- function(
         if (is.null(n)) n <- 8L
         if (!is.numeric(n) || length(n) != 1L || !is.finite(n) ||
             n != as.integer(n) || n < 1L) {
-            stop("n must be one positive integer", call. = FALSE)
+            .stop_landscapeR_validation("n must be one positive integer")
         }
         return(
             viridisLite::viridis(
@@ -169,7 +168,7 @@ landscapeR_palette <- function(
     if (is.null(n)) return(values)
     if (!is.numeric(n) || length(n) != 1L || !is.finite(n) ||
         n != as.integer(n) || n < 1L) {
-        stop("n must be one positive integer", call. = FALSE)
+        .stop_landscapeR_validation("n must be one positive integer")
     }
     n <- as.integer(n)
     values[seq_len(n)]
@@ -184,10 +183,10 @@ landscapeR_palette <- function(
 
 .landscapeR_scale <- function(aesthetic, palette, reference_level = NULL,
                               focal_level = NULL, ...) {
-    palette <- match.arg(
+    palette <- .with_landscapeR_validation(match.arg(
         palette,
         c("binary", "categorical", "continuous", "diverging")
-    )
+    ))
     semantic <- landscapeR_palette("semantic")
 
     if (identical(palette, "binary")) {
@@ -197,12 +196,11 @@ landscapeR_palette <- function(
         )
         if (!is.character(levels) || anyNA(levels) ||
             any(!nzchar(levels)) || identical(levels[[1L]], levels[[2L]])) {
-            stop(
+            .stop_landscapeR_validation(
                 paste0(
                     "binary scales require distinct non-empty ",
                     "reference_level and focal_level"
-                ),
-                call. = FALSE
+                )
             )
         }
         scale_fun <- if (identical(aesthetic, "colour")) {
@@ -295,7 +293,7 @@ scale_colour_landscapeR <- function(
 ) {
     .landscapeR_scale(
         "colour",
-        match.arg(palette),
+        .with_landscapeR_validation(match.arg(palette)),
         reference_level = reference_level,
         focal_level = focal_level,
         ...
@@ -323,7 +321,7 @@ scale_fill_landscapeR <- function(
 ) {
     .landscapeR_scale(
         "fill",
-        match.arg(palette),
+        .with_landscapeR_validation(match.arg(palette)),
         reference_level = reference_level,
         focal_level = focal_level,
         ...
@@ -356,21 +354,22 @@ save_landscapeR_plot <- function(
     ...
 ) {
     if (!inherits(plot, "ggplot")) {
-        stop("plot must be a ggplot object", call. = FALSE)
+        .stop_landscapeR_validation("plot must be a ggplot object")
     }
     if (!is.character(filename) || length(filename) != 1L ||
         is.na(filename) || !nzchar(filename)) {
-        stop("filename must be one non-empty path", call. = FALSE)
+        .stop_landscapeR_validation("filename must be one non-empty path")
     }
     dimensions <- c(width_mm = width_mm, height_mm = height_mm)
     if (!is.numeric(dimensions) || any(!is.finite(dimensions)) ||
         any(dimensions <= 0)) {
-        stop("width_mm and height_mm must be positive finite numbers",
-             call. = FALSE)
+        .stop_landscapeR_validation(
+            "width_mm and height_mm must be positive finite numbers"
+        )
     }
     if (!is.numeric(dpi) || length(dpi) != 1L || !is.finite(dpi) ||
         dpi <= 0) {
-        stop("dpi must be one positive finite number", call. = FALSE)
+        .stop_landscapeR_validation("dpi must be one positive finite number")
     }
 
     ggplot2::ggsave(

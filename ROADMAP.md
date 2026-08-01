@@ -487,8 +487,8 @@ bodies may state dependencies but do not change this ordering.
 | [#120](https://github.com/drejom/landscapeR/issues/120) | Audited integrity — strategy registry | complete on merge |
 | [#121](https://github.com/drejom/landscapeR/issues/121) | Audited safety — legacy HO-GSVD | complete on merge |
 | [#122](https://github.com/drejom/landscapeR/issues/122) | Audited safety — Stage 0 controls | complete on merge |
-| [#123](https://github.com/drejom/landscapeR/issues/123) | Audited safety — Stage 2 KDE | complete on merge; then resume #124 |
-| [#124](https://github.com/drejom/landscapeR/issues/124) | Audited safety — typed public validation | queued — agent-ready |
+| [#123](https://github.com/drejom/landscapeR/issues/123) | Audited safety — Stage 2 KDE | complete |
+| [#124](https://github.com/drejom/landscapeR/issues/124) | Audited safety — typed public validation | complete on merge; then resume #125 |
 | [#125](https://github.com/drejom/landscapeR/issues/125) | Audited assurance — Stage 1 artifact publication | queued — agent-ready |
 | [#126](https://github.com/drejom/landscapeR/issues/126) | Audited assurance — K=1 identifiability | queued — agent-ready |
 | [#127](https://github.com/drejom/landscapeR/issues/127) | Audited architecture — core construction and provenance | parked — coordinates with #95 |

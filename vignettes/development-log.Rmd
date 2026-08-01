@@ -156,6 +156,60 @@ The table also carries requested, completed, and failed cell totals. This is an
 implementation and calibration-input integrity contract, not evidence that a
 decomposition strategy is scientifically accepted.
 
+### Public validation boundary
+
+Invalid declarations at public construction seams share one catchable package
+condition. The matrix below is an implementation-safety proof: it records the
+condition class and stable diagnostic available to a caller, without implying
+scientific validation of any downstream analysis.
+
+```{r typed-public-validation-proof}
+validation_examples <- list(
+  "Analysis specification" = function() analysis_specification(
+    id = character(), target_field = "condition", target_type = "binary"
+  ),
+  "Publication theme" = function() theme_landscapeR(base_size = 0),
+  "Observed-time storage" = function() {
+    validation_data <- synthetic_control(
+      n = 4L, p = 5L, K = 2L, signal = 10, seed = 124L
+    )
+    colData(validation_data)$collection_day <- c(
+      "day 0", "day 1", "day 2", "day 3"
+    )
+    declare_sampling_design(
+      validation_data,
+      independent_time_course("collection_day")
+    )
+  }
+)
+validation_matrix <- do.call(rbind, lapply(
+  names(validation_examples),
+  function(boundary) {
+    condition <- tryCatch(
+      validation_examples[[boundary]](),
+      error = identity
+    )
+    data.frame(
+      `Public boundary` = boundary,
+      `Condition class` = class(condition)[[1L]],
+      Diagnostic = conditionMessage(condition),
+      check.names = FALSE
+    )
+  }
+))
+knitr::kable(
+  validation_matrix,
+  caption = paste(
+    "Public validation-boundary proof. Each invalid declaration is rejected",
+    "as landscapeR_validation_error; the observed-time diagnostic names the",
+    "affected metadata field before conversion is attempted."
+  )
+)
+```
+
+The table is a contract audit for software callers and contributors. It is not
+an empirical performance result and does not establish biological validity.
+
 ### Two-group control
 
 `synthetic_control()` generates two groups of samples with a planted signal

@@ -85,6 +85,20 @@ test_that("independent time-course declaration rejects degenerate time", {
     )
 })
 
+test_that("sampling design rejects unsupported time storage before coercion", {
+    d <- synthetic_control(n = 4L, p = 5L, K = 2L, signal = 10, seed = 83L)
+    colData(d)$collection_day <- c("day 0", "day 1", "day 2", "day 3")
+
+    expect_error(
+        declare_sampling_design(
+            d,
+            independent_time_course("collection_day")
+        ),
+        "time_col 'collection_day' must be numeric, Date/POSIXct, or ordered",
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("independent time-course constructor uses typed validation errors", {
     expect_error(
         independent_time_course(character()),
@@ -115,7 +129,8 @@ test_that("longitudinal declaration validates required colData structure", {
     colData(d_dup) <- cd_dup
     expect_error(
         declare_sampling_design(d_dup, longitudinal("mouse_id", "day")),
-        "duplicate subject/time"
+        "duplicate subject/time.*m1",
+        class = "landscapeR_validation_error"
     )
 })
 

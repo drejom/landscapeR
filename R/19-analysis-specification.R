@@ -316,7 +316,7 @@ analysis_specification <- function(
         if (is.null(value)) return(character(0L))
         if (!is.character(value) || length(value) != 1L ||
                 is.na(value) || !nzchar(trimws(value)))
-            stop(sprintf(
+            .stop_landscapeR_validation(sprintf(
                 "analysis_specification(): %s must be a single non-empty string",
                 argument
             ))
@@ -325,29 +325,29 @@ analysis_specification <- function(
 
     if (!is.character(id) || length(id) != 1L ||
             is.na(id) || !nzchar(trimws(id)))
-        stop("analysis_specification(): id must be a single non-empty character string")
+        .stop_landscapeR_validation("analysis_specification(): id must be a single non-empty character string")
     if (!is.character(target_field) || length(target_field) != 1L ||
             is.na(target_field) || !nzchar(trimws(target_field)))
-        stop("analysis_specification(): target_field must be a single non-empty string")
+        .stop_landscapeR_validation("analysis_specification(): target_field must be a single non-empty string")
     if (!is.character(target_type) || length(target_type) != 1L ||
             is.na(target_type) || !nzchar(trimws(target_type)))
-        stop("analysis_specification(): target_type must be a single non-empty string")
+        .stop_landscapeR_validation("analysis_specification(): target_type must be a single non-empty string")
 
-    claim_intent <- match.arg(claim_intent)
+    claim_intent <- .with_landscapeR_validation(match.arg(claim_intent))
     component <- if (is.null(selected_component)) {
         integer(0L)
     } else {
         if (!is.numeric(selected_component) || length(selected_component) != 1L ||
                 !is.finite(selected_component) ||
                 selected_component != as.integer(selected_component))
-            stop(paste0(
+            .stop_landscapeR_validation(paste0(
                 "analysis_specification(): selected_component must be a ",
                 "single integer"
             ))
         as.integer(selected_component)
     }
 
-    obj <- new("AnalysisSpecification",
+    obj <- .with_landscapeR_validation(new("AnalysisSpecification",
         version                 = "2.0.0",
         id                      = id,
         lifecycle               = as.character(lifecycle),
@@ -373,8 +373,8 @@ analysis_specification <- function(
         ),
         claim_intent            = claim_intent,
         migration_source_digest = character(0L)
-    )
-    validObject(obj)
+    ))
+    .with_landscapeR_validation(validObject(obj))
     obj
 }
 
@@ -438,20 +438,20 @@ migrate_analysis_specification <- function(
     analyst_rationale = NULL
 ) {
     if (!is(spec, "AnalysisSpecification"))
-        stop(paste0(
+        .stop_landscapeR_validation(paste0(
             "migrate_analysis_specification(): spec must be an ",
             "AnalysisSpecification object"
         ))
     if (!identical(target, "2.0.0"))
-        stop("migrate_analysis_specification(): target must be '2.0.0'")
+        .stop_landscapeR_validation("migrate_analysis_specification(): target must be '2.0.0'")
 
     source_version <- methods::slot(spec, "version")
     if (identical(source_version, "2.0.0")) {
-        validObject(spec)
+        .with_landscapeR_validation(validObject(spec))
         return(spec)
     }
     if (!identical(source_version, "1.0.0"))
-        stop(sprintf(
+        .stop_landscapeR_validation(sprintf(
             "migrate_analysis_specification(): no migration from version %s",
             source_version
         ))
@@ -460,19 +460,19 @@ migrate_analysis_specification <- function(
     legacy_component <- methods::slot(spec, "manual_component")
     if (length(legacy_target)) {
         if (!is.null(target_field) && !identical(target_field, legacy_target))
-            stop(paste0(
+            .stop_landscapeR_validation(paste0(
                 "migrate_analysis_specification(): explicit target_field must ",
                 "match the v1 target_field"
             ))
         target_field <- legacy_target
     } else if (is.null(target_field)) {
-        stop(paste0(
+        .stop_landscapeR_validation(paste0(
             "migrate_analysis_specification(): v1 manual-component object ",
             "requires explicit target_field"
         ))
     }
     if (is.null(target_type))
-        stop(paste0(
+        .stop_landscapeR_validation(paste0(
             "migrate_analysis_specification(): v1 object requires explicit ",
             "target_type and direction"
         ))
@@ -486,17 +486,17 @@ migrate_analysis_specification <- function(
     }
     if (length(legacy_component)) {
         if (is.null(proposal_digest))
-            stop(paste0(
+            .stop_landscapeR_validation(paste0(
                 "migrate_analysis_specification(): v1 manual-component object ",
                 "requires explicit proposal_digest"
             ))
         if (is.null(proposal_decision))
-            stop(paste0(
+            .stop_landscapeR_validation(paste0(
                 "migrate_analysis_specification(): v1 manual-component object ",
                 "requires explicit proposal_decision"
             ))
         if (is.null(analyst_rationale))
-            stop(paste0(
+            .stop_landscapeR_validation(paste0(
                 "migrate_analysis_specification(): v1 manual-component object ",
                 "requires explicit analyst_rationale"
             ))
@@ -526,7 +526,7 @@ migrate_analysis_specification <- function(
         claim_intent = methods::slot(spec, "claim_intent")
     )
     migrated@migration_source_digest <- source_digest
-    validObject(migrated)
+    .with_landscapeR_validation(validObject(migrated))
     migrated
 }
 
@@ -571,7 +571,9 @@ migrate_analysis_specification <- function(
 #' @export
 canonical_digest <- function(spec) {
     if (!is(spec, "AnalysisSpecification"))
-        stop("canonical_digest(): spec must be an AnalysisSpecification object")
+        .stop_landscapeR_validation(
+            "canonical_digest(): spec must be an AnalysisSpecification object"
+        )
     digest::digest(.analysis_spec_payload(spec), algo = "sha256")
 }
 
