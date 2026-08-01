@@ -216,19 +216,26 @@ independently change this schedule.
 opened, process one issue through implementation, both review modes, green CI,
 and merge before starting the next:
 
-1. correctness and safety foundations: #119, #120, #121, #122, #123, #124,
+1. review-memory prerequisite: #138;
+2. correctness and safety foundations: #119, #120, #121, #122, #123, #124,
    #125, #126, #128, #129, #130;
-2. shared future execution and association migration: #57, then #132;
-3. deep scientific modules: #117, #118, #127;
-4. remaining Stage 1 execution migration: #133;
-5. contributor/architecture documentation after its owners stabilize: #131;
-6. remote execution and production orchestration: #134, then #135.
+3. shared future execution and association migration: #57, then #132;
+4. deep scientific modules: #117, #118, #127;
+5. remaining Stage 1 execution migration: #133;
+6. contributor/architecture documentation after its owners stabilize: #131;
+7. remote execution and production orchestration: #134, then #135.
 
 Closed issues are skipped. If an issue becomes blocked, record the blocker in
 its roadmap row and stop the loop rather than silently selecting a later item.
 The loop never merges with unresolved review threads or failing required
-checks. This maintenance order does not change the sole scientific next task,
-#67.
+checks. Each pull request must also wait for the actual GitHub Copilot review;
+actionable comments are fixed and evidentially incorrect findings are declined
+before every thread is resolved. This maintenance order does not change the
+sole scientific next task, #67.
+
+**Review memory:** #138 establishes the incident-backed Ratchet Principle before
+the audited backlog proceeds, so review knowledge earned by #119 onward remains
+available to later cold-start agents.
 
 **Scientific correctness and safety:** #119 centralizes the ADR-declared Holm
 correction; #120 protects registry identity; #121 hardens the legacy HO-GSVD
@@ -491,6 +498,7 @@ bodies may state dependencies but do not change this ordering.
 | [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | queued — blocked by #57 |
 | [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | conditional — blocked by #132/#133 |
 | [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | conditional — blocked by #134 |
+| [#138](https://github.com/drejom/landscapeR/issues/138) | Cross-cutting governance — incident-backed review ratchet | active — agent-ready prerequisite to #119 |
 <!-- issue-map:end -->
 
 ---

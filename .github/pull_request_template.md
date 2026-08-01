@@ -50,6 +50,18 @@
 
 <!-- Add one bullet per reviewed figure, table, or workflow render. -->
 
+## Review ratchet
+
+<!-- Select exactly one and explain it. Read docs/agents/review-ratchet.md. -->
+
+- [ ] Unchanged
+- [ ] Updated
+- [ ] Corrected
+- [ ] Deduplicated
+- [ ] Graduated
+
+**Ratchet rationale:** <!-- State what changed, or why no incident-backed change was earned. -->
+
 ## Checklist
 
 - [ ] `devtools::test()` passes locally

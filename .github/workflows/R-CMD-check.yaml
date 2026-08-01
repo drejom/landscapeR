@@ -83,6 +83,17 @@ jobs:
           printf '%s' "$PR_BODY" > /tmp/pr_body.txt
           python3 scripts/check-figure-review.py /tmp/pr_body.txt
 
+      - name: Review ratchet document
+        run: python3 scripts/check-review-ratchet.py
+
+      - name: Review ratchet pull-request disposition
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s' "$PR_BODY" > /tmp/pr_body.txt
+          python3 scripts/check-review-ratchet.py --pr-body /tmp/pr_body.txt
+
       - name: Repository hygiene
         run: bash scripts/check-repo-hygiene.sh
 

@@ -20,6 +20,7 @@ is built under `.scratch/site/` and deployed by CI; it is not committed here.
 | [`archive/`](archive/) | Completed audits and superseded planning context | Current package priority |
 | [`agents/`](agents/) | Agent workflow and issue/triage guidance | Scientific decisions |
 | [`agents/repo-hygiene.md`](agents/repo-hygiene.md) | Transient-output location, governed-artifact distinction, agent cleanup, and executable hygiene checks | Scientific artifacts or retention policy definitions |
+| [`agents/review-ratchet.md`](agents/review-ratchet.md) | Mandatory review gate, incident-backed review knowledge, correction, deduplication, and graduation | Implementation conventions, domain vocabulary, scheduling, or decisions |
 | [`vignettes/`](../vignettes/) | Current user workflow, implementation status, and evidence presentation | Historical transition proof or scheduling |
 | Pull requests | Visual landing proof co-located with a diff | Immutable scientific acceptance evidence |
 | `inst/benchmarks/` | Immutable/content-addressed benchmark evidence | Development scheduling |
