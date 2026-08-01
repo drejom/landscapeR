@@ -204,6 +204,77 @@ artifact migration policy, with #97 adopting it across the interpretation
 evidence graph. These issues remain parked until the active #55/#83
 interpretation lane lands.
 
+### 4b. Audited architecture, correctness, and execution backlog
+
+The 2026-07-31 whole-codebase technical-debt audit and follow-up architecture
+and HPC reviews are fully represented by issues. They do not displace #67 as
+the single next task. Agent-ready items may run only as a deliberately opened
+parallel maintenance lane; issue labels do not independently change this
+schedule.
+
+**Deterministic maintenance-loop order:** when this lane is deliberately
+opened, process one issue through implementation, both review modes, green CI,
+and merge before starting the next:
+
+1. correctness and safety foundations: #119, #120, #121, #122, #123, #124,
+   #125, #126, #128, #129, #130;
+2. shared future execution and association migration: #57, then #132;
+3. deep scientific modules: #117, #118, #127;
+4. remaining Stage 1 execution migration: #133;
+5. contributor/architecture documentation after its owners stabilize: #131;
+6. remote execution and production orchestration: #134, then #135.
+
+Closed issues are skipped. If an issue becomes blocked, record the blocker in
+its roadmap row and stop the loop rather than silently selecting a later item.
+The loop never merges with unresolved review threads or failing required
+checks. This maintenance order does not change the sole scientific next task,
+#67.
+
+**Scientific correctness and safety:** #119 centralizes the ADR-declared Holm
+correction; #120 protects registry identity; #121 hardens the legacy HO-GSVD
+adapters; #122 validates Stage 0 potential controls and sweep accounting; #123
+makes KDE bandwidth and failures explicit; #124 normalizes typed public
+validation; #125 tests complete Stage 1 artifact publication; #126 covers the
+accepted K=1 identifiability regime; #127 strengthens core construction and
+provenance, including the repeated `DecompositionResult` accessor guards; and
+#128 restores the canonical publication palette. Projection
+identity, layer bounds, and discovery-fitted transforms remain owned by the
+existing AML robustness issue #24 rather than a duplicate audit issue.
+
+**Deep-module architecture:** #117 deepens registered association strategies
+and normalized evidence, covering the component-interpretation monolith,
+time-course duplication, diagnostics, model controls, and multiplicity seams.
+#118 unifies the parallel typed visual-evidence systems and total display
+preparation. Existing parked #95–#97 continue to own stage completion,
+provenance, and artifact/evidence migration policy.
+
+**Governance and contributor safeguards:** #129 resolves duplicate ADR
+authority and status drift; #130 makes package-test selection automatic for
+source-affecting changes; #131 removes duplicated repository authorities and
+documents hook and subsystem safeguards. ADR 0021 governs repository hygiene
+and ephemeral artifacts; it is a decision and enforcement change rather than a
+separate scheduled implementation issue.
+
+**Scalable execution:** #57 is the future-backed repetition and run-level RNG
+prefactor. #132 migrates association bootstrap/permutation workloads and #133
+migrates Stage 1 summary bootstraps. Once both are complete, #134 validates
+remote workers and the Gadi deployment contract; #135 then adds
+`targets`/`crew` scheduler-backed full-evidence orchestration. Package code
+does not choose a future plan, and sequential execution remains the default
+backend through the same future seam.
+
+| Audit/review theme | Authoritative backlog |
+|---|---|
+| Association strategy depth, duplicated time-course logic, multiplicity | #117, #119 |
+| Typed visual evidence, display totality, publication palette | #118, #128 |
+| Registry and legacy decomposition safety | #120, #121 |
+| Stage 0 controls, Stage 2 KDE, typed public boundaries | #122, #123, #124 |
+| Stage 1 publication and K=1 identifiability coverage | #125, #126 |
+| Core construction, provenance, stage completion and migration | #127, #95, #96, #97 |
+| Projection invariants and AML discovery/validation separation | #24 |
+| ADR authority, CI selection, contributor/repository governance | #129, #130, #131, ADR 0021 |
+| Future-backed repetition, deterministic RNG, HPC and orchestration | #57, #132, #133, #134, #135 |
+
 ### 5. AML-shaped synthetic control — #67 calibration lane
 
 **Deliverable:** repeated synthetic mice, stronger time/nuisance axis, planted
@@ -248,8 +319,9 @@ claim.
   association implementation may proceed.
 - #60 may locate/verify cKit, blast, or flow metadata at any time; it is useful
   atlas enrichment but does not block the primary target/time analysis.
-- #57 starts only if #51 or #67 exposes the next real reusable repetition seam;
-  it does not justify rewriting stable numerical code in advance.
+- The verified execution audit has satisfied #57's reusable-repetition trigger.
+  #57 is agent-ready as a deliberately opened parallel maintenance prefactor;
+  it does not displace #67 or justify rewriting stable numerical code.
 
 ---
 
@@ -331,8 +403,8 @@ amend this roadmap explicitly.
 
 These items do not reorder the scientific path unless their trigger is met:
 
-- #57 — backend-independent repetition/compute tiers, triggered by a real
-  reusable repetition seam.
+- #57 — future-backed repetition, compute tiers, and run-level RNG; queued as
+  the execution prefactor for #132–#135 without displacing #67.
 - #41 — development-only SSH adapter, triggered only by a frozen run that
   cannot be completed on the available local executor.
 - #58 — focused tidy accessors/interoperability after scientific result
@@ -367,7 +439,7 @@ bodies may state dependencies but do not change this ordering.
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
 | [#55](https://github.com/drejom/landscapeR/issues/55) | Exploratory AML Stage 1 interpretation | active — parent lane |
 | [#56](https://github.com/drejom/landscapeR/issues/56) | Productisation/Shiny | parked |
-| [#57](https://github.com/drejom/landscapeR/issues/57) | Conditional infrastructure | conditional |
+| [#57](https://github.com/drejom/landscapeR/issues/57) | Execution scalability — futures/RNG prefactor | queued — agent-ready |
 | [#58](https://github.com/drejom/landscapeR/issues/58) | Productisation/tidy interface | parked |
 | [#59](https://github.com/drejom/landscapeR/issues/59) | General multi-axis Stage 2 | queued |
 | [#60](https://github.com/drejom/landscapeR/issues/60) | Optional AML metadata enrichment | active, non-blocking |
@@ -400,6 +472,25 @@ bodies may state dependencies but do not change this ordering.
 | [#108](https://github.com/drejom/landscapeR/issues/108) | Component-interpretation caption migration | complete on merge with #94 |
 | [#109](https://github.com/drejom/landscapeR/issues/109) | Component-identifiability primary/diagnostic views | complete on merge |
 | [#114](https://github.com/drejom/landscapeR/issues/114) | Legacy Stage 1/2 typed plot evidence | complete on merge |
+| [#117](https://github.com/drejom/landscapeR/issues/117) | Audited architecture — association strategy and evidence | queued — agent-ready |
+| [#118](https://github.com/drejom/landscapeR/issues/118) | Audited architecture — typed visual evidence | queued — agent-ready |
+| [#119](https://github.com/drejom/landscapeR/issues/119) | Audited correctness — multiplicity | queued — agent-ready |
+| [#120](https://github.com/drejom/landscapeR/issues/120) | Audited integrity — strategy registry | queued — agent-ready |
+| [#121](https://github.com/drejom/landscapeR/issues/121) | Audited safety — legacy HO-GSVD | queued — agent-ready |
+| [#122](https://github.com/drejom/landscapeR/issues/122) | Audited safety — Stage 0 controls | queued — agent-ready |
+| [#123](https://github.com/drejom/landscapeR/issues/123) | Audited safety — Stage 2 KDE | queued — agent-ready |
+| [#124](https://github.com/drejom/landscapeR/issues/124) | Audited safety — typed public validation | queued — agent-ready |
+| [#125](https://github.com/drejom/landscapeR/issues/125) | Audited assurance — Stage 1 artifact publication | queued — agent-ready |
+| [#126](https://github.com/drejom/landscapeR/issues/126) | Audited assurance — K=1 identifiability | queued — agent-ready |
+| [#127](https://github.com/drejom/landscapeR/issues/127) | Audited architecture — core construction and provenance | parked — coordinates with #95 |
+| [#128](https://github.com/drejom/landscapeR/issues/128) | Audited visual grammar — canonical palette | queued — agent-ready |
+| [#129](https://github.com/drejom/landscapeR/issues/129) | Audited governance — ADR authority | queued — agent-ready |
+| [#130](https://github.com/drejom/landscapeR/issues/130) | Audited CI — package-test selection | queued — agent-ready |
+| [#131](https://github.com/drejom/landscapeR/issues/131) | Audited governance — contributor safeguards | parked — blocked by #129/#117/#118/#57 |
+| [#132](https://github.com/drejom/landscapeR/issues/132) | Execution scalability — association futures migration | queued — blocked by #57 |
+| [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | queued — blocked by #57 |
+| [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | conditional — blocked by #132/#133 |
+| [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | conditional — blocked by #134 |
 <!-- issue-map:end -->
 
 ---
