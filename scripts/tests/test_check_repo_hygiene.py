@@ -57,6 +57,19 @@ class RepoHygieneCheckerTests(unittest.TestCase):
         self.assertIn("Rplots.pdf", result.stderr)
         self.assertIn("outside .scratch/", result.stderr)
 
+    def test_nested_scratch_directory_is_not_treated_as_repo_scratch(self):
+        temporary, root = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        (root / ".gitignore").write_text(
+            ".claude/\n/.scratch/\n", encoding="utf-8"
+        )
+        nested = root / "R" / ".scratch"
+        nested.mkdir(parents=True)
+        (nested / "state.rds").write_text("residue", encoding="utf-8")
+        result = self.run_checker(root)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("R/.scratch/state.rds", result.stderr)
+
     def test_tracked_modification_is_not_transient_residue(self):
         temporary, root = self.make_repo()
         self.addCleanup(temporary.cleanup)
