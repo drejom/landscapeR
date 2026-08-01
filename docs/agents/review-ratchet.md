@@ -26,7 +26,7 @@ work to fill a ticket is not.
 
 ## Never-touch list
 
-No incident-backed entries yet. Add one only when a concrete review incident
+No never-touch entries yet. Add one only when a concrete review incident
 demonstrates that a file or action is unsafe in a specific context.
 
 ## Earned defect checklist
@@ -46,6 +46,14 @@ Use a file-backed request body so the shell cannot execute or corrupt its text.
 
 **Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137) had a
 review reply corrupted when Markdown code spans were passed through the shell.
+
+### RR-003 — Validate Markdown meaning, not template spelling
+
+Repository policy parsers must accept equivalent ordinary Markdown forms. Test
+semantic variants instead of requiring one exact bullet, spacing, or case style.
+
+**Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) initially
+rejected valid indented and alternate-bullet disposition checkboxes.
 
 ## Verify, never assume
 

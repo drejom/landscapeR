@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -43,7 +44,7 @@ class ReviewRatchetCheckerTests(unittest.TestCase):
         body_path.write_text(body, encoding="utf-8")
         return subprocess.run(
             [
-                "python3", str(CHECKER), "--document", str(document_path),
+                sys.executable, str(CHECKER), "--document", str(document_path),
                 "--pr-body", str(body_path),
             ],
             text=True, capture_output=True, check=False,
@@ -89,6 +90,20 @@ class ReviewRatchetCheckerTests(unittest.TestCase):
         result = self.run_checker(VALID_DOCUMENT, VALID_BODY.replace("[ ] Unchanged", "[x] Unchanged"))
         self.assertIn("select exactly one", result.stderr)
 
+    def test_duplicate_checked_disposition_rows_fail(self):
+        duplicated = VALID_BODY.replace(
+            "- [x] Updated", "- [x] Updated\n- [x] Updated"
+        )
+        result = self.run_checker(VALID_DOCUMENT, duplicated)
+        self.assertIn("duplicate review-ratchet dispositions: Updated", result.stderr)
+
+    def test_unchecked_duplicate_cannot_hide_later_checked_row(self):
+        duplicated = VALID_BODY.replace(
+            "- [x] Updated", "- [ ] Updated\n- [x] Updated"
+        )
+        result = self.run_checker(VALID_DOCUMENT, duplicated)
+        self.assertIn("duplicate review-ratchet dispositions: Updated", result.stderr)
+
     def test_every_permitted_disposition_passes(self):
         for disposition in (
             "Unchanged", "Updated", "Corrected", "Deduplicated", "Graduated"
@@ -98,6 +113,11 @@ class ReviewRatchetCheckerTests(unittest.TestCase):
                 body = body.replace(f"[ ] {disposition}", f"[x] {disposition}")
                 result = self.run_checker(VALID_DOCUMENT, body)
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_equivalent_markdown_checkbox_formatting_passes(self):
+        formatted = VALID_BODY.replace("- [x] Updated", "  *   [X]   Updated")
+        result = self.run_checker(VALID_DOCUMENT, formatted)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_disposition_text_outside_ratchet_section_does_not_count(self):
         ratchet_unchecked = VALID_BODY.replace("[x] Updated", "[ ] Updated")

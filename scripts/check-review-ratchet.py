@@ -18,6 +18,7 @@ REQUIRED_SECTIONS = (
 )
 DISPOSITIONS = ("Unchanged", "Updated", "Corrected", "Deduplicated", "Graduated")
 PLACEHOLDERS = {"", "n/a", "na", "none", "tbd", "todo", "placeholder"}
+MINIMUM_RATIONALE_LENGTH = 24
 
 
 def fail(message: str) -> int:
@@ -30,7 +31,7 @@ def substantive(value: str | None) -> bool:
         return False
     value = re.sub(r"<!--.*?-->", "", value, flags=re.DOTALL)
     normalized = re.sub(r"[`*_]", "", value).strip().lower()
-    return len(normalized) >= 24 and normalized not in PLACEHOLDERS
+    return len(normalized) >= MINIMUM_RATIONALE_LENGTH and normalized not in PLACEHOLDERS
 
 
 def section(text: str, heading: str) -> str | None:
@@ -94,13 +95,19 @@ def validate_pr_body(path: Path) -> list[str]:
         ratchet = ""
     elif ratchet_heading_count > 1:
         errors.append("pull request contains duplicate Review ratchet sections")
-    selected = []
-    for disposition in DISPOSITIONS:
-        match = re.search(
-            rf"^- \[([ xX])\] {re.escape(disposition)}\s*$", ratchet, re.MULTILINE
-        )
-        if match and match.group(1).lower() == "x":
-            selected.append(disposition)
+    disposition_pattern = "|".join(re.escape(item) for item in DISPOSITIONS)
+    rows = re.findall(
+        rf"^\s*[-*+]\s+\[([ xX])\]\s+({disposition_pattern})\s*$",
+        ratchet,
+        re.MULTILINE,
+    )
+    declared = [disposition for _marker, disposition in rows]
+    duplicates = sorted({item for item in declared if declared.count(item) > 1})
+    if duplicates:
+        errors.append("duplicate review-ratchet dispositions: " + ", ".join(duplicates))
+    selected = [
+        disposition for marker, disposition in rows if marker.lower() == "x"
+    ]
     if len(selected) != 1:
         errors.append("select exactly one review-ratchet disposition")
     rationale = re.search(
