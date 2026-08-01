@@ -307,6 +307,85 @@ The table deliberately contains no pass, acceptance, or eligibility judgement.
 Those decisions belong to the frozen independent protocol, not this disclosed
 calibration run.
 
+### Declared KDE bandwidth
+
+Stage 2 treats bandwidth as part of the estimator specification rather than a
+hidden fitting choice. The registered default remains `ks::hpi()`. A finite
+positive numeric value can instead be declared for a Stage 0 sweep; the method
+and resolved value are stored with the fitted result and its provenance.
+
+```{r kde-bandwidth-proof, fig.width=4, fig.height=4, fig.cap="Default and explicitly declared bandwidths applied to the same frozen synthetic cross-sectional coordinate. Black shows the registered `ks::hpi()` estimator (resolved bandwidth printed in the legend); red shows the illustrative explicit value 0.25. Curves are shifted to a minimum of zero so their shapes can be compared without implying an absolute potential origin. This is implementation proof that bandwidth is sweepable and provenance-recorded; neither setting is accepted for biological inference from this visual comparison."}
+default_kde <- estimate_dynamics(dynamics_ctor(), std_k1_s1)
+explicit_kde <- estimate_dynamics(
+  dynamics_ctor(params = list(
+    bandwidth_method = "explicit",
+    bandwidth_value = 0.25
+  )),
+  std_k1_s1
+)
+
+default_stage2 <- metadata(default_kde@value)$stage2
+explicit_stage2 <- metadata(explicit_kde@value)$stage2
+default_bandwidth_label <- sprintf(
+  "Default hpi (h = %.3f)",
+  default_stage2$bandwidth_value
+)
+bandwidth_curves <- rbind(
+  data.frame(
+    coordinate = default_stage2$x,
+    quasi_potential = default_stage2$U - min(default_stage2$U),
+    estimator = default_bandwidth_label
+  ),
+  data.frame(
+    coordinate = explicit_stage2$x,
+    quasi_potential = explicit_stage2$U - min(explicit_stage2$U),
+    estimator = "Explicit (h = 0.250)"
+  )
+)
+
+ggplot2::ggplot(
+  bandwidth_curves,
+  ggplot2::aes(x = coordinate, y = quasi_potential, colour = estimator)
+) +
+  ggplot2::geom_line(linewidth = 0.8) +
+  scale_colour_landscapeR(
+    "binary",
+    reference_level = default_bandwidth_label,
+    focal_level = "Explicit (h = 0.250)"
+  ) +
+  ggplot2::labs(
+    x = "State-transition coordinate",
+    y = "Relative quasi-potential",
+    colour = "Bandwidth"
+  ) +
+  ggplot2::guides(colour = ggplot2::guide_legend(ncol = 1L)) +
+  theme_landscapeR(base_size = 11) +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+```{r kde-typed-degenerate-proof}
+degenerate_kde <- std_k1_s1
+degenerate_stage1 <- metadata(degenerate_kde)$stage1
+degenerate_stage1@coords_k <- lapply(
+  degenerate_stage1@coords_k,
+  function(coords) matrix(1, nrow = nrow(coords), ncol = ncol(coords))
+)
+degenerate_metadata <- metadata(degenerate_kde)
+degenerate_metadata$stage1 <- degenerate_stage1
+metadata(degenerate_kde) <- degenerate_metadata
+degenerate_result <- estimate_dynamics(dynamics_ctor(), degenerate_kde)
+
+knitr::kable(data.frame(
+  outcome = degenerate_result@status,
+  diagnostic = degenerate_result@reason
+), col.names = c("Typed outcome", "Stable diagnostic"))
+```
+
+The degenerate coordinate is rejected before an external bandwidth or density
+fit is attempted. Backend failures are likewise returned as typed Stage 2
+failures, so a sweep can retain the failed cell without converting an external
+`ks` exception into a pipeline crash.
+
 ---
 
 ## Historical AML/CML exploratory context

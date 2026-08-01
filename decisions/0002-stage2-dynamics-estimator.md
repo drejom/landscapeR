@@ -72,7 +72,7 @@ Validated in 1D (first SVD component) across two disease contexts.
 
 | Component | MATLAB | R equivalent | Notes |
 |---|---|---|---|
-| KDE + bandwidth | `ksdensity` + manual tuning | `ks::kde()` + `ks::Hpi()` | Principled bandwidth replaces hand-tuned `outlierfactor` |
+| KDE + bandwidth | `ksdensity` + manual tuning | `ks::kde()` + `ks::hpi()` | Principled bandwidth replaces hand-tuned `outlierfactor` |
 | Critical point finding | `fzero()` | `stats::uniroot()` / `pracma::fzero()` | Automated from KDE derivatives via `ks::kdde()` |
 | Polynomial fit (linear system) | `[X1;X0]\rhs` | `qr.solve()` | Base R; no packages |
 | Fokker-Planck PDE | `pdepe()` | `ReacTran::tran.1D()` + `deSolve::ode()` | `deSolve` has C/Fortran backends; no Rcpp needed |
@@ -139,8 +139,12 @@ research and Stage 0 criteria. This amendment supersedes the earlier blanket
 ## Consequences
 
 - `LogDensityPolyEstimator` is the first concrete Stage 2 implementation to write.
-- KDE bandwidth: Silverman's rule as default (`ks` default); cross-validated
-  plug-in (`ks::Hpi`) as alternative; both must be sweepable in Stage 0.
+- KDE bandwidth (amended 2026-08-01): `ks::hpi()` remains the declared default,
+  and a finite positive explicit bandwidth may be supplied for a Stage 0 sweep.
+  Both the method and resolved numeric value are recorded in Stage 2 metadata
+  and provenance. Neither the default nor an explicit value is accepted from
+  real-data appearance; bandwidth acceptance remains governed by the frozen
+  Stage 0 calibration and holdout process.
 - Polynomial degree: parameter, default 6 (matching reference implementation).
 - Critical point detection: automated via zeros of `ks::kdde()`, not hard-coded.
 - Fokker-Planck forward propagation is a separate future capability (needed for

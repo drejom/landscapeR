@@ -26,6 +26,66 @@ setClass("KdeLogDensityEstimator",
     representation(params = "list")
 )
 
+.kde_logdensity_params <- function(params) {
+    defaults <- list(
+        n_grid = 512L,
+        poly_degree = 6L,
+        layer = 1L,
+        pool_layers = TRUE,
+        component = 1L,
+        bandwidth_method = "hpi",
+        bandwidth_value = NULL
+    )
+    p <- modifyList(defaults, params)
+    whole_scalar <- function(value, minimum) {
+        if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+            !is.finite(value))
+            return(FALSE)
+        integer_value <- suppressWarnings(as.integer(value))
+        !is.na(integer_value) && value == integer_value && value >= minimum
+    }
+
+    if (!whole_scalar(p$n_grid, 3L))
+        return(list(error = "estimate_dynamics: n_grid must be one integer >= 3."))
+    if (!whole_scalar(p$poly_degree, 1L))
+        return(list(error = "estimate_dynamics: poly_degree must be one integer >= 1."))
+    if (!whole_scalar(p$layer, 1L))
+        return(list(error = "estimate_dynamics: layer must be one positive integer."))
+    if (!whole_scalar(p$component, 1L))
+        return(list(error = "estimate_dynamics: component must be one positive integer."))
+    if (!is.logical(p$pool_layers) || length(p$pool_layers) != 1L ||
+        is.na(p$pool_layers))
+        return(list(error = "estimate_dynamics: pool_layers must be TRUE or FALSE."))
+    if (!is.character(p$bandwidth_method) || length(p$bandwidth_method) != 1L ||
+        is.na(p$bandwidth_method) ||
+        !p$bandwidth_method %in% c("hpi", "explicit"))
+        return(list(error = paste0(
+            "estimate_dynamics: bandwidth_method must be 'hpi' or 'explicit'."
+        )))
+
+    if (identical(p$bandwidth_method, "explicit")) {
+        if (!is.numeric(p$bandwidth_value) || length(p$bandwidth_value) != 1L ||
+            is.na(p$bandwidth_value) || !is.finite(p$bandwidth_value) ||
+            p$bandwidth_value <= 0)
+            return(list(error = paste0(
+                "estimate_dynamics: bandwidth_value must be one finite positive ",
+                "number when bandwidth_method = 'explicit'."
+            )))
+        p$bandwidth_value <- as.numeric(p$bandwidth_value)
+    } else if (!is.null(p$bandwidth_value)) {
+        return(list(error = paste0(
+            "estimate_dynamics: bandwidth_value must be NULL when ",
+            "bandwidth_method = 'hpi'."
+        )))
+    }
+
+    p$n_grid <- as.integer(p$n_grid)
+    p$poly_degree <- as.integer(p$poly_degree)
+    p$layer <- as.integer(p$layer)
+    p$component <- as.integer(p$component)
+    list(params = p)
+}
+
 #' @rdname estimate_dynamics
 setMethod(".estimate_dynamics_impl",
     signature("KdeLogDensityEstimator", "StateTransitionData"),
@@ -41,11 +101,10 @@ setMethod(".estimate_dynamics_impl",
             return(stage_failure(
                 "estimate_dynamics: Stage 1 has not been run. Call decompose() first."))
 
-        # Parameters with defaults
-        p         <- modifyList(list(n_grid = 512L, poly_degree = 6L,
-                                     layer = 1L, pool_layers = TRUE,
-                                     component = 1L),
-                                strategy@params)
+        normalized <- .kde_logdensity_params(strategy@params)
+        if (!is.null(normalized$error))
+            return(stage_failure(normalized$error))
+        p <- normalized$params
 
         # Collect state-transition axis coordinates for the chosen component
         comp <- as.integer(p$component)
@@ -68,13 +127,53 @@ setMethod(".estimate_dynamics_impl",
         if (length(x_obs) < 5L)
             return(stage_failure(
                 "estimate_dynamics: fewer than 5 coordinate values -- cannot fit KDE."))
+        if (any(!is.finite(x_obs)) || length(unique(x_obs)) < 2L ||
+            !is.finite(diff(range(x_obs))) || diff(range(x_obs)) <= 0)
+            return(stage_failure(paste0(
+                "estimate_dynamics: coordinate support must contain at least two ",
+                "distinct finite values with a finite positive range."
+            )))
 
-        # KDE with plug-in bandwidth
-        h   <- ks::hpi(x_obs)
-        kde <- ks::kde(x_obs, h = h,
-                       eval.points = seq(min(x_obs) - 2 * h,
-                                         max(x_obs) + 2 * h,
-                                         length.out = p$n_grid))
+        # KDE with a declared plug-in or explicit sweep bandwidth.
+        if (identical(p$bandwidth_method, "hpi")) {
+            h <- tryCatch(
+                ks::hpi(x_obs),
+                error = function(error) NULL
+            )
+            if (!is.numeric(h) || length(h) != 1L || !is.finite(h) || h <= 0)
+                return(stage_failure(paste0(
+                    "estimate_dynamics: KDE bandwidth selection failed for ",
+                    "bandwidth_method = 'hpi'."
+                )))
+            h <- as.numeric(h)
+        } else {
+            h <- p$bandwidth_value
+        }
+        p$bandwidth_value <- h
+
+        eval_points <- tryCatch(
+            seq(
+                min(x_obs) - 2 * h,
+                max(x_obs) + 2 * h,
+                length.out = p$n_grid
+            ),
+            error = function(error) NULL
+        )
+        if (!is.numeric(eval_points) || length(eval_points) != p$n_grid ||
+            any(!is.finite(eval_points)))
+            return(stage_failure(
+                "estimate_dynamics: KDE evaluation grid is not finite."))
+        kde <- tryCatch(
+            ks::kde(x_obs, h = h, eval.points = eval_points),
+            error = function(error) NULL
+        )
+        if (is.null(kde) || !is.numeric(kde$eval.points) ||
+            !is.numeric(kde$estimate) ||
+            length(kde$eval.points) != p$n_grid ||
+            length(kde$estimate) != p$n_grid ||
+            any(!is.finite(kde$eval.points)) || any(!is.finite(kde$estimate)))
+            return(stage_failure(
+                "estimate_dynamics: KDE density estimation failed."))
         x_grid <- kde$eval.points
         p_grid <- pmax(kde$estimate, .Machine$double.eps)   # guard against log(0)
         U_grid <- -log(p_grid)
@@ -125,6 +224,8 @@ setMethod(".estimate_dynamics_impl",
             barriers        = barriers,
             barrier_heights = barrier_heights,
             h_bandwidth     = h,
+            bandwidth_method = p$bandwidth_method,
+            bandwidth_value = h,
             n_obs           = length(x_obs),
             params          = p
         )
