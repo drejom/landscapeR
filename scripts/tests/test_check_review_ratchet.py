@@ -119,6 +119,13 @@ class ReviewRatchetCheckerTests(unittest.TestCase):
         )
         self.assertIn("duplicate Review ratchet sections", result.stderr)
 
+    def test_empty_review_ratchet_section_fails_without_traceback(self):
+        result = self.run_checker(VALID_DOCUMENT, "## Review ratchet")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("select exactly one", result.stderr)
+        self.assertIn("substantive rationale", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_disposition_requires_substantive_rationale(self):
         result = self.run_checker(VALID_DOCUMENT, VALID_BODY.replace(
             "Added the incident-backed rule earned by this pull request.", "N/A"

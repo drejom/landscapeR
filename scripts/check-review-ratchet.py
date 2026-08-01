@@ -88,7 +88,7 @@ def validate_pr_body(path: Path) -> list[str]:
     ratchet_heading_count = len(re.findall(
         r"^## Review ratchet\s*$", text, re.MULTILINE
     ))
-    ratchet = section(text, "Review ratchet")
+    ratchet = section(text, "Review ratchet") or ""
     if ratchet_heading_count == 0:
         errors.append("pull request is missing the Review ratchet section")
         ratchet = ""
