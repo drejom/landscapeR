@@ -57,6 +57,11 @@ class ReviewRatchetCheckerTests(unittest.TestCase):
         result = self.run_checker(VALID_DOCUMENT.replace("## Gate sequence", "## Sequence"))
         self.assertIn("missing required section: Gate sequence", result.stderr)
 
+    def test_duplicate_required_section_fails(self):
+        duplicate = VALID_DOCUMENT + "\n## Gate sequence\nConflicting sequence.\n"
+        result = self.run_checker(duplicate)
+        self.assertIn("duplicate required section: Gate sequence", result.stderr)
+
     def test_line_cap_is_enforced(self):
         result = self.run_checker(VALID_DOCUMENT + "filler\n" * 151)
         self.assertIn("150-line readability cap", result.stderr)
@@ -106,6 +111,13 @@ class ReviewRatchetCheckerTests(unittest.TestCase):
         result = self.run_checker(VALID_DOCUMENT, spoofed)
         self.assertIn("select exactly one", result.stderr)
         self.assertIn("substantive rationale", result.stderr)
+
+    def test_duplicate_review_ratchet_section_fails(self):
+        result = self.run_checker(
+            VALID_DOCUMENT,
+            VALID_BODY + "\n## Review ratchet\nConflicting disposition.\n",
+        )
+        self.assertIn("duplicate Review ratchet sections", result.stderr)
 
     def test_disposition_requires_substantive_rationale(self):
         result = self.run_checker(VALID_DOCUMENT, VALID_BODY.replace(

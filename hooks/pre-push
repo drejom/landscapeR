@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # pre-push: mirrors the CI check job.
-# Roadmap integrity always runs; remaining checks are scoped to changed files.
+# Roadmap integrity, repository hygiene, and review ratchet always run; package
+# checks are scoped to changed files.
 #
 # Checks (all blocking):
 #   1. Roadmap integrity    — roadmap agrees with live GitHub issue state
@@ -8,6 +9,7 @@
 #   3. ADR coverage         — any new register_strategy() call has a backing ADR
 #   4. Registry compliance  — no if/switch dispatchers, no hardcoded config
 #   5. Repository hygiene   — no unexpected untracked files outside .scratch/
+#   6. Review ratchet       — bounded incident-backed review memory is valid
 #
 # Add [skip-hooks] to any commit message to bypass (emergencies only).
 

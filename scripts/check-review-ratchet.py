@@ -50,8 +50,13 @@ def validate_document(path: Path) -> list[str]:
     if len(text.splitlines()) > 150:
         errors.append("review ratchet exceeds the 150-line readability cap")
     for required_section in REQUIRED_SECTIONS:
-        if section(text, required_section) is None:
+        heading_count = len(re.findall(
+            rf"^## {re.escape(required_section)}\s*$", text, re.MULTILINE
+        ))
+        if heading_count == 0:
             errors.append(f"missing required section: {required_section}")
+        elif heading_count > 1:
+            errors.append(f"duplicate required section: {required_section}")
 
     earned = section(text, "Earned defect checklist") or ""
     headings = re.findall(r"^### (.+)$", earned, re.MULTILINE)
@@ -80,10 +85,15 @@ def validate_pr_body(path: Path) -> list[str]:
         return [f"pull-request body not found: {path}"]
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
+    ratchet_heading_count = len(re.findall(
+        r"^## Review ratchet\s*$", text, re.MULTILINE
+    ))
     ratchet = section(text, "Review ratchet")
-    if ratchet is None:
+    if ratchet_heading_count == 0:
         errors.append("pull request is missing the Review ratchet section")
         ratchet = ""
+    elif ratchet_heading_count > 1:
+        errors.append("pull request contains duplicate Review ratchet sections")
     selected = []
     for disposition in DISPOSITIONS:
         match = re.search(
