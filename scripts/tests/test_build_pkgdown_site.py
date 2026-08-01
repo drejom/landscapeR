@@ -51,6 +51,35 @@ class PkgdownStackBalanceGuardTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Site build failed", result.stderr)
 
+    def test_concurrent_builds_use_distinct_logs(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            fake_rscript = Path(temp_dir) / "Rscript"
+            fake_rscript.write_text(
+                "#!/usr/bin/env bash\n"
+                "sleep 0.2\n"
+                "printf '%s\\n' 'site complete'\n",
+                encoding="utf-8",
+            )
+            fake_rscript.chmod(fake_rscript.stat().st_mode | stat.S_IXUSR)
+            env = os.environ.copy()
+            env["PATH"] = f"{temp_dir}{os.pathsep}{env['PATH']}"
+            processes = [
+                subprocess.Popen(
+                    ["bash", str(BUILD_SCRIPT)],
+                    cwd=REPO_ROOT,
+                    env=env,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                for _ in range(2)
+            ]
+            results = [process.communicate() for process in processes]
+
+        for process, (stdout, stderr) in zip(processes, results):
+            self.assertEqual(process.returncode, 0, stderr)
+            self.assertIn("completed without protection-stack imbalance", stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
