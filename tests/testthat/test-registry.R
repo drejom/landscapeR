@@ -322,4 +322,62 @@ test_that("partially locked package-named environments are not trusted", {
         before
     )
 })
+
+test_that("fingerprint helper failures remain typed and non-mutating", {
+    globals_key <- "_HelperFailureContract:globals"
+    testthat::local_mocked_bindings(
+        .find_strategy_globals_impl = function(...) stop("globals exploded"),
+        .package = "landscapeR"
+    )
+    expect_error(
+        register_strategy(
+            "_HelperFailureContract", "globals", function(p) NULL
+        ),
+        "constructor globals could not be inspected: globals exploded",
+        class = "landscapeR_validation_error"
+    )
+    expect_false(exists(
+        globals_key, envir = landscapeR:::.registry, inherits = FALSE
+    ))
+    expect_false(exists(
+        globals_key,
+        envir = landscapeR:::.registry_provenance,
+        inherits = FALSE
+    ))
+})
+
+test_that("digest helper failures remain typed and non-mutating", {
+    digest_key <- "_HelperFailureContract:digest"
+    testthat::local_mocked_bindings(
+        .digest_strategy_identity_impl = function(...) stop("digest exploded"),
+        .package = "landscapeR"
+    )
+    expect_error(
+        register_strategy(
+            "_HelperFailureContract", "digest", function(p) NULL
+        ),
+        "constructor identity could not be fingerprinted: digest exploded",
+        class = "landscapeR_validation_error"
+    )
+    expect_false(exists(
+        digest_key, envir = landscapeR:::.registry, inherits = FALSE
+    ))
+    expect_false(exists(
+        digest_key,
+        envir = landscapeR:::.registry_provenance,
+        inherits = FALSE
+    ))
+})
+
+test_that("dot-prefixed contracts remain visible in provenance", {
+    register_strategy(".HiddenContract", "visible", function(p) NULL)
+    history <- strategy_registration_history(".HiddenContract", "visible")
+    expect_equal(nrow(history), 1L)
+    expect_identical(history$contract, ".HiddenContract")
+    expect_identical(history$name, "visible")
+    expect_identical(
+        list_strategies(".HiddenContract"),
+        ".HiddenContract:visible"
+    )
+})
 })

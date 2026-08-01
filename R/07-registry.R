@@ -59,6 +59,38 @@
     list(name = name, source = "<unbound>", stable = FALSE)
 }
 
+.find_strategy_globals_impl <- function(constructor) {
+    codetools::findGlobals(constructor, merge = FALSE)
+}
+
+.find_strategy_globals <- function(constructor) {
+    tryCatch(
+        .find_strategy_globals_impl(constructor),
+        error = function(error) {
+            .stop_landscapeR_validation(sprintf(
+                "constructor globals could not be inspected: %s",
+                conditionMessage(error)
+            ))
+        }
+    )
+}
+
+.digest_strategy_identity_impl <- function(identity) {
+    digest::digest(identity, algo = "sha256")
+}
+
+.digest_strategy_identity <- function(identity) {
+    tryCatch(
+        .digest_strategy_identity_impl(identity),
+        error = function(error) {
+            .stop_landscapeR_validation(sprintf(
+                "constructor identity could not be fingerprinted: %s",
+                conditionMessage(error)
+            ))
+        }
+    )
+}
+
 .strategy_constructor_fingerprint <- function(constructor) {
     if (typeof(constructor) != "closure") {
         .stop_landscapeR_validation(
@@ -73,7 +105,7 @@
     environment_identity <- if (stable_named_environment) {
         list(name = environment_name)
     } else {
-        globals <- codetools::findGlobals(constructor, merge = FALSE)
+        globals <- .find_strategy_globals(constructor)
         referenced_names <- sort(unique(c(
             globals$functions,
             globals$variables
@@ -102,13 +134,12 @@
     # Mutable named environments such as .GlobalEnv and anonymous lexical
     # parents are resolved binding-by-binding; naming alone does not make state
     # stable.
-    digest::digest(
+    .digest_strategy_identity(
         list(
             formals = formals(constructor),
             body = body(constructor),
             environment = environment_identity
-        ),
-        algo = "sha256"
+        )
     )
 }
 
@@ -290,7 +321,7 @@ register_strategy <- function(
 #' @return data frame with one row per accepted registry mutation
 #' @export
 strategy_registration_history <- function(contract = NULL, name = NULL) {
-    keys <- ls(.registry_provenance)
+    keys <- ls(.registry_provenance, all.names = TRUE)
     records <- unlist(
         lapply(keys, function(key) {
             get(key, envir = .registry_provenance, inherits = FALSE)
@@ -337,8 +368,8 @@ get_strategy <- function(contract, name) {
 #' @return character vector of keys (\code{"Contract:name"})
 #' @export
 list_strategies <- function(contract = NULL) {
-    keys <- ls(.registry)
+    keys <- ls(.registry, all.names = TRUE)
     if (!is.null(contract))
-        keys <- grep(paste0("^", contract, ":"), keys, value = TRUE)
+        keys <- keys[startsWith(keys, paste0(contract, ":"))]
     keys
 }
