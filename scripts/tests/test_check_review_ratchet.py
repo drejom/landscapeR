@@ -1,0 +1,118 @@
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+
+CHECKER = Path(__file__).resolve().parents[1] / "check-review-ratchet.py"
+
+
+VALID_DOCUMENT = """# Review ratchet
+## Gate sequence
+Sequence.
+## Never-touch list
+None yet.
+## Earned defect checklist
+### RR-001 — Wait for review
+Wait for review.
+**Incident:** repository PR #137
+## Verify, never assume
+Verify findings.
+## Maintenance duties
+Add, correct, deduplicate, and graduate.
+"""
+
+VALID_BODY = """## Review ratchet
+- [ ] Unchanged
+- [x] Updated
+- [ ] Corrected
+- [ ] Deduplicated
+- [ ] Graduated
+**Ratchet rationale:** Added the incident-backed rule earned by this pull request.
+"""
+
+
+class ReviewRatchetCheckerTests(unittest.TestCase):
+    def run_checker(self, document=VALID_DOCUMENT, body=VALID_BODY):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        document_path = root / "ratchet.md"
+        body_path = root / "body.md"
+        document_path.write_text(document, encoding="utf-8")
+        body_path.write_text(body, encoding="utf-8")
+        return subprocess.run(
+            [
+                "python3", str(CHECKER), "--document", str(document_path),
+                "--pr-body", str(body_path),
+            ],
+            text=True, capture_output=True, check=False,
+        )
+
+    def test_valid_document_and_pr_disposition_pass(self):
+        result = self.run_checker()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_missing_required_section_fails(self):
+        result = self.run_checker(VALID_DOCUMENT.replace("## Gate sequence", "## Sequence"))
+        self.assertIn("missing required section: Gate sequence", result.stderr)
+
+    def test_line_cap_is_enforced(self):
+        result = self.run_checker(VALID_DOCUMENT + "filler\n" * 151)
+        self.assertIn("150-line readability cap", result.stderr)
+
+    def test_duplicate_entry_identifier_fails(self):
+        duplicate = VALID_DOCUMENT.replace(
+            "## Verify, never assume",
+            "### RR-001 — Repeat\n**Incident:** repository PR #138\n## Verify, never assume",
+        )
+        result = self.run_checker(duplicate)
+        self.assertIn("duplicate review-ratchet identifiers", result.stderr)
+
+    def test_malformed_earned_entry_heading_fails(self):
+        malformed = VALID_DOCUMENT.replace(
+            "### RR-001 — Wait for review", "### Wait for review"
+        )
+        result = self.run_checker(malformed)
+        self.assertIn("malformed earned entry headings", result.stderr)
+
+    def test_entry_without_incident_fails(self):
+        result = self.run_checker(VALID_DOCUMENT.replace("repository PR #137", "an anecdote"))
+        self.assertIn("lacks a concrete repository incident", result.stderr)
+
+    def test_exactly_one_disposition_is_required(self):
+        result = self.run_checker(VALID_DOCUMENT, VALID_BODY.replace("[ ] Unchanged", "[x] Unchanged"))
+        self.assertIn("select exactly one", result.stderr)
+
+    def test_every_permitted_disposition_passes(self):
+        for disposition in (
+            "Unchanged", "Updated", "Corrected", "Deduplicated", "Graduated"
+        ):
+            with self.subTest(disposition=disposition):
+                body = VALID_BODY.replace("[x] Updated", "[ ] Updated")
+                body = body.replace(f"[ ] {disposition}", f"[x] {disposition}")
+                result = self.run_checker(VALID_DOCUMENT, body)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_disposition_text_outside_ratchet_section_does_not_count(self):
+        ratchet_unchecked = VALID_BODY.replace("[x] Updated", "[ ] Updated")
+        spoofed = (
+            "## Current documentation\n- [x] Updated\n"
+            "**Ratchet rationale:** This rationale is outside the governed section.\n"
+            + ratchet_unchecked.replace(
+                "Added the incident-backed rule earned by this pull request.", ""
+            )
+        )
+        result = self.run_checker(VALID_DOCUMENT, spoofed)
+        self.assertIn("select exactly one", result.stderr)
+        self.assertIn("substantive rationale", result.stderr)
+
+    def test_disposition_requires_substantive_rationale(self):
+        result = self.run_checker(VALID_DOCUMENT, VALID_BODY.replace(
+            "Added the incident-backed rule earned by this pull request.", "N/A"
+        ))
+        self.assertIn("substantive rationale", result.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

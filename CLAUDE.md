@@ -200,3 +200,5 @@ Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `read
 Multi-context layout — `CONTEXT-MAP.md` at the root points to per-context files under `context/`; shared ADRs live in `decisions/`. See `docs/agents/domain.md`.
 
 ### Repo hygiene → See `docs/agents/repo-hygiene.md`.
+
+### Review ratchet → See `docs/agents/review-ratchet.md`.

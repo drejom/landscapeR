@@ -123,6 +123,11 @@ RAN=1
 echo "[pre-push] repository hygiene"
 run_check "repository hygiene" bash scripts/check-repo-hygiene.sh
 
+# ── 6. Review ratchet ────────────────────────────────────────────────────────
+RAN=1
+echo "[pre-push] review ratchet"
+run_check "review ratchet" python3 scripts/check-review-ratchet.py
+
 [[ $RAN -eq 0 ]] && echo "[pre-push] No watched paths changed — skipping." && exit 0
 [[ $FAILED -ne 0 ]] && echo "[pre-push] Checks failed. Fix the above before pushing." && exit 1
 
