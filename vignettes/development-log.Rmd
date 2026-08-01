@@ -43,6 +43,14 @@ Future sequencing, dependencies, and parked capabilities are maintained only in
 [ROADMAP.md](https://github.com/drejom/landscapeR/blob/main/ROADMAP.md), so this
 article does not duplicate a second planned-work list.
 
+### Transient benchmark workspaces
+
+Stage 1 benchmark helpers place their checkpoint workspaces under the
+repository `.scratch/` directory by default. Set
+`options(landscapeR.scratch_root = "/path/to/scratch")` before calling a
+benchmark helper when transient state should live on another local or HPC
+filesystem. An explicit `workspace` argument still takes precedence.
+
 ### Biological instantiations
 
 | Dataset | Modality | Status |
