@@ -67,8 +67,8 @@ approaches 150 lines, perform a full consolidation pass.
 - **Graduate:** move mechanical rules into tests or lint checks and recurring
   architecture or scientific decisions into ADRs. Remove redundant prose or
   retain only a compact link.
-- **Report:** select exactly one PR disposition: unchanged with rationale,
-  updated, corrected, deduplicated, or graduated.
+- **Report:** select exactly one PR disposition: unchanged, updated, corrected,
+  deduplicated, or graduated. Give a substantive rationale for every choice.
 
 This document is only for review knowledge. Implementation conventions, domain
 vocabulary, session history, scheduling, and one-off decisions belong to their
