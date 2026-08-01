@@ -140,6 +140,23 @@ std1 <- suppressWarnings(decompose(ctor(), std))@value
 plot_spectrum(std1)
 ```
 
+`hogsvd_averaged` and `hogsvd_prereduced` are legacy baseline adapters for
+two or more layers defined on equal-sized feature spaces. They do not implement
+the heterogeneous or rank-deficient HO-GSVD candidates being evaluated under
+ADR 0001 and tracked in
+[#49](https://github.com/drejom/landscapeR/issues/49). Their input boundary is
+explicit:
+
+| Input | Outcome |
+|---|---|
+| Two or more finite numeric layers with identical, unique, ordered feature identifiers | Typed Stage 1 success |
+| Fewer than two layers | Typed failure with a reason |
+| Different, missing, duplicated, or reordered feature identifiers | Typed unsupported-design failure with a reason |
+| Invalid parameters, non-finite values, or numerical failure | Typed failure with a reason |
+
+These outcomes describe implementation safety only. They do not constitute
+scientific acceptance of either legacy strategy.
+
 The component gallery aligns MAE-level metadata through each assay's canonical
 sample map. Categorical metadata colour stored group-specific densities and
 rugs; continuous metadata colour rugs beneath the stored overall density, so
