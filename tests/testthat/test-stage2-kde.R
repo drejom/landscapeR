@@ -305,11 +305,11 @@ test_that("kde_logdensity: ProvenanceStep is also persisted in returned StateTra
 
     expect_equal(res@status, "success")
     prov <- res@value@provenance
-    expect_length(prov, 1L)
-    expect_true(is(prov[[1L]], "ProvenanceStep"))
-    expect_equal(prov[[1L]]@stage, "estimate_dynamics")
-    expect_equal(prov[[1L]]@implementation, "kde_logdensity")
-    expect_equal(prov[[1L]]@status, "success")
+    expect_length(prov, 2L)
+    expect_true(is(prov[[2L]], "ProvenanceStep"))
+    expect_equal(prov[[2L]]@stage, "estimate_dynamics")
+    expect_equal(prov[[2L]]@implementation, "kde_logdensity")
+    expect_equal(prov[[2L]]@status, "success")
 })
 
 test_that("kde_logdensity: StageResult@provenance is not a StateTransitionData", {

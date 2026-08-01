@@ -347,7 +347,11 @@ test_that("run_pipeline uses selected_component from a confirmed specification",
     result <- suppressWarnings(run_pipeline(std, config))
     expect_identical(result@status, "success")
     expect_identical(metadata(result@value)$stage2$params$component, 2L)
-    recorded <- result@value@provenance[[1L]]@params$analysis_specification
+    provenance <- result@value@provenance
+    analysis_step <- which(vapply(provenance, function(step) {
+        !is.null(step@params$analysis_specification)
+    }, logical(1L)))[[1L]]
+    recorded <- provenance[[analysis_step]]@params$analysis_specification
     expect_identical(recorded$lifecycle, "confirmed")
     expect_identical(recorded$target_field, "planted_group")
     expect_identical(recorded$target_type, "binary")

@@ -235,8 +235,8 @@ sole scientific next task, #67.
 
 **Review memory:** #138 established the incident-backed Ratchet Principle before
 the audited backlog proceeded, so review knowledge earned by #119 onward remains
-available to later cold-start agents. #119 and #120 have landed; #121 is the
-active maintenance task and #122 becomes active when #121 merges.
+available to later cold-start agents. #119, #120, and #121 have landed; #122 is
+the active maintenance task and #123 becomes active when #122 merges.
 
 **Scientific correctness and safety:** #119 centralizes the ADR-declared Holm
 correction; #120 protects registry identity; #121 hardens the legacy HO-GSVD
@@ -485,7 +485,7 @@ bodies may state dependencies but do not change this ordering.
 | [#119](https://github.com/drejom/landscapeR/issues/119) | Audited correctness — multiplicity | complete on merge |
 | [#120](https://github.com/drejom/landscapeR/issues/120) | Audited integrity — strategy registry | complete on merge |
 | [#121](https://github.com/drejom/landscapeR/issues/121) | Audited safety — legacy HO-GSVD | complete on merge |
-| [#122](https://github.com/drejom/landscapeR/issues/122) | Audited safety — Stage 0 controls | queued — agent-ready |
+| [#122](https://github.com/drejom/landscapeR/issues/122) | Audited safety — Stage 0 controls | complete on merge |
 | [#123](https://github.com/drejom/landscapeR/issues/123) | Audited safety — Stage 2 KDE | queued — agent-ready |
 | [#124](https://github.com/drejom/landscapeR/issues/124) | Audited safety — typed public validation | queued — agent-ready |
 | [#125](https://github.com/drejom/landscapeR/issues/125) | Audited assurance — Stage 1 artifact publication | queued — agent-ready |

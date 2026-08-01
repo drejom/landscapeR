@@ -144,7 +144,8 @@ synthetic_control <- function(n        = 40L,
         signal = signal, signal_spec = signal_spec,
         noise_sd = noise_sd, seed = seed,
         bbp_threshold = bbp_thr,
-        signal_above_bbp = signal > bbp_thr
+        signal_above_bbp = signal > bbp_thr,
+        claim_status = "known_truth_calibration_input"
     )
 
     std <- StateTransitionData(
@@ -157,19 +158,20 @@ synthetic_control <- function(n        = 40L,
     md$control <- ctrl_params
     metadata(std) <- md
 
-    if (K == 1L) {
-        std <- record_provenance(
-            std,
-            stage = "generate_control",
-            contract = "SyntheticControlGenerator",
-            implementation = "single_omic_layer_subspace",
-            params = ctrl_params,
-            input_hashes = c(
-                specification = digest::digest(ctrl_params, algo = "sha256")
-            )
+    record_provenance(
+        std,
+        stage = "generate_control",
+        contract = "SyntheticControlGenerator",
+        implementation = if (K == 1L) {
+            "single_omic_layer_subspace"
+        } else {
+            "multi_omic_layer_subspace"
+        },
+        params = ctrl_params,
+        input_hashes = c(
+            specification = digest::digest(ctrl_params, algo = "sha256")
         )
-    }
-    std
+    )
 }
 
 # ---------------------------------------------------------------------------
@@ -297,7 +299,8 @@ synthetic_branching_control <- function(n_per_stage = 24L,
         seed = seed,
         sampling = "independent_destructive",
         calibration_only = TRUE,
-        evidence_status = "non_evidentiary_visualisation_control"
+        evidence_status = "non_evidentiary_visualisation_control",
+        claim_status = "non_evidentiary_visualisation_control"
     )
     std <- StateTransitionData(
         experiments = list(expression = experiment),
@@ -477,7 +480,8 @@ synthetic_k1_double_well_control <- function(n = 200L,
         # Stage 2 estimates -log(p) = beta * U + constant.
         true_barrier_height = beta,
         calibration_only = TRUE,
-        evidence_status = "non_evidentiary_calibration"
+        evidence_status = "non_evidentiary_calibration",
+        claim_status = "non_evidentiary_calibration"
     )
     metadata(std) <- md
     std <- record_provenance(
@@ -752,8 +756,15 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
     elapsed <- (proc.time() - t0)[["elapsed"]]
 
     if (res@status != "success")
-        return(list(angle_deg = NA_real_, elapsed_sec = elapsed,
-                    signal_above_bbp = NA, warnings = res@reason))
+        return(list(
+            status = "failure",
+            reason = res@reason,
+            failure_class = "StageResult",
+            angle_deg = NA_real_,
+            elapsed_sec = elapsed,
+            signal_above_bbp = NA,
+            warnings = res@reason
+        ))
 
     v_true    <- std@ground_truth@shared[, 1L]
     v_hat     <- shared_axis(metadata(res@value)$stage1)
@@ -762,6 +773,9 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
     angle_deg <- acos(cos_angle) * 180 / pi
 
     list(
+        status           = "success",
+        reason           = "",
+        failure_class    = "",
         angle_deg        = angle_deg,
         signal_above_bbp = metadata(std)$control$signal_above_bbp,
         elapsed_sec      = elapsed,
@@ -784,8 +798,10 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
 #' @param signals numeric vector of signal singular values to test
 #' @param strategy_name character Decomposer strategy to benchmark
 #' @param seed integer base seed (incremented per config)
-#' @return data.frame with columns n, p, K, signal, bbp_threshold,
-#'   signal_above_bbp, angle_deg, elapsed_sec
+#' @return A \code{ControlLadderResult} data frame with requested configuration,
+#'   per-cell seed, \code{status}, typed failure class and reason, BBP and
+#'   recovery fields, and repeated requested/completed/failed cell totals. The
+#'   same totals are available in the \code{accounting} attribute.
 #' @export
 control_ladder <- function(ns      = c(20L, 40L),
                            ps      = c(500L, 5000L),
@@ -793,36 +809,131 @@ control_ladder <- function(ns      = c(20L, 40L),
                            signals = c(10, 20, 30, 50),
                            strategy_name = "hogsvd_averaged",
                            seed    = 42L) {
+    grid_inputs <- list(ns = ns, ps = ps, Ks = Ks, signals = signals)
+    invalid_grid_inputs <- names(grid_inputs)[vapply(grid_inputs, function(x) {
+        !is.numeric(x) || length(x) < 1L
+    }, logical(1L))]
+    if (length(invalid_grid_inputs))
+        .stop_landscapeR_validation(paste0(
+            "control_ladder(): ", invalid_grid_inputs[[1L]],
+            " must be a non-empty numeric vector"
+        ))
     grid <- expand.grid(n = ns, p = ps, K = Ks, signal = signals,
                         stringsAsFactors = FALSE)
+    if (!is.character(strategy_name) || length(strategy_name) != 1L ||
+        is.na(strategy_name) || !nzchar(strategy_name))
+        .stop_landscapeR_validation(
+            "control_ladder(): strategy_name must be one non-empty string"
+        )
+    if (!.is_whole_number(seed, 0L, .Machine$integer.max - nrow(grid)))
+        .stop_landscapeR_validation(paste0(
+            "control_ladder(): seed must be a single integer between 0 and ",
+            .Machine$integer.max - nrow(grid)
+        ))
+    seed <- as.integer(seed)
 
     rows <- vector("list", nrow(grid))
     for (i in seq_len(nrow(grid))) {
         cfg <- grid[i, ]
-        std <- synthetic_control(
-            n    = cfg$n, p = cfg$p, K = cfg$K,
-            signal = cfg$signal, signal_spec = cfg$signal / 3,
-            seed = seed + i
-        )
-        bm <- recovery_benchmark(std, strategy_name)
-        rows[[i]] <- data.frame(
-            n                = cfg$n,
-            p                = cfg$p,
-            K                = cfg$K,
-            signal           = cfg$signal,
-            bbp_threshold    = round(metadata(std)$control$bbp_threshold, 2),
-            signal_above_bbp = bm$signal_above_bbp,
-            angle_deg        = round(bm$angle_deg, 2),
-            elapsed_sec      = round(bm$elapsed_sec, 3),
-            stringsAsFactors = FALSE
-        )
+        cell <- tryCatch({
+            std <- synthetic_control(
+                n = cfg$n, p = cfg$p, K = cfg$K,
+                signal = cfg$signal, signal_spec = cfg$signal / 3,
+                seed = seed + i
+            )
+            bm <- recovery_benchmark(std, strategy_name)
+            if (!identical(bm$status, "success")) {
+                .control_ladder_row(
+                    cfg = cfg,
+                    seed = seed + i,
+                    status = "failure",
+                    reason = bm$reason,
+                    failure_class = bm$failure_class,
+                    elapsed_sec = bm$elapsed_sec
+                )
+            } else {
+                .control_ladder_row(
+                    cfg = cfg,
+                    seed = seed + i,
+                    status = "success",
+                    bbp_threshold = round(
+                        metadata(std)$control$bbp_threshold, 2
+                    ),
+                    signal_above_bbp = bm$signal_above_bbp,
+                    angle_deg = round(bm$angle_deg, 2),
+                    elapsed_sec = round(bm$elapsed_sec, 3)
+                )
+            }
+        }, error = function(e) {
+            .control_ladder_row(
+                cfg = cfg,
+                seed = seed + i,
+                status = "failure",
+                reason = conditionMessage(e),
+                failure_class = class(e)[[1L]]
+            )
+        })
+        rows[[i]] <- cell
     }
-    do.call(rbind, rows)
+    result <- do.call(rbind, rows)
+    completed <- sum(result$status == "success")
+    failed <- sum(result$status == "failure")
+    result$requested_cells <- nrow(grid)
+    result$completed_cells <- completed
+    result$failed_cells <- failed
+    attr(result, "accounting") <- list(
+        requested = nrow(grid), completed = completed, failed = failed
+    )
+    class(result) <- c("ControlLadderResult", "data.frame")
+    result
+}
+
+.control_ladder_row <- function(cfg, seed, status, reason = "",
+                                failure_class = "", bbp_threshold = NA_real_,
+                                signal_above_bbp = NA, angle_deg = NA_real_,
+                                elapsed_sec = NA_real_) {
+    data.frame(
+        n = cfg$n,
+        p = cfg$p,
+        K = cfg$K,
+        signal = cfg$signal,
+        seed = seed,
+        status = status,
+        reason = reason,
+        failure_class = failure_class,
+        bbp_threshold = bbp_threshold,
+        signal_above_bbp = signal_above_bbp,
+        angle_deg = angle_deg,
+        elapsed_sec = elapsed_sec,
+        stringsAsFactors = FALSE
+    )
 }
 
 # ---------------------------------------------------------------------------
 # Stage 0 — Potential control (Stage 2 validation)
 # ---------------------------------------------------------------------------
+
+.potential_control_validation_message <- function(n, beta, n_steps, dt, seed) {
+    if (!.is_whole_number(n, 2L))
+        return("n must be a single integer greater than or equal to 2")
+    if (!is.numeric(beta) || length(beta) != 1L ||
+        !is.finite(beta) || beta <= 0)
+        return("beta must be a single finite number greater than 0")
+    max_steps <- floor((.Machine$integer.max - 2000L) / n)
+    if (!.is_whole_number(n_steps, 1L, max_steps))
+        return(paste0(
+            "n_steps must be a single integer between 1 and ", max_steps,
+            " for the requested sample count"
+        ))
+    if (!is.numeric(dt) || length(dt) != 1L || !is.finite(dt) || dt <= 0)
+        return("dt must be a single finite number greater than 0")
+    if (!.is_whole_number(seed, 0L, .Machine$integer.max - 1L))
+        return(paste0(
+            "seed must be a single integer between 0 and ",
+            .Machine$integer.max - 1L
+        ))
+    NULL
+}
 
 #' Generate a synthetic potential control via Langevin simulation
 #'
@@ -853,6 +964,16 @@ synthetic_potential_control <- function(n       = 100L,
                                          n_steps = 5000L,
                                          dt      = 0.01,
                                          seed    = 42L) {
+    validation_message <- .potential_control_validation_message(
+        n, beta, n_steps, dt, seed
+    )
+    if (!is.null(validation_message))
+        .stop_landscapeR_validation(paste0(
+            "synthetic_potential_control(): ", validation_message
+        ))
+    n <- as.integer(n)
+    n_steps <- as.integer(n_steps)
+    seed <- as.integer(seed)
     setup_rng(seed)
 
     U_prime <- function(x) 4 * x * (x^2 - 1)   # dU/dx for U = (x^2-1)^2
@@ -867,7 +988,7 @@ synthetic_potential_control <- function(n       = 100L,
     # exactly. The RNG call pattern (one rnorm(1L, ...) per step) is
     # unchanged, so the random stream — and therefore x_samp — is identical.
     n_burn    <- 2000L
-    n_stepsi  <- as.integer(n_steps)
+    n_stepsi  <- n_steps
     n_total   <- n_burn + n * n_stepsi
     x         <- -1                               # start at left well
     x_samp    <- numeric(n)
@@ -880,6 +1001,11 @@ synthetic_potential_control <- function(n       = 100L,
             if (sample_i >= n) break
         }
     }
+    if (sample_i != n || any(!is.finite(x_samp)))
+        .stop_landscapeR_validation(paste0(
+            "synthetic_potential_control(): generated coordinates must all ",
+            "be finite; reduce dt or revise the requested simulation"
+        ))
 
     sample_ids <- paste0("s", seq_len(n))
     mat        <- matrix(x_samp, nrow = 1L, ncol = n,
@@ -903,7 +1029,8 @@ synthetic_potential_control <- function(n       = 100L,
     ctrl_params <- list(n = n, beta = beta, n_steps = n_steps,
                         dt = dt, seed = seed,
                         true_wells = c(-1, 1), true_barrier = 0,
-                        true_barrier_height = 1)
+                        true_barrier_height = 1,
+                        claim_status = "known_truth_calibration_input")
 
     std <- StateTransitionData(
         experiments     = list(coords = expt),
@@ -915,7 +1042,16 @@ synthetic_potential_control <- function(n       = 100L,
     md$potential_control <- ctrl_params
     metadata(std) <- md
 
-    std
+    record_provenance(
+        std,
+        stage = "generate_control",
+        contract = "SyntheticControlGenerator",
+        implementation = "langevin_potential",
+        params = ctrl_params,
+        input_hashes = c(
+            specification = digest::digest(ctrl_params, algo = "sha256")
+        )
+    )
 }
 
 #' Measure Stage 2 quasi-potential recovery on a synthetic potential control

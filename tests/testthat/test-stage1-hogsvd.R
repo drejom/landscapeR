@@ -390,11 +390,11 @@ test_that("hogsvd_averaged: ProvenanceStep is also persisted in returned StateTr
     result <- suppressWarnings(decompose(ctor(), std))
     expect_equal(result@status, "success")
     prov <- result@value@provenance
-    expect_length(prov, 1L)
-    expect_true(is(prov[[1L]], "ProvenanceStep"))
-    expect_equal(prov[[1L]]@stage, "decompose")
-    expect_equal(prov[[1L]]@implementation, "hogsvd_averaged")
-    expect_equal(prov[[1L]]@status, "success")
+    expect_length(prov, 2L)
+    expect_true(is(prov[[2L]], "ProvenanceStep"))
+    expect_equal(prov[[2L]]@stage, "decompose")
+    expect_equal(prov[[2L]]@implementation, "hogsvd_averaged")
+    expect_equal(prov[[2L]]@status, "success")
 })
 
 test_that("hogsvd_prereduced: exactly one ProvenanceStep in StageResult@provenance", {
@@ -412,11 +412,11 @@ test_that("hogsvd_prereduced: ProvenanceStep is also persisted in returned State
     result <- suppressWarnings(decompose(ctor(), std))
     expect_equal(result@status, "success")
     prov <- result@value@provenance
-    expect_length(prov, 1L)
-    expect_true(is(prov[[1L]], "ProvenanceStep"))
-    expect_equal(prov[[1L]]@stage, "decompose")
-    expect_equal(prov[[1L]]@implementation, "hogsvd_prereduced")
-    expect_equal(prov[[1L]]@status, "success")
+    expect_length(prov, 2L)
+    expect_true(is(prov[[2L]], "ProvenanceStep"))
+    expect_equal(prov[[2L]]@stage, "decompose")
+    expect_equal(prov[[2L]]@implementation, "hogsvd_prereduced")
+    expect_equal(prov[[2L]]@status, "success")
 })
 
 test_that("hogsvd_averaged: StageResult@provenance is not a StateTransitionData", {

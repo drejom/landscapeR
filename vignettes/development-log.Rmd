@@ -125,6 +125,37 @@ rather than inventing intent or dropping the legacy component. See the
 
 The pipeline is tested against two synthetic ground truths.
 
+Every successful Stage 0 generator records its complete generator parameters,
+seed, and explicit claim status in provenance. Invalid potential controls raise
+a typed validation error before they can become evidence. A `control_ladder()`
+sweep retains failures as rows instead of discarding the rest of the grid. The
+small proof below requests one supported two-layer cell and one unsupported
+single-layer cell from the legacy HO-GSVD adapter.
+
+```{r stage0-ladder-proof, echo=FALSE}
+ladder_proof <- control_ladder(
+  ns = 8L,
+  ps = 8L,
+  Ks = c(2L, 1L),
+  signals = 20,
+  seed = 122L
+)
+knitr::kable(
+  ladder_proof[, c(
+    "n", "p", "K", "signal", "status", "failure_class", "reason",
+    "requested_cells", "completed_cells", "failed_cells"
+  )],
+  caption = paste(
+    "Stage 0 control-ladder integrity proof. The supported cell completes;",
+    "the unsupported cell retains its typed StageResult failure and reason."
+  )
+)
+```
+
+The table also carries requested, completed, and failed cell totals. This is an
+implementation and calibration-input integrity contract, not evidence that a
+decomposition strategy is scientifically accepted.
+
 ### Two-group control
 
 `synthetic_control()` generates two groups of samples with a planted signal
