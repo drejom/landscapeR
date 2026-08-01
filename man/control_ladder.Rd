@@ -27,8 +27,10 @@ control_ladder(
 \item{seed}{integer base seed (incremented per config)}
 }
 \value{
-data.frame with columns n, p, K, signal, bbp_threshold,
-signal_above_bbp, angle_deg, elapsed_sec
+A \code{ControlLadderResult} data frame with requested configuration,
+per-cell seed, \code{status}, typed failure class and reason, BBP and
+recovery fields, and repeated requested/completed/failed cell totals. The
+same totals are available in the \code{accounting} attribute.
 }
 \description{
 Sweeps a grid of (n, p, K, signal) configurations and records recovery

@@ -154,7 +154,7 @@ test_that("run_pipeline: both stages persist ProvenanceStep records in value@pro
     expect_equal(result@status, "success")
 
     prov <- result@value@provenance
-    expect_length(prov, 2L)
+    expect_length(prov, 3L)
     expect_true(all(vapply(prov, is, logical(1L), "ProvenanceStep")))
     stages_recorded <- vapply(prov, function(p) p@stage, character(1L))
     expect_true("decompose"          %in% stages_recorded)
@@ -173,7 +173,7 @@ test_that("run_pipeline single stage: exactly one ProvenanceStep persisted", {
     expect_equal(result@status, "success")
 
     prov <- result@value@provenance
-    expect_length(prov, 1L)
-    expect_true(is(prov[[1L]], "ProvenanceStep"))
-    expect_equal(prov[[1L]]@stage, "decompose")
+    expect_length(prov, 2L)
+    expect_true(is(prov[[2L]], "ProvenanceStep"))
+    expect_equal(prov[[2L]]@stage, "decompose")
 })
