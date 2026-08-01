@@ -1,7 +1,7 @@
 # Documentation map
 
 This directory contains **source documentation only**. Generated pkgdown output
-is built under `_site/` and deployed by CI; it is not committed here.
+is built under `.scratch/site/` and deployed by CI; it is not committed here.
 
 ## Authority and purpose
 
@@ -19,6 +19,7 @@ is built under `_site/` and deployed by CI; it is not committed here.
 | [`architecture/`](architecture/) | Current package module seams, owned invariants, and dependency direction | Algorithm choice or work scheduling |
 | [`archive/`](archive/) | Completed audits and superseded planning context | Current package priority |
 | [`agents/`](agents/) | Agent workflow and issue/triage guidance | Scientific decisions |
+| [`agents/repo-hygiene.md`](agents/repo-hygiene.md) | Transient-output location, governed-artifact distinction, agent cleanup, and executable hygiene checks | Scientific artifacts or retention policy definitions |
 | [`vignettes/`](../vignettes/) | Current user workflow, implementation status, and evidence presentation | Historical transition proof or scheduling |
 | Pull requests | Visual landing proof co-located with a diff | Immutable scientific acceptance evidence |
 | `inst/benchmarks/` | Immutable/content-addressed benchmark evidence | Development scheduling |
@@ -35,8 +36,8 @@ milestones should remain deliberately sketched until their decisions are due.
 
 ## Generated documentation
 
-The authoritative pkgdown configuration writes to `_site/`. The CI workflow
-builds and checks that site on pull requests and deploys it from `main`.
+The authoritative pkgdown configuration writes to `.scratch/site/`. The CI
+workflow builds and checks that site on pull requests and deploys it from `main`.
 Historical generated files under `docs/` were removed because they duplicated
 root/source documents, obscured ownership, and mixed build output with planning
 records.

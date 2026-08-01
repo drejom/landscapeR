@@ -12,6 +12,63 @@ test_that("development manifest is deterministic and explicitly non-evidentiary"
     expect_identical(manifest$seeds, c(1001L, 1021L))
 })
 
+test_that("scratch root resolves once for every package module", {
+    old_working_directory <- getwd()
+    old_option <- options(landscapeR.scratch_root = NULL)
+    on.exit(setwd(old_working_directory), add = TRUE)
+    on.exit(options(old_option), add = TRUE)
+
+    repository <- tempfile("landscapeR-repository-")
+    nested <- file.path(repository, "R", "nested")
+    dir.create(file.path(repository, ".git"), recursive = TRUE)
+    dir.create(nested, recursive = TRUE)
+    on.exit(unlink(repository, recursive = TRUE, force = TRUE), add = TRUE)
+    setwd(nested)
+
+    expect_identical(
+        landscapeR:::.landscapeR_scratch_root(),
+        file.path(normalizePath(repository), ".scratch")
+    )
+
+    scratch_root <- tempfile("landscapeR-scratch-root-")
+    options(landscapeR.scratch_root = scratch_root)
+    on.exit(unlink(scratch_root, recursive = TRUE, force = TRUE), add = TRUE)
+
+    manifest <- stage1_development_manifest()
+    task_set <- landscapeR:::.stage1_execution_tasks("development", manifest)
+    identity <- landscapeR:::.stage1_execution_identity("development", manifest)
+    workspace <- landscapeR:::.stage1_init_workspace(NULL, identity, task_set$tasks)
+
+    expect_true(startsWith(workspace, normalizePath(scratch_root)))
+    expect_true(dir.exists(file.path(workspace, "tasks")))
+    options(landscapeR.scratch_root = character())
+    expect_error(
+        landscapeR:::.landscapeR_scratch_root(),
+        "must be one non-empty path",
+        class = "landscapeR_validation_error"
+    )
+    options(landscapeR.scratch_root = NULL)
+    outside_repository <- tempfile("landscapeR-outside-repository-")
+    dir.create(outside_repository)
+    on.exit(unlink(outside_repository, recursive = TRUE, force = TRUE), add = TRUE)
+    expect_error(
+        landscapeR:::.landscapeR_scratch_root(outside_repository),
+        "repository root could not be resolved",
+        class = "landscapeR_validation_error"
+    )
+    missing_directory <- file.path(outside_repository, "missing")
+    expect_error(
+        landscapeR:::.landscapeR_scratch_root(missing_directory),
+        "scratch-root search start must be one existing directory",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        landscapeR:::.landscapeR_scratch_root(character()),
+        "scratch-root search start must be one existing directory",
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("local development workspace resumes complete task payloads", {
     manifest <- stage1_development_manifest()
     task_set <- landscapeR:::.stage1_execution_tasks("development", manifest)

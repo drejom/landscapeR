@@ -47,7 +47,6 @@ __pycache__/
 .Renviron
 
 # pkgdown site generated output
-_site/
 # Legacy docs/ destination: source docs are limited to README.md plus
 # agents/, specs/, plans/, research/, reviews/, and archive/. Never recommit generated site output.
 docs/*.html
@@ -90,6 +89,7 @@ data-raw/pogona/*/gene_tpm.tsv
 data-raw/pogona/source_metadata/
 
 # local agent worktrees / scratch state (never pushed)
+/.scratch/
 .pi-subagents/
 .claude/
 .playwright-mcp/

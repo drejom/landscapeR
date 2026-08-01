@@ -7,10 +7,17 @@
 #   2. R tests pass         — R/  or tests/  changed
 #   3. ADR coverage         — any new register_strategy() call has a backing ADR
 #   4. Registry compliance  — no if/switch dispatchers, no hardcoded config
+#   5. Repository hygiene   — no unexpected untracked files outside .scratch/
 #
 # Add [skip-hooks] to any commit message to bypass (emergencies only).
 
 set -euo pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "[pre-push] Cannot resolve the repository root." >&2
+  exit 1
+}
+cd "$REPO_ROOT"
 
 # ── Collect pushed commits ──────────────────────────────────────────────────
 COMMITS=()
@@ -78,6 +85,11 @@ if needs_check "R/" || needs_check "tests/"; then
   RAN=1
   echo "[pre-push] R tests"
   run_check "devtools::test()" Rscript -e "
+    scratch_root <- file.path(getwd(), '.scratch')
+    dir.create(scratch_root, recursive = TRUE, showWarnings = FALSE)
+    options(device = function(...) {
+      grDevices::pdf(file = file.path(scratch_root, 'Rplots.pdf'), ...)
+    })
     suppressPackageStartupMessages({
       devtools::load_all('.', quiet = TRUE)
     })
@@ -105,6 +117,11 @@ if needs_check "R/"; then
   echo "[pre-push] registry compliance"
   run_check "registry compliance" bash scripts/check-registry-compliance.sh
 fi
+
+# ── 5. Repository hygiene ────────────────────────────────────────────────────
+RAN=1
+echo "[pre-push] repository hygiene"
+run_check "repository hygiene" bash scripts/check-repo-hygiene.sh
 
 [[ $RAN -eq 0 ]] && echo "[pre-push] No watched paths changed — skipping." && exit 0
 [[ $FAILED -ne 0 ]] && echo "[pre-push] Checks failed. Fix the above before pushing." && exit 1
