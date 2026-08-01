@@ -564,6 +564,23 @@ reconstruct those scientific results. The view can support a future compatible
 interactive adapter, but ggplot2 remains the canonical reproducible output and
 interactive software cannot alter a proposal or abstention.
 
+## Registering additional methods
+
+Method authors register an R closure under one `contract:name` key with
+`register_strategy()`. Keys are write-once by default: a different constructor
+under an existing key raises a typed collision error and leaves the accepted
+method unchanged, while re-registering a fingerprint-equivalent constructor
+with the same code and behavior-relevant captured state is an idempotent no-op.
+Primitive functions are unsupported because they cannot meet the inspectable
+fingerprint contract.
+
+A deliberate correction uses `replace = TRUE` with a non-empty rationale. The
+accepted registration and any replacement remain inspectable with
+`strategy_registration_history()`, including chained constructor fingerprints
+and the replacement rationale. A registered closure whose behavior-relevant
+captured state has changed must be stabilized and registered from a fresh
+session rather than silently replacing its recorded identity.
+
 ## Current boundary
 
 These paths do not reinterpret destructive time courses as longitudinal

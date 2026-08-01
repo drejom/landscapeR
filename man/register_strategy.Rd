@@ -4,14 +4,25 @@
 \alias{register_strategy}
 \title{Register an algorithm implementation under a stage contract}
 \usage{
-register_strategy(contract, name, constructor)
+register_strategy(contract, name, constructor, replace = FALSE, reason = NULL)
 }
 \arguments{
 \item{contract}{character contract class name (e.g. \code{"Decomposer"})}
 
 \item{name}{character unique implementation name}
 
-\item{constructor}{function(params_list) -> contract-class instance}
+\item{constructor}{R closure with signature
+\code{function(params_list)} returning a contract-class instance.
+Primitive functions are unsupported because their implementation state
+cannot satisfy the registry fingerprint contract.}
+
+\item{replace}{logical; whether to deliberately replace a different
+constructor already registered under the same key. Re-registering a
+fingerprint-equivalent constructor, with the same code and
+behavior-relevant captured state, is an idempotent no-op.}
+
+\item{reason}{non-empty character rationale required when \code{replace} is
+\code{TRUE}; retained in registry provenance.}
 }
 \value{
 invisible NULL

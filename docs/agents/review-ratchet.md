@@ -63,6 +63,19 @@ request. Do not end with a static “pending” report and rely on the user to p
 **Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) required
 repeated manual status prompts while successive Copilot reviews were pending.
 
+### RR-005 — Make governed identity behavioral and transactional
+
+When a callable implementation's governed identity authorizes registration or
+replacement, include behavior-relevant captured state across the full lexical
+environment chain. More generally, validate and prepare the complete
+provenance record before mutating a governed store, and test that drift or
+fingerprint failure leaves both state and history unchanged.
+
+**Incident:** [Issue #120 implementation review](https://github.com/drejom/landscapeR/issues/120#issuecomment-5150510334)
+found that body-only fingerprints, incomplete closure environments, and
+assign-before-record ordering could hide behavior changes or leave an
+unprovenanced registry mutation.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A
