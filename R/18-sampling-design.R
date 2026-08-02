@@ -129,14 +129,14 @@ setValidity("SamplingDesign", function(object) {
 #' @return a validated \code{SamplingDesign} object
 #' @export
 cross_sectional <- function() {
-    obj <- new("SamplingDesign",
+    obj <- .with_landscapeR_validation(new("SamplingDesign",
         version        = "1.0.0",
         kind           = "cross_sectional",
         subject_id_col = character(0L),
         time_col       = character(0L),
         time_unit      = character(0L)
-    )
-    validObject(obj)
+    ))
+    .with_landscapeR_validation(validObject(obj))
     obj
 }
 
@@ -176,15 +176,15 @@ independent_time_course <- function(
             )
         )
     }
-    obj <- new(
+    obj <- .with_landscapeR_validation(new(
         "SamplingDesign",
         version = "1.0.0",
         kind = "independent_time_course",
         subject_id_col = character(0L),
         time_col = time,
         time_unit = time_unit
-    )
-    validObject(obj)
+    ))
+    .with_landscapeR_validation(validObject(obj))
     obj
 }
 
@@ -241,15 +241,15 @@ longitudinal <- function(subject_id, time, time_unit = character(0L)) {
         )
     }
 
-    obj <- new(
+    obj <- .with_landscapeR_validation(new(
         "SamplingDesign",
         version = "1.0.0",
         kind = "longitudinal",
         subject_id_col = subject_id,
         time_col = time,
         time_unit = time_unit
-    )
-    validObject(obj)
+    ))
+    .with_landscapeR_validation(validObject(obj))
     obj
 }
 
@@ -269,17 +269,25 @@ longitudinal <- function(subject_id, time, time_unit = character(0L)) {
         return(sprintf("time_col '%s' not found in colData", time_col))
 
     time_vals <- cd[[time_col]]
-    if (any(is.na(time_vals))) return("time_col contains NA values")
+    if (any(is.na(time_vals))) {
+        return(sprintf("time_col contains NA values (field '%s')", time_col))
+    }
     if (!is.numeric(time_vals) &&
         !inherits(time_vals, c("Date", "POSIXct", "POSIXlt")) &&
         !is.ordered(time_vals))
-        return("time_col must be numeric, Date/POSIXct, or ordered")
+        return(sprintf(
+            "time_col '%s' must be numeric, Date/POSIXct, or ordered",
+            time_col
+        ))
     if (is.numeric(time_vals) && any(!is.finite(time_vals))) {
-        return("time_col contains non-finite values")
+        return(sprintf("time_col '%s' contains non-finite values", time_col))
     }
     if (identical(design@kind, "independent_time_course")) {
         if (length(unique(time_vals)) < 2L) {
-            return("time_col requires at least two distinct observed times")
+            return(sprintf(
+                "time_col '%s' requires at least two distinct observed times",
+                time_col
+            ))
         }
         return(TRUE)
     }
@@ -289,15 +297,31 @@ longitudinal <- function(subject_id, time, time_unit = character(0L)) {
         return(sprintf("subject_id_col '%s' not found in colData", sid_col))
     sid_vals <- cd[[sid_col]]
     if (any(is.na(sid_vals))) return("subject_id_col contains NA values")
-    if (any(duplicated(data.frame(subject = sid_vals, time = time_vals))))
-        return("duplicate subject/time observations are not supported")
+    duplicate_rows <- duplicated(data.frame(subject = sid_vals, time = time_vals)) |
+        duplicated(data.frame(subject = sid_vals, time = time_vals), fromLast = TRUE)
+    if (any(duplicate_rows)) {
+        duplicate_subjects <- unique(as.character(sid_vals[duplicate_rows]))
+        return(sprintf(
+            "duplicate subject/time observations are not supported; offending subject(s): %s",
+            paste(utils::head(duplicate_subjects, 10L), collapse = ", ")
+        ))
+    }
     if (length(unique(time_vals)) < 2L) {
-        return("time_col requires at least two distinct observed times")
+        return(sprintf(
+            "time_col '%s' requires at least two distinct observed times",
+            time_col
+        ))
     }
     has_repeats <- any(tapply(time_vals, sid_vals, function(tv)
         length(unique(tv))) > 1L)
     if (!has_repeats)
-        return("longitudinal design requires at least one subject with distinct repeated time points")
+        return(sprintf(
+            paste0(
+                "longitudinal design requires at least one subject with ",
+                "distinct repeated time points; observed subject(s): %s"
+            ),
+            paste(utils::head(unique(as.character(sid_vals)), 10L), collapse = ", ")
+        ))
     TRUE
 }
 
@@ -342,7 +366,7 @@ declare_sampling_design <- function(data, design) {
         .stop_landscapeR_validation(
             paste0("declare_sampling_design(): ", data_valid)
         )
-    validObject(data)
+    .with_landscapeR_validation(validObject(data))
     data
 }
 

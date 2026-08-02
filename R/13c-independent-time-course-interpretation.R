@@ -132,12 +132,16 @@ register_strategy(
     }
 )
 
-.time_values_numeric <- function(values) {
+.time_values_numeric <- function(values, field = "observed time") {
     if (inherits(values, c("Date", "POSIXct", "POSIXlt"))) {
         return(as.numeric(values))
     }
     if (is.ordered(values)) return(as.numeric(values))
-    as.numeric(values)
+    if (is.numeric(values)) return(as.numeric(values))
+    .stop_landscapeR_validation(sprintf(
+        "observed-time field '%s' must be numeric, Date/POSIXct, or ordered",
+        field
+    ))
 }
 
 .time_required_complete <- function(target, observed_time, nuisance_values) {
@@ -994,7 +998,10 @@ register_strategy(
         "associate_metadata",
         "observed-time field"
     )
-    observed_time <- .time_values_numeric(observed_time_raw)
+    observed_time <- .time_values_numeric(
+        observed_time_raw,
+        strategy@observed_time
+    )
     names(observed_time) <- names(observed_time_raw)
     study_time_grid <- sort(unique(
         observed_time[is.finite(observed_time)]

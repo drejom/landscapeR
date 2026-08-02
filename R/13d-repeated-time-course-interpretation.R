@@ -866,7 +866,10 @@ register_strategy(
         "associate_metadata",
         "observed-time field"
     )
-    observed_time <- .time_values_numeric(observed_time_raw)
+    observed_time <- .time_values_numeric(
+        observed_time_raw,
+        strategy@observed_time
+    )
     names(observed_time) <- names(observed_time_raw)
     subject <- as.character(.aligned_component_metadata(
         std,

@@ -52,6 +52,7 @@ Suggests:
 Collate:
     '00-package.R'
     '01-schema-version.R'
+    '01a-validation.R'
     '02-ground-truth.R'
     '18-sampling-design.R'
     '03-container.R'

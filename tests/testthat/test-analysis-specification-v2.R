@@ -44,6 +44,37 @@ test_that("v2 draft rejects an incomplete binary target declaration", {
     )
 })
 
+test_that("analysis specification public boundaries use typed validation", {
+    expect_error(
+        analysis_specification(
+            id = character(),
+            target_field = "condition",
+            target_type = "binary"
+        ),
+        "id must be",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        analysis_specification(
+            id = "invalid-target-type",
+            target_field = "condition",
+            target_type = "unsupported"
+        ),
+        "target_type must be one of",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        migrate_analysis_specification(list()),
+        "spec must be an AnalysisSpecification",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        canonical_digest(list()),
+        "spec must be an AnalysisSpecification",
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("proposal lifecycle adds only a ranked-proposal digest", {
     proposal_digest <- strrep("a", 64L)
     spec <- analysis_specification(

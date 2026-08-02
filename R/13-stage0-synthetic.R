@@ -346,13 +346,6 @@ synthetic_branching_control <- function(n_per_stage = 24L,
     NULL
 }
 
-.stop_landscapeR_validation <- function(message, call = sys.call(-1L)) {
-    stop(structure(
-        list(message = message, call = call),
-        class = c("landscapeR_validation_error", "error", "condition")
-    ))
-}
-
 .sample_double_well_stationary <- function(n, beta) {
     # Rejection sampling with a standard-Cauchy proposal. For y = x^2,
     # (1 + y) exp(-beta (y - 1)^2) is maximized at

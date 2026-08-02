@@ -10,6 +10,35 @@ test_that("theme_landscapeR provides the square publication grammar", {
     expect_identical(theme$text$family, "Helvetica")
 })
 
+test_that("publication visual helpers use typed validation", {
+    invalid_calls <- list(
+        function() theme_landscapeR(base_size = 0),
+        function() landscapeR_palette("categorical", n = 0),
+        function() scale_colour_landscapeR("binary"),
+        function() save_landscapeR_plot(list(), tempfile(fileext = ".png"))
+    )
+    for (invalid_call in invalid_calls) {
+        expect_error(invalid_call(), class = "landscapeR_validation_error")
+    }
+
+    expect_error(
+        save_landscapeR_plot(
+            ggplot2::ggplot(data.frame(x = 1, y = 1), ggplot2::aes(x, y)) +
+                ggplot2::geom_point(),
+            tempfile(fileext = ".unsupported")
+        ),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        scale_colour_landscapeR(
+            "categorical",
+            definitely_not_an_argument = 1
+        ),
+        "unused argument",
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("landscapeR palettes have stable semantic roles", {
     semantic <- landscapeR_palette("semantic")
     binary <- landscapeR_palette("binary")
