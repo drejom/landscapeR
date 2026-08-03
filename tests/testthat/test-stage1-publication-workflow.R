@@ -28,7 +28,14 @@ stage1_reduced_task_rows <- function(fixture, manifest, task) {
 }
 
 stage1_publication_test_paths <- function(label) {
-    scratch_root <- landscapeR:::.landscapeR_scratch_root()
+    scratch_root <- tryCatch(
+        landscapeR:::.landscapeR_scratch_root(),
+        landscapeR_validation_error = function(error) {
+            fallback <- file.path(tempdir(), ".scratch")
+            options(landscapeR.scratch_root = fallback)
+            fallback
+        }
+    )
     dir.create(scratch_root, recursive = TRUE, showWarnings = FALSE)
     list(
         workspace = tempfile(paste0(label, "-workspace-"), tmpdir = scratch_root),
@@ -38,6 +45,8 @@ stage1_publication_test_paths <- function(label) {
 
 test_that("complete Stage 1 publication resumes, aggregates, publishes, and verifies", {
     skip_on_os("windows")
+    scratch_option <- getOption("landscapeR.scratch_root")
+    on.exit(options(landscapeR.scratch_root = scratch_option), add = TRUE)
     fixture <- stage1_reduced_full_fixture()
     source_commit <- paste(rep("a", 40L), collapse = "")
     paths <- stage1_publication_test_paths("stage1-full")
@@ -104,6 +113,8 @@ test_that("complete Stage 1 publication resumes, aggregates, publishes, and veri
 
 test_that("failed Stage 1 checkpoint interrupts execution without publishing", {
     skip_on_os("windows")
+    scratch_option <- getOption("landscapeR.scratch_root")
+    on.exit(options(landscapeR.scratch_root = scratch_option), add = TRUE)
     fixture <- stage1_reduced_full_fixture()
     source_commit <- paste(rep("b", 40L), collapse = "")
     paths <- stage1_publication_test_paths("stage1-failed-full")
