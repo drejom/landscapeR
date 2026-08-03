@@ -510,9 +510,9 @@ The verified reduced artifact has the following manifest surface:
 | Published directory | Protocol ID plus SHA-256 payload digest |
 | Hash-declared payload | Manifest, seeds, results, calibration selection, holdout report and summary, environment, and two holdout figures |
 
-Reproduce both tables by running
+Verify the summarized values in both tables by running
 `Rscript -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-stage1-publication-workflow.R")'`.
-The expectations in that test are the source of the summarized values above.
+The expectations in that test are the verification source for the values above.
 
 This is execution evidence only. It does not alter the frozen protocol or its
 accepted artifact, and it does not support a scientific recovery claim.
