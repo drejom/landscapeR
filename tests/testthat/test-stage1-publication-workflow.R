@@ -85,6 +85,15 @@ test_that("complete Stage 1 publication resumes, aggregates, publishes, and veri
     expect_identical(nrow(evidence$results), 80L)
     expect_identical(evidence$selection$selected_candidate, "C1_symmetric_consensus")
     expect_identical(evidence$holdout$decision, "failed")
+    expect_identical(evidence$environment$commit, source_commit)
+    expect_identical(
+        evidence$selection$protocol_digest,
+        landscapeR:::.protocol_digest(fixture$manifest)
+    )
+    expect_identical(
+        evidence$holdout$generator_digest,
+        landscapeR:::.generator_digest()
+    )
     expect_identical(
         readRDS(landscapeR:::.stage1_workspace_task_path(workspace, resumed_key))$completed_at_utc,
         resumed_checkpoint$completed_at_utc
