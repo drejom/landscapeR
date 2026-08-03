@@ -27,12 +27,23 @@ stage1_reduced_task_rows <- function(fixture, manifest, task) {
     rows
 }
 
+stage1_publication_test_paths <- function(label) {
+    scratch_root <- landscapeR:::.landscapeR_scratch_root()
+    dir.create(scratch_root, recursive = TRUE, showWarnings = FALSE)
+    list(
+        workspace = tempfile(paste0(label, "-workspace-"), tmpdir = scratch_root),
+        artifact_root = tempfile(paste0(label, "-artifacts-"), tmpdir = scratch_root)
+    )
+}
+
 test_that("complete Stage 1 publication resumes, aggregates, publishes, and verifies", {
     skip_on_os("windows")
     fixture <- stage1_reduced_full_fixture()
     source_commit <- paste(rep("a", 40L), collapse = "")
-    workspace <- tempfile("stage1-full-workspace-")
-    artifact_root <- tempfile("stage1-full-artifacts-")
+    paths <- stage1_publication_test_paths("stage1-full")
+    workspace <- paths$workspace
+    artifact_root <- paths$artifact_root
+    on.exit(unlink(unlist(paths), recursive = TRUE, force = TRUE), add = TRUE)
 
     local_mocked_bindings(
         stage1_benchmark_manifest = function() fixture$manifest,
@@ -86,8 +97,10 @@ test_that("failed Stage 1 checkpoint interrupts execution without publishing", {
     skip_on_os("windows")
     fixture <- stage1_reduced_full_fixture()
     source_commit <- paste(rep("b", 40L), collapse = "")
-    workspace <- tempfile("stage1-failed-full-workspace-")
-    artifact_root <- tempfile("stage1-failed-full-artifacts-")
+    paths <- stage1_publication_test_paths("stage1-failed-full")
+    workspace <- paths$workspace
+    artifact_root <- paths$artifact_root
+    on.exit(unlink(unlist(paths), recursive = TRUE, force = TRUE), add = TRUE)
 
     local_mocked_bindings(
         stage1_benchmark_manifest = function() fixture$manifest,
