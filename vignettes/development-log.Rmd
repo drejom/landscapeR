@@ -499,6 +499,17 @@ fast enough for routine validation.
 | Public artifact verification | Passed |
 | Failed checkpoint can publish | No |
 
+The verified reduced artifact has the following manifest surface:
+
+| Manifest field | Verified value |
+|---|---|
+| Protocol | `stage1-heterogeneous-v2` |
+| Scientific grid | One exact-ID stratum |
+| Seed split | 20 calibration + 20 holdout |
+| Candidates | `C1_symmetric_consensus`, `C2_block_scaled_svd` |
+| Published directory | Protocol ID plus SHA-256 payload digest |
+| Hash-declared payload | Manifest, seeds, results, calibration selection, holdout report and summary, environment, and two holdout figures |
+
 This is execution evidence only. It does not alter the frozen protocol or its
 accepted artifact, and it does not support a scientific recovery claim.
 
