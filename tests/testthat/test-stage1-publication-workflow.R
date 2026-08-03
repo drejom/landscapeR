@@ -28,14 +28,18 @@ stage1_reduced_task_rows <- function(fixture, manifest, task) {
 }
 
 stage1_publication_test_paths <- function(label) {
-    scratch_root <- tryCatch(
-        landscapeR:::.landscapeR_scratch_root(),
-        landscapeR_validation_error = function(error) {
-            fallback <- file.path(tempdir(), ".scratch")
-            options(landscapeR.scratch_root = fallback)
-            fallback
-        }
-    )
+    scratch_root <- if (!is.null(getOption("landscapeR.scratch_root"))) {
+        landscapeR:::.landscapeR_scratch_root()
+    } else {
+        tryCatch(
+            landscapeR:::.landscapeR_scratch_root(),
+            landscapeR_validation_error = function(error) {
+                fallback <- file.path(tempdir(), ".scratch")
+                options(landscapeR.scratch_root = fallback)
+                fallback
+            }
+        )
+    }
     dir.create(scratch_root, recursive = TRUE, showWarnings = FALSE)
     list(
         workspace = tempfile(paste0(label, "-workspace-"), tmpdir = scratch_root),
