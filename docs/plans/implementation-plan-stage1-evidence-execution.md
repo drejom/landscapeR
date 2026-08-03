@@ -32,6 +32,18 @@ living development log distinct from this acceptance evidence.
    as non-reproducible exploratory context, reports the actual proof status,
    and points to the GitHub Pages site.
 
+## Publication-workflow assurance
+
+Issue #125 adds a fast end-to-end test of the public full-protocol executor.
+The test retains the frozen 40-seed calibration/holdout split while reducing
+the scientific grid to one exact-ID stratum and substituting deterministic
+candidate rows. It therefore verifies execution mechanics, not scientific
+performance: task creation, checkpoint resumption, complete aggregation,
+selection/holdout plumbing, atomic content-addressed publication, and public
+artifact verification. A failed checkpoint must mark the workspace
+interrupted and cannot create a verifiable final artifact. The canonical
+manifest and accepted full artifact remain unchanged.
+
 ## Invariants
 
 - No protocol values, candidate definitions, seeds, metrics, or acceptance

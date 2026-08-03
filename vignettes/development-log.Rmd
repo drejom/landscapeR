@@ -484,6 +484,39 @@ accepted and #24 remains blocked. The [Stage 1 synthetic evidence article](stage
 renders the immutable artifact; neither C1 substitution nor C2 tuning is
 permitted from the consumed v2 holdout.
 
+The artifact-publication path also has a reduced operational assurance test.
+It preserves the frozen 40-seed split but uses one exact-ID stratum and
+deterministic candidate results so that the complete public workflow remains
+fast enough for routine validation.
+
+| Workflow observation | Reduced assurance result |
+|---|---:|
+| Declared tasks | 40 |
+| Pre-existing checkpoint resumed | 1 |
+| Complete checkpoints aggregated | 40 |
+| Candidate result rows published | 80 |
+| Atomic artifact publication | Verified |
+| Public artifact verification | Passed |
+| Failed checkpoint can publish | No |
+
+The verified reduced artifact has the following manifest surface:
+
+| Manifest field | Verified value |
+|---|---|
+| Protocol | `stage1-heterogeneous-v2` |
+| Scientific grid | One exact-ID stratum |
+| Seed split | 20 calibration + 20 holdout |
+| Candidates | `C1_symmetric_consensus`, `C2_block_scaled_svd` |
+| Published directory | Protocol ID plus SHA-256 payload digest |
+| Hash-declared payload | Manifest, seeds, results, calibration selection, holdout report and summary, environment, and two holdout figures |
+
+Verify the summarized values in both tables by running
+`Rscript -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-stage1-publication-workflow.R")'`.
+The expectations in that test are the verification source for the values above.
+
+This is execution evidence only. It does not alter the frozen protocol or its
+accepted artifact, and it does not support a scientific recovery claim.
+
 Similarly, the Stage 2 implementation is an auditable estimator, not yet a
 validated biological inference engine. See ADR 0002 and the Stage 0 protocol
 for its current claim boundary.
