@@ -232,6 +232,16 @@ orientation, index recurrence, proposal-rank recurrence, subspace angles,
 spectral gaps, source sampling units, and failed replicates. Sign correction
 occurs only after matching; no Procrustes rotation is applied.
 
+For an accepted single-component decomposition (`K = 1`), the same contract
+remains explicit rather than inventing a comparison axis. The sole component
+is matched to itself, its sign orientation is retained, and axis recurrence is
+reported together with the one-dimensional subspace angle. Because there is no
+competing assignment, local and global assignment margins are `NA`, not zero.
+Requested, completed, abstaining, and failed resamples remain separately
+counted in the evidence and in both plot views. These quantities are
+descriptive until the known-truth calibration in issue #67 freezes an
+acceptance rule.
+
 Before a known-truth calibration is frozen, the structured outcome is
 `not-calibrated` and the evidence remains
 `estimable-exploratory-only`. Singular-value gaps are visible diagnostics, not

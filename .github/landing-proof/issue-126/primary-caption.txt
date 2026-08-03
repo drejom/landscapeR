@@ -1,0 +1,15 @@
+Component-axis identifiability under design-preserving resampling. Axis identifiability was
+assessed for the treatment versus control contrast using RNA expression data from the Synthetic
+single-axis expression study. The analysis used cross-sectional biological samples. All 99
+bootstrap replicates completed the full assessment. Resampling used a stratified bootstrap of
+biological sampling units within target groups. (A) Axis recurrence is the proportion of
+resamples assigned to the corresponding discovery axis. (B) Mean absolute feature-loading
+cosine similarity measures agreement between matched resampled and discovery axes; values
+approaching one indicate closer agreement. (C) For K=1, no competing axis exists, so assignment
+margins are undefined rather than zero. (D) The largest principal angle is shown for each
+enclosing subspace dimension; smaller angles indicate greater subspace recurrence. The red mark
+denotes the sole nominated discovery component. Components were matched jointly by maximizing
+total absolute feature-loading cosine similarity. No stability threshold was applied. The
+nominated axis therefore remains exploratory and must not be interpreted as stably recovered.
+These results describe numerical identifiability and do not, by themselves, establish
+biological validity.
