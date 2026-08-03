@@ -243,19 +243,6 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
     )
 }
 
-.stage1_execute_tasks <- function(strata, seeds, runner, workers = 1L) {
-    workers <- as.integer(workers)
-    if (length(workers) != 1L || is.na(workers) || workers < 1L)
-        .stage1_evidence_abort("workers must be one positive integer")
-    if (workers > 1L && .Platform$OS.type == "windows")
-        .stage1_evidence_abort("parallel execution requires a Unix-like platform")
-    tasks <- expand.grid(stratum_index = seq_len(nrow(strata)), seed = seeds,
-                         KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
-    invoke <- function(task_index) runner(tasks[task_index, , drop = FALSE])
-    if (workers == 1L) lapply(seq_len(nrow(tasks)), invoke) else
-        parallel::mclapply(seq_len(nrow(tasks)), invoke, mc.cores = workers, mc.preschedule = TRUE)
-}
-
 .stage1_assert_full_coverage <- function(rows, manifest, strata) {
     .stage1_require_results(rows)
     expected_strata <- vapply(seq_len(nrow(strata)), function(i)

@@ -11,13 +11,6 @@ stage1_evidence_fixture <- function(split = c("calibration", "holdout")) {
     rows
 }
 
-test_that("canonical task enumerator covers each supplied stratum and seed once", {
-    strata <- landscapeR:::.stage1_benchmark_strata()[1:2, , drop = FALSE]
-    seen <- landscapeR:::.stage1_execute_tasks(strata, c(1L, 2L),
-        runner = function(task) paste(task$stratum_index, task$seed, sep = ":"))
-    expect_identical(unlist(seen), c("1:1", "2:1", "1:2", "2:2"))
-})
-
 test_that("calibration selector is split-safe and applies frozen C1 rule", {
     calibration <- stage1_evidence_fixture("calibration")
     selection <- select_stage1_candidate(calibration)

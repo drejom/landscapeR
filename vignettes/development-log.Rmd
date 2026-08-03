@@ -484,6 +484,24 @@ accepted and #24 remains blocked. The [Stage 1 synthetic evidence article](stage
 renders the immutable artifact; neither C1 substitution nor C2 tuning is
 permitted from the consumed v2 holdout.
 
+The artifact-publication path also has a reduced operational assurance test.
+It preserves the frozen 40-seed split but uses one exact-ID stratum and
+deterministic candidate results so that the complete public workflow remains
+fast enough for routine validation.
+
+| Workflow observation | Reduced assurance result |
+|---|---:|
+| Declared tasks | 40 |
+| Pre-existing checkpoint resumed | 1 |
+| Complete checkpoints aggregated | 40 |
+| Candidate result rows published | 80 |
+| Atomic artifact publication | Verified |
+| Public artifact verification | Passed |
+| Failed checkpoint can publish | No |
+
+This is execution evidence only. It does not alter the frozen protocol or its
+accepted artifact, and it does not support a scientific recovery claim.
+
 Similarly, the Stage 2 implementation is an auditable estimator, not yet a
 validated biological inference engine. See ADR 0002 and the Stage 0 protocol
 for its current claim boundary.
