@@ -24,9 +24,9 @@ available through \code{\link[=scientific_caption]{scientific_caption()}}
 \description{
 For a single-component decomposition, the default primary view summarizes
 loading agreement and one-dimensional subspace rotation, while the
-diagnostic view shows how those quantities co-occur within resamples. For
-multi-component decompositions, the primary and diagnostic views retain the
-component and subspace summaries. The audit view exposes the complete
-nine-panel evidence surface. Values are shown without uncalibrated stability
-thresholds.
+diagnostic view relates loading agreement to the repeated biological-effect
+magnitude within resamples. For multi-component decompositions, the primary
+and diagnostic views retain the component and subspace summaries. The audit
+view exposes the complete nine-panel evidence surface. Values are shown
+without uncalibrated stability thresholds.
 }
