@@ -576,6 +576,250 @@ setValidity("StagePlotEvidence", function(object) {
     evidence
 }
 
+.stage_visual_caption_view <- function(stage, state, reason = NA_character_) {
+    label <- if (identical(stage, "stage1")) "Stage 1" else "Stage 2"
+    .new_scientific_caption_view(
+        title = paste(label, "scientific display"),
+        experiment_label = NA_character_,
+        sampling_unit = "biological observation",
+        panels = character(),
+        encodings = character(),
+        missingness = if (identical(state, "missing")) {
+            reason
+        } else if (identical(state, "partial")) {
+            "One or more stored display slices are unavailable"
+        } else {
+            NA_character_
+        },
+        uncertainty = if (identical(state, "partial")) {
+            "Available slices are shown; unavailable slices are retained explicitly"
+        } else {
+            NA_character_
+        },
+        claim_boundary = if (identical(state, "missing")) {
+            paste(
+                label,
+                "cannot be interpreted from this display; the underlying scientific result remains available"
+            )
+        } else {
+            paste(label, "display is descriptive and does not expand the scientific claim")
+        },
+        state = state
+    )
+}
+
+.stage_plot_display_state <- function(evidence) {
+    if (identical(evidence@stage, "stage1")) {
+        availability <- unlist(lapply(
+            evidence@displays$component_group_density_status %||% list(),
+            function(layer) unlist(lapply(
+                layer,
+                function(status) status$density_available
+            ), use.names = FALSE)
+        ), use.names = FALSE)
+        if (length(availability) && any(!availability)) return("partial")
+    }
+    if (identical(evidence@stage, "stage2") &&
+        !nrow(evidence@displays$rug)) {
+        return("partial")
+    }
+    "complete"
+}
+
+#' @rdname visual_evidence
+#' @export
+setMethod("visual_evidence", "StagePlotEvidence", function(x) {
+    validity <- tryCatch(
+        {
+            validObject(x)
+            NULL
+        },
+        error = function(condition) conditionMessage(condition)
+    )
+    if (!is.null(validity)) {
+        stage <- if (length(x@stage) == 1L &&
+            x@stage %in% .stage_plot_evidence_stages) {
+            x@stage
+        } else {
+            "stage1"
+        }
+        return(.stage_unavailable_visual_evidence(
+            stage,
+            "This scientific display is unavailable because its stored values could not be validated",
+            diagnostic = paste("stored plot evidence is invalid:", validity)
+        ))
+    }
+    state <- .stage_plot_display_state(x)
+    display_data <- c(
+        x@displays,
+        list(
+            source_digest = x@source_digest,
+            evidence_digest = x@evidence_digest
+        )
+    )
+    .new_visual_evidence_view(
+        surface = x@stage,
+        state = state,
+        display_data = display_data,
+        caption_view = .stage_visual_caption_view(x@stage, state)
+    )
+})
+
+.stage_unavailable_visual_evidence <- function(
+    stage,
+    reason,
+    diagnostic = reason
+) {
+    .new_visual_evidence_view(
+        surface = stage,
+        state = "missing",
+        diagnostics = data.frame(
+            status = "unavailable",
+            diagnostic = diagnostic,
+            stringsAsFactors = FALSE
+        ),
+        display_data = list(unavailable_reason = reason),
+        caption_view = .stage_visual_caption_view(stage, "missing", reason)
+    )
+}
+
+.stage_visual_evidence <- function(
+    std,
+    stage,
+    colour_by = NULL,
+    caller = "stage visual evidence adapter"
+) {
+    if (!is(std, "StateTransitionData")) {
+        .stop_landscapeR_validation(
+            "stage visual evidence requires a StateTransitionData object"
+        )
+    }
+    stage <- match.arg(stage, .stage_plot_evidence_stages)
+    evidence <- metadata(std)[[paste0(stage, "_plot_evidence")]]
+    if (!is(evidence, "StagePlotEvidence")) {
+        failure <- metadata(std)[[paste0(stage, "_plot_evidence_failure")]]
+        reason <- if (is.list(failure) &&
+            .is_scalar_nonempty_text(failure$reason)) {
+            failure$reason
+        } else {
+            sprintf(
+                "No %s display is available for this scientific result",
+                if (identical(stage, "stage1")) "Stage 1" else "Stage 2"
+            )
+        }
+        public_reason <- if (is.list(failure) &&
+            .is_scalar_nonempty_text(failure$reason)) {
+            sprintf(
+                "A %s display could not be prepared for this scientific result",
+                if (identical(stage, "stage1")) "Stage 1" else "Stage 2"
+            )
+        } else {
+            reason
+        }
+        return(.stage_unavailable_visual_evidence(
+            stage,
+            public_reason,
+            diagnostic = reason
+        ))
+    }
+    validity <- tryCatch(
+        {
+            validObject(evidence)
+            NULL
+        },
+        error = function(condition) conditionMessage(condition)
+    )
+    if (!is.null(validity)) {
+        return(.stage_unavailable_visual_evidence(
+            stage,
+            "This scientific display is unavailable because its stored values could not be validated",
+            diagnostic = paste("stored plot evidence is invalid:", validity)
+        ))
+    }
+    if (!identical(
+        evidence@source_digest,
+        .stage_plot_source_digest(std, stage)
+    )) {
+        return(.stage_unavailable_visual_evidence(
+            stage,
+            "This display is out of date for the current scientific result"
+        ))
+    }
+    view <- visual_evidence(evidence)
+    expt_list <- as.list(experiments(std))
+    aligned_metadata <- if (is.null(colour_by)) {
+        stats::setNames(vector("list", length(expt_list)), names(expt_list))
+    } else {
+        stats::setNames(
+            lapply(seq_along(expt_list), function(layer) {
+                .aligned_component_metadata(
+                    std,
+                    layer,
+                    colour_by,
+                    caller = caller,
+                    field_label = "colour_by"
+                )
+            }),
+            names(expt_list)
+        )
+    }
+    display_data <- c(
+        .visual_evidence_displays(view),
+        list(
+            caption_context = .plot_caption_context(std),
+            caption_contexts = stats::setNames(
+                lapply(
+                    seq_along(expt_list),
+                    function(layer) .plot_caption_context(std, layer)
+                ),
+                names(expt_list)
+            ),
+            aligned_metadata = aligned_metadata,
+            experiment_names = names(expt_list),
+            experiment_count = length(expt_list),
+            experiment_observations = stats::setNames(
+                vapply(expt_list, ncol, integer(1L)),
+                names(expt_list)
+            )
+        )
+    )
+    .new_visual_evidence_view(
+        surface = visual_evidence_surface(view),
+        state = visual_evidence_state(view),
+        observations = visual_evidence_observations(view),
+        summaries = visual_evidence_summaries(view),
+        diagnostics = visual_evidence_diagnostics(view),
+        display_data = display_data,
+        caption_view = .stage_visual_caption_view(
+            stage,
+            visual_evidence_state(view)
+        )
+    )
+}
+
+.try_store_stage_plot_evidence <- function(std, stage, spectra = NULL) {
+    tryCatch(
+        switch(
+            stage,
+            stage1 = .store_stage1_plot_evidence(std, spectra = spectra),
+            stage2 = .store_stage2_plot_evidence(std)
+        ),
+        error = function(condition) {
+            md <- metadata(std)
+            md[[paste0(stage, "_plot_evidence")]] <- NULL
+            md[[paste0(stage, "_plot_evidence_failure")]] <- list(
+                status = "unavailable",
+                reason = paste(
+                    "Automatic visual evidence preparation failed:",
+                    conditionMessage(condition)
+                )
+            )
+            metadata(std) <- md
+            std
+        }
+    )
+}
+
 .stop_plot_evidence_unavailable <- function(message) {
     condition <- structure(
         list(message = message, call = sys.call(-1L)),

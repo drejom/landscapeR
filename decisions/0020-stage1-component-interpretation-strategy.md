@@ -503,8 +503,15 @@ adapter remains ggplot2 until a second concrete adapter demonstrates a need for
 shared rendering machinery. Plotly and Shiny may later consume the same typed
 view, but they receive no independent scientific decision authority.
 
-Legacy Stage 1 and Stage 2 plot families use the same rule through
-digest-bound `StagePlotEvidence`. The structural Stage 1 wrapper owns the
+Stage 1 and Stage 2 retain digest-bound `StagePlotEvidence` as their specialized
+storage payload for serialized compatibility, but it is not a second consumer
+contract. `visual_evidence()` validates and adapts it to the same
+`VisualEvidenceView` consumed by all canonical renderers. The
+`StateTransitionData` adapter also checks the source digest; absent, invalid or
+stale storage returns a typed `missing` view and a captioned unavailable figure
+without changing scientific-result success. Automatic evidence-preparation
+failure is recorded as display unavailability rather than reversing a
+successful stage. The structural Stage 1 wrapper owns the
 legacy raw, uncentred assay spectrum as a descriptive estimand distinct from
 any centred or pre-reduced strategy spectrum. Decomposition owns
 component-density curves, decomposition-coordinate tables, and synthetic
@@ -513,7 +520,7 @@ critical-point coordinates, barrier-height segments, and coordinate rugs.
 New results store this evidence as part of their responsible scientific stage.
 `prepare_plot_evidence()` is the explicit, provenance-recorded migration
 operation for legacy or manually modified objects. Missing or stale evidence
-returns a typed unavailable condition; renderers never silently refit an SVD,
+returns a typed unavailable view; renderers never silently refit an SVD,
 estimate a density, compare against ground truth, interpolate a critical point,
 or calculate a barrier segment.
 

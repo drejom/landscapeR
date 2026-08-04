@@ -99,6 +99,16 @@ tarball. The mechanical rule belongs in `.gitignore` and `.Rbuildignore`.
 found that `.scratch/` was gitignored but still entered `R CMD build`, adding
 thousands of generated pkgdown files and exhausting file handles during check.
 
+### RR-008 — Preserve orthogonal typed state during adaptation
+
+When an adapter adds request-specific presentation or caption facts, it must
+not overwrite an independent state dimension such as availability. Test the
+typed state as well as the rendered prose: a caption can describe partial
+evidence correctly while its enclosing object silently claims otherwise.
+
+**Incident:** issue #118 implementation review found that surface-caption
+adaptation replaced a valid `partial` evidence state with `uncalibrated`.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A

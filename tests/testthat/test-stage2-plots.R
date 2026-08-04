@@ -150,13 +150,11 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     expect_match(scientific_caption(plot), "Dashed rug marks\\s+1 observation")
 })
 
-test_that("plot_potential errors when Stage 2 is absent", {
+test_that("plot_potential renders typed unavailability when Stage 2 is absent", {
     std <- synthetic_control(n = 10L, p = 20L, K = 2L, signal = 30, seed = 1L)
-    expect_error(
-        plot_potential(std),
-        "plot evidence is unavailable",
-        class = "landscapeR_plot_evidence_unavailable"
-    )
+    plot <- plot_potential(std)
+    expect_s3_class(plot, "ggplot")
+    expect_match(scientific_caption(plot), "No Stage 2 display is")
 })
 
 test_that("plot_potential scopes metadata validation to its own caller", {

@@ -108,28 +108,38 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         .stop_landscapeR_validation(
             "plot_components(): std must be a StateTransitionData object"
         )
-    expt_list <- as.list(experiments(std))
-    evidence <- .stage_plot_evidence(std, "stage1")
-    if (is.null(evidence@displays$decomposition)) {
-        .stop_plot_evidence_unavailable(paste0(
-            "Stage 1 component evidence is unavailable; run decompose() ",
-            "before plotting components"
+    view <- .stage_visual_evidence(
+        std, "stage1", colour_by = colour_by, caller = "plot_components"
+    )
+    if (identical(visual_evidence_state(view), "missing")) {
+        return(.render_unavailable_visual_evidence(view))
+    }
+    displays <- .visual_evidence_displays(view)
+    if (is.null(displays$decomposition)) {
+        return(.render_unavailable_visual_evidence(
+            .stage_unavailable_visual_evidence(
+                "stage1",
+                paste0(
+                    "Stage 1 component evidence is unavailable; run ",
+                    "decompose() before plotting components"
+                )
+            )
         ))
     }
-    coordinate_evidence <- evidence@displays$decomposition$coordinates
+    coordinate_evidence <- displays$decomposition$coordinates
     evidence_layers <- unique(coordinate_evidence$layer)
     if (!is.numeric(layer) || length(layer) != 1L || !is.finite(layer) ||
         layer != as.integer(layer) || layer < 1L ||
         layer > length(evidence_layers) ||
-        layer > length(expt_list)) {
+        layer > displays$experiment_count) {
         .stop_landscapeR_validation(sprintf(
             "plot_components(): layer must be an integer from 1 to %d",
-            min(length(evidence_layers), length(expt_list))
+            min(length(evidence_layers), displays$experiment_count)
         ))
     }
     idx <- as.integer(layer)
     layer_name <- evidence_layers[[idx]]
-    expt_idx <- match(layer_name, names(expt_list))
+    expt_idx <- match(layer_name, displays$experiment_names)
     if (is.na(expt_idx)) {
         .stop_plot_evidence_unavailable(sprintf(
             "Stored Stage 1 coordinates reference unknown layer '%s'",
@@ -142,7 +152,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         drop = FALSE
     ]
     if (length(unique(coordinate_evidence$sample)) !=
-        ncol(expt_list[[expt_idx]])) {
+        displays$experiment_observations[[layer_name]]) {
         .stop_landscapeR_validation(sprintf(
             paste0(
                 "plot_components(): Stage 1 coordinates for layer %d do not ",
@@ -162,19 +172,15 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         as.integer(n_components),
         max(coordinate_evidence$component)
     )
-    meta_col <- .component_gallery_metadata(std, expt_idx, colour_by)
+    meta_col <- displays$aligned_metadata[[layer_name]]
     density_df <-
-        evidence@displays$component_densities[[layer_name]]
+        displays$component_densities[[layer_name]]
     density_df <- density_df[
         density_df$component %in% sprintf("PC%d", seq_len(k_show)),
         ,
         drop = FALSE
     ]
     density_partition <- .partition_density_evidence(density_df)
-    unavailable_components <- unique(
-        density_partition$unavailable$component
-    )
-    unavailable_density_slices <- unavailable_components
     density_df <- density_partition$available
 
     df <- coordinate_evidence[
@@ -249,7 +255,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         observed <- df[!is.na(df$metadata_value), , drop = FALSE]
         missing <- df[is.na(df$metadata_value), , drop = FALSE]
         grouped_by_layer <-
-            evidence@displays$component_group_densities[[layer_name]]
+            displays$component_group_densities[[layer_name]]
         grouped_density <- grouped_by_layer[[colour_by]]
         if (is.null(grouped_density)) {
             .stop_plot_evidence_unavailable(sprintf(
@@ -264,18 +270,6 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             drop = FALSE
         ]
         grouped_partition <- .partition_density_evidence(grouped_density)
-        unavailable_grouped <- grouped_partition$unavailable
-        if (nrow(unavailable_grouped)) {
-            unavailable_density_slices <- union(
-                unavailable_density_slices,
-                sprintf(
-                    "%s (%s = %s)",
-                    unavailable_grouped$component,
-                    colour_by,
-                    unavailable_grouped$metadata_value
-                )
-            )
-        }
         grouped_density <- grouped_partition$available
         p <- p +
             ggplot2::geom_area(
@@ -315,45 +309,6 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         }
     }
 
-    missingness <- if (!is.null(meta_col) && anyNA(meta_col)) {
-        sprintf(
-            "Dashed rugs mark %d observations with missing %s",
-            sum(is.na(meta_col)),
-            colour_by
-        )
-    } else {
-        NULL
-    }
-    if (!is.null(meta_col) && !is.numeric(meta_col)) {
-        status_by_layer <-
-            evidence@displays$component_group_density_status[[layer_name]]
-        status <- status_by_layer[[colour_by]]
-        unavailable <- status$metadata_value[!status$density_available]
-        if (length(unavailable)) {
-            density_note <- sprintf(
-                "Levels with fewer than two observations (%s) appear as rugs only",
-                paste(unavailable, collapse = ", ")
-            )
-            missingness <- paste(
-                c(missingness, density_note),
-                collapse = "; "
-            )
-        }
-    }
-    if (length(unavailable_density_slices)) {
-        density_note <- paste0(
-            "Numerically degenerate density slices (",
-            paste(unavailable_density_slices, collapse = ", "),
-            ") have insufficient coordinate spread for kernel-density ",
-            "estimation at sqrt(machine precision) x max(1, maximum ",
-            "absolute coordinate); those slices appear as rugs only"
-        )
-        missingness <- paste(
-            c(missingness, density_note),
-            collapse = "; "
-        )
-    }
-
     p <- p +
         ggplot2::geom_vline(
             xintercept = 0, linetype = "dotted",
@@ -374,13 +329,105 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 
-    context <- .plot_caption_context(std, expt_idx)
+    view <- .stage1_components_surface_view(
+        view, layer_name, k_show, colour_by
+    )
+    .with_scientific_caption(p, visual_evidence_caption(view))
+}
+
+.partition_density_evidence <- function(density_frame) {
+    available <- if ("density_available" %in% names(density_frame)) {
+        density_frame$density_available
+    } else {
+        rep(TRUE, nrow(density_frame))
+    }
+    list(
+        available = density_frame[available, , drop = FALSE],
+        unavailable = density_frame[!available, , drop = FALSE]
+    )
+}
+
+.stage1_components_surface_view <- function(
+    view,
+    layer_name,
+    k_show,
+    colour_by
+) {
+    displays <- .visual_evidence_displays(view)
+    meta_col <- displays$aligned_metadata[[layer_name]]
+    density <- displays$component_densities[[layer_name]]
+    density <- density[
+        density$component %in% sprintf("PC%d", seq_len(k_show)),
+        ,
+        drop = FALSE
+    ]
+    unavailable_slices <- unique(
+        .partition_density_evidence(density)$unavailable$component
+    )
+    missingness <- if (!is.null(meta_col) && anyNA(meta_col)) {
+        sprintf(
+            "Dashed rugs mark %d observations with missing %s",
+            sum(is.na(meta_col)), colour_by
+        )
+    } else {
+        NULL
+    }
+    if (!is.null(meta_col) && !is.numeric(meta_col)) {
+        status <- displays$component_group_density_status[[layer_name]][[colour_by]]
+        unavailable <- status$metadata_value[!status$density_available]
+        if (length(unavailable)) {
+            missingness <- paste(
+                c(
+                    missingness,
+                    sprintf(
+                        "Levels with fewer than two observations (%s) appear as rugs only",
+                        paste(unavailable, collapse = ", ")
+                    )
+                ),
+                collapse = "; "
+            )
+        }
+        grouped <- displays$component_group_densities[[layer_name]][[colour_by]]
+        grouped <- grouped[
+            grouped$component %in% sprintf("PC%d", seq_len(k_show)),
+            ,
+            drop = FALSE
+        ]
+        unavailable_grouped <- .partition_density_evidence(grouped)$unavailable
+        if (nrow(unavailable_grouped)) {
+            unavailable_slices <- union(
+                unavailable_slices,
+                sprintf(
+                    "%s (%s = %s)",
+                    unavailable_grouped$component,
+                    colour_by,
+                    unavailable_grouped$metadata_value
+                )
+            )
+        }
+    }
+    if (length(unavailable_slices)) {
+        missingness <- paste(
+            c(
+                missingness,
+                paste0(
+                    "Numerically degenerate density slices (",
+                    paste(unavailable_slices, collapse = ", "),
+                    ") have insufficient coordinate spread for kernel-density ",
+                    "estimation at sqrt(machine precision) x max(1, maximum ",
+                    "absolute coordinate); those slices appear as rugs only"
+                )
+            ),
+            collapse = "; "
+        )
+    }
+    context <- displays$caption_contexts[[layer_name]]
     metadata_marks <- if (!is.null(meta_col) && !is.numeric(meta_col)) {
         "Density fills, outlines, and rug colours"
     } else {
         "Rug colours"
     }
-    view <- .new_scientific_caption_view(
+    caption <- .new_scientific_caption_view(
         title = "Stage 1 component distributions",
         experiment_label = context$experiment_label,
         molecular_layer = context$molecular_layer,
@@ -394,34 +441,34 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             paste0(
                 "Facets show components 1-", k_show,
                 " in decomposition order; stored densities summarize sample-coordinate ",
-                "distributions; rugs mark sample coordinates; dotted vertical ",
-                "lines mark zero"
+                "distributions; rugs mark sample coordinates; dotted vertical lines mark zero"
             ),
-            .plot_metadata_encoding(
-                meta_col, colour_by, metadata_marks
-            )
+            .plot_metadata_encoding(meta_col, colour_by, metadata_marks)
         ),
         estimand = "the descriptive distribution of sample coordinates",
         missingness = missingness,
+        uncertainty = if (identical(visual_evidence_state(view), "partial")) {
+            "Available density slices and sample-coordinate rugs are shown; unavailable slices remain explicit"
+        } else {
+            NA_character_
+        },
         threshold = "No component-selection threshold is applied",
         claim_boundary = paste0(
-            "This descriptive gallery does not rank or nominate a biological ",
-            "coordinate"
+            "This descriptive gallery does not rank or nominate a biological coordinate"
         ),
-        state = "uncalibrated"
+        state = .visual_evidence_surface_state(view)
     )
-    .with_scientific_caption(p, .build_scientific_caption(view))
-}
-
-.partition_density_evidence <- function(density_frame) {
-    available <- if ("density_available" %in% names(density_frame)) {
-        density_frame$density_available
-    } else {
-        rep(TRUE, nrow(density_frame))
-    }
-    list(
-        available = density_frame[available, , drop = FALSE],
-        unavailable = density_frame[!available, , drop = FALSE]
+    .replace_visual_evidence_caption(
+        view,
+        caption,
+        display_data = list(
+            surface_request = list(
+                plot = "components",
+                layer = layer_name,
+                n_components = k_show,
+                colour_by = colour_by
+            )
+        )
     )
 }
 
@@ -478,9 +525,11 @@ plot_spectrum <- function(std, n_sv = 20L) {
             "plot_spectrum(): n_sv must be a positive integer"
         )
     }
-    expt_list <- as.list(experiments(std))
-    evidence <- .stage_plot_evidence(std, "stage1")
-    spectrum <- evidence@displays$spectrum
+    view <- .stage_visual_evidence(std, "stage1")
+    if (identical(visual_evidence_state(view), "missing")) {
+        return(.render_unavailable_visual_evidence(view))
+    }
+    spectrum <- visual_evidence_display(view, "spectrum")
     n <- spectrum$n
     p <- spectrum$p
     bbp <- spectrum$bbp
@@ -507,15 +556,24 @@ plot_spectrum <- function(std, n_sv = 20L) {
         scale_colour_landscapeR("categorical") +
         ggplot2::labs(
             title   = "Singular value spectrum per layer",
-            subtitle = sprintf("n = %d, p = %d, %d layers", n, p, length(expt_list)),
+            subtitle = sprintf(
+                "n = %d, p = %d, %d layers",
+                n, p, visual_evidence_display(view, "experiment_count")
+            ),
             x       = "Rank",
             y       = "Singular value",
             colour  = "Layer"
         ) +
         theme_landscapeR()
 
-    context <- .plot_caption_context(std)
-    view <- .new_scientific_caption_view(
+    view <- .stage1_spectrum_surface_view(view, as.integer(n_sv))
+    .with_scientific_caption(plot, visual_evidence_caption(view))
+}
+
+.stage1_spectrum_surface_view <- function(view, n_sv) {
+    context <- visual_evidence_display(view, "caption_context")
+    spectrum <- visual_evidence_display(view, "spectrum")
+    caption <- .new_scientific_caption_view(
         title = "Singular-value spectra",
         experiment_label = context$experiment_label,
         molecular_layer = context$molecular_layer,
@@ -529,11 +587,14 @@ plot_spectrum <- function(std, n_sv = 20L) {
             paste0(
                 "Lines and points show ordered raw-assay singular values ",
                 "for layer traces: ",
-                paste(names(expt_list), collapse = ", ")
+                paste(
+                    visual_evidence_display(view, "experiment_names"),
+                    collapse = ", "
+                )
             ),
             sprintf(
                 "The dashed horizontal line marks the BBP reference at %.2f",
-                bbp
+                spectrum$bbp
             )
         ),
         estimand = paste0(
@@ -545,13 +606,24 @@ plot_spectrum <- function(std, n_sv = 20L) {
             "spiked white-noise model; it is a model-based detectability ",
             "reference, not empirical proof"
         ),
+        uncertainty = if (identical(visual_evidence_state(view), "partial")) {
+            "The stored Stage 1 display evidence is incomplete; available spectrum values are shown"
+        } else {
+            NA_character_
+        },
         claim_boundary = paste0(
             "Position relative to this reference does not establish recovery ",
             "or biological validity of an axis"
         ),
-        state = "uncalibrated"
+        state = .visual_evidence_surface_state(view)
     )
-    .with_scientific_caption(plot, .build_scientific_caption(view))
+    .replace_visual_evidence_caption(
+        view,
+        caption,
+        display_data = list(
+            surface_request = list(plot = "spectrum", n_sv = n_sv)
+        )
+    )
 }
 
 # ---------------------------------------------------------------------------
@@ -586,14 +658,25 @@ plot_spectrum <- function(std, n_sv = 20L) {
 #' @export
 plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
     stopifnot(is(std, "StateTransitionData"))
-    evidence <- .stage_plot_evidence(std, "stage1")
-    if (is.null(evidence@displays$decomposition)) {
-        .stop_plot_evidence_unavailable(paste0(
-            "Stage 1 decomposition evidence is unavailable; run decompose() ",
-            "before plotting decomposition coordinates"
+    view <- .stage_visual_evidence(
+        std, "stage1", colour_by = colour_by, caller = "plot_decomposition"
+    )
+    if (identical(visual_evidence_state(view), "missing")) {
+        return(.render_unavailable_visual_evidence(view))
+    }
+    displays <- .visual_evidence_displays(view)
+    if (is.null(displays$decomposition)) {
+        return(.render_unavailable_visual_evidence(
+            .stage_unavailable_visual_evidence(
+                "stage1",
+                paste0(
+                    "Stage 1 decomposition evidence is unavailable; run ",
+                    "decompose() before plotting decomposition coordinates"
+                )
+            )
         ))
     }
-    decomposition <- evidence@displays$decomposition
+    decomposition <- displays$decomposition
     coordinates <- decomposition$coordinates
     layer_nms <- unique(coordinates$layer)
     n_layers <- length(layer_nms)
@@ -625,7 +708,7 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         if (!is.null(colour_by)) {
             experiment_index <- match(
                 layer_nms[[i]],
-                names(as.list(experiments(std)))
+                displays$experiment_names
             )
             if (is.na(experiment_index)) {
                 .stop_plot_evidence_unavailable(sprintf(
@@ -633,12 +716,8 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
                     layer_nms[[i]]
                 ))
             }
-            layer_df[[colour_by]] <- .component_gallery_metadata(
-                std,
-                experiment_index,
-                colour_by,
-                caller = "plot_decomposition"
-            )
+            layer_df[[colour_by]] <-
+                displays$aligned_metadata[[layer_nms[[i]]]]
         }
         layer_df
     })
@@ -680,10 +759,8 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 
-    missingness <- NULL
     if (is.null(colour_by)) {
         p <- p + ggplot2::geom_point(size = 2, alpha = 0.75)
-        meta_col <- NULL
     } else {
         p <- p +
             ggplot2::geom_point(
@@ -703,32 +780,55 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
                 colour = unname(palette[["ink"]]),
                 size = 2.4, stroke = 0.7
             )
-            missingness <- sprintf(
-                "Crosses mark %d observations with missing %s",
-                nrow(missing), colour_by
-            )
         }
     }
+    view <- .stage1_decomposition_surface_view(
+        view, plot_idx, colour_by
+    )
+    .with_scientific_caption(p, visual_evidence_caption(view))
+}
 
-    context <- .plot_caption_context(std)
+.stage1_decomposition_surface_view <- function(view, plot_idx, colour_by) {
+    displays <- .visual_evidence_displays(view)
+    decomposition <- displays$decomposition
+    df <- decomposition$coordinates[
+        decomposition$coordinates$component == plot_idx,
+        ,
+        drop = FALSE
+    ]
+    meta_col <- NULL
+    if (!is.null(colour_by)) {
+        rows <- lapply(unique(df$layer), function(layer_name) {
+            layer_df <- df[df$layer == layer_name, , drop = FALSE]
+            layer_df[[colour_by]] <- displays$aligned_metadata[[layer_name]]
+            layer_df
+        })
+        df <- do.call(rbind, rows)
+        meta_col <- df[[colour_by]]
+    }
+    angle_row <- decomposition$truth_angles[
+        decomposition$truth_angles$component == plot_idx,
+        ,
+        drop = FALSE
+    ]
+    context <- displays$caption_context
     encodings <- c(
         paste0(
             "Facets identify molecular layers; points show component ", plot_idx,
-            " sample coordinates rank-ordered within each layer; the dotted ",
-            "horizontal line marks zero"
+            " sample coordinates rank-ordered within each layer; the dotted horizontal line marks zero"
         ),
         .plot_metadata_encoding(meta_col, colour_by, "Point colours")
     )
-    if (!is.null(angle_label)) {
+    if (nrow(angle_row)) {
         encodings <- c(
             encodings,
             paste0(
-                "The subtitle reports the stored synthetic ground-truth angle ",
-                "for component ", plot_idx
+                "The subtitle reports the stored synthetic ground-truth angle for component ",
+                plot_idx
             )
         )
     }
-    view <- .new_scientific_caption_view(
+    caption <- .new_scientific_caption_view(
         title = "Stage 1 decomposition coordinates",
         experiment_label = context$experiment_label,
         molecular_layer = context$molecular_layer,
@@ -742,13 +842,35 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         estimand = paste0(
             "the descriptive sample coordinate on component ", plot_idx
         ),
-        missingness = missingness,
+        missingness = if (!is.null(meta_col) && anyNA(meta_col)) {
+            sprintf(
+                "Crosses mark %d observations with missing %s",
+                sum(is.na(meta_col)), colour_by
+            )
+        } else {
+            NULL
+        },
+        uncertainty = if (identical(visual_evidence_state(view), "partial")) {
+            "The stored Stage 1 display evidence is incomplete; available sample coordinates are shown"
+        } else {
+            NA_character_
+        },
         threshold = "No component-selection threshold is applied",
         claim_boundary = paste0(
             "This display does not select a component or establish biological ",
             "interpretation"
         ),
-        state = "uncalibrated"
+        state = .visual_evidence_surface_state(view)
     )
-    .with_scientific_caption(p, .build_scientific_caption(view))
+    .replace_visual_evidence_caption(
+        view,
+        caption,
+        display_data = list(
+            surface_request = list(
+                plot = "decomposition",
+                component = plot_idx,
+                colour_by = colour_by
+            )
+        )
+    )
 }

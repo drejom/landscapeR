@@ -1,0 +1,9 @@
+Stage 1 component distributions. The layer1 layer. Facets show components 1-6 in decomposition
+order; stored densities summarize sample-coordinate distributions; rugs mark sample
+coordinates; dotted vertical lines mark zero; Rug colours do not encode sample metadata. The
+analysis unit is independent biological observation; the design is cross_sectional; the
+estimand is the descriptive distribution of sample coordinates. Numerically degenerate density
+slices (PC1) have insufficient coordinate spread for kernel-density estimation at sqrt(machine
+precision) x max(1, maximum absolute coordinate); those slices appear as rugs only. No
+component-selection threshold is applied. This descriptive gallery does not rank or nominate a
+biological coordinate.

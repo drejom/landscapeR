@@ -17,6 +17,7 @@ is built under `.scratch/site/` and deployed by CI; it is not committed here.
 | [`research/`](research/) | Primary-source methodological research notes that inform decisions | Algorithm decisions or acceptance status |
 | [`reviews/`](reviews/) | Versioned expert-consultation instruments, hosted-form manifests, and private-review protocols | Reviewer identities, raw responses, or quotations |
 | [`architecture/`](architecture/) | Current package module seams, owned invariants, and dependency direction | Algorithm choice or work scheduling |
+| [`architecture/visual-evidence.md`](architecture/visual-evidence.md) | Single typed figure-consumer seam, Stage storage adapter, total unavailable states, and renderer authority | Scientific estimator or threshold choice |
 | [`archive/`](archive/) | Completed audits and superseded planning context | Current package priority |
 | [`agents/`](agents/) | Agent workflow and issue/triage guidance | Scientific decisions |
 | [`agents/repo-hygiene.md`](agents/repo-hygiene.md) | Transient-output location, governed-artifact distinction, agent cleanup, and executable hygiene checks | Scientific artifacts or retention policy definitions |
