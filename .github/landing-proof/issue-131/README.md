@@ -23,7 +23,7 @@ status and next-work instructions no longer compete with `ROADMAP.md`.
 flowchart LR
     A[Read ROADMAP and issue] --> B[Install hooks]
     B --> C[Implement and test]
-    C --> D[Pre-push parity gates]
+    C --> D[Pre-push safeguards]
     D --> E[Dual local review]
     E --> F[PR proof and CI]
     F --> G[Copilot response and thread resolution]
