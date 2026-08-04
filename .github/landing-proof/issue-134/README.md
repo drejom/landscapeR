@@ -19,9 +19,10 @@ package default.
 ## Worker preflight
 
 The installed package was run under `future::cluster` with two PSOCK workers.
-Both distinct processes reported the declared `issue-134-proof` revision, R
-4.5.2, and exact controller versions of landscapeR, future, future.apply, and
-digest.
+The installed artifact was stamped `issue-134-proof` before installation. Both
+distinct processes independently read that identity from installed package
+metadata, rather than from a worker environment variable, and reported R 4.5.2
+and exact controller versions of landscapeR, future, future.apply, and digest.
 
 | Requested workers | Distinct workers | Matching revision | Matching R | Matching dependencies | Preflight result |
 |---:|---:|---|---|---|---|
@@ -35,7 +36,8 @@ Negative tests show that revision mismatch and incomplete worker coverage raise
 The representative assay contained 1,200 features by 200 observations. Its
 serialized payload and reconstructed collection were each 960,070 bytes.
 Times are medians of three repetitions on the development Mac and are not a
-performance guarantee.
+performance guarantee. Saved benchmark rows also carry the backend, worker
+count, repetitions, R/package versions, platform, and UTC timestamp.
 
 | Observations per chunk | Submitted chunks | Sequential (s) | Two-worker cluster (s) | Reconstructed digest identical |
 |---:|---:|---:|---:|---|
@@ -59,7 +61,9 @@ module is ready to run landscapeR.
 
 ## Reproduction
 
-Install the branch into a clean library, set `LANDSCAPER_REVISION`, then run
+Stamp the checked-out Git identity into `Config/landscapeR/Revision` in a
+disposable source copy, install that copy into a clean library, set
+`LANDSCAPER_REVISION` to the same expected identity, then run
 [`reproduce.R`](reproduce.R). The script selects sequential and two-worker
 cluster plans externally, invokes the package preflight and benchmark, and
 asserts identical scientific execution and payload digests.

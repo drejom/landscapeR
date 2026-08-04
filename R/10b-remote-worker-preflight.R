@@ -8,6 +8,58 @@
     ))
 }
 
+.future_benchmark_error <- function(message, stage, condition = NULL) {
+    diagnostics <- data.frame(
+        stage = stage,
+        cause_class = if (is.null(condition)) NA_character_ else class(condition)[[1L]],
+        cause_message = if (is.null(condition)) NA_character_ else conditionMessage(condition),
+        stringsAsFactors = FALSE
+    )
+    stop(structure(
+        list(message = message, call = sys.call(-1L), diagnostics = diagnostics),
+        class = c("landscapeR_future_benchmark_error",
+                  "landscapeR_validation_error", "error", "condition")
+    ))
+}
+
+#' Report the identity of the loaded landscapeR artifact
+#'
+#' Uses revision metadata embedded by an installer when available. Otherwise it
+#' computes a SHA-256 identity from the installed package files. It never trusts
+#' an environment variable supplied by the calling job.
+#'
+#' @return One non-empty revision identity.
+#' @export
+landscapeR_revision <- function() {
+    description <- tryCatch(
+        utils::packageDescription("landscapeR"),
+        error = function(condition) NULL
+    )
+    if (!is.null(description)) {
+        candidates <- unlist(description[c(
+            "Config/landscapeR/Revision", "RemoteSha", "GithubSHA1"
+        )])
+        candidates <- candidates[!is.na(candidates) & nzchar(candidates)]
+        if (length(candidates)) return(unname(candidates[[1L]]))
+    }
+    namespace <- asNamespace("landscapeR")
+    symbols <- ls(namespace, all.names = TRUE)
+    definitions <- lapply(symbols, function(symbol) {
+        value <- get0(symbol, envir = namespace, inherits = FALSE)
+        if (!is.function(value)) return(NULL)
+        list(formals = formals(value), body = body(value))
+    })
+    names(definitions) <- symbols
+    definitions <- definitions[!vapply(definitions, is.null, logical(1L))]
+    manifest <- list(
+        package_version = as.character(utils::packageVersion("landscapeR")),
+        functions = definitions
+    )
+    paste0("sha256:", digest::digest(
+        manifest, algo = "sha256", serialize = TRUE
+    ))
+}
+
 .validate_preflight_packages <- function(packages) {
     if (!is.character(packages) || !length(packages) || anyNA(packages) ||
         any(!nzchar(packages)) || anyDuplicated(packages)) {
@@ -32,9 +84,9 @@
 #' Executes environment probes through the user's active future plan before a
 #' scientific workload starts. The package does not select or modify that plan.
 #'
-#' @param expected_revision Non-empty source revision expected on every worker.
-#'   Workers read `LANDSCAPER_REVISION`, falling back to GitHub installation
-#'   metadata when available.
+#' @param expected_revision Non-empty installed-artifact revision expected on
+#'   every worker. Obtain it from the intended controller installation with
+#'   [landscapeR_revision()] or use revision metadata embedded at installation.
 #' @param packages Unique package names whose versions must match the controller.
 #' @param workers Positive number of distinct workers expected. `NULL` uses
 #'   `future::nbrOfWorkers()` when that value is finite.
@@ -76,18 +128,10 @@ preflight_future_workers <- function(
 
     probe <- function(probe_id, expected, packages) {
         Sys.sleep(0.1)
-        revision <- Sys.getenv("LANDSCAPER_REVISION", unset = "")
-        if (!nzchar(revision)) {
-            description <- tryCatch(
-                utils::packageDescription("landscapeR"),
-                error = function(condition) NULL
-            )
-            if (!is.null(description)) {
-                candidates <- unlist(description[c("RemoteSha", "GithubSHA1")])
-                candidates <- candidates[!is.na(candidates) & nzchar(candidates)]
-                if (length(candidates)) revision <- candidates[[1L]]
-            }
-        }
+        revision <- tryCatch(
+            landscapeR_revision(),
+            landscapeR_worker_preflight_error = function(condition) ""
+        )
         installed <- vapply(
             packages,
             function(package) requireNamespace(package, quietly = TRUE),
@@ -194,8 +238,10 @@ preflight_future_workers <- function(
 #' @param chunk_sizes Positive observation counts per submitted chunk.
 #' @param repetitions Positive number of timing repetitions.
 #' @return A data frame with serialization, global-export/collection, chunked
-#'   dispatch/collection, and result-size measurements. Times are medians in
-#'   seconds and are operational observations, not performance guarantees.
+#'   dispatch/collection, result-size measurements, and execution provenance.
+#'   Times are medians in seconds and are operational observations, not
+#'   performance guarantees. Operational failures raise
+#'   `landscapeR_future_benchmark_error` with stage diagnostics attached.
 #' @export
 benchmark_future_assay <- function(
     assay,
@@ -222,20 +268,41 @@ benchmark_future_assay <- function(
         .stop_landscapeR_validation("repetitions must be one positive integer")
     }
     repetitions <- as.integer(repetitions)
+    benchmarked_at <- format(
+        as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"
+    )
+    plan <- future::plan("list")
+    backend <- if (length(plan)) class(plan[[1L]])[[1L]] else "unknown"
+    worker_count <- future::nbrOfWorkers()
+    package_versions <- vapply(
+        c("landscapeR", "future", "future.apply", "digest"),
+        function(package) as.character(utils::packageVersion(package)),
+        character(1L)
+    )
     source_digest <- digest::digest(assay, algo = "sha256", serialize = TRUE)
     serialized <- serialize(assay, NULL, version = 3L)
     serialization_times <- replicate(repetitions, unname(system.time(
         serialize(assay, NULL, version = 3L)
     )[["elapsed"]]))
-    export_times <- replicate(repetitions, unname(system.time({
-        exported <- future::value(future::future(
-            digest::digest(assay, algo = "sha256", serialize = TRUE),
-            seed = FALSE
-        ))
-        if (!identical(exported, source_digest)) {
-            stop("future global export changed the assay digest")
-        }
-    })[["elapsed"]]))
+    export_times <- tryCatch(
+        replicate(repetitions, unname(system.time({
+            exported <- future::value(future::future(
+                digest::digest(assay, algo = "sha256", serialize = TRUE),
+                seed = FALSE
+            ))
+            if (!identical(exported, source_digest)) {
+                .future_benchmark_error(
+                    "future global export changed the assay digest",
+                    "global-export-digest"
+                )
+            }
+        })[["elapsed"]])),
+        landscapeR_future_benchmark_error = function(condition) stop(condition),
+        error = function(condition) .future_benchmark_error(
+            "future global export or collection failed",
+            "global-export-collection", condition
+        )
+    )
 
     rows <- lapply(chunk_sizes, function(chunk_size) {
         chunks <- split(
@@ -245,15 +312,21 @@ benchmark_future_assay <- function(
         elapsed <- numeric(repetitions)
         collected <- NULL
         for (i in seq_len(repetitions)) {
-            elapsed[[i]] <- unname(system.time({
-                pieces <- future.apply::future_lapply(
-                    chunks,
-                    function(columns, assay) assay[, columns, drop = FALSE],
-                    assay = assay, future.seed = FALSE,
-                    future.scheduling = Inf
+            elapsed[[i]] <- tryCatch(
+                unname(system.time({
+                    pieces <- future.apply::future_lapply(
+                        chunks,
+                        function(columns, assay) assay[, columns, drop = FALSE],
+                        assay = assay, future.seed = FALSE,
+                        future.scheduling = Inf
+                    )
+                    collected <- do.call(cbind, pieces)
+                })[["elapsed"]]),
+                error = function(condition) .future_benchmark_error(
+                    "future chunk dispatch or collection failed",
+                    "chunk-dispatch-collection", condition
                 )
-                collected <- do.call(cbind, pieces)
-            })[["elapsed"]])
+            )
         }
         collected_digest <- digest::digest(
             collected, algo = "sha256", serialize = TRUE
@@ -268,6 +341,14 @@ benchmark_future_assay <- function(
             collection_bytes = length(serialize(collected, NULL, version = 3L)),
             source_digest = source_digest, collected_digest = collected_digest,
             identical = identical(source_digest, collected_digest),
+            repetitions = repetitions, backend = backend,
+            workers = worker_count, r_version = R.version.string,
+            platform = R.version$platform,
+            package_versions = paste(
+                paste(names(package_versions), package_versions, sep = "="),
+                collapse = ";"
+            ),
+            benchmarked_at_utc = benchmarked_at,
             stringsAsFactors = FALSE
         )
     })

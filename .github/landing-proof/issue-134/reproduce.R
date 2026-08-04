@@ -2,6 +2,7 @@ library(landscapeR)
 
 revision <- Sys.getenv("LANDSCAPER_REVISION")
 stopifnot(nzchar(revision))
+stopifnot(identical(landscapeR_revision(), revision))
 previous <- future::plan()
 on.exit(future::plan(previous), add = TRUE)
 

@@ -19,8 +19,10 @@ benchmark_future_assay(
 }
 \value{
 A data frame with serialization, global-export/collection, chunked
-dispatch/collection, and result-size measurements. Times are medians in
-seconds and are operational observations, not performance guarantees.
+dispatch/collection, result-size measurements, and execution provenance.
+Times are medians in seconds and are operational observations, not
+performance guarantees. Operational failures raise
+\code{landscapeR_future_benchmark_error} with stage diagnostics attached.
 }
 \description{
 Benchmark assay transfer and chunk collection through the current future plan

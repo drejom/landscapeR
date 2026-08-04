@@ -11,9 +11,9 @@ preflight_future_workers(
 )
 }
 \arguments{
-\item{expected_revision}{Non-empty source revision expected on every worker.
-Workers read \code{LANDSCAPER_REVISION}, falling back to GitHub installation
-metadata when available.}
+\item{expected_revision}{Non-empty installed-artifact revision expected on
+every worker. Obtain it from the intended controller installation with
+\code{\link[=landscapeR_revision]{landscapeR_revision()}} or use revision metadata embedded at installation.}
 
 \item{packages}{Unique package names whose versions must match the controller.}
 

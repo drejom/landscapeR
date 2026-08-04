@@ -33,14 +33,20 @@ mkdir -p "$LANDSCAPER_R_LIB"
 ```
 
 First install dependencies into that library with the project's chosen lockfile
-or package-management procedure. Then install the declared source revision:
+or package-management procedure. Then create a disposable build copy, stamp its
+Git identity into installation metadata, and install it. The stamp comes from
+the checked-out source rather than from a claim propagated to workers:
 
 ```sh
-R CMD INSTALL --library="$LANDSCAPER_R_LIB" "$LANDSCAPER_SOURCE"
+BUILD_SOURCE="$PBS_JOBFS/landscapeR-build"
+cp -R "$LANDSCAPER_SOURCE" "$BUILD_SOURCE"
+printf '\nConfig/landscapeR/Revision: %s\n' "$LANDSCAPER_REVISION" >> "$BUILD_SOURCE/DESCRIPTION"
+R CMD INSTALL --library="$LANDSCAPER_R_LIB" "$BUILD_SOURCE"
 ```
 
-The controller and every worker must use the same `R_LIBS_USER`,
-`LANDSCAPER_REVISION`, R module, and package versions.
+The controller and every worker must use the same `R_LIBS_USER`, R module, and
+package versions. `LANDSCAPER_REVISION` is the controller's expected identity;
+workers independently read the installed artifact metadata.
 
 ## User-owned PBS allocation and future plan
 
@@ -77,8 +83,7 @@ stopifnot(nzchar(revision), nzchar(worker_library))
 future::plan(
     future::cluster,
     workers = hosts,
-    rscript_libs = worker_library,
-    rscript_envs = c(LANDSCAPER_REVISION = revision)
+    rscript_libs = worker_library
 )
 on.exit(future::plan(future::sequential), add = TRUE)
 
