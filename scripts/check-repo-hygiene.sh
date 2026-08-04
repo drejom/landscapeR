@@ -16,6 +16,17 @@ if [[ ! -d "$REPO_ROOT/.git" && ! -f "$REPO_ROOT/.git" ]]; then
   exit 2
 fi
 
+if ! git -C "$REPO_ROOT" check-ignore -q .scratch/probe 2>/dev/null; then
+  echo "ERROR: repo-root .scratch/ is not excluded by .gitignore." >&2
+  exit 1
+fi
+
+if [[ ! -f "$REPO_ROOT/.Rbuildignore" ]] ||
+   ! grep -Eq '^\^\\?\.scratch(\\?/)?\$$' "$REPO_ROOT/.Rbuildignore"; then
+  echo "ERROR: repo-root .scratch/ is not excluded by .Rbuildignore." >&2
+  exit 1
+fi
+
 UNEXPECTED=()
 while IFS= read -r -d '' entry; do
   [[ "${entry:0:2}" == "??" ]] || continue
@@ -33,4 +44,4 @@ if [[ ${#UNEXPECTED[@]} -gt 0 ]]; then
   exit 1
 fi
 
-echo "✓ Repository hygiene: no unexpected untracked files outside .scratch/."
+echo "✓ Repository hygiene: .scratch/ is excluded from Git and R builds; no unexpected untracked files remain outside it."
