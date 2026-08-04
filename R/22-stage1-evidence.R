@@ -4,8 +4,8 @@
 # deliberately operate on prototype candidates only; they do not register a
 # production Decomposer or change Issue #24's contract.
 
-.stage1_evidence_abort <- function(message) {
-    stop(structure(list(message = message, call = NULL),
+.stage1_evidence_abort <- function(message, execution = NULL) {
+    stop(structure(list(message = message, call = NULL, execution = execution),
                    class = c("stage1_evidence_error", "error", "condition")))
 }
 
@@ -67,7 +67,36 @@
     mean(vapply(by_stratum, mean, numeric(1L)))
 }
 
-.stage1_paired_bootstrap <- function(exact_rows, metric, rules) {
+.stage1_summary_measurements <- function(tasks, task_ids, shared_input, execution) {
+    data.frame(
+        requested_tasks = as.integer(length(tasks)),
+        serialized_tasks_bytes = as.numeric(length(serialize(tasks, NULL))),
+        serialized_task_ids_bytes = as.numeric(length(serialize(task_ids, NULL))),
+        serialized_shared_input_bytes = as.numeric(length(serialize(shared_input, NULL))),
+        serialized_values_bytes = as.numeric(length(serialize(execution$values, NULL))),
+        serialized_provenance_bytes = as.numeric(length(serialize(execution$provenance, NULL))),
+        serialized_execution_bytes = as.numeric(length(serialize(execution, NULL))),
+        stringsAsFactors = FALSE
+    )
+}
+
+.stage1_require_summary_completion <- function(repetition, label) {
+    if (repetition$execution$account$n_failed > 0L) {
+        .stage1_evidence_abort(
+            paste(label, "contains failed repetitions"),
+            execution = repetition$execution
+        )
+    }
+    invisible(repetition)
+}
+
+.stage1_paired_bootstrap <- function(
+    exact_rows,
+    metric,
+    rules,
+    sequential_internal = FALSE,
+    future_scheduling = NULL
+) {
     strata <- split(exact_rows, exact_rows$stratum_digest)
     paired <- lapply(strata, function(stratum) {
         c1 <- stratum[stratum$candidate == "C1_symmetric_consensus", c("seed", metric), drop = FALSE]
@@ -78,11 +107,54 @@
             .stage1_evidence_abort("calibration candidates must be paired by seed in every stratum")
         c1[[metric]] - c2[[metric]]
     })
-    setup_rng(rules$bootstrap_seed)
-    estimates <- vapply(seq_len(rules$bootstrap_resamples), function(i) {
-        mean(vapply(paired, function(x) mean(sample(x, length(x), replace = TRUE)), numeric(1L)))
-    }, numeric(1L))
-    stats::quantile(estimates, probs = c(0.025, 0.975), names = FALSE, type = 7L)
+    tasks <- as.list(seq_len(rules$bootstrap_resamples))
+    task_ids <- sprintf(
+        "stage1-calibration:%s:paired-bootstrap:%05d",
+        metric,
+        seq_along(tasks)
+    )
+    repetition <- .future_numeric_repetition(
+        tasks = tasks,
+        task_ids = task_ids,
+        run_seed = rules$bootstrap_seed,
+        compute_tier = "evidence",
+        worker = function(task, task_id, task_stream) {
+            mean(vapply(
+                paired,
+                function(values) mean(sample(
+                    values,
+                    length(values),
+                    replace = TRUE
+                )),
+                numeric(1L)
+            ))
+        },
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling,
+        failure_code = "stage1-paired-bootstrap-failure",
+        legacy_stream_advance = function(task, task_id) {
+            lapply(paired, function(values) {
+                sample(values, length(values), replace = TRUE)
+            })
+            invisible(NULL)
+        }
+    )
+    .stage1_require_summary_completion(repetition, "paired bootstrap")
+    list(
+        interval = stats::quantile(
+            repetition$values,
+            probs = c(0.025, 0.975),
+            names = FALSE,
+            type = 7L
+        ),
+        execution = repetition$execution,
+        measurements = .stage1_summary_measurements(
+            tasks,
+            task_ids,
+            paired,
+            repetition$execution
+        )
+    )
 }
 
 #' Select the Stage 1 baseline from calibration evidence
@@ -93,10 +165,16 @@
 #' @param calibration_rows one row per candidate/seed/stratum from the frozen
 #'   calibration split.
 #' @param manifest canonical Stage 1 benchmark manifest.
+#' @param sequential_internal logical; set `TRUE` when this workflow already
+#'   runs inside an outer future or workflow-orchestration task.
+#' @param future_scheduling optional future.apply scheduling value; `NULL`
+#'   leaves scheduling to the user-selected future backend.
 #' @return a serializable selection record.
 #' @export
 select_stage1_candidate <- function(calibration_rows,
-                                    manifest = stage1_benchmark_manifest()) {
+                                    manifest = stage1_benchmark_manifest(),
+                                    sequential_internal = FALSE,
+                                    future_scheduling = NULL) {
     validate_stage1_benchmark_manifest(manifest)
     .stage1_require_results(calibration_rows, split = "calibration")
     if (!isTRUE(all(calibration_rows$tier == "full")))
@@ -116,7 +194,14 @@ select_stage1_candidate <- function(calibration_rows,
     shared_difference <- .stage1_equal_stratum_mean(exact, "C1_symmetric_consensus",
         "shared_recovery_error") - .stage1_equal_stratum_mean(exact, "C2_block_scaled_svd",
         "shared_recovery_error")
-    shared_ci <- .stage1_paired_bootstrap(exact, "shared_recovery_error", rules)
+    shared_bootstrap <- .stage1_paired_bootstrap(
+        exact,
+        "shared_recovery_error",
+        rules,
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling
+    )
+    shared_ci <- shared_bootstrap$interval
     leakage_difference <- .stage1_equal_stratum_mean(exact, "C1_symmetric_consensus",
         "exclusive_leakage") - .stage1_equal_stratum_mean(exact, "C2_block_scaled_svd",
         "exclusive_leakage")
@@ -149,15 +234,69 @@ select_stage1_candidate <- function(calibration_rows,
         exclusive_leakage_difference = leakage_difference,
         projection_difference = projection_difference,
         elapsed_ratio = elapsed_ratio,
+        bootstrap_executions = list(
+            shared_recovery_error = shared_bootstrap$execution
+        ),
+        bootstrap_measurements = list(
+            shared_recovery_error = shared_bootstrap$measurements
+        ),
         rules = rules
     )
 }
 
-.stage1_bootstrap_median_ci <- function(values, seed, rules) {
-    setup_rng(seed)
-    estimates <- vapply(seq_len(rules$bootstrap_resamples), function(i)
-        stats::median(sample(values, length(values), replace = TRUE)), numeric(1L))
-    stats::quantile(estimates, probs = c(0.025, 0.975), names = FALSE, type = 7L)
+.stage1_bootstrap_median_ci <- function(
+    values,
+    seed,
+    rules,
+    task_scope,
+    sequential_internal = FALSE,
+    future_scheduling = NULL
+) {
+    if (!.is_scalar_nonempty_text(task_scope)) {
+        .stage1_evidence_abort("median bootstrap requires a stable task scope")
+    }
+    tasks <- as.list(seq_len(rules$bootstrap_resamples))
+    task_ids <- sprintf(
+        "stage1-holdout:%s:median-bootstrap:%05d",
+        task_scope,
+        seq_along(tasks)
+    )
+    repetition <- .future_numeric_repetition(
+        tasks = tasks,
+        task_ids = task_ids,
+        run_seed = seed,
+        compute_tier = "evidence",
+        worker = function(task, task_id, task_stream) {
+            stats::median(sample(
+                values,
+                length(values),
+                replace = TRUE
+            ))
+        },
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling,
+        failure_code = "stage1-median-bootstrap-failure",
+        legacy_stream_advance = function(task, task_id) {
+            sample(values, length(values), replace = TRUE)
+            invisible(NULL)
+        }
+    )
+    .stage1_require_summary_completion(repetition, "median bootstrap")
+    list(
+        interval = stats::quantile(
+            repetition$values,
+            probs = c(0.025, 0.975),
+            names = FALSE,
+            type = 7L
+        ),
+        execution = repetition$execution,
+        measurements = .stage1_summary_measurements(
+            tasks,
+            task_ids,
+            values,
+            repetition$execution
+        )
+    )
 }
 
 #' Assess frozen Stage 1 holdout evidence
@@ -168,10 +307,16 @@ select_stage1_candidate <- function(calibration_rows,
 #' @param selected_candidate candidate name returned by the calibration selector.
 #' @param holdout_rows one row per selected-candidate/seed/stratum from holdout.
 #' @param manifest canonical Stage 1 benchmark manifest.
+#' @param sequential_internal logical; set `TRUE` when this workflow already
+#'   runs inside an outer future or workflow-orchestration task.
+#' @param future_scheduling optional future.apply scheduling value; `NULL`
+#'   leaves scheduling to the user-selected future backend.
 #' @return a serializable holdout report.
 #' @export
 assess_stage1_holdout <- function(selected_candidate, holdout_rows,
-                                  manifest = stage1_benchmark_manifest()) {
+                                  manifest = stage1_benchmark_manifest(),
+                                  sequential_internal = FALSE,
+                                  future_scheduling = NULL) {
     validate_stage1_benchmark_manifest(manifest)
     if (length(selected_candidate) != 1L || is.na(selected_candidate) ||
         !selected_candidate %in% manifest$candidates)
@@ -202,25 +347,61 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
         if (!all(rows$gate_passed) || !.stage1_gate_is_expected(rows))
             .stage1_evidence_abort("holdout contains a failed contract gate")
         if (identical(stratum$projection_case[[1L]], "missing_id")) {
-            return(data.frame(stratum_digest = stratum$stratum_digest, stratum = stratum$stratum,
-                projection_case = stratum$projection_case, shared_signal = stratum$shared_signal,
-                noise_sd = stratum$noise_sd, metric = "typed_control_pass_rate",
-                estimate = mean(rows$gate_observed == "typed_failure"), ci_lower = NA_real_,
-                ci_upper = NA_real_, n = nrow(rows), stringsAsFactors = FALSE))
+            return(list(
+                rows = data.frame(stratum_digest = stratum$stratum_digest, stratum = stratum$stratum,
+                    projection_case = stratum$projection_case, shared_signal = stratum$shared_signal,
+                    noise_sd = stratum$noise_sd, metric = "typed_control_pass_rate",
+                    estimate = mean(rows$gate_observed == "typed_failure"), ci_lower = NA_real_,
+                    ci_upper = NA_real_, n = nrow(rows), stringsAsFactors = FALSE),
+                executions = list(),
+                measurements = list()
+            ))
         }
-        do.call(rbind, lapply(metrics, function(metric) {
+        metric_summaries <- lapply(metrics, function(metric) {
             values <- rows[[metric]]
             if (any(!is.finite(values))) .stage1_evidence_abort("exact-ID holdout metric is not finite")
-            ci <- .stage1_bootstrap_median_ci(values,
+            bootstrap <- .stage1_bootstrap_median_ci(values,
                 manifest$reporting_rules$bootstrap_seed_start + stratum$canonical_index,
-                manifest$reporting_rules)
-            data.frame(stratum_digest = stratum$stratum_digest, stratum = stratum$stratum,
-                projection_case = stratum$projection_case, shared_signal = stratum$shared_signal,
-                noise_sd = stratum$noise_sd, metric = metric, estimate = stats::median(values),
-                ci_lower = ci[[1L]], ci_upper = ci[[2L]], n = nrow(rows), stringsAsFactors = FALSE)
-        }))
+                manifest$reporting_rules,
+                task_scope = paste(stratum$stratum_digest, metric, sep = ":"),
+                sequential_internal = sequential_internal,
+                future_scheduling = future_scheduling)
+            list(
+                row = data.frame(stratum_digest = stratum$stratum_digest, stratum = stratum$stratum,
+                    projection_case = stratum$projection_case, shared_signal = stratum$shared_signal,
+                    noise_sd = stratum$noise_sd, metric = metric, estimate = stats::median(values),
+                    ci_lower = bootstrap$interval[[1L]], ci_upper = bootstrap$interval[[2L]],
+                    n = nrow(rows), stringsAsFactors = FALSE),
+                execution = bootstrap$execution,
+                measurements = bootstrap$measurements
+            )
+        })
+        names(metric_summaries) <- metrics
+        list(
+            rows = do.call(rbind, lapply(metric_summaries, `[[`, "row")),
+            executions = lapply(metric_summaries, `[[`, "execution"),
+            measurements = lapply(metric_summaries, `[[`, "measurements")
+        )
     })
-    summary <- do.call(rbind, summaries)
+    summary <- do.call(rbind, lapply(summaries, `[[`, "rows"))
+    bootstrap_executions <- unlist(
+        lapply(seq_along(summaries), function(i) {
+            stats::setNames(
+                summaries[[i]]$executions,
+                paste(strata$stratum_digest[[i]], names(summaries[[i]]$executions), sep = ":")
+            )
+        }),
+        recursive = FALSE
+    )
+    bootstrap_measurements <- unlist(
+        lapply(seq_along(summaries), function(i) {
+            stats::setNames(
+                summaries[[i]]$measurements,
+                paste(strata$stratum_digest[[i]], names(summaries[[i]]$measurements), sep = ":")
+            )
+        }),
+        recursive = FALSE
+    )
     exact_required <- summary[summary$projection_case == "exact_ids" &
         summary$shared_signal == 24 & summary$noise_sd == 1 &
         summary$metric %in% c("shared_recovery_error", "projection_error"), , drop = FALSE]
@@ -239,6 +420,8 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
         thresholds_passed = thresholds_pass,
         decision = if (all(holdout_rows$gate_passed) && thresholds_pass) "accepted" else "failed",
         summary = summary,
+        bootstrap_executions = bootstrap_executions,
+        bootstrap_measurements = bootstrap_measurements,
         rules = manifest$reporting_rules
     )
 }

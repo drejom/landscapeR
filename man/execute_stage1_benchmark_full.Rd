@@ -9,7 +9,9 @@ execute_stage1_benchmark_full(
   workers = 1L,
   workspace = NULL,
   progress = c("auto", "bar", "log", "none"),
-  keep_workspace = FALSE
+  keep_workspace = FALSE,
+  sequential_internal = FALSE,
+  future_scheduling = NULL
 )
 }
 \arguments{
@@ -24,6 +26,12 @@ repository \verb{.scratch/} directory, configurable with the
 \item{progress}{one of \code{"auto"}, \code{"bar"}, \code{"log"}, or \code{"none"}.}
 
 \item{keep_workspace}{retain local checkpoints after final artifact verification.}
+
+\item{sequential_internal}{logical; set \code{TRUE} when this workflow already
+runs inside an outer future or workflow-orchestration task.}
+
+\item{future_scheduling}{optional future.apply scheduling value for the
+calibration and holdout summary bootstraps.}
 }
 \value{
 path to the immutable artifact directory.

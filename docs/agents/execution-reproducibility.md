@@ -16,6 +16,12 @@ depend on worker count, scheduling, chunking, or completion order. Typed
 repetition results retain every requested task in the denominator and record
 completed tasks, stable failure codes, tier, seed scheme, task identities,
 child stream states, and a content digest. Stream collisions are rejected.
+Frozen workflows whose accepted estimates were produced from one canonical
+sequential stream instead use the seam's explicit
+`legacy-sequential-stream-v1` derivation. The seam captures each task's stream
+state while advancing the declared seed in canonical task order, then performs
+the stochastic draw inside the future worker. This preserves the frozen draw
+sequence without moving RNG ownership outside the execution substrate.
 
 Package functions use `future.apply` but never call `future::plan()` or change
 `future.*` options. Users select sequential, multisession, cluster, or remote
@@ -32,8 +38,10 @@ construction. The shared execution seam owns only repetition, RNG derivation,
 failure normalization, accounting, and typed partial results. Current adapters
 include cross-sectional biological-observation bootstrap, independent
 condition-by-time bootstrap, repeated complete-subject trajectory bootstrap,
-and the corresponding complete-search permutation procedures. Permutation
-evidence retains its typed execution result alongside the design-specific
-resampling account. No worker, chunk, or resample-count default is frozen;
-serialization and scheduling must be benchmarked on the eventual workload
-before such a default is proposed.
+the corresponding complete-search permutation procedures, and Stage 1 paired
+calibration and per-stratum median holdout summaries. Stage 1 summary reports
+retain typed execution results and serialized-payload measurements alongside
+their scientific intervals. Permutation evidence likewise retains its typed
+execution result alongside the design-specific resampling account. No worker,
+chunk, or resample-count default is frozen; serialization and scheduling must
+be benchmarked on the eventual workload before such a default is proposed.

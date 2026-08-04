@@ -80,6 +80,36 @@ test_that("future repetition is deterministic across plans and worker counts", {
     )), 8L)
 })
 
+test_that("legacy stream derivation restores caller RNG state", {
+    previous_kind <- RNGkind()
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv)
+    on.exit({
+        do.call(RNGkind, as.list(previous_kind))
+        if (had_seed) {
+            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
+        } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+            rm(".Random.seed", envir = .GlobalEnv)
+        }
+    }, add = TRUE)
+    RNGkind("Mersenne-Twister")
+    set.seed(991L)
+    caller_kind <- RNGkind()
+    caller_seed <- .Random.seed
+
+    streams <- landscapeR:::.legacy_sequential_task_streams(
+        11001L,
+        as.list(1:3),
+        sprintf("legacy:%02d", 1:3),
+        function(task, task_id) stats::runif(task)
+    )
+
+    expect_length(streams, 3L)
+    expect_true(all(vapply(streams, length, integer(1L)) == 7L))
+    expect_identical(RNGkind(), caller_kind)
+    expect_identical(.Random.seed, caller_seed)
+})
+
 test_that("scientific workflow is invariant across available future backends", {
     previous <- future::plan()
     on.exit(future::plan(previous), add = TRUE)
