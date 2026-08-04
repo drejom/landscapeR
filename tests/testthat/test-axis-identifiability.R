@@ -213,9 +213,8 @@ test_that("accepted K=1 identifiability has no invented competitor axis", {
         )
     )
     expect_true(all(c(
-        "absolute_similarity", "maximum_angle_degrees", "highlight"
+        "absolute_similarity", "maximum_angle_degrees", "effect_magnitude"
     ) %in% names(diagnostic$data)))
-    expect_identical(sum(diagnostic$data$highlight), 3L)
     expect_setequal(
         unique(audit$data$surface),
         c(
@@ -248,7 +247,7 @@ test_that("accepted K=1 identifiability has no invented competitor axis", {
     )
     expect_match(
         diagnostic_caption,
-        "Points toward the upper left",
+        "geometric recovery and the declared biological contrast",
         fixed = TRUE
     )
     expect_match(

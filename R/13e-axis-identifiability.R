@@ -1511,16 +1511,16 @@ proposal_identifiability <- function(proposal) {
             "values approaching one indicate closer agreement.",
             "(B) Subspace rotation is the distribution of one-dimensional",
             "principal angles; values approaching zero indicate less",
-            "rotation. Red diamonds mark medians, black bars span the middle",
+            "rotation. Black diamonds mark medians, black bars span the middle",
             "50%, and grey points represent completed resamples."
         )
     } else if (single_axis && identical(view, "diagnostic")) {
         paste(
             "(A) Each point represents one completed resample, locating its",
-            "absolute feature-loading cosine similarity against its",
-            "one-dimensional principal angle. Points toward the upper left",
-            "combine weaker loading agreement with greater rotation; the",
-            "three resamples with the largest rotation are highlighted in red."
+            "absolute feature-loading cosine similarity against the magnitude",
+            "of its repeated biological-effect estimate. This shows whether",
+            "geometric recovery and the declared biological contrast vary",
+            "together without treating either quantity as an acceptance rule."
         )
     } else if (identical(view, "primary")) {
         paste(
@@ -1562,11 +1562,7 @@ proposal_identifiability <- function(proposal) {
                 "comparison-axis or assignment-margin encoding is shown."
             )
         } else if (single_axis && identical(view, "diagnostic")) {
-            paste(
-                "Red points identify the completed resamples with the",
-                "largest observed rotation; they do not denote failures or",
-                "apply an acceptance threshold."
-            )
+            "Grey points represent completed biological-unit resamples."
         } else if (single_axis) {
             "The red mark denotes the sole nominated discovery component."
         } else if (identical(view, "primary")) {
@@ -1754,40 +1750,54 @@ plot_component_identifiability <- function(
             by = "replicate",
             all = FALSE
         )
+        effect_magnitude <- vapply(
+            evidence$replicates,
+            function(replicate) {
+                ranking <- replicate$ranking
+                assignment <- replicate$assignment
+                if (!is.data.frame(ranking) || !nrow(ranking) ||
+                        !is.data.frame(assignment) || !nrow(assignment)) {
+                    return(NA_real_)
+                }
+                selected <- ranking$component ==
+                    assignment$replicate_component[[1L]]
+                values <- ranking$effect_magnitude[selected]
+                if (length(values) == 1L && is.finite(values)) {
+                    as.numeric(values)
+                } else {
+                    NA_real_
+                }
+            },
+            numeric(1L)
+        )
+        effect_data <- data.frame(
+            replicate = seq_along(evidence$replicates),
+            effect_magnitude = effect_magnitude
+        )
+        replicate_data <- merge(
+            replicate_data,
+            effect_data,
+            by = "replicate",
+            all.x = TRUE
+        )
         if (identical(view, "diagnostic")) {
-            highlight_count <- min(3L, nrow(replicate_data))
-            replicate_data$highlight <- FALSE
-            if (highlight_count > 0L) {
-                highlight <- order(
-                    -replicate_data$maximum_angle_degrees,
-                    replicate_data$absolute_similarity
-                )[seq_len(highlight_count)]
-                replicate_data$highlight[highlight] <- TRUE
-            }
             plot <- ggplot2::ggplot(
                 replicate_data,
                 ggplot2::aes(
                     x = absolute_similarity,
-                    y = maximum_angle_degrees
+                    y = effect_magnitude
                 )
             ) +
                 ggplot2::geom_point(
-                    ggplot2::aes(colour = highlight),
+                    colour = unname(palette[["nuisance"]]),
                     alpha = 0.65,
                     size = 1.8
-                ) +
-                ggplot2::scale_colour_manual(
-                    values = c(
-                        `FALSE` = unname(palette[["nuisance"]]),
-                        `TRUE` = unname(palette[["focal"]])
-                    ),
-                    guide = "none"
                 ) +
                 ggplot2::labs(
                     title = "A  Replicate-level recovery map",
                     subtitle = subtitle,
                     x = "Absolute loading cosine (larger is better)",
-                    y = "Principal angle in degrees (smaller is better)"
+                    y = "Repeated biological-effect magnitude"
                 ) +
                 theme_landscapeR(square = TRUE)
             return(.with_scientific_caption(plot, caption))
@@ -1868,7 +1878,7 @@ plot_component_identifiability <- function(
                 data = interval_data,
                 ggplot2::aes(x = value, y = y),
                 inherit.aes = FALSE,
-                colour = unname(palette[["focal"]]),
+                colour = unname(palette[["ink"]]),
                 shape = 18,
                 size = 3
             ) +

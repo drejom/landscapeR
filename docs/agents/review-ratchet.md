@@ -76,6 +76,18 @@ found that body-only fingerprints, incomplete closure environments, and
 assign-before-record ordering could hide behavior changes or leave an
 unprovenanced registry mutation.
 
+### RR-006 — Verify that visual encodings carry independent meaning
+
+Before accepting a diagnostic relationship, verify that its plotted quantities
+are not deterministic transforms of one another. Also verify that semantic
+highlight colours retain their declared role rather than marking
+result-selected extremes. A mathematically redundant or semantically overloaded
+encoding can look informative while adding no evidence.
+
+**Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) initially
+plotted one-dimensional principal angle against its exact absolute-cosine
+transform and used the focal red for the three largest observed rotations.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A

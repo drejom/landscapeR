@@ -5,7 +5,7 @@ bootstrap replicates completed the full assessment. Resampling used a stratified
 biological sampling units within target groups. (A) Loading agreement is the distribution of
 absolute feature-loading cosine similarities across completed resamples; values approaching one
 indicate closer agreement. (B) Subspace rotation is the distribution of one-dimensional
-principal angles; values approaching zero indicate less rotation. Red diamonds mark medians,
+principal angles; values approaching zero indicate less rotation. Black diamonds mark medians,
 black bars span the middle 50%, and grey points represent completed resamples. Because K=1
 contains only the nominated component, no comparison-axis or assignment-margin encoding is
 shown. Components were matched jointly by maximizing total absolute feature-loading cosine

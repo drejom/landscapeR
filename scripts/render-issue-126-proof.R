@@ -12,14 +12,14 @@ condition <- factor(
     rep(c("control", "treatment"), each = n / 2L),
     levels = c("control", "treatment")
 )
-signal <- ifelse(condition == "treatment", 2, -2)
+signal <- ifelse(condition == "treatment", 0.6, -0.6)
 expression <- rbind(
-    gene_1 = signal + rep(c(-0.2, 0, 0.2), length.out = n),
-    gene_2 = rep(c(-1, 1), length.out = n),
-    gene_3 = seq(-0.5, 0.5, length.out = n),
-    gene_4 = rep(c(-0.3, 0.1, 0.2), length.out = n),
-    gene_5 = rep(c(0.2, -0.1), length.out = n),
-    gene_6 = seq(0.3, -0.3, length.out = n)
+    gene_1 = signal + rep(c(-1.1, -0.6, -0.2, 0.2, 0.7, 1.1), 2L),
+    gene_2 = rep(c(-0.2, 0.2), length.out = n),
+    gene_3 = seq(-0.15, 0.15, length.out = n),
+    gene_4 = rep(c(-0.1, 0.05, 0.08), length.out = n),
+    gene_5 = rep(c(0.08, -0.04), length.out = n),
+    gene_6 = seq(0.1, -0.1, length.out = n)
 )
 colnames(expression) <- assay_ids
 proof_metadata <- S4Vectors::DataFrame(
