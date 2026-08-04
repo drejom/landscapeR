@@ -202,7 +202,7 @@ setClass("MetadataAssociationAtlas",
         sampling_design = new("SamplingDesign"),
         input_digest = character(0L),
         state_space_digest = character(0L),
-        compute_tier = "analytic-unadjusted",
+        compute_tier = "inspect",
         provenance = list(),
         evidence_status = "estimable-exploratory-only"
     )
@@ -254,11 +254,7 @@ setValidity("MetadataAssociationAtlas", function(object) {
     if (!.is_sha256_digest(object@state_space_digest)) {
         errors <- c(errors, "state_space_digest must be one SHA-256 digest")
     }
-    allowed_compute_tiers <- c(
-        "analytic-unadjusted",
-        "analytic-adjusted",
-        "standard-resampled"
-    )
+    allowed_compute_tiers <- c(.compute_tiers, .legacy_compute_tiers)
     if (length(object@compute_tier) != 1L ||
         !object@compute_tier %in% allowed_compute_tiers) {
         errors <- c(errors, "compute_tier is not supported")
@@ -625,6 +621,25 @@ setMethod(
     }
 )
 
+#' @rdname association_contract
+#' @export
+setMethod(
+    "association_contract",
+    signature(strategy = "CrossSectionalBinaryAssociationStrategy"),
+    function(strategy) {
+        .new_association_contract(
+            sampling_designs = "cross_sectional",
+            target_types = "binary",
+            estimand = "signed-rank-biserial",
+            cohort_policy = "available-independent-observations",
+            diagnostic_prefix = "cross-sectional-binary",
+            abstention_statuses = "not-estimable",
+            refit_policy = "biological-observation-index",
+            evidence_version = .cross_sectional_evidence_version
+        )
+    }
+)
+
 register_strategy(
     "AssociationStrategy",
     "cross_sectional_binary",
@@ -716,6 +731,25 @@ setMethod(
     signature(strategy = "CrossSectionalContinuousAssociationStrategy"),
     function(strategy) {
         "cross-sectional-continuous-spearman-v1"
+    }
+)
+
+#' @rdname association_contract
+#' @export
+setMethod(
+    "association_contract",
+    signature(strategy = "CrossSectionalContinuousAssociationStrategy"),
+    function(strategy) {
+        .new_association_contract(
+            sampling_designs = "cross_sectional",
+            target_types = "continuous",
+            estimand = "spearman",
+            cohort_policy = "available-independent-observations",
+            diagnostic_prefix = "cross-sectional-continuous",
+            abstention_statuses = "not-estimable",
+            refit_policy = "biological-observation-index",
+            evidence_version = .cross_sectional_evidence_version
+        )
     }
 )
 
@@ -812,6 +846,25 @@ setMethod(
     }
 )
 
+#' @rdname association_contract
+#' @export
+setMethod(
+    "association_contract",
+    signature(strategy = "CrossSectionalOrderedAssociationStrategy"),
+    function(strategy) {
+        .new_association_contract(
+            sampling_designs = "cross_sectional",
+            target_types = "ordered",
+            estimand = "kendall-tau-b",
+            cohort_policy = "available-independent-observations",
+            diagnostic_prefix = "cross-sectional-ordered",
+            abstention_statuses = "not-estimable",
+            refit_policy = "biological-observation-index",
+            evidence_version = .cross_sectional_evidence_version
+        )
+    }
+)
+
 register_strategy(
     "AssociationStrategy",
     "cross_sectional_ordered",
@@ -829,18 +882,7 @@ register_strategy(
 )
 
 .resolve_component_association_strategy <- function(std, values) {
-    keys <- list_strategies("AssociationStrategy")
-    strategy_names <- sub("^AssociationStrategy:", "", keys)
-    strategies <- lapply(
-        sort(strategy_names),
-        function(name) get_strategy("AssociationStrategy", name)()
-    )
-    applicable <- Filter(
-        function(strategy) association_applicable(strategy, std, values),
-        strategies
-    )
-    if (length(applicable) != 1L) return(NULL)
-    applicable[[1L]]
+    .resolve_registered_association_strategy(std, values)
 }
 
 .atlas_input_digest <- function(std) {
@@ -1138,6 +1180,10 @@ register_strategy(
 #' @param exchangeability whether independent biological-unit exchangeability
 #'   is defensible for permutation; `"not_identifiable"` preserves point
 #'   evidence but prohibits a search-aware p-value
+#' @param sequential_internal force resampling to execute in the current R
+#'   process when this workflow already runs inside an outer future
+#' @param future_scheduling optional future.apply scheduling value; `NULL`
+#'   leaves scheduling to future.apply and the user-selected backend
 #'
 #' @return a validated `MetadataAssociationAtlas`, or an
 #'   `AssociationAbstention` when declared target type and observed metadata
@@ -1150,7 +1196,9 @@ associate_metadata <- function(
     dataset_id = NULL,
     n_resamples = 0L,
     seed = 1L,
-    exchangeability = c("independent", "not_identifiable")
+    exchangeability = c("independent", "not_identifiable"),
+    sequential_internal = FALSE,
+    future_scheduling = NULL
 ) {
     if (!is(std, "StateTransitionData")) {
         .stop_landscapeR_validation(
@@ -1166,12 +1214,13 @@ associate_metadata <- function(
         )
     }
     n_resamples <- as.integer(n_resamples)
-    if (length(seed) != 1L || is.na(seed) || seed != as.integer(seed)) {
+    seed <- .validate_run_seed(seed)
+    if (!is.logical(sequential_internal) || length(sequential_internal) != 1L ||
+        is.na(sequential_internal)) {
         .stop_landscapeR_validation(
-            "associate_metadata(): seed must be one integer"
+            "associate_metadata(): sequential_internal must be TRUE or FALSE"
         )
     }
-    seed <- as.integer(seed)
     exchangeability <- match.arg(exchangeability)
     stage1 <- metadata(std)$stage1
     if (is.null(stage1)) {
@@ -1191,7 +1240,9 @@ associate_metadata <- function(
             dataset_id = dataset_id,
             n_resamples = n_resamples,
             seed = seed,
-            exchangeability = exchangeability
+            exchangeability = exchangeability,
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling
         ))
     }
     if (identical(std@sampling_design@kind, "longitudinal")) {
@@ -1203,7 +1254,9 @@ associate_metadata <- function(
             dataset_id = dataset_id,
             n_resamples = n_resamples,
             seed = seed,
-            exchangeability = exchangeability
+            exchangeability = exchangeability,
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling
         ))
     }
     if (!identical(std@sampling_design@kind, "cross_sectional")) {
@@ -1223,7 +1276,9 @@ associate_metadata <- function(
         dataset_id = dataset_id,
         n_resamples = n_resamples,
         seed = seed,
-        exchangeability = exchangeability
+        exchangeability = exchangeability,
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling
     )
 }
 
@@ -1235,7 +1290,9 @@ associate_metadata <- function(
     dataset_id,
     n_resamples,
     seed,
-    exchangeability
+    exchangeability,
+    sequential_internal,
+    future_scheduling
 ) {
     specification_provenance <- list()
     if (!is.null(specification)) {
@@ -1331,7 +1388,9 @@ associate_metadata <- function(
     exclusion_rows <- list()
     association_rows <- list()
     observation_rows <- list()
+    bootstrap_executions <- list()
     association_strategy_ids <- character()
+    association_contracts <- list()
     coordinate_matrix <- coordinates[[1L]]
     if (!is.matrix(coordinate_matrix) ||
         !is.numeric(coordinate_matrix) ||
@@ -1408,10 +1467,19 @@ associate_metadata <- function(
             next
         }
         if (!is.null(strategy)) {
+            strategy_id <- association_strategy_id(strategy)
             association_strategy_ids <- c(
                 association_strategy_ids,
-                association_strategy_id(strategy)
+                strategy_id
             )
+            association_contracts[[strategy_id]] <- association_contract(
+                strategy
+            )
+        }
+        preparation <- if (!is.null(strategy)) {
+            prepare_association(strategy, std, specification, values)
+        } else {
+            NULL
         }
         field_nuisance_values <- if (
             !is.null(specification) &&
@@ -1436,34 +1504,51 @@ associate_metadata <- function(
                 associate_component(strategy, scores, values)
             }
             if (is.null(effect)) return(NULL)
-            complete <- is.finite(scores) & !is.na(values)
-            if (is.numeric(values) && !is.ordered(values)) {
+            complete <- is.finite(scores) & if (is.null(preparation)) {
+                !is.na(values)
+            } else {
+                preparation$complete
+            }
+            if (is.null(preparation) &&
+                is.numeric(values) &&
+                !is.ordered(values)) {
                 complete <- complete & is.finite(values)
             }
-            resampled_estimates <- vapply(
-                resampling_plan$indices,
-                function(index) {
+            repetition <- .future_numeric_repetition(
+                tasks = resampling_plan$indices,
+                task_ids = sprintf(
+                    "cross-sectional:%s:%s:unadjusted:bootstrap:%04d",
+                    field,
+                    component_labels[[j]],
+                    seq_along(resampling_plan$indices)
+                ),
+                run_seed = resampling_plan$policy$seed,
+                compute_tier = "standard",
+                worker = function(index, task_id, task_stream) {
                     resampled <- if (descriptive_unordered) {
                         .unordered_rank_effect(
                             scores[index],
                             values[index]
                         )
                     } else {
-                        associate_component(
+                        refit_association(
                             strategy,
-                            scores[index],
-                            values[index]
+                            scores,
+                            values,
+                            as.integer(index)
                         )
                     }
                     if (is.null(resampled)) NA_real_ else resampled$estimate
                 },
-                numeric(1L)
+                sequential_internal = sequential_internal,
+                future_scheduling = future_scheduling
             )
+            resampled_estimates <- repetition$values
             uncertainty <- .resampling_summary(
                 resampled_estimates,
                 resampling_plan
             )
-            data.frame(
+            row <- data.frame(
                 metadata_field = field,
                 component = as.integer(j),
                 component_label = component_labels[[j]],
@@ -1505,10 +1590,18 @@ associate_metadata <- function(
                 )),
                 stringsAsFactors = FALSE
             )
+            list(
+                row = row,
+                execution = repetition$execution,
+                key = paste(field, j, "unadjusted", sep = ":")
+            )
         })
         field_rows <- Filter(Negate(is.null), field_rows)
         if (length(field_rows)) {
-            field_table <- do.call(rbind, field_rows)
+            for (result in field_rows) {
+                bootstrap_executions[[result$key]] <- result$execution
+            }
+            field_table <- do.call(rbind, lapply(field_rows, `[[`, "row"))
             field_table <- .adjust_association_multiplicity(field_table)
             association_rows[[length(association_rows) + 1L]] <- field_table
             if (!is.null(specification) &&
@@ -1524,9 +1617,17 @@ associate_metadata <- function(
                             specification
                         )
                         if (is.null(effect)) return(NULL)
-                        resampled_estimates <- vapply(
-                            resampling_plan$indices,
-                            function(index) {
+                        repetition <- .future_numeric_repetition(
+                            tasks = resampling_plan$indices,
+                            task_ids = sprintf(
+                                "cross-sectional:%s:%s:adjusted:bootstrap:%04d",
+                                field,
+                                component_labels[[j]],
+                                seq_along(resampling_plan$indices)
+                            ),
+                            run_seed = resampling_plan$policy$seed,
+                            compute_tier = "standard",
+                            worker = function(index, task_id, task_stream) {
                                 .adjusted_resampled_estimate(
                                     coordinate_matrix[index, j],
                                     values[index],
@@ -1538,13 +1639,15 @@ associate_metadata <- function(
                                     specification
                                 )
                             },
-                            numeric(1L)
+                            sequential_internal = sequential_internal,
+                            future_scheduling = future_scheduling
                         )
+                        resampled_estimates <- repetition$values
                         uncertainty <- .resampling_summary(
                             resampled_estimates,
                             resampling_plan
                         )
-                        data.frame(
+                        row <- data.frame(
                             metadata_field = field,
                             component = as.integer(j),
                             component_label = component_labels[[j]],
@@ -1585,11 +1688,22 @@ associate_metadata <- function(
                             )),
                             stringsAsFactors = FALSE
                         )
+                        list(
+                            row = row,
+                            execution = repetition$execution,
+                            key = paste(field, j, "adjusted", sep = ":")
+                        )
                     }
                 )
                 adjusted_rows <- Filter(Negate(is.null), adjusted_rows)
                 if (length(adjusted_rows)) {
-                    adjusted_table <- do.call(rbind, adjusted_rows)
+                    for (result in adjusted_rows) {
+                        bootstrap_executions[[result$key]] <- result$execution
+                    }
+                    adjusted_table <- do.call(
+                        rbind,
+                        lapply(adjusted_rows, `[[`, "row")
+                    )
                     adjusted_table <-
                         .adjust_association_multiplicity(adjusted_table)
                     association_rows[[length(association_rows) + 1L]] <-
@@ -1677,6 +1791,9 @@ associate_metadata <- function(
         exclusion_rows = exclusion_rows,
         provenance = c(list(
             association_strategy = sort(unique(association_strategy_ids)),
+            association_contracts = association_contracts[
+                sort(names(association_contracts))
+            ],
             package_version = as.character(
                 utils::packageVersion("landscapeR")
             ),
@@ -1688,7 +1805,8 @@ associate_metadata <- function(
             exchangeability = exchangeability,
             multiplicity = .association_multiplicity_contract(),
             interpretation_module = .cross_sectional_evidence_version,
-            visual_evidence = stored_visual_evidence
+            visual_evidence = stored_visual_evidence,
+            bootstrap_executions = bootstrap_executions
         ), specification_provenance)
     )
     atlas <- new(
@@ -1702,14 +1820,9 @@ associate_metadata <- function(
         input_digest = input_digest,
         state_space_digest = state_space_digest,
         compute_tier = if (n_resamples > 0L) {
-            "standard-resampled"
-        } else if (
-            !is.null(specification) &&
-            length(specification@nuisance_fields)
-        ) {
-            "analytic-adjusted"
+            "standard"
         } else {
-            "analytic-unadjusted"
+            "inspect"
         },
         provenance = evidence@provenance,
         evidence_status = "estimable-exploratory-only"
@@ -1992,6 +2105,25 @@ setValidity("PermutationEvidence", function(object) {
             }
         }
     }
+    execution <- attr(object, "execution", exact = TRUE)
+    if (!is.null(execution)) {
+        if (!inherits(execution, "landscapeR_repetition_result")) {
+            errors <- c(errors, "execution is not typed repetition evidence")
+        } else if (!all(c(
+            identical(execution$account$n_requested, object@n_requested),
+            identical(execution$account$n_completed, object@n_completed),
+            identical(
+                execution$account$n_failed,
+                object@n_requested - object@n_completed
+            ),
+            identical(execution$provenance$compute_tier, "standard")
+        ))) {
+            errors <- c(
+                errors,
+                "execution accounting does not agree with permutation evidence"
+            )
+        }
+    }
     if (length(errors)) errors else TRUE
 })
 
@@ -2007,7 +2139,8 @@ setValidity("PermutationEvidence", function(object) {
     cohort_digest = NA_character_,
     design_digest = NA_character_,
     diagnostic = "",
-    resampling_policy = NULL
+    resampling_policy = NULL,
+    execution = NULL
 ) {
     evidence <- new(
         "PermutationEvidence",
@@ -2071,6 +2204,14 @@ setValidity("PermutationEvidence", function(object) {
         )
     }
     attr(evidence, "resampling_policy") <- account
+    if (!is.null(execution)) {
+        if (!inherits(execution, "landscapeR_repetition_result")) {
+            .stop_landscapeR_validation(
+                "permutation execution must be typed repetition evidence"
+            )
+        }
+        attr(evidence, "execution") <- execution
+    }
     validObject(evidence)
     evidence
 }
@@ -2584,7 +2725,9 @@ setValidity("ComponentProposal", function(object) {
     target,
     ranking,
     n_permutations,
-    seed
+    seed,
+    sequential_internal,
+    future_scheduling
 ) {
     if (identical(
         atlas@sampling_design@kind,
@@ -2595,7 +2738,9 @@ setValidity("ComponentProposal", function(object) {
             target,
             ranking,
             n_permutations,
-            seed
+            seed,
+            sequential_internal,
+            future_scheduling
         ))
     }
     if (identical(atlas@sampling_design@kind, "longitudinal")) {
@@ -2604,7 +2749,9 @@ setValidity("ComponentProposal", function(object) {
             target,
             ranking,
             n_permutations,
-            seed
+            seed,
+            sequential_internal,
+            future_scheduling
         ))
     }
     if (n_permutations == 0L) {
@@ -2716,7 +2863,15 @@ setValidity("ComponentProposal", function(object) {
     }, numeric(sum(complete)))
 
     if (!length(atlas@provenance$nuisance_fields)) {
-        null_max <- vapply(permutation_plan, function(indices) {
+        repetition <- .future_numeric_repetition(
+            tasks = permutation_plan,
+            task_ids = sprintf(
+                "cross-sectional:complete-search:label:%04d",
+                seq_along(permutation_plan)
+            ),
+            run_seed = seed,
+            compute_tier = "standard",
+            worker = function(indices, task_id, task_stream) {
             effects <- apply(score_matrix, 2L, function(scores) {
                 .permuted_target_effect(
                     atlas,
@@ -2725,7 +2880,12 @@ setValidity("ComponentProposal", function(object) {
                 )
             })
             max(abs(effects), na.rm = TRUE)
-        }, numeric(1L))
+            },
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling,
+            failure_code = "permutation-refit-failed"
+        )
+        null_max <- repetition$values
         method <- "label-permutation"
         design_digest <- NA_character_
     } else {
@@ -2756,7 +2916,15 @@ setValidity("ComponentProposal", function(object) {
             fit <- stats::lm.fit(design, score_rank)
             list(fitted = fit$fitted.values, residuals = fit$residuals)
         })
-        null_max <- vapply(permutation_plan, function(indices) {
+        repetition <- .future_numeric_repetition(
+            tasks = permutation_plan,
+            task_ids = sprintf(
+                "cross-sectional:complete-search:residual:%04d",
+                seq_along(permutation_plan)
+            ),
+            run_seed = seed,
+            compute_tier = "standard",
+            worker = function(indices, task_id, task_stream) {
             effects <- vapply(score_models, function(model) {
                 reconstructed <- model$fitted + model$residuals[indices]
                 reconstructed_residual <- stats::lm.fit(
@@ -2766,7 +2934,12 @@ setValidity("ComponentProposal", function(object) {
                 stats::cor(reconstructed_residual, target_residual)
             }, numeric(1L))
             max(abs(effects), na.rm = TRUE)
-        }, numeric(1L))
+            },
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling,
+            failure_code = "permutation-refit-failed"
+        )
+        null_max <- repetition$values
         method <- "nuisance-only-residual-permutation"
         design_digest <- unique(ranking$design_digest)[[1L]]
     }
@@ -2781,20 +2954,43 @@ setValidity("ComponentProposal", function(object) {
         method = method,
         unit = "independent-biological-observation"
     )
+    n_completed <- sum(is.finite(null_max))
+    if (!n_completed) {
+        return(.new_permutation_evidence(
+            method = method,
+            status = "not-identifiable",
+            n_requested = n_permutations,
+            n_completed = 0L,
+            null_max_effect = null_max,
+            seed = seed,
+            cohort_digest = cohort_digest,
+            design_digest = design_digest,
+            diagnostic = "failed-cross-sectional-null-replicate",
+            resampling_policy = permutation_policy,
+            execution = repetition$execution
+        ))
+    }
+    n_failures <- n_permutations - n_completed
     .new_permutation_evidence(
         method = method,
-        status = "complete",
+        status = if (n_failures) "partial" else "complete",
         n_requested = n_permutations,
-        n_completed = n_permutations,
+        n_completed = n_completed,
         observed_max_effect = observed,
         null_max_effect = null_max,
         search_aware_p_value = (
-            1 + sum(null_max >= observed)
+            1 + sum(null_max >= observed, na.rm = TRUE)
         ) / (n_permutations + 1),
         seed = seed,
         cohort_digest = cohort_digest,
         design_digest = design_digest,
-        resampling_policy = permutation_policy
+        diagnostic = if (n_failures) {
+            "some-cross-sectional-null-refits-failed"
+        } else {
+            ""
+        },
+        resampling_policy = permutation_policy,
+        execution = repetition$execution
     )
 }
 
@@ -2810,6 +3006,9 @@ setValidity("ComponentProposal", function(object) {
 #' @param n_permutations number of complete-search null permutations; zero
 #'   retains point/descriptive evidence only
 #' @param seed deterministic permutation seed
+#' @param sequential_internal force the complete permutation search into one
+#'   future when already running inside outer future orchestration
+#' @param future_scheduling optional future.apply scheduling value
 #'
 #' @return a versioned exploratory `ComponentProposal`, or a
 #'   `ComponentAbstention` when the largest effect is tied
@@ -2818,7 +3017,9 @@ propose_component <- function(
     atlas,
     target = NULL,
     n_permutations = 0L,
-    seed = 1L
+    seed = 1L,
+    sequential_internal = FALSE,
+    future_scheduling = NULL
 ) {
     if (!is(atlas, "MetadataAssociationAtlas")) {
         .stop_landscapeR_validation(
@@ -2834,14 +3035,13 @@ propose_component <- function(
         )
     }
     n_permutations <- as.integer(n_permutations)
-    if (length(seed) != 1L ||
-        is.na(seed) ||
-        seed != as.integer(seed)) {
+    seed <- .validate_run_seed(seed)
+    if (!is.logical(sequential_internal) || length(sequential_internal) != 1L ||
+        is.na(sequential_internal)) {
         .stop_landscapeR_validation(
-            "propose_component(): seed must be one integer"
+            "propose_component(): sequential_internal must be TRUE or FALSE"
         )
     }
-    seed <- as.integer(seed)
     declared_target <- atlas@provenance$target_field
     if (is.null(target) && .is_scalar_nonempty_text(declared_target)) {
         target <- declared_target
@@ -2961,7 +3161,9 @@ propose_component <- function(
         target,
         ranking,
         n_permutations,
-        seed
+        seed,
+        sequential_internal,
+        future_scheduling
     )
     if (identical(permutation_evidence@status, "not-identifiable")) {
         return(.new_component_abstention(

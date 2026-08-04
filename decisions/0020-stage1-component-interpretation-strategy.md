@@ -200,6 +200,15 @@ and the existing strategy registry. The contract owns supported sampling
 designs and targets, cohort construction, estimand mapping, diagnostics,
 abstention, refitting, and normalized output. Native fit objects remain private
 diagnostic payloads rather than authoritative serialized scientific results.
+The executable contract declares `sampling_designs`, `target_types`,
+`estimand`, `cohort_policy`, `diagnostic_prefix`, `abstention_statuses`,
+`refit_policy`, and `evidence_version`. landscapeR validates that declaration
+before invoking a registered adapter. Method authors return narrow preparation
+and fit results; one package-owned normalized-evidence constructor creates and
+validates storage tables, digests, and provenance. Default available-case
+preparation and index refitting keep simple adapters small, while strategies
+whose biological unit is a time cell or complete subject trajectory override
+only those two hooks.
 Routing by the declared `SamplingDesign` is structural contract dispatch, not
 algorithm selection. It may branch on the finite set of supported design kinds;
 the statistical implementation selected within that branch must remain a

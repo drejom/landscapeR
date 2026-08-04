@@ -11,7 +11,9 @@ associate_metadata(
   dataset_id = NULL,
   n_resamples = 0L,
   seed = 1L,
-  exchangeability = c("independent", "not_identifiable")
+  exchangeability = c("independent", "not_identifiable"),
+  sequential_internal = FALSE,
+  future_scheduling = NULL
 )
 }
 \arguments{
@@ -34,6 +36,12 @@ retains point/descriptive evidence only}
 \item{exchangeability}{whether independent biological-unit exchangeability
 is defensible for permutation; \code{"not_identifiable"} preserves point
 evidence but prohibits a search-aware p-value}
+
+\item{sequential_internal}{force resampling to execute in the current R
+process when this workflow already runs inside an outer future}
+
+\item{future_scheduling}{optional future.apply scheduling value; \code{NULL}
+leaves scheduling to future.apply and the user-selected backend}
 }
 \value{
 a validated \code{MetadataAssociationAtlas}, or an

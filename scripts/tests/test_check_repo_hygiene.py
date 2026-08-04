@@ -12,8 +12,12 @@ class RepoHygieneCheckerTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         root = Path(temporary.name)
         subprocess.run(["git", "init", "-q", str(root)], check=True)
-        (root / ".gitignore").write_text(".claude/\n", encoding="utf-8")
-        subprocess.run(["git", "-C", str(root), "add", ".gitignore"], check=True)
+        (root / ".gitignore").write_text(".claude/\n/.scratch/\n", encoding="utf-8")
+        (root / ".Rbuildignore").write_text("^\\.scratch$\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "-C", str(root), "add", ".gitignore", ".Rbuildignore"],
+            check=True,
+        )
         return temporary, root
 
     def run_checker(self, root):
@@ -69,6 +73,22 @@ class RepoHygieneCheckerTests(unittest.TestCase):
         result = self.run_checker(root)
         self.assertEqual(result.returncode, 1)
         self.assertIn("R/.scratch/state.rds", result.stderr)
+
+    def test_missing_rbuildignore_rule_fails(self):
+        temporary, root = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        (root / ".Rbuildignore").write_text("^docs$\n", encoding="utf-8")
+        result = self.run_checker(root)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("not excluded by .Rbuildignore", result.stderr)
+
+    def test_missing_gitignore_rule_fails(self):
+        temporary, root = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        (root / ".gitignore").write_text(".claude/\n", encoding="utf-8")
+        result = self.run_checker(root)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("not excluded by .gitignore", result.stderr)
 
     def test_tracked_modification_is_not_transient_residue(self):
         temporary, root = self.make_repo()

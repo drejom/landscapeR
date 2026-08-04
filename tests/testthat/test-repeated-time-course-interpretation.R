@@ -430,6 +430,13 @@ test_that("permutation operates on between-subject assignment", {
         evidence@n_requested
     )
     expect_length(evidence@null_max_effect, 7L)
+    execution <- attr(evidence, "execution", exact = TRUE)
+    expect_s3_class(execution, "landscapeR_repetition_result")
+    expect_identical(execution$account$n_requested, 7L)
+    expect_identical(
+        execution$account$n_completed + execution$account$n_failed,
+        7L
+    )
 })
 
 test_that("repeated time-course refits are deterministic", {

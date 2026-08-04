@@ -88,7 +88,7 @@ test_that("cross-sectional binary metadata produces a typed association atlas", 
 
     expect_s4_class(atlas, "MetadataAssociationAtlas")
     expect_identical(atlas@version, "1.0.0")
-    expect_identical(atlas@compute_tier, "analytic-unadjusted")
+    expect_identical(atlas@compute_tier, "inspect")
     expect_identical(
         atlas_provenance(atlas)$association_strategy,
         "cross-sectional-binary-signed-rank-biserial-v1"
@@ -331,7 +331,7 @@ test_that("association uncertainty resamples independent biological units", {
         drop = FALSE
     ]
 
-    expect_identical(atlas@compute_tier, "standard-resampled")
+    expect_identical(atlas@compute_tier, "standard")
     expect_identical(condition$n_resamples, rep(19L, 4L))
     expect_identical(condition$resample_failures, rep(0L, 4L))
     expect_identical(
@@ -346,6 +346,14 @@ test_that("association uncertainty resamples independent biological units", {
     expect_true(all(grepl(
         "^[[:xdigit:]]{64}$",
         condition$resampling_plan_digest
+    )))
+    executions <- atlas_provenance(atlas)$bootstrap_executions
+    expect_length(executions, 6L)
+    expect_true(all(vapply(
+        executions,
+        inherits,
+        logical(1L),
+        "landscapeR_repetition_result"
     )))
 
     repeated <- associate_metadata(
@@ -645,6 +653,10 @@ test_that("unadjusted permutation repeats the complete component search", {
     expect_identical(evidence@method, "label-permutation")
     expect_identical(evidence@n_requested, 19L)
     expect_identical(evidence@n_completed, 19L)
+    expect_s3_class(
+        attr(evidence, "execution", exact = TRUE),
+        "landscapeR_repetition_result"
+    )
     expect_length(evidence@null_max_effect, 19L)
     expect_true(all(is.finite(evidence@null_max_effect)))
     expect_equal(evidence@observed_max_effect, 1)
@@ -663,6 +675,47 @@ test_that("unadjusted permutation repeats the complete component search", {
     expect_identical(
         proposal_permutation_evidence(repeated),
         evidence
+    )
+    for (bad_seed in list(-1, Inf, 1.5, .Machine$integer.max + 1)) {
+        expect_error(
+            propose_component(atlas, n_permutations = 1L, seed = bad_seed),
+            class = "landscapeR_validation_error"
+        )
+    }
+})
+
+test_that("cross-sectional permutation failures retain their denominator", {
+    specification <- analysis_specification(
+        id = "binary-permutation-failure",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment"
+    )
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    testthat::local_mocked_bindings(
+        .permuted_target_effect = function(...) stop("pathological refit"),
+        .package = "landscapeR"
+    )
+    abstention <- propose_component(atlas, n_permutations = 3L, seed = 8002L)
+    evidence <- abstention@permutation_evidence
+    execution <- attr(evidence, "execution", exact = TRUE)
+
+    expect_s4_class(abstention, "ComponentAbstention")
+    expect_identical(evidence@status, "not-identifiable")
+    expect_identical(evidence@n_requested, 3L)
+    expect_identical(evidence@n_completed, 0L)
+    expect_identical(execution$account$n_failed, 3L)
+    expect_true(methods::validObject(evidence))
+    invalid <- evidence
+    attr(invalid, "execution")$account$n_completed <- 1L
+    expect_error(
+        methods::validObject(invalid),
+        "execution accounting does not agree"
     )
 })
 
@@ -1272,6 +1325,68 @@ test_that("non-finite continuous targets are unavailable everywhere", {
     expect_identical(severity$n_available, c(7L, 7L))
     expect_identical(severity$n_missing, c(1L, 1L))
     expect_false(any(observations$available))
+})
+
+test_that("all association designs are invariant across future backends", {
+    skip_if(
+        pkgload::is_dev_package("landscapeR"),
+        "multisession requires the installed-package check context"
+    )
+    cases <- list(
+        cross_sectional = list(
+            std = component_interpretation_fixture(),
+            specification = analysis_specification(
+                id = "cross-future-equivalence",
+                target_field = "condition",
+                target_type = "binary",
+                reference_level = "control",
+                comparison_level = "treatment"
+            ),
+            non_analytical_fields = "mouse_id"
+        ),
+        independent_time = list(
+            std = independent_time_course_fixture(include_nuisance = FALSE),
+            specification = independent_time_course_specification(),
+            non_analytical_fields = "sample_id"
+        ),
+        repeated_time = list(
+            std = repeated_time_course_fixture(),
+            specification = repeated_time_course_specification(),
+            non_analytical_fields = c("mouse_id", "batch")
+        )
+    )
+    run_cases <- function(scheduling) lapply(cases, function(case) {
+        atlas <- associate_metadata(
+            case$std,
+            specification = case$specification,
+            non_analytical_fields = case$non_analytical_fields,
+            n_resamples = 3L,
+            seed = 8121L,
+            future_scheduling = scheduling
+        )
+        list(
+            atlas = atlas,
+            proposal = propose_component(
+                atlas,
+                n_permutations = 3L,
+                seed = 8122L,
+                future_scheduling = scheduling
+            )
+        )
+    })
+    previous <- future::plan()
+    on.exit(future::plan(previous), add = TRUE)
+    future::plan(future::sequential)
+    sequential <- run_cases(Inf)
+    future::plan(future::multisession, workers = 2L)
+    expect_identical(future::value(future::future(TRUE)), TRUE)
+    parallel_two <- run_cases(0.5)
+    future::plan(future::multisession, workers = 3L)
+    expect_identical(future::value(future::future(TRUE)), TRUE)
+    parallel_three <- run_cases(0)
+
+    expect_identical(parallel_two, sequential)
+    expect_identical(parallel_three, sequential)
 })
 
 test_that("component interpretation rejects malformed layer and coordinate inputs", {

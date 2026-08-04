@@ -15,6 +15,7 @@
 ^\.playwright-mcp$
 ^\.claude$
 ^\.pi-subagents$
+^\.scratch$
 ^hooks$
 ^install-hooks\.sh$
 ^scripts$

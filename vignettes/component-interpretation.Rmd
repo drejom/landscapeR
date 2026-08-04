@@ -151,6 +151,23 @@ accounting, and typed unavailable outcomes. The requested count is fixed before
 refitting. A failed eligible refit remains in that denominator and is never
 silently replaced with another draw.
 
+Independent and repeated time-course bootstraps use the package's shared
+`future.apply` execution seam. Set the future backend outside landscapeR; the
+package never changes `future::plan()`. A workflow already running inside an
+outer future can pass `sequential_internal = TRUE` to `associate_metadata()`
+to avoid nested worker multiplication. `future_scheduling` is optional and has
+no package-defined default. The stored execution record includes the
+`inspect`, `standard`, or `evidence` compute tier, the run seed, deterministic
+task-specific L'Ecuyer-CMRG streams, all requested tasks, and stable failure
+codes. These fields make results reproducible across worker counts and
+scheduling without changing the biological resampling unit.
+
+The same execution contract governs complete-search permutations: labels or
+reduced-model residuals are rearranged according to the declared design, every
+requested refit remains in the denominator, and failed refits are retained as
+typed failures rather than regenerated. The estimand and search-aware p-value
+formula are unchanged by the execution backend.
+
 The shared mechanics do not erase experimental design. Cross-sectional
 analyses resample independent biological observations, destructive time
 courses resample within condition-by-time cells, and repeated designs resample
@@ -158,6 +175,23 @@ complete subject trajectories. Duplicate trajectory draws receive new
 replicate-subject identifiers so they remain statistically distinct copies of
 one source trajectory. Unsupported exchangeability or insufficient distinct
 assignments produces a typed abstention rather than a fallback sampling rule.
+
+### Extending association methods
+
+`AssociationStrategy` is the supported extension seam for additional metadata
+interpretation methods. A registered adapter declares its supported sampling
+designs and target types, estimand, cohort policy, diagnostics, abstention
+statuses, scientific refit policy, and evidence version through
+`association_contract()`. Simple adapters can inherit available-case cohort
+preparation and index-based refitting; methods with different biological units
+override `prepare_association()` and `refit_association()`.
+
+The adapter does not construct atlas tables, digests, provenance, or public
+result objects. `associate_metadata()` validates the contract, runs refits
+through the shared future-backed execution layer, and normalizes the evidence
+into the same atlas, proposal, and typed-abstention workflow used by the
+built-in strategies. The practical author checklist and complete conformance
+fixture are described in `docs/agents/association-strategy-authoring.md`.
 
 ## Produce an exploratory proposal
 

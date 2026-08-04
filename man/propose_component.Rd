@@ -4,7 +4,14 @@
 \alias{propose_component}
 \title{Nominate a component from a metadata-association atlas}
 \usage{
-propose_component(atlas, target = NULL, n_permutations = 0L, seed = 1L)
+propose_component(
+  atlas,
+  target = NULL,
+  n_permutations = 0L,
+  seed = 1L,
+  sequential_internal = FALSE,
+  future_scheduling = NULL
+)
 }
 \arguments{
 \item{atlas}{a \code{MetadataAssociationAtlas}}
@@ -16,6 +23,11 @@ source atlas carries a draft \code{AnalysisSpecification}}
 retains point/descriptive evidence only}
 
 \item{seed}{deterministic permutation seed}
+
+\item{sequential_internal}{force the complete permutation search into one
+future when already running inside outer future orchestration}
+
+\item{future_scheduling}{optional future.apply scheduling value}
 }
 \value{
 a versioned exploratory \code{ComponentProposal}, or a

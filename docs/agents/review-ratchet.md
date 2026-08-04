@@ -88,6 +88,17 @@ encoding can look informative while adding no evidence.
 plotted one-dimensional principal angle against its exact absolute-cosine
 transform and used the focal red for the three largest observed rotations.
 
+### RR-007 — Keep transient roots outside package builds
+
+A repo-root scratch directory must be excluded from both Git tracking and the R
+source-package build. Before trusting a local package check, verify that its
+generated site, bundles, and prior check directories were not copied into the
+tarball. The mechanical rule belongs in `.gitignore` and `.Rbuildignore`.
+
+**Incident:** [Issue #117 implementation](https://github.com/drejom/landscapeR/issues/117)
+found that `.scratch/` was gitignored but still entered `R CMD build`, adding
+thousands of generated pkgdown files and exhausting file handles during check.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A
