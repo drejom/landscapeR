@@ -19,12 +19,15 @@ is built under `.scratch/site/` and deployed by CI; it is not committed here.
 | [`architecture/`](architecture/) | Current package module seams, owned invariants, and dependency direction | Algorithm choice or work scheduling |
 | [`architecture/visual-evidence.md`](architecture/visual-evidence.md) | Single typed figure-consumer seam, Stage storage adapter, total unavailable states, and renderer authority | Scientific estimator or threshold choice |
 | [`architecture/core-construction-and-provenance.md`](architecture/core-construction-and-provenance.md) | Supported constructors, typed Stage result access, scientific input hashes, and RNG identity | Algorithm-specific estimators or scheduling |
+| [`architecture/resampling-and-execution.md`](architecture/resampling-and-execution.md) | Future-backed repetition seam, deterministic task execution, accounting, and backend ownership | Scientific resampling design or scheduler selection |
+| [`architecture/stage-pipeline.md`](architecture/stage-pipeline.md) | Stage boundary validation, typed outcomes, artifact dependency direction, and orchestration boundary | Algorithm choice, current support, or scheduling |
 | [`archive/`](archive/) | Completed audits and superseded planning context | Current package priority |
 | [`agents/`](agents/) | Agent workflow and issue/triage guidance | Scientific decisions |
 | [`agents/repo-hygiene.md`](agents/repo-hygiene.md) | Transient-output location, governed-artifact distinction, agent cleanup, and executable hygiene checks | Scientific artifacts or retention policy definitions |
 | [`agents/review-ratchet.md`](agents/review-ratchet.md) | Mandatory review gate, incident-backed review knowledge, correction, deduplication, and graduation | Implementation conventions, domain vocabulary, scheduling, or decisions |
 | [`agents/ci-check-selection.md`](agents/ci-check-selection.md) | Shared path policy for full package checks and the documentation-only short path | Scientific test content or branch-protection administration |
 | [`agents/execution-reproducibility.md`](agents/execution-reproducibility.md) | Compute-tier meanings, run-seed derivation, future backend ownership, and repetition accounting | Scientific exchangeability rules or scheduler configuration |
+| [`agents/contributor-workflow.md`](agents/contributor-workflow.md) | Contributor authority pointers, hook installation, local CI parity, and merge-gate discovery | Scientific methods, architecture decisions, or scheduling |
 | [`agents/association-strategy-authoring.md`](agents/association-strategy-authoring.md) | Stage 1 interpretation adapter contract, author responsibilities, and conformance workflow | New estimator acceptance or scientific scope |
 | [`vignettes/`](../vignettes/) | Current user workflow, implementation status, and evidence presentation | Historical transition proof or scheduling |
 | Pull requests | Visual landing proof co-located with a diff | Immutable scientific acceptance evidence |
