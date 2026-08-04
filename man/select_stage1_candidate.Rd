@@ -6,7 +6,9 @@
 \usage{
 select_stage1_candidate(
   calibration_rows,
-  manifest = stage1_benchmark_manifest()
+  manifest = stage1_benchmark_manifest(),
+  sequential_internal = FALSE,
+  future_scheduling = NULL
 )
 }
 \arguments{
@@ -14,6 +16,12 @@ select_stage1_candidate(
 calibration split.}
 
 \item{manifest}{canonical Stage 1 benchmark manifest.}
+
+\item{sequential_internal}{logical; set \code{TRUE} when this workflow already
+runs inside an outer future or workflow-orchestration task.}
+
+\item{future_scheduling}{optional future.apply scheduling value; \code{NULL}
+leaves scheduling to the user-selected future backend.}
 }
 \value{
 a serializable selection record.

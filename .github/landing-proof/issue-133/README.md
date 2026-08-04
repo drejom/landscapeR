@@ -6,6 +6,14 @@ This is execution evidence only. It does not recalibrate Stage 1, change a
 scientific threshold, accept a decomposition method, or alter the frozen v2
 evidence artifact.
 
+## Cold-reader conclusion
+
+The Stage 1 paired and median summary bootstraps now execute through the shared
+future substrate while reproducing the frozen sequential estimates exactly.
+The migration succeeded, but the local measurements do not justify a package
+worker, chunking, scheduling, or backend default; those choices remain with the
+user and the outer workflow.
+
 ## Backend equivalence
 
 The paired calibration and median holdout summaries were each run for the

@@ -497,11 +497,17 @@ execute_stage1_benchmark_development <- function(workspace = NULL, workers = 1L,
 #'   `landscapeR.scratch_root` option.
 #' @param progress one of `"auto"`, `"bar"`, `"log"`, or `"none"`.
 #' @param keep_workspace retain local checkpoints after final artifact verification.
+#' @param sequential_internal logical; set `TRUE` when this workflow already
+#'   runs inside an outer future or workflow-orchestration task.
+#' @param future_scheduling optional future.apply scheduling value for the
+#'   calibration and holdout summary bootstraps.
 #' @return path to the immutable artifact directory.
 #' @export
 execute_stage1_benchmark_full <- function(artifact_root, workers = 1L, workspace = NULL,
                                           progress = c("auto", "bar", "log", "none"),
-                                          keep_workspace = FALSE) {
+                                          keep_workspace = FALSE,
+                                          sequential_internal = FALSE,
+                                          future_scheduling = NULL) {
     .stage1_assert_unix_platform()
     progress <- match.arg(progress)
     if (identical(progress, "auto")) progress <- if (interactive()) "bar" else "log"
@@ -520,7 +526,12 @@ execute_stage1_benchmark_full <- function(artifact_root, workers = 1L, workspace
     results <- .stage1_collect_checkpoint_rows(workspace, task_set$tasks, identity)
     .stage1_assert_full_coverage(results, manifest, task_set$strata)
     calibration <- results[results$split == "calibration", , drop = FALSE]
-    selection <- select_stage1_candidate(calibration, manifest)
+    selection <- select_stage1_candidate(
+        calibration,
+        manifest,
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling
+    )
     if (is.na(selection$selected_candidate)) {
         report <- list(protocol_id = manifest$protocol_id, protocol_digest = .protocol_digest(manifest),
             generator_digest = .generator_digest(), split = "holdout", selected_candidate = NA_character_,
@@ -534,7 +545,13 @@ execute_stage1_benchmark_full <- function(artifact_root, workers = 1L, workspace
             rules = manifest$reporting_rules)
     } else {
         holdout <- results[results$split == "holdout" & results$candidate == selection$selected_candidate, , drop = FALSE]
-        report <- assess_stage1_holdout(selection$selected_candidate, holdout, manifest)
+        report <- assess_stage1_holdout(
+            selection$selected_candidate,
+            holdout,
+            manifest,
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling
+        )
     }
     artifact <- .stage1_write_full_artifact(artifact_root, manifest, results, selection, report, workers,
         source_commit = identity$source_commit)

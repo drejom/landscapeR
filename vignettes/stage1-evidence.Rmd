@@ -54,6 +54,9 @@ cross-metric pairing exactly.
 Scheduling and worker-count defaults remain unchanged because the measured
 tasks are small enough that local multisession startup and serialization can
 dominate their runtime.
+When an outer `targets` or `crew` task already owns parallel orchestration, pass
+`sequential_internal = TRUE`; `future_scheduling` remains an explicit optional
+control rather than a package default.
 
 The committed v2 artifact below predates that execution-provenance extension
 and is deliberately not regenerated or recalibrated. Its manifest, estimates,

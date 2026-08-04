@@ -94,6 +94,7 @@
     exact_rows,
     metric,
     rules,
+    sequential_internal = FALSE,
     future_scheduling = NULL
 ) {
     strata <- split(exact_rows, exact_rows$stratum_digest)
@@ -128,6 +129,7 @@
                 numeric(1L)
             ))
         },
+        sequential_internal = sequential_internal,
         future_scheduling = future_scheduling,
         failure_code = "stage1-paired-bootstrap-failure",
         legacy_stream_advance = function(task, task_id) {
@@ -163,10 +165,16 @@
 #' @param calibration_rows one row per candidate/seed/stratum from the frozen
 #'   calibration split.
 #' @param manifest canonical Stage 1 benchmark manifest.
+#' @param sequential_internal logical; set `TRUE` when this workflow already
+#'   runs inside an outer future or workflow-orchestration task.
+#' @param future_scheduling optional future.apply scheduling value; `NULL`
+#'   leaves scheduling to the user-selected future backend.
 #' @return a serializable selection record.
 #' @export
 select_stage1_candidate <- function(calibration_rows,
-                                    manifest = stage1_benchmark_manifest()) {
+                                    manifest = stage1_benchmark_manifest(),
+                                    sequential_internal = FALSE,
+                                    future_scheduling = NULL) {
     validate_stage1_benchmark_manifest(manifest)
     .stage1_require_results(calibration_rows, split = "calibration")
     if (!isTRUE(all(calibration_rows$tier == "full")))
@@ -189,7 +197,9 @@ select_stage1_candidate <- function(calibration_rows,
     shared_bootstrap <- .stage1_paired_bootstrap(
         exact,
         "shared_recovery_error",
-        rules
+        rules,
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling
     )
     shared_ci <- shared_bootstrap$interval
     leakage_difference <- .stage1_equal_stratum_mean(exact, "C1_symmetric_consensus",
@@ -239,6 +249,7 @@ select_stage1_candidate <- function(calibration_rows,
     seed,
     rules,
     task_scope,
+    sequential_internal = FALSE,
     future_scheduling = NULL
 ) {
     if (!.is_scalar_nonempty_text(task_scope)) {
@@ -262,6 +273,7 @@ select_stage1_candidate <- function(calibration_rows,
                 replace = TRUE
             ))
         },
+        sequential_internal = sequential_internal,
         future_scheduling = future_scheduling,
         failure_code = "stage1-median-bootstrap-failure",
         legacy_stream_advance = function(task, task_id) {
@@ -295,10 +307,16 @@ select_stage1_candidate <- function(calibration_rows,
 #' @param selected_candidate candidate name returned by the calibration selector.
 #' @param holdout_rows one row per selected-candidate/seed/stratum from holdout.
 #' @param manifest canonical Stage 1 benchmark manifest.
+#' @param sequential_internal logical; set `TRUE` when this workflow already
+#'   runs inside an outer future or workflow-orchestration task.
+#' @param future_scheduling optional future.apply scheduling value; `NULL`
+#'   leaves scheduling to the user-selected future backend.
 #' @return a serializable holdout report.
 #' @export
 assess_stage1_holdout <- function(selected_candidate, holdout_rows,
-                                  manifest = stage1_benchmark_manifest()) {
+                                  manifest = stage1_benchmark_manifest(),
+                                  sequential_internal = FALSE,
+                                  future_scheduling = NULL) {
     validate_stage1_benchmark_manifest(manifest)
     if (length(selected_candidate) != 1L || is.na(selected_candidate) ||
         !selected_candidate %in% manifest$candidates)
@@ -345,7 +363,9 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
             bootstrap <- .stage1_bootstrap_median_ci(values,
                 manifest$reporting_rules$bootstrap_seed_start + stratum$canonical_index,
                 manifest$reporting_rules,
-                task_scope = paste(stratum$stratum_digest, metric, sep = ":"))
+                task_scope = paste(stratum$stratum_digest, metric, sep = ":"),
+                sequential_internal = sequential_internal,
+                future_scheduling = future_scheduling)
             list(
                 row = data.frame(stratum_digest = stratum$stratum_digest, stratum = stratum$stratum,
                     projection_case = stratum$projection_case, shared_signal = stratum$shared_signal,

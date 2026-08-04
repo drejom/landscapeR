@@ -74,6 +74,31 @@
     }
 }
 
+.legacy_sequential_task_streams <- function(
+    run_seed,
+    tasks,
+    task_ids,
+    legacy_stream_advance
+) {
+    previous_kind <- RNGkind()
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv)
+    on.exit({
+        do.call(RNGkind, as.list(previous_kind))
+        if (had_seed) {
+            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
+        } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+            rm(".Random.seed", envir = .GlobalEnv)
+        }
+    }, add = TRUE)
+    setup_rng(run_seed)
+    lapply(seq_along(tasks), function(i) {
+        stream <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+        legacy_stream_advance(tasks[[i]], task_ids[[i]])
+        stream
+    })
+}
+
 .future_repetition <- function(
     tasks,
     task_ids,
@@ -119,12 +144,12 @@
         )
         seed_derivation <- .repetition_seed_scheme
     } else {
-        setup_rng(run_seed)
-        task_streams <- lapply(seq_along(tasks), function(i) {
-            stream <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-            legacy_stream_advance(tasks[[i]], task_ids[[i]])
-            stream
-        })
+        task_streams <- .legacy_sequential_task_streams(
+            run_seed,
+            tasks,
+            task_ids,
+            legacy_stream_advance
+        )
         seed_derivation <- "legacy-sequential-stream-v1"
     }
     stream_keys <- vapply(task_streams, paste, collapse = ":", character(1L))

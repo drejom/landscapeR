@@ -96,12 +96,27 @@ test_that("Stage 1 summary bootstraps are invariant across future plans", {
         list(bootstrap_resamples = 10000L),
         "test-stratum:shared_recovery_error"
     )
+    paired_nested <- landscapeR:::.stage1_paired_bootstrap(
+        exact,
+        "shared_recovery_error",
+        rules,
+        sequential_internal = TRUE
+    )
+    median_nested <- landscapeR:::.stage1_bootstrap_median_ci(
+        median_values,
+        11002L,
+        list(bootstrap_resamples = 10000L),
+        "test-stratum:shared_recovery_error",
+        sequential_internal = TRUE
+    )
     expect_identical(paired_sequential$execution$account$n_requested, 10000L)
     expect_identical(median_sequential$execution$account$n_requested, 10000L)
     expect_identical(paired_sequential$execution$account$n_failed, 0L)
     expect_identical(median_sequential$execution$account$n_failed, 0L)
     expect_identical(paired_sequential$interval, legacy_paired_interval)
     expect_identical(median_sequential$interval, legacy_median_interval)
+    expect_identical(paired_nested, paired_sequential)
+    expect_identical(median_nested, median_sequential)
     expect_identical(
         paired_sequential$execution$provenance$seed_derivation,
         "legacy-sequential-stream-v1"
@@ -147,6 +162,19 @@ test_that("Stage 1 summary bootstraps are invariant across future plans", {
 
     expect_identical(paired_parallel, paired_sequential)
     expect_identical(median_parallel, median_sequential)
+})
+
+test_that("Stage 1 public evidence workflows expose nested-future control", {
+    for (fn in list(
+        select_stage1_candidate,
+        assess_stage1_holdout,
+        execute_stage1_benchmark_full
+    )) {
+        expect_true(all(c(
+            "sequential_internal",
+            "future_scheduling"
+        ) %in% names(formals(fn))))
+    }
 })
 
 test_that("Stage 1 summary failures retain typed execution accounting", {

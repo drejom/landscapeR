@@ -7,7 +7,9 @@
 assess_stage1_holdout(
   selected_candidate,
   holdout_rows,
-  manifest = stage1_benchmark_manifest()
+  manifest = stage1_benchmark_manifest(),
+  sequential_internal = FALSE,
+  future_scheduling = NULL
 )
 }
 \arguments{
@@ -16,6 +18,12 @@ assess_stage1_holdout(
 \item{holdout_rows}{one row per selected-candidate/seed/stratum from holdout.}
 
 \item{manifest}{canonical Stage 1 benchmark manifest.}
+
+\item{sequential_internal}{logical; set \code{TRUE} when this workflow already
+runs inside an outer future or workflow-orchestration task.}
+
+\item{future_scheduling}{optional future.apply scheduling value; \code{NULL}
+leaves scheduling to the user-selected future backend.}
 }
 \value{
 a serializable holdout report.
