@@ -350,7 +350,7 @@ test_that("kde_logdensity provenance hashes the pre-stage input", {
         k        = 1L
     )
     metadata(std_pot) <- md
-    input_hash <- digest::digest(stage_result(std_pot, "stage1"))
+    input_hash <- digest::digest(stage_artifact(std_pot, "stage1"))
 
     res <- estimate_dynamics(get_strategy("DynamicsEstimator", "kde_logdensity")(), std_pot)
     step <- res@provenance[[1L]]

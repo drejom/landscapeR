@@ -85,6 +85,49 @@ StateTransitionData <- function(experiments = list(),
     obj
 }
 
+#' Access a typed pipeline-stage artifact
+#'
+#' Stage artifacts are physically stored in container metadata for schema
+#' compatibility. These helpers are the supported semantic boundary: callers
+#' do not need to know the storage key, and Stage 1 values are type checked.
+#'
+#' @param data a \code{StateTransitionData}
+#' @param stage one of \code{"stage1"} or \code{"stage2"}
+#' @param required whether absence is an error; when \code{FALSE}, absent
+#'   stages return \code{NULL}
+#' @return the stored stage artifact, or \code{NULL} when absent and optional
+#' @export
+stage_artifact <- function(data, stage = c("stage1", "stage2"), required = TRUE) {
+    if (!is(data, "StateTransitionData")) {
+        .stop_landscapeR_validation(sprintf(
+            "stage_artifact() requires StateTransitionData; got class '%s'",
+            class(data)[[1L]]
+        ))
+    }
+    stage <- .with_landscapeR_validation(match.arg(stage))
+    if (!is.logical(required) || length(required) != 1L || is.na(required))
+        .stop_landscapeR_validation("required must be TRUE or FALSE")
+    value <- S4Vectors::metadata(data)[[stage]]
+    if (is.null(value)) {
+        if (required) {
+            .stop_landscapeR_validation(sprintf(
+                "%s artifact is not available", stage
+            ))
+        }
+        return(NULL)
+    }
+    if (identical(stage, "stage1"))
+        .require_decomposition_result(value, "stage_artifact(stage = 'stage1')")
+    value
+}
+
+#' @rdname stage_artifact
+#' @return \code{TRUE} when the requested stage artifact is present
+#' @export
+has_stage_artifact <- function(data, stage = c("stage1", "stage2")) {
+    !is.null(stage_artifact(data, stage = stage, required = FALSE))
+}
+
 # ---------------------------------------------------------------------------
 # Migration machinery
 # ---------------------------------------------------------------------------

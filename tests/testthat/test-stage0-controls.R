@@ -32,6 +32,17 @@ test_that("synthetic potential control is deterministic, finite, and provenanced
     provenance <- first@provenance[[1L]]
     expect_identical(provenance@implementation, "langevin_potential")
     expect_identical(provenance@params$seed, 122L)
+    expect_identical(provenance@params$rng$run_seed, 122L)
+    expect_identical(provenance@params$rng$rng_kind, "L'Ecuyer-CMRG")
+    expect_identical(
+        provenance@params$rng$seed_derivation,
+        "direct-set-seed-v1"
+    )
+    expect_identical(
+        provenance@params$rng$task_id,
+        "synthetic_potential_control"
+    )
+    expect_identical(provenance@rng_seed, integer())
     expect_identical(
         provenance@params$claim_status, "known_truth_calibration_input"
     )
@@ -53,6 +64,11 @@ test_that("all successful Stage 0 controls expose comparable provenance", {
         params <- control@provenance[[1L]]@params
         expect_true(all(c("seed", "claim_status") %in% names(params)))
         expect_true(nzchar(params$claim_status))
+        expect_true(all(c(
+            "run_seed", "rng_kind", "seed_derivation", "task_id", "streams"
+        ) %in% names(params$rng)))
+        expect_true(length(params$rng$streams) >= 1L)
+        expect_true(all(nzchar(names(params$rng$streams))))
     }
 })
 

@@ -94,13 +94,13 @@ test_that("DecompositionResult accessors share typed validation", {
     }
 })
 
-test_that("stage_result() exposes presence and typed values", {
+test_that("stage_artifact() exposes presence and typed values", {
     data <- empty_std()
-    expect_false(has_stage_result(data, "stage1"))
-    expect_null(stage_result(data, "stage1", required = FALSE))
+    expect_false(has_stage_artifact(data, "stage1"))
+    expect_null(stage_artifact(data, "stage1", required = FALSE))
     expect_error(
-        stage_result(data, "stage1"),
-        "stage1 result is not available",
+        stage_artifact(data, "stage1"),
+        "stage1 artifact is not available",
         class = "landscapeR_validation_error"
     )
 
@@ -108,14 +108,14 @@ test_that("stage_result() exposes presence and typed values", {
     md$stage1 <- .valid_decomposition_result()
     md$stage2 <- list(x = 1)
     metadata(data) <- md
-    expect_true(has_stage_result(data, "stage1"))
-    expect_s4_class(stage_result(data, "stage1"), "DecompositionResult")
-    expect_identical(stage_result(data, "stage2"), list(x = 1))
+    expect_true(has_stage_artifact(data, "stage1"))
+    expect_s4_class(stage_artifact(data, "stage1"), "DecompositionResult")
+    expect_identical(stage_artifact(data, "stage2"), list(x = 1))
 
     md$stage1 <- list(untyped = TRUE)
     metadata(data) <- md
     expect_error(
-        stage_result(data, "stage1"),
+        stage_artifact(data, "stage1"),
         "requires a DecompositionResult",
         class = "landscapeR_validation_error"
     )

@@ -15,8 +15,8 @@ run.
 ## Stage results
 
 Stage values remain stored in `S4Vectors::metadata()` for schema compatibility,
-but package code reads them through `stage_result()` and
-`has_stage_result()`. These functions distinguish an absent stage from an
+but package code reads them through `stage_artifact()` and
+`has_stage_artifact()`. These functions distinguish an absent stage from an
 invalid stored value and enforce the `DecompositionResult` type at the Stage 1
 boundary. New modules must not index `metadata(data)$stage1` or
 `metadata(data)$stage2` directly.

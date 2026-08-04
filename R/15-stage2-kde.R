@@ -95,7 +95,7 @@ setMethod(".estimate_dynamics_impl",
         # method in R/08-contracts.R. This strategy only implements its own
         # logic.
 
-        s1 <- stage_result(data, "stage1", required = FALSE)
+        s1 <- stage_artifact(data, "stage1", required = FALSE)
         if (is.null(s1))
             return(stage_failure(
                 "estimate_dynamics: Stage 1 has not been run. Call decompose() first."))

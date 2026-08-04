@@ -25,6 +25,16 @@
         x >= minimum && x <= maximum && x == as.integer(x)
 }
 
+.generator_rng_identity <- function(seed, task_id, streams = c(generator = seed)) {
+    list(
+        run_seed = as.integer(seed),
+        rng_kind = "L'Ecuyer-CMRG",
+        seed_derivation = "direct-set-seed-v1",
+        task_id = task_id,
+        streams = stats::setNames(as.integer(streams), names(streams))
+    )
+}
+
 .synthetic_control_validation_message <- function(n, p, K, signal,
                                                    signal_spec, noise_sd,
                                                    seed) {
@@ -168,6 +178,7 @@ synthetic_control <- function(n        = 40L,
             "multi_omic_layer_subspace"
         },
         params = ctrl_params,
+        rng = .generator_rng_identity(seed, "synthetic_control"),
         input_hashes = c(
             specification = digest::digest(ctrl_params, algo = "sha256")
         )
@@ -317,6 +328,7 @@ synthetic_branching_control <- function(n_per_stage = 24L,
         contract = "SyntheticControlGenerator",
         implementation = "developmental_branching",
         params = control_params,
+        rng = .generator_rng_identity(seed, "synthetic_branching_control"),
         input_hashes = c(
             specification = digest::digest(control_params, algo = "sha256")
         )
@@ -483,6 +495,11 @@ synthetic_k1_double_well_control <- function(n = 200L,
         contract = "SyntheticControlGenerator",
         implementation = "k1_double_well",
         params = md$k1_double_well_control,
+        rng = .generator_rng_identity(
+            seed,
+            "synthetic_k1_double_well_control",
+            c(state_coordinates = seed, expression = seed + 1L)
+        ),
         input_hashes = c(
             specification = digest::digest(
                 md$k1_double_well_control,
@@ -686,7 +703,7 @@ k1_double_well_calibration <- function(n = 200L,
         ))
 
     result <- pipeline_result@value
-    stage1 <- stage_result(result, "stage1")
+    stage1 <- stage_artifact(result, "stage1")
     v_true <- std@ground_truth@subspace@shared[, 1L]
     v_hat <- shared_axis(stage1)
     cosine <- sum(v_true * v_hat) /
@@ -697,7 +714,7 @@ k1_double_well_calibration <- function(n = 200L,
     # Component sign is mathematically arbitrary. Align recovered locations to
     # synthetic truth for diagnostics without mutating the fitted pipeline.
     orientation <- if (cosine < 0) -1 else 1
-    stage2 <- stage_result(result, "stage2")
+    stage2 <- stage_artifact(result, "stage2")
     metrics <- .potential_recovery_metrics(
         stage2 = stage2,
         true_wells = control$true_wells,
@@ -760,7 +777,7 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
         ))
 
     v_true    <- std@ground_truth@shared[, 1L]
-    v_hat     <- shared_axis(stage_result(res@value, "stage1"))
+    v_hat     <- shared_axis(stage_artifact(res@value, "stage1"))
     cos_angle <- min(1, abs(sum(v_true * v_hat) /
                             (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
     angle_deg <- acos(cos_angle) * 180 / pi
@@ -772,7 +789,7 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
         angle_deg        = angle_deg,
         signal_above_bbp = metadata(std)$control$signal_above_bbp,
         elapsed_sec      = elapsed,
-        warnings         = dr_warnings(stage_result(res@value, "stage1"))
+        warnings         = dr_warnings(stage_artifact(res@value, "stage1"))
     )
 }
 
@@ -1041,6 +1058,7 @@ synthetic_potential_control <- function(n       = 100L,
         contract = "SyntheticControlGenerator",
         implementation = "langevin_potential",
         params = ctrl_params,
+        rng = .generator_rng_identity(seed, "synthetic_potential_control"),
         input_hashes = c(
             specification = digest::digest(ctrl_params, algo = "sha256")
         )
@@ -1099,7 +1117,7 @@ potential_recovery_benchmark <- function(std,
                     elapsed_sec = elapsed, reason = res@reason))
 
     metrics <- .potential_recovery_metrics(
-        stage2 = stage_result(res@value, "stage2"),
+        stage2 = stage_artifact(res@value, "stage2"),
         true_wells = ctrl$true_wells,
         true_barrier = ctrl$true_barrier,
         true_barrier_height = ctrl$true_barrier_height

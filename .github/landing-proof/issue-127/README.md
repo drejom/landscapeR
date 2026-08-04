@@ -9,7 +9,7 @@ flowchart LR
     A[Scientific inputs] -->|named scoped hashes| P[ProvenanceStep]
     C[PipelineConfig constructor] --> R[Pipeline run]
     D[StateTransitionData constructor] --> R
-    R --> S[Typed stage_result boundary]
+    R --> S[Typed stage_artifact boundary]
     G[Declared run seed and stream identity] --> P
     S --> P
     X[Ambient session RNG state] -. deliberately excluded .-> P
