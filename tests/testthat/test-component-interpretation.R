@@ -939,6 +939,8 @@ test_that("interpretation evidence has tidy accessors and ggplot views", {
     )
     expect_s3_class(atlas_plot, "ggplot")
     expect_s3_class(proposal_plot, "ggplot")
+    expect_identical(atlas_plot$theme$axis.text.x$angle, 30)
+    expect_identical(proposal_plot$theme$axis.text.x$angle, 30)
     expect_s4_class(atlas_view, "VisualEvidenceView")
     expect_s4_class(proposal_view, "VisualEvidenceView")
     expect_s4_class(permutation_view, "VisualEvidenceView")
@@ -954,8 +956,15 @@ test_that("interpretation evidence has tidy accessors and ggplot views", {
     )
     expect_identical(
         proposal_plot$data,
-        proposal_observations(proposal)
+        proposal_observations(proposal)[
+            proposal_observations(proposal)$metadata_field == "condition",
+            ,
+            drop = FALSE
+        ]
     )
+    expect_true(all(proposal_plot$data$metadata_field == "condition"))
+    expect_match(scientific_caption(atlas_plot), "(A)", fixed = TRUE)
+    expect_match(scientific_caption(proposal_plot), "(A)", fixed = TRUE)
     proposal_layers <- ggplot2::ggplot_build(proposal_plot)$data
     expect_true(any(vapply(
         proposal_layers,
@@ -983,6 +992,12 @@ test_that("interpretation evidence has tidy accessors and ggplot views", {
         character(1L)
     )
     expect_true(all(file.info(canonical_paths)$size > 0))
+
+    unavailable_atlas <- atlas
+    unavailable_atlas@observations$available <- FALSE
+    unavailable_plot <- plot(unavailable_atlas)
+    expect_s3_class(unavailable_plot, "ggplot")
+    expect_match(scientific_caption(unavailable_plot), "(B)", fixed = TRUE)
 })
 
 test_that("continuous atlas plot exposes monotone and flexible fits", {
@@ -991,6 +1006,7 @@ test_that("continuous atlas plot exposes monotone and flexible fits", {
         non_analytical_fields = "mouse_id"
     )
     atlas_plot <- plot(atlas)
+    atlas_build <- ggplot2::ggplot_build(atlas_plot)
     severity <- atlas_observations(atlas)
     severity <- severity[
         severity$metadata_field == "severity",
@@ -1001,6 +1017,10 @@ test_that("continuous atlas plot exposes monotone and flexible fits", {
     expect_equal(
         severity$metadata_numeric[severity$component == 1L],
         c(1, 2, 2, 4, 5, 6, 7, 8)
+    )
+    expect_identical(
+        length(unique(atlas_build$layout$layout$SCALE_X)),
+        4L
     )
     flexible_layers <- vapply(
         atlas_plot$layers,
@@ -1053,6 +1073,11 @@ test_that("continuous atlas plot exposes monotone and flexible fits", {
     )
     expect_null(atlas_plot$labels$caption)
     expect_match(scientific_caption(atlas_plot), "exploratory")
+    expect_match(scientific_caption(atlas_plot), "grey flexible fits")
+    expect_false(grepl(
+        "red flexible fits",
+        scientific_caption(atlas_plot)
+    ))
 })
 
 test_that("coincident continuous observations expose atom mass", {
@@ -1109,8 +1134,12 @@ test_that("continuous proposal plot preserves the numeric decision surface", {
     )
 
     expect_identical(sum(flexible_layers), 1L)
+    expect_true(all(
+        proposal_plot$layers[[which(flexible_layers)]]$data$metadata_field ==
+            "severity"
+    ))
     expect_null(proposal_plot$labels$caption)
-    expect_match(scientific_caption(proposal_plot), "red diamond")
+    expect_match(scientific_caption(proposal_plot), "red\\s+diamond")
     expect_true(any(vapply(
         proposal_plot$layers,
         function(layer) {

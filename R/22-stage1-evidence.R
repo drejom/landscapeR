@@ -287,7 +287,11 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
             graphics::title(main = paste("Stage 1 v2 holdout", metric),
                 sub = "No eligible candidate; holdout was not assessed")
         } else {
-            graphics::plot(seq_len(nrow(data)), data$estimate, pch = 16L, col = "#2C7FB8",
+            graphics::plot(
+                seq_len(nrow(data)),
+                data$estimate,
+                pch = 16L,
+                col = .landscapeR_colour("negative"),
                 xlab = "Canonical holdout stratum", ylab = metric,
                 main = paste("Stage 1 v2 holdout", metric))
             nonzero_ci <- data$ci_lower != data$ci_upper

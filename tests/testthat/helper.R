@@ -1,5 +1,29 @@
 library(landscapeR)
 
+# Test-only renderer and exception used to exercise the caption exemption path.
+.plot_caption_contract_diagnostic <- function() {
+    ggplot2::ggplot(data.frame(x = 0, y = 0)) +
+        ggplot2::geom_blank(ggplot2::aes(
+            x = .data[["x"]],
+            y = .data[["y"]]
+        ))
+}
+
+.scientific_caption_test_exception <- data.frame(
+    renderer = ".plot_caption_contract_diagnostic",
+    category = "internal-development",
+    rationale = paste(
+        "Test-only contract diagnostic verifies that explicitly unexported",
+        "development plots may omit publication captions."
+    ),
+    test_reference = paste0(
+        "tests/testthat/test-scientific-caption-contract.R:",
+        "internal-development-exception"
+    ),
+    public_examples = FALSE,
+    stringsAsFactors = FALSE
+)
+
 confirmed_planted_analysis <- function(id = "test-run", component = 1L) {
     analysis_specification(
         id = id,

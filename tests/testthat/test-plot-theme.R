@@ -48,6 +48,8 @@ test_that("landscapeR palettes have stable semantic roles", {
         semantic,
         c(
             ink = "#111111",
+            paper = "#FFFFFF",
+            structure = "#D9D9D9",
             focal = "#C43C39",
             nuisance = "#8A8A8A",
             missing = "#EFEFEF",
@@ -61,6 +63,66 @@ test_that("landscapeR palettes have stable semantic roles", {
         landscapeR_palette("binary", n = 3L),
         "only for the categorical palette"
     )
+})
+
+test_that("publication helpers reject every invalid public boundary with typed errors", {
+    plot <- ggplot2::ggplot(
+        data.frame(x = 1, y = 1),
+        ggplot2::aes(x, y)
+    ) + ggplot2::geom_point()
+    invalid_calls <- list(
+        function() theme_landscapeR(base_size = NA_real_),
+        function() theme_landscapeR(base_family = NA_character_),
+        function() theme_landscapeR(square = NA),
+        function() landscapeR_palette("not-a-palette"),
+        function() landscapeR_palette("categorical", n = 1.5),
+        function() scale_colour_landscapeR(
+            "binary", reference_level = "same", focal_level = "same"
+        ),
+        function() scale_fill_landscapeR(
+            "binary", reference_level = "reference", focal_level = NA_character_
+        ),
+        function() save_landscapeR_plot(plot, NA_character_),
+        function() save_landscapeR_plot(plot, tempfile(fileext = ".png"), width = 0),
+        function() save_landscapeR_plot(plot, tempfile(fileext = ".png"), height = Inf),
+        function() save_landscapeR_plot(plot, tempfile(fileext = ".png"), dpi = 0)
+    )
+
+    for (invalid_call in invalid_calls) {
+        expect_error(invalid_call(), class = "landscapeR_validation_error")
+    }
+})
+
+test_that("user-facing plot modules obtain semantic colours from the theme interface", {
+    repo_root <- testthat::test_path("..", "..")
+    production_files <- list.files(
+        file.path(repo_root, "R"),
+        pattern = "[.]R$",
+        full.names = TRUE
+    )
+    production_files <- setdiff(
+        production_files,
+        file.path(repo_root, "R", "13a-plot-theme.R")
+    )
+    semantic_hex <- sub(
+        "^#",
+        "",
+        unname(landscapeR_palette("semantic"))
+    )
+    retired_hex <- c("B2182B", "C61A2A", "2C7FB8")
+    semantic_literals <- paste0(
+        "#(?:",
+        paste(c(semantic_hex, retired_hex), collapse = "|"),
+        ")|(?:colour|fill) = \"(?:black|white|grey[0-9]*)\""
+    )
+
+    for (path in production_files) {
+        source <- paste(readLines(path, warn = FALSE), collapse = "\n")
+        expect_false(
+            grepl(semantic_literals, source, ignore.case = TRUE),
+            info = paste(path, "must use landscapeR_palette() or package scales")
+        )
+    }
 })
 
 test_that("landscapeR colour and fill scales match declared data roles", {

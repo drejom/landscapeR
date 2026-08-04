@@ -153,7 +153,8 @@ plot_potential <- function(std, colour_by = NULL,
                 ggplot2::geom_rug(
                     data = rug_df,
                     ggplot2::aes(x = x),
-                    sides = "b", alpha = 0.4, colour = "grey40",
+                    sides = "b", alpha = 0.4,
+                    colour = .landscapeR_colour("nuisance"),
                     inherit.aes = FALSE)
         }
     }

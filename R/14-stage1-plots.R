@@ -206,12 +206,16 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 data = density_df,
                 ggplot2::aes(x = .data$coord, y = .data$density),
                 inherit.aes = FALSE,
-                fill = "grey85",
-                colour = "grey35",
+                fill = .landscapeR_colour("structure"),
+                colour = .landscapeR_colour("nuisance"),
                 alpha = 0.55,
                 linewidth = 0.5
             ) +
-            ggplot2::geom_rug(colour = "grey35", alpha = 0.45, sides = "b")
+            ggplot2::geom_rug(
+                colour = .landscapeR_colour("nuisance"),
+                alpha = 0.45,
+                sides = "b"
+            )
     } else if (is.numeric(meta_col)) {
         observed <- df[!is.na(df$metadata_value), , drop = FALSE]
         missing <- df[is.na(df$metadata_value), , drop = FALSE]
@@ -220,8 +224,8 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 data = density_df,
                 ggplot2::aes(x = .data$coord, y = .data$density),
                 inherit.aes = FALSE,
-                fill = "grey85",
-                colour = "grey35",
+                fill = .landscapeR_colour("structure"),
+                colour = .landscapeR_colour("nuisance"),
                 alpha = 0.55,
                 linewidth = 0.5
             ) +
@@ -235,7 +239,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         if (nrow(missing)) {
             p <- p + ggplot2::geom_rug(
                 data = missing,
-                colour = "#111111",
+                colour = .landscapeR_colour("ink"),
                 linetype = "dashed",
                 linewidth = 0.7,
                 sides = "b"
@@ -303,7 +307,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 data = missing,
                 ggplot2::aes(x = coord),
                 inherit.aes = FALSE,
-                colour = "#111111",
+                colour = .landscapeR_colour("ink"),
                 linetype = "dashed",
                 linewidth = 0.7,
                 sides = "b"
@@ -353,7 +357,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     p <- p +
         ggplot2::geom_vline(
             xintercept = 0, linetype = "dotted",
-            colour = "grey60", linewidth = 0.4
+            colour = .landscapeR_colour("nuisance"), linewidth = 0.4
         ) +
         ggplot2::facet_wrap(~ component, scales = "free") +
         ggplot2::labs(
@@ -493,10 +497,13 @@ plot_spectrum <- function(std, n_sv = 20L) {
         ggplot2::geom_line(linewidth = 0.8) +
         ggplot2::geom_point(size = 1.5) +
         ggplot2::geom_hline(yintercept = bbp, linetype = "dashed",
-                             colour = "grey40", linewidth = 0.6) +
+                             colour = .landscapeR_colour("nuisance"),
+                             linewidth = 0.6) +
         ggplot2::annotate("text", x = max(df$rank) * 0.7, y = bbp,
                            label = sprintf("BBP = %.1f", bbp),
-                           vjust = -0.5, colour = "grey40", size = 3.2) +
+                           vjust = -0.5,
+                           colour = .landscapeR_colour("nuisance"),
+                           size = 3.2) +
         scale_colour_landscapeR("categorical") +
         ggplot2::labs(
             title   = "Singular value spectrum per layer",
@@ -656,7 +663,11 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         df,
         ggplot2::aes(x = sample_ord, y = coord)
     ) +
-        ggplot2::geom_hline(yintercept = 0, linetype = "dotted", colour = "grey60") +
+        ggplot2::geom_hline(
+            yintercept = 0,
+            linetype = "dotted",
+            colour = .landscapeR_colour("nuisance")
+        ) +
         ggplot2::facet_wrap(~ layer, scales = "free_x") +
         ggplot2::labs(
             title    = sprintf("Sample coordinates on component %d", plot_idx),

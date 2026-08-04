@@ -63,6 +63,7 @@ theme_landscapeR <- function(base_size = 7, base_family = "Helvetica",
         .stop_landscapeR_validation("square must be TRUE or FALSE")
     }
 
+    semantic <- landscapeR_palette("semantic")
     ggplot2::theme_minimal(
         base_size = base_size,
         base_family = base_family
@@ -70,40 +71,41 @@ theme_landscapeR <- function(base_size = 7, base_family = "Helvetica",
         ggplot2::theme(
             text = ggplot2::element_text(
                 family = base_family,
-                colour = "#111111"
+                colour = unname(semantic[["ink"]])
             ),
             plot.background = ggplot2::element_rect(
-                fill = "white", colour = NA
+                fill = unname(semantic[["paper"]]), colour = NA
             ),
             panel.background = ggplot2::element_rect(
-                fill = "white", colour = NA
+                fill = unname(semantic[["paper"]]), colour = NA
             ),
             panel.grid.major = ggplot2::element_blank(),
             panel.grid.minor = ggplot2::element_blank(),
             axis.line = ggplot2::element_line(
-                colour = "#111111", linewidth = 0.3
+                colour = unname(semantic[["ink"]]), linewidth = 0.3
             ),
             axis.ticks = ggplot2::element_line(
-                colour = "#111111", linewidth = 0.3
+                colour = unname(semantic[["ink"]]), linewidth = 0.3
             ),
             axis.ticks.length = grid::unit(1.5, "mm"),
             axis.title = ggplot2::element_text(
-                colour = "#111111", size = base_size
+                colour = unname(semantic[["ink"]]), size = base_size
             ),
             axis.text = ggplot2::element_text(
-                colour = "#111111", size = base_size * 6 / 7
+                colour = unname(semantic[["ink"]]), size = base_size * 6 / 7
             ),
             strip.background = ggplot2::element_blank(),
             strip.text = ggplot2::element_text(
-                colour = "#111111", face = "bold", size = base_size
+                colour = unname(semantic[["ink"]]), face = "bold",
+                size = base_size
             ),
             legend.position = "bottom",
             legend.justification = "left",
             legend.title = ggplot2::element_text(
-                colour = "#111111", size = base_size
+                colour = unname(semantic[["ink"]]), size = base_size
             ),
             legend.text = ggplot2::element_text(
-                colour = "#111111", size = base_size * 6 / 7
+                colour = unname(semantic[["ink"]]), size = base_size * 6 / 7
             ),
             legend.key.height = grid::unit(3, "mm"),
             legend.key.width = grid::unit(5, "mm"),
@@ -124,7 +126,9 @@ theme_landscapeR <- function(base_size = 7, base_family = "Helvetica",
 #'   palette is generated from the same discrete Viridis policy used by the
 #'   scale helpers and is not capped at eight levels.
 #'
-#' @return A character vector of hexadecimal colours.
+#' @return A character vector of hexadecimal colours. The semantic palette
+#'   names the `ink`, `paper`, `structure`, `focal`, `nuisance`, `missing`,
+#'   and `negative` roles consumed by package renderers.
 #' @export
 landscapeR_palette <- function(
     palette = c("semantic", "binary", "categorical"),
@@ -133,6 +137,8 @@ landscapeR_palette <- function(
     palette <- .with_landscapeR_validation(match.arg(palette))
     semantic <- c(
         ink = "#111111",
+        paper = "#FFFFFF",
+        structure = "#D9D9D9",
         focal = "#C43C39",
         nuisance = "#8A8A8A",
         missing = "#EFEFEF",
@@ -172,6 +178,17 @@ landscapeR_palette <- function(
     }
     n <- as.integer(n)
     values[seq_len(n)]
+}
+
+.landscapeR_colour <- function(role) {
+    semantic <- landscapeR_palette("semantic")
+    if (!is.character(role) || length(role) != 1L || is.na(role) ||
+        !role %in% names(semantic)) {
+        .stop_landscapeR_validation(
+            "role must name one canonical semantic colour"
+        )
+    }
+    unname(semantic[[role]])
 }
 
 .landscapeR_call_scale <- function(scale_fun, defaults, dots) {
@@ -263,7 +280,7 @@ landscapeR_palette <- function(
         scale_fun,
         list(
             low = unname(semantic[["negative"]]),
-            mid = "white",
+            mid = unname(semantic[["paper"]]),
             high = unname(semantic[["focal"]]),
             midpoint = 0,
             na.value = unname(semantic[["missing"]])
@@ -350,7 +367,7 @@ save_landscapeR_plot <- function(
     width_mm = 100,
     height_mm = width_mm,
     dpi = 450,
-    bg = "white",
+    bg = unname(landscapeR_palette("semantic")[["paper"]]),
     ...
 ) {
     if (!inherits(plot, "ggplot")) {

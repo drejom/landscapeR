@@ -4,6 +4,73 @@
 # not define a generalized renderer and do not grant alternative renderers any
 # authority to alter scientific results.
 
+.publication_panel_letters <- function(n) {
+    if (length(n) != 1L || !is.numeric(n) || is.na(n) ||
+        !is.finite(n) || n < 0L || n > .Machine$integer.max ||
+        n != as.integer(n)) {
+        .stop_landscapeR_validation(
+            "panel count must be one non-negative integer"
+        )
+    }
+    if (n == 0L) return(character())
+    vapply(seq_len(as.integer(n)), function(index) {
+        label <- ""
+        while (index > 0L) {
+            remainder <- (index - 1L) %% length(LETTERS)
+            label <- paste0(LETTERS[[remainder + 1L]], label)
+            index <- (index - 1L) %/% length(LETTERS)
+        }
+        label
+    }, character(1L), USE.NAMES = FALSE)
+}
+
+.cross_sectional_panel_keys <- function(observations) {
+    keys <- unique(observations[
+        ,
+        c("metadata_field", "component_label"),
+        drop = FALSE
+    ])
+    keys$panel_letter <- .publication_panel_letters(nrow(keys))
+    keys
+}
+
+.proposal_panel_terms <- function(observations) {
+    components <- unique(observations$component_label)
+    letters <- .publication_panel_letters(length(components))
+    stats::setNames(
+        sprintf(
+            "The declared target observations are shown for component %s",
+            components
+        ),
+        letters
+    )
+}
+
+.atlas_panel_terms <- function(observations) {
+    keys <- .cross_sectional_panel_keys(observations)
+    stats::setNames(
+        sprintf(
+            "%s observations are shown against component %s",
+            keys$metadata_field,
+            keys$component_label
+        ),
+        keys$panel_letter
+    )
+}
+
+.target_visual_evidence <- function(stored_visual_evidence, target_field) {
+    lapply(stored_visual_evidence, function(value) {
+        if (is.data.frame(value) && "metadata_field" %in% names(value)) {
+            return(value[
+                value$metadata_field == target_field,
+                ,
+                drop = FALSE
+            ])
+        }
+        value
+    })
+}
+
 .cross_sectional_visual_display <- function(
     observations,
     associations,
@@ -144,8 +211,9 @@ setMethod("visual_evidence", "MetadataAssociationAtlas", function(x) {
         molecular_layer = x@provenance$layer,
         sampling_unit = "independent biological observation",
         nuisance_fields = x@provenance$nuisance_fields,
+        panels = .atlas_panel_terms(x@observations),
         encodings = paste(
-            "Black monotone fits and red flexible fits expose agreement or",
+            "Black monotone fits and grey flexible fits expose agreement or",
             "possible non-monotone structure; point size records coincident",
             "observations"
         ),
@@ -181,10 +249,18 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     )) {
         return(.time_course_visual_evidence(x))
     }
+    target_observations <- x@observations[
+        x@observations$metadata_field == x@target_field,
+        ,
+        drop = FALSE
+    ]
     prepared <- .cross_sectional_visual_display(
-        x@observations,
+        target_observations,
         x@ranking,
-        x@provenance$visual_evidence,
+        .target_visual_evidence(
+            x@provenance$visual_evidence,
+            x@target_field
+        ),
         ranking = x@ranking,
         recommended_component = x@recommended_component,
         comparison_level = x@comparison_level
@@ -209,6 +285,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         oriented_levels = oriented,
         sampling_unit = "independent biological observation",
         nuisance_fields = x@provenance$nuisance_fields,
+        panels = .proposal_panel_terms(target_observations),
         encodings = paste(
             "The red diamond marks the uniquely nominated component;",
             "black and white marks retain the complete ranked search"
@@ -229,7 +306,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     .new_visual_evidence_view(
         surface = "proposal",
         state = "uncalibrated",
-        observations = x@observations,
+        observations = target_observations,
         summaries = x@ranking,
         diagnostics = prepared$diagnostics,
         display_data = prepared$display,
@@ -584,7 +661,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
                 shape = 4,
                 size = 2.7,
                 stroke = 0.8,
-                colour = "#B2182B",
+                colour = .landscapeR_colour("ink"),
                 inherit.aes = FALSE
             )
     }
@@ -607,7 +684,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
             ),
             size = if (repeated) 1.7 else 2.2,
             stroke = 0.5,
-            colour = "#111111"
+            colour = .landscapeR_colour("ink")
         )
     if (!repeated) {
         cells <- visual_evidence_display(view, "cells")
@@ -633,17 +710,28 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
                 shape = 4,
                 size = 3,
                 stroke = 0.8,
-                colour = "#B2182B",
+                colour = .landscapeR_colour("ink"),
                 inherit.aes = FALSE
             )
     }
     plot <- plot +
-        ggplot2::scale_colour_manual(values = stats::setNames(
-            c("#111111", "#B2182B"), c(reference, comparison)
-        )) +
-        ggplot2::scale_fill_manual(values = stats::setNames(
-            c("#FFFFFF", "#B2182B"), c(reference, comparison)
-        )) +
+        scale_colour_landscapeR(
+            "binary",
+            reference_level = reference,
+            focal_level = comparison
+        ) +
+        scale_fill_landscapeR(
+            "binary",
+            reference_level = reference,
+            focal_level = comparison,
+            values = stats::setNames(
+                c(
+                    .landscapeR_colour("paper"),
+                    .landscapeR_colour("focal")
+                ),
+                c(reference, comparison)
+            )
+        ) +
         ggplot2::scale_shape_manual(values = stats::setNames(
             c(21, 24), c(reference, comparison)
         )) +

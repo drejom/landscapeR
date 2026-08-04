@@ -60,10 +60,10 @@
     )
     if (length(panels) &&
         (is.null(names(panels)) ||
-            any(!grepl("^[A-Z]$", names(panels))) ||
+            any(!grepl("^[A-Z]+$", names(panels))) ||
             anyDuplicated(names(panels)))) {
         .stop_landscapeR_validation(
-            "panels must have unique single-letter uppercase names"
+            "panels must have unique uppercase alphabetic names"
         )
     }
     view <- list(
@@ -340,29 +340,13 @@
 }
 
 .scientific_caption_exceptions <- data.frame(
-    renderer = ".plot_caption_contract_diagnostic",
-    category = "internal-development",
-    rationale = paste(
-        "Internal contract diagnostic used only to verify that explicitly",
-        "unexported development plots may omit publication captions."
-    ),
-    test_reference = paste0(
-        "tests/testthat/test-scientific-caption-contract.R:",
-        "internal-development-exception"
-    ),
-    public_examples = FALSE,
+    renderer = character(),
+    category = character(),
+    rationale = character(),
+    test_reference = character(),
+    public_examples = logical(),
     stringsAsFactors = FALSE
 )
-
-# Development-only diagnostic for exercising the internal caption exception.
-# It is deliberately unexported and absent from package examples and vignettes.
-.plot_caption_contract_diagnostic <- function() {
-    ggplot2::ggplot(data.frame(x = 0, y = 0)) +
-        ggplot2::geom_blank(ggplot2::aes(
-            x = .data[["x"]],
-            y = .data[["y"]]
-        ))
-}
 
 .scientific_caption_renderer_registry <- data.frame(
     renderer = c(
