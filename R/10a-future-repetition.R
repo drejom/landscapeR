@@ -186,3 +186,38 @@
         class = c("landscapeR_repetition_result", "list")
     )
 }
+
+.future_numeric_repetition <- function(
+    tasks,
+    task_ids,
+    run_seed,
+    compute_tier,
+    worker,
+    sequential_internal = FALSE,
+    future_scheduling = NULL,
+    failure_code = "non-estimable-refit"
+) {
+    execution <- .future_repetition(
+        tasks = tasks,
+        task_ids = task_ids,
+        run_seed = run_seed,
+        compute_tier = compute_tier,
+        worker = function(task, task_id, task_stream) {
+            value <- worker(task, task_id, task_stream)
+            if (!is.numeric(value) || length(value) != 1L ||
+                !is.finite(value)) {
+                .repetition_failure(failure_code, NA_real_)
+            } else {
+                as.numeric(value)
+            }
+        },
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling
+    )
+    list(
+        values = vapply(execution$values, function(value) {
+            if (is.numeric(value) && length(value) == 1L) value else NA_real_
+        }, numeric(1L)),
+        execution = execution
+    )
+}

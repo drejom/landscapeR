@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#132 — migrate association bootstrap
-and permutation searches through the shared future execution substrate**.
+**Next task after this change lands:** **#117 — extract component
+identifiability into a deep scientific module**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -219,7 +219,8 @@ and merge before starting the next:
 1. review-memory prerequisite: #138;
 2. correctness and safety foundations: #119, #120, #121, #122, #123, #124,
    #125, #126, #128, #129, #130;
-3. shared future execution and association migration: #57, then #132;
+3. shared future execution and association migration: #57 and #132 complete
+   on merge;
 4. deep scientific modules: #117, #118, #127;
 5. remaining Stage 1 execution migration: #133;
 6. contributor/architecture documentation after its owners stabilize: #131;
@@ -481,7 +482,7 @@ bodies may state dependencies but do not change this ordering.
 | [#108](https://github.com/drejom/landscapeR/issues/108) | Component-interpretation caption migration | complete on merge with #94 |
 | [#109](https://github.com/drejom/landscapeR/issues/109) | Component-identifiability primary/diagnostic views | complete on merge |
 | [#114](https://github.com/drejom/landscapeR/issues/114) | Legacy Stage 1/2 typed plot evidence | complete on merge |
-| [#117](https://github.com/drejom/landscapeR/issues/117) | Audited architecture — association strategy and evidence | queued — agent-ready |
+| [#117](https://github.com/drejom/landscapeR/issues/117) | Audited architecture — association strategy and evidence | active — next |
 | [#118](https://github.com/drejom/landscapeR/issues/118) | Audited architecture — typed visual evidence | queued — agent-ready |
 | [#119](https://github.com/drejom/landscapeR/issues/119) | Audited correctness — multiplicity | complete on merge |
 | [#120](https://github.com/drejom/landscapeR/issues/120) | Audited integrity — strategy registry | complete on merge |
@@ -496,7 +497,7 @@ bodies may state dependencies but do not change this ordering.
 | [#129](https://github.com/drejom/landscapeR/issues/129) | Audited governance — ADR authority | complete |
 | [#130](https://github.com/drejom/landscapeR/issues/130) | Audited CI — package-test selection | complete |
 | [#131](https://github.com/drejom/landscapeR/issues/131) | Audited governance — contributor safeguards | parked — blocked by #129/#117/#118/#57 |
-| [#132](https://github.com/drejom/landscapeR/issues/132) | Execution scalability — association futures migration | active — next |
+| [#132](https://github.com/drejom/landscapeR/issues/132) | Execution scalability — association futures migration | complete on merge |
 | [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | queued — blocked by #57 |
 | [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | conditional — blocked by #132/#133 |
 | [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | conditional — blocked by #134 |

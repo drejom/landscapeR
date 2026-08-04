@@ -1527,7 +1527,9 @@ register_strategy(
     target,
     ranking,
     n_permutations,
-    seed
+    seed,
+    sequential_internal,
+    future_scheduling
 ) {
     if (n_permutations == 0L) return(.new_permutation_evidence())
     if (!identical(atlas@provenance$exchangeability, "independent")) {
@@ -1595,7 +1597,15 @@ register_strategy(
     }, numeric(nrow(first)))
     nuisance_values <- atlas@provenance$nuisance_values
     if (!length(nuisance_values)) {
-        null_max <- vapply(permutation_plan, function(index) {
+        repetition <- .future_numeric_repetition(
+            tasks = permutation_plan,
+            task_ids = sprintf(
+                "independent-time:complete-search:label:%04d",
+                seq_along(permutation_plan)
+            ),
+            run_seed = seed,
+            compute_tier = "standard",
+            worker = function(index, task_id, task_stream) {
             permuted_target <- target_values[index]
             effects <- apply(score_matrix, 2L, function(scores) {
                 result <- .fit_independent_time_course(
@@ -1618,7 +1628,12 @@ register_strategy(
             } else {
                 NA_real_
             }
-        }, numeric(1L))
+            },
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling,
+            failure_code = "time-course-null-refit-failed"
+        )
+        null_max <- repetition$values
         method <- "within-time-label-permutation"
         design_digest <- NA_character_
     } else {
@@ -1643,7 +1658,15 @@ register_strategy(
             fit <- stats::lm.fit(reduced_design, score_matrix[, j])
             list(fitted = fit$fitted.values, residuals = fit$residuals)
         })
-        null_max <- vapply(permutation_plan, function(index) {
+        repetition <- .future_numeric_repetition(
+            tasks = permutation_plan,
+            task_ids = sprintf(
+                "independent-time:complete-search:residual:%04d",
+                seq_along(permutation_plan)
+            ),
+            run_seed = seed,
+            compute_tier = "standard",
+            worker = function(index, task_id, task_stream) {
             effects <- vapply(reduced_models, function(model) {
                 reconstructed <- model$fitted + model$residuals[index]
                 result <- .fit_independent_time_course(
@@ -1666,7 +1689,12 @@ register_strategy(
             } else {
                 NA_real_
             }
-        }, numeric(1L))
+            },
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling,
+            failure_code = "time-course-null-refit-failed"
+        )
+        null_max <- repetition$values
         method <- "within-time-reduced-model-residual-permutation"
         design_digest <- ranking$design_digest[[1L]]
     }
@@ -1686,7 +1714,8 @@ register_strategy(
             null_max_effect = null_max,
             seed = seed,
             diagnostic = "failed-time-course-null-replicate",
-            resampling_policy = permutation_policy
+            resampling_policy = permutation_policy,
+            execution = repetition$execution
         ))
     }
     observed <- max(
@@ -1714,6 +1743,7 @@ register_strategy(
         } else {
             ""
         },
-        resampling_policy = permutation_policy
+        resampling_policy = permutation_policy,
+        execution = repetition$execution
     )
 }
