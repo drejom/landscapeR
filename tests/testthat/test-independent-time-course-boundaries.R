@@ -20,6 +20,10 @@ test_that("nuisance-aware time permutation uses reduced-model residuals", {
     )
     expect_identical(evidence@n_completed, 9L)
     expect_true(nzchar(evidence@design_digest))
+    execution <- attr(evidence, "execution", exact = TRUE)
+    expect_s3_class(execution, "landscapeR_repetition_result")
+    expect_identical(execution$account$n_requested, 9L)
+    expect_identical(execution$account$n_completed, 9L)
 })
 
 test_that("collapsed bootstrap designs remain in the failure fraction", {

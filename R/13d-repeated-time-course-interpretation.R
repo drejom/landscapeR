@@ -1432,7 +1432,9 @@ register_strategy(
     target,
     ranking,
     n_permutations,
-    seed
+    seed,
+    sequential_internal,
+    future_scheduling
 ) {
     if (n_permutations == 0L) return(.new_permutation_evidence())
     if (!identical(atlas@provenance$exchangeability, "independent")) {
@@ -1530,7 +1532,15 @@ register_strategy(
         rows$score
     }, numeric(nrow(first)))
     nuisance_values <- atlas@provenance$nuisance_values
-    null_max <- vapply(plan, function(permuted) {
+    repetition <- .future_numeric_repetition(
+        tasks = plan,
+        task_ids = sprintf(
+            "repeated-time:complete-search:subject-label:%04d",
+            seq_along(plan)
+        ),
+        run_seed = seed,
+        compute_tier = "standard",
+        worker = function(permuted, task_id, task_stream) {
         effects <- apply(score_matrix, 2L, function(scores) {
             result <- .fit_repeated_time_course(
                 scores,
@@ -1555,7 +1565,12 @@ register_strategy(
             }
         })
         if (all(is.finite(effects))) max(abs(effects)) else NA_real_
-    }, numeric(1L))
+        },
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling,
+        failure_code = "subject-level-null-refit-failed"
+    )
+    null_max <- repetition$values
     n_failures <- sum(!is.finite(null_max))
     n_completed <- sum(is.finite(null_max))
     if (!n_completed) {
@@ -1570,7 +1585,8 @@ register_strategy(
                 plan,
                 "resampling_policy",
                 exact = TRUE
-            )
+            ),
+            execution = repetition$execution
         ))
     }
     status <- if (n_failures) "partial" else "complete"
@@ -1599,6 +1615,7 @@ register_strategy(
             plan,
             "resampling_policy",
             exact = TRUE
-        )
+        ),
+        execution = repetition$execution
     )
 }

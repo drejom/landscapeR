@@ -30,7 +30,10 @@ default.
 Sampling adapters remain responsible for exchangeability and draw
 construction. The shared execution seam owns only repetition, RNG derivation,
 failure normalization, accounting, and typed partial results. Current adapters
-include independent condition-by-time bootstrap and repeated complete-subject
-trajectory bootstrap. No worker, chunk, or resample-count default is frozen;
+include cross-sectional biological-observation bootstrap, independent
+condition-by-time bootstrap, repeated complete-subject trajectory bootstrap,
+and the corresponding complete-search permutation procedures. Permutation
+evidence retains its typed execution result alongside the design-specific
+resampling account. No worker, chunk, or resample-count default is frozen;
 serialization and scheduling must be benchmarked on the eventual workload
 before such a default is proposed.
