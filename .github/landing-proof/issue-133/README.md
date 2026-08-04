@@ -10,9 +10,11 @@ evidence artifact.
 
 The paired calibration and median holdout summaries were each run for the
 frozen 10,000 bootstrap repetitions under `future::sequential` and under
-`future::multisession` with two local workers. Both backends returned bytewise
-identical intervals, accounting, task identities, RNG provenance, and execution
-digests.
+`future::multisession` with two local workers and
+`future_scheduling = 0.5`. Both backends returned bytewise identical intervals,
+accounting, task identities, RNG provenance, and execution digests. Direct
+regression tests also reproduce the pre-migration sequential draw stream and
+confidence intervals exactly.
 
 | Summary path | Requested | Completed | Failed | Sequential digest equals multisession digest |
 |---|---:|---:|---:|---|
@@ -29,14 +31,16 @@ Measurements below were taken on the development Mac with one CPU allocated to
 the R process; two local workers were enabled explicitly for the comparison.
 They describe this small proof payload, not a general performance promise.
 
-| Summary path | Sequential (s) | Multisession, 2 workers (s) | Tasks payload (bytes) | Task IDs (bytes) | Shared input (bytes) |
-|---|---:|---:|---:|---:|---:|
-| Paired calibration mean | 0.744 | 6.414 | 120,031 | 710,031 | 164 |
-| Per-stratum holdout median | 0.771 | 6.440 | 120,031 | 730,031 | 63 |
+| Summary path | Scheduling | Sequential (s) | Multisession, 2 workers (s) | Tasks (bytes) | IDs (bytes) | Shared input (bytes) | Values (bytes) | Provenance (bytes) | Complete execution (bytes) |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Paired calibration mean | default / 0.5 | 0.784 | 3.861 | 1,280,044 | 710,031 | 164 | 160,031 | 1,070,295 | 1,350,775 |
+| Per-stratum holdout median | default / 0.5 | 0.728 | 0.985 | 400,031 | 730,031 | 63 | 160,031 | 1,090,295 | 1,370,775 |
 
-The observed local multisession overhead is larger than the computation saved.
+The observed local multisession overhead is larger than the computation saved,
+and the retained provenance is larger than the returned numerical values.
 Accordingly, this change does not set a package plan, worker count, chunk size,
-or scheduling default. The user-selected future backend remains authoritative.
+or scheduling default. The user-selected future backend remains authoritative;
+these measurements establish the baseline for later chunking work.
 
 ## Frozen-artifact check
 
@@ -52,7 +56,12 @@ future::plan(future::sequential)
 sequential <- landscapeR:::.stage1_paired_bootstrap(exact, metric, rules)
 
 future::plan(future::multisession, workers = 2L)
-parallel <- landscapeR:::.stage1_paired_bootstrap(exact, metric, rules)
+parallel <- landscapeR:::.stage1_paired_bootstrap(
+  exact,
+  metric,
+  rules,
+  future_scheduling = 0.5
+)
 
 stopifnot(identical(sequential, parallel))
 ```
