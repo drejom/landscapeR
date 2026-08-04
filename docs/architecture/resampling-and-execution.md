@@ -15,12 +15,16 @@ flowchart LR
     E --> F[Scientific result or typed abstention]
 ```
 
-Scientific modules define stable task identities, shared immutable inputs, the
-per-task calculation, and the accepted failure policy. They call the shared
-future-backed repetition seam rather than `lapply()`, `vapply()`, or a private
-parallel loop. The execution module owns deterministic stream derivation,
-future dispatch, requested/completed/failed accounting, ordered result
-collection, and execution provenance.
+Modules migrated to the shared repetition contract define stable task
+identities, shared immutable inputs, the per-task calculation, and the accepted
+failure policy. Those modules call the future-backed repetition seam rather
+than `lapply()`, `vapply()`, or a private parallel loop. The execution module
+owns deterministic stream derivation, future dispatch,
+requested/completed/failed accounting, ordered result collection, and
+execution provenance. This currently covers association resampling and
+permutation plus Stage 1 summary bootstraps. Axis-identifiability execution has
+not yet crossed this seam and must not be treated as governed by these
+invariants until it is migrated.
 
 The package never chooses the user's future plan. Sequential execution remains
 the default future backend; local multisession, batchtools, and scheduler-backed

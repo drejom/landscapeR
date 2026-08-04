@@ -24,16 +24,19 @@ After cloning, install the versioned Git hooks once:
 bash install-hooks.sh
 ```
 
-The pre-push hook selects the same full-package or documentation-only path as
-CI from the changed files. It always checks roadmap integrity, ADR governance,
-repository hygiene, and the review ratchet. Source-affecting changes also run
-the package tests and relevant ADR/registry checks. Do not use `[skip-hooks]`
-except for a documented emergency; the remote CI gates still apply.
+The pre-push hook uses the same changed-file classifier as CI to choose a
+source-affecting or documentation-only path. It is a faster local subset, not a
+complete reproduction of the full CI job: source-affecting pushes run
+`devtools::test()` and relevant policy checks, while CI additionally runs
+`R CMD check`, builds pkgdown, and validates article images. The hook always
+checks roadmap integrity, ADR governance, repository hygiene, and the review
+ratchet. Do not use `[skip-hooks]` except for a documented emergency; the
+remote CI gates still apply.
 
-## Local CI-parity commands
+## Local safeguard and CI-parity commands
 
-The ordinary parity path is a normal `git push` with the installed hook. For a
-manual diagnostic run, use the same underlying commands:
+The ordinary fast safeguard path is a normal `git push` with the installed
+hook. Its manual diagnostic commands are:
 
 ```sh
 Rscript -e 'devtools::test()'
@@ -52,11 +55,20 @@ gh issue list --repo drejom/landscapeR --state open --limit 200 --json number > 
 python3 scripts/check-roadmap.py --open-issues-json /tmp/open-issues.json
 ```
 
-When current documentation changes, also run:
+For full local parity with the source-affecting CI job, install the development
+dependencies and run:
 
 ```sh
+Rscript -e 'rcmdcheck::rcmdcheck(args = c("--no-manual"), error_on = "warning")'
 bash scripts/build-pkgdown-site.sh
+python3 scripts/check-pkgdown-images.py --site-root .scratch/site .scratch/site/articles/development-log.html
+python3 scripts/check-pkgdown-images.py --site-root .scratch/site .scratch/site/articles/stage1-evidence.html
 ```
+
+The pkgdown build and image checks are required locally whenever current
+documentation changes. CI remains the authoritative environment because its R
+version and dependency installation are defined by
+`.github/workflows/R-CMD-check.yaml`.
 
 Pull-request body checks for visual landing proof and ratchet disposition run in
 CI because the local pre-push hook has no authoritative PR body. Validate a
