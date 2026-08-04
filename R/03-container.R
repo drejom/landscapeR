@@ -1,3 +1,12 @@
+.state_transition_defaults <- function() {
+    list(
+        schema_version = SCHEMA_VERSION,
+        provenance = list(),
+        ground_truth = NULL,
+        sampling_design = new("SamplingDesign")
+    )
+}
+
 #' Inter-stage container
 #'
 #' Subclasses \code{MultiAssayExperiment}. The four added slots carry
@@ -23,12 +32,7 @@ setClass(
         ground_truth    = "GroundTruthOrNULL",
         sampling_design = "SamplingDesign"
     ),
-    prototype = prototype(
-        schema_version  = "0.2.0",   # literal to avoid forward-reference to SCHEMA_VERSION
-        provenance      = list(),
-        ground_truth    = NULL,
-        sampling_design = new("SamplingDesign")   # kind = "unspecified" by default
-    )
+    prototype = do.call(prototype, .state_transition_defaults())
 )
 
 setValidity("StateTransitionData", function(object) {
@@ -45,11 +49,9 @@ setValidity("StateTransitionData", function(object) {
 
 # Coerce from MAE — used by the StateTransitionData() constructor below.
 setAs("MultiAssayExperiment", "StateTransitionData", function(from) {
-    new("StateTransitionData", from,
-        schema_version  = SCHEMA_VERSION,
-        provenance      = list(),
-        ground_truth    = NULL,
-        sampling_design = new("SamplingDesign")   # kind = "unspecified"
+    do.call(
+        new,
+        c(list(Class = "StateTransitionData", from), .state_transition_defaults())
     )
 })
 
@@ -69,7 +71,7 @@ setAs("MultiAssayExperiment", "StateTransitionData", function(from) {
 StateTransitionData <- function(experiments = list(),
                                  colData     = S4Vectors::DataFrame(),
                                  ground_truth = NULL,
-                                 sampling_design = new("SamplingDesign"),
+                                 sampling_design = NULL,
                                  ...) {
     mae <- MultiAssayExperiment(
         experiments = experiments,

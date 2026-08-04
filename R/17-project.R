@@ -53,7 +53,7 @@ project_into <- function(std_primary, std_secondary,
     stopifnot(is(std_primary,   "StateTransitionData"))
     stopifnot(is(std_secondary, "StateTransitionData"))
 
-    s1_p <- metadata(std_primary)$stage1
+    s1_p <- stage_result(std_primary, "stage1", required = FALSE)
     if (is.null(s1_p))
         stop("project_into: std_primary has no Stage 1 result. Run decompose() first.")
 

@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#127 — deepen core construction,
-provenance, and stage-completion invariants**.
+**Next task after this change lands:** **#133 — migrate Stage 1 summary
+bootstraps to the shared future-backed repetition substrate**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -491,13 +491,13 @@ bodies may state dependencies but do not change this ordering.
 | [#124](https://github.com/drejom/landscapeR/issues/124) | Audited safety — typed public validation | complete |
 | [#125](https://github.com/drejom/landscapeR/issues/125) | Audited assurance — Stage 1 artifact publication | complete |
 | [#126](https://github.com/drejom/landscapeR/issues/126) | Audited assurance — K=1 identifiability | complete on merge; then resume #128 |
-| [#127](https://github.com/drejom/landscapeR/issues/127) | Audited architecture — core construction and provenance | active — next |
+| [#127](https://github.com/drejom/landscapeR/issues/127) | Audited architecture — core construction and provenance | complete on merge |
 | [#128](https://github.com/drejom/landscapeR/issues/128) | Audited visual grammar — canonical palette | complete |
 | [#129](https://github.com/drejom/landscapeR/issues/129) | Audited governance — ADR authority | complete |
 | [#130](https://github.com/drejom/landscapeR/issues/130) | Audited CI — package-test selection | complete |
 | [#131](https://github.com/drejom/landscapeR/issues/131) | Audited governance — contributor safeguards | parked — blocked by #129/#117/#118/#57 |
 | [#132](https://github.com/drejom/landscapeR/issues/132) | Execution scalability — association futures migration | complete |
-| [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | queued — blocked by #57 |
+| [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | queued — next; #57 complete |
 | [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | conditional — blocked by #132/#133 |
 | [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | conditional — blocked by #134 |
 | [#138](https://github.com/drejom/landscapeR/issues/138) | Cross-cutting governance — incident-backed review ratchet | complete |

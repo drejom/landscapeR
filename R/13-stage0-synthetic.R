@@ -533,7 +533,7 @@ synthetic_k1_double_well_control <- function(n = 200L,
 }
 
 .k1_double_well_calibration_config <- function() {
-    new("PipelineConfig",
+    PipelineConfig(
         strategies = list(
             Decomposer = "svd",
             DynamicsEstimator = "kde_logdensity"
@@ -686,7 +686,7 @@ k1_double_well_calibration <- function(n = 200L,
         ))
 
     result <- pipeline_result@value
-    stage1 <- metadata(result)$stage1
+    stage1 <- stage_result(result, "stage1")
     v_true <- std@ground_truth@subspace@shared[, 1L]
     v_hat <- shared_axis(stage1)
     cosine <- sum(v_true * v_hat) /
@@ -697,7 +697,7 @@ k1_double_well_calibration <- function(n = 200L,
     # Component sign is mathematically arbitrary. Align recovered locations to
     # synthetic truth for diagnostics without mutating the fitted pipeline.
     orientation <- if (cosine < 0) -1 else 1
-    stage2 <- metadata(result)$stage2
+    stage2 <- stage_result(result, "stage2")
     metrics <- .potential_recovery_metrics(
         stage2 = stage2,
         true_wells = control$true_wells,
@@ -760,7 +760,7 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
         ))
 
     v_true    <- std@ground_truth@shared[, 1L]
-    v_hat     <- shared_axis(metadata(res@value)$stage1)
+    v_hat     <- shared_axis(stage_result(res@value, "stage1"))
     cos_angle <- min(1, abs(sum(v_true * v_hat) /
                             (sqrt(sum(v_true^2)) * sqrt(sum(v_hat^2)))))
     angle_deg <- acos(cos_angle) * 180 / pi
@@ -772,7 +772,7 @@ recovery_benchmark <- function(std, strategy_name = "hogsvd_averaged") {
         angle_deg        = angle_deg,
         signal_above_bbp = metadata(std)$control$signal_above_bbp,
         elapsed_sec      = elapsed,
-        warnings         = dr_warnings(metadata(res@value)$stage1)
+        warnings         = dr_warnings(stage_result(res@value, "stage1"))
     )
 }
 
@@ -1099,7 +1099,7 @@ potential_recovery_benchmark <- function(std,
                     elapsed_sec = elapsed, reason = res@reason))
 
     metrics <- .potential_recovery_metrics(
-        stage2 = metadata(res@value)$stage2,
+        stage2 = stage_result(res@value, "stage2"),
         true_wells = ctrl$true_wells,
         true_barrier = ctrl$true_barrier,
         true_barrier_height = ctrl$true_barrier_height

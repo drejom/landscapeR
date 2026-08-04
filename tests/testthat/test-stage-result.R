@@ -50,7 +50,7 @@ test_that("stage_success with a real ProvenanceStep passes validation", {
         pkg_version    = "0.0.1",
         params         = list(a = 1L),
         input_hashes   = c(data = "abc123"),
-        rng_seed       = 1L,
+        rng_seed       = integer(),
         timestamp      = Sys.time(),
         status         = "success"
     )

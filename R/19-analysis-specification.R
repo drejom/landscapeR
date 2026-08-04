@@ -646,7 +646,7 @@ canonical_digest <- function(spec) {
                 "Stage 2 requires a confirmed AnalysisSpecification with ",
                 "selected_component"
             ))
-        s1 <- metadata(data)$stage1
+        s1 <- stage_result(data, "stage1", required = FALSE)
         if (is.null(s1) || spec@selected_component > dr_k(s1))
             return(sprintf(
                 "selected_component %s is not available from Stage 1",

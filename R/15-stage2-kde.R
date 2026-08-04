@@ -95,11 +95,11 @@ setMethod(".estimate_dynamics_impl",
         # method in R/08-contracts.R. This strategy only implements its own
         # logic.
 
-        input_hashes <- c(data = digest::digest(data))
-        s1 <- metadata(data)$stage1
+        s1 <- stage_result(data, "stage1", required = FALSE)
         if (is.null(s1))
             return(stage_failure(
                 "estimate_dynamics: Stage 1 has not been run. Call decompose() first."))
+        input_hashes <- c(stage1_result = digest::digest(s1))
 
         normalized <- .kde_logdensity_params(strategy@params)
         if (!is.null(normalized$error))

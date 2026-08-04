@@ -1222,7 +1222,7 @@ associate_metadata <- function(
         )
     }
     exchangeability <- match.arg(exchangeability)
-    stage1 <- metadata(std)$stage1
+    stage1 <- stage_result(std, "stage1", required = FALSE)
     if (is.null(stage1)) {
         .stop_landscapeR_validation(
             "associate_metadata(): Stage 1 has not been run"

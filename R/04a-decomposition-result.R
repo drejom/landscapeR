@@ -81,61 +81,99 @@ DecompositionResult <- function(V_star, sigma, coords, warnings = character(),
     obj
 }
 
+.require_decomposition_result <- function(x, caller) {
+    if (!is(x, "DecompositionResult")) {
+        .stop_landscapeR_validation(sprintf(
+            "%s requires a DecompositionResult; got class '%s'",
+            caller,
+            class(x)[[1L]]
+        ))
+    }
+    x
+}
+
 #' @rdname DecompositionResult
 #' @export
 dr_V_star   <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_V_star() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@V_star
+    .require_decomposition_result(x, "dr_V_star()")@V_star
 }
 #' @rdname DecompositionResult
 #' @export
 dr_sigma    <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_sigma() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@sigma
+    .require_decomposition_result(x, "dr_sigma()")@sigma
 }
 #' @rdname DecompositionResult
 #' @export
 dr_coords   <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_coords() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@coords
+    .require_decomposition_result(x, "dr_coords()")@coords
 }
 #' @rdname DecompositionResult
 #' @export
 dr_warnings <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_warnings() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@warnings
+    .require_decomposition_result(x, "dr_warnings()")@warnings
 }
 #' @rdname DecompositionResult
 #' @export
 dr_V_k      <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_V_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@V_k
+    .require_decomposition_result(x, "dr_V_k()")@V_k
 }
 #' @rdname DecompositionResult
 #' @export
 dr_sigma_k  <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_sigma_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@sigma_k
+    .require_decomposition_result(x, "dr_sigma_k()")@sigma_k
 }
 #' @rdname DecompositionResult
 #' @export
 dr_coords_k <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_coords_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@coords_k
+    .require_decomposition_result(x, "dr_coords_k()")@coords_k
 }
 #' @rdname DecompositionResult
 #' @export
 dr_k        <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@k
+    .require_decomposition_result(x, "dr_k()")@k
+}
+
+#' Access a typed pipeline-stage result
+#'
+#' Stage artifacts are physically stored in container metadata for schema
+#' compatibility. These helpers are the supported semantic boundary: callers
+#' do not need to know the storage key, and Stage 1 values are type checked.
+#'
+#' @param data a \code{StateTransitionData}
+#' @param stage one of \code{"stage1"} or \code{"stage2"}
+#' @param required whether absence is an error; when \code{FALSE}, absent
+#'   stages return \code{NULL}
+#' @return the stored stage value, or \code{NULL} when absent and optional
+#' @export
+stage_result <- function(data, stage = c("stage1", "stage2"), required = TRUE) {
+    if (!is(data, "StateTransitionData")) {
+        .stop_landscapeR_validation(sprintf(
+            "stage_result() requires StateTransitionData; got class '%s'",
+            class(data)[[1L]]
+        ))
+    }
+    stage <- .with_landscapeR_validation(match.arg(stage))
+    if (!is.logical(required) || length(required) != 1L || is.na(required))
+        .stop_landscapeR_validation("required must be TRUE or FALSE")
+    value <- S4Vectors::metadata(data)[[stage]]
+    if (is.null(value)) {
+        if (required) {
+            .stop_landscapeR_validation(sprintf(
+                "%s result is not available", stage
+            ))
+        }
+        return(NULL)
+    }
+    if (identical(stage, "stage1"))
+        .require_decomposition_result(value, "stage_result(stage = 'stage1')")
+    value
+}
+
+#' @rdname stage_result
+#' @return \code{TRUE} when the requested stage value is present
+#' @export
+has_stage_result <- function(data, stage = c("stage1", "stage2")) {
+    !is.null(stage_result(data, stage = stage, required = FALSE))
 }
 
 #' @rdname shared_axis

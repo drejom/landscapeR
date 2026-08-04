@@ -10,7 +10,8 @@ record_provenance(
   contract,
   implementation,
   params = list(),
-  input_hashes = c(data = digest::digest(data)),
+  input_hashes,
+  rng = NULL,
   status = "success"
 )
 }
@@ -25,7 +26,14 @@ record_provenance(
 
 \item{params}{list of parameters used}
 
-\item{input_hashes}{named character vector of pre-stage input hashes}
+\item{input_hashes}{required named character vector of scientifically scoped
+pre-stage input hashes. Callers, rather than this recorder, define which
+inputs constitute the scientific operation.}
+
+\item{rng}{optional declared RNG identity list. For repeated work this
+should contain the run seed, RNG kind, seed-derivation scheme, and stable
+task or stream identity needed to reproduce the draw. Ambient RNG state is
+deliberately not captured.}
 
 \item{status}{character \code{"success"} or \code{"failure"}}
 }
