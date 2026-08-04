@@ -166,11 +166,25 @@ setMethod("decompose", signature("Decomposer", "StateTransitionData"),
         result <- .decompose_impl(strategy, bv, ...)
         if (is(result, "StageResult") &&
             identical(result@status, "success") &&
-            is(result@value, "StateTransitionData") &&
-            has_stage_artifact(result@value, "stage1")) {
-            result@value <- .try_store_stage_plot_evidence(
-                result@value, "stage1"
+            is(result@value, "StateTransitionData")) {
+            artifact <- tryCatch(
+                stage_artifact(result@value, "stage1", required = FALSE),
+                error = identity
             )
+            if (inherits(artifact, "error")) {
+                return(stage_failure(
+                    paste0(
+                        "[decompose] invalid Stage 1 artifact: ",
+                        conditionMessage(artifact)
+                    ),
+                    provenance = result@provenance
+                ))
+            }
+            if (!is.null(artifact)) {
+                result@value <- .try_store_stage_plot_evidence(
+                    result@value, "stage1"
+                )
+            }
         }
         result
     }

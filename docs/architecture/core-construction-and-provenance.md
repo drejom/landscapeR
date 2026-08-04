@@ -1,5 +1,8 @@
 # Core construction and provenance
 
+The scientific hashing and RNG replay contract is governed by
+[ADR 0023](../../decisions/0023-cross-cutting-scientific-provenance-boundaries.md).
+
 ## Supported construction boundaries
 
 Use `StateTransitionData()` for the inter-stage data container and

@@ -41,6 +41,55 @@ setValidity("ProvenanceStep", function(object) {
     if (length(errs)) errs else TRUE
 })
 
+.validate_run_seed <- function(run_seed) {
+    if (!is.numeric(run_seed) || length(run_seed) != 1L || is.na(run_seed) ||
+        !is.finite(run_seed) || run_seed < 0 ||
+        run_seed > .Machine$integer.max || run_seed != floor(run_seed)) {
+        .stop_landscapeR_validation(
+            "run seed must be one finite non-negative integer"
+        )
+    }
+    as.integer(run_seed)
+}
+
+.validate_rng_identity <- function(rng) {
+    required <- c("run_seed", "rng_kind", "seed_derivation", "task_id")
+    if (!is.list(rng) || is.null(names(rng)) ||
+            anyNA(names(rng)) || any(!nzchar(names(rng))) ||
+            anyDuplicated(names(rng)) || !all(required %in% names(rng))) {
+        .stop_landscapeR_validation(paste0(
+            "record_provenance(): rng must be a uniquely named list containing ",
+            paste(required, collapse = ", ")
+        ))
+    }
+    .validate_run_seed(rng$run_seed)
+    for (field in required[-1L]) {
+        value <- rng[[field]]
+        if (!is.character(value) || length(value) != 1L ||
+                is.na(value) || !nzchar(trimws(value))) {
+            .stop_landscapeR_validation(sprintf(
+                "record_provenance(): rng$%s must be one non-empty string",
+                field
+            ))
+        }
+    }
+    if (!is.null(rng$streams)) {
+        streams <- rng$streams
+        if (!is.numeric(streams) || !length(streams) || anyNA(streams) ||
+                any(!is.finite(streams)) || any(streams < 0) ||
+                any(streams > .Machine$integer.max) ||
+                any(streams != as.integer(streams)) ||
+                is.null(names(streams)) || anyNA(names(streams)) ||
+                any(!nzchar(names(streams))) || anyDuplicated(names(streams))) {
+            .stop_landscapeR_validation(paste0(
+                "record_provenance(): rng$streams must be a non-empty, ",
+                "uniquely named vector of non-negative integer seeds"
+            ))
+        }
+    }
+    rng
+}
+
 #' Append a provenance step to a StateTransitionData object
 #'
 #' @param data StateTransitionData
@@ -51,10 +100,11 @@ setValidity("ProvenanceStep", function(object) {
 #' @param input_hashes required named character vector of scientifically scoped
 #'   pre-stage input hashes. Callers, rather than this recorder, define which
 #'   inputs constitute the scientific operation.
-#' @param rng optional declared RNG identity list. For repeated work this
-#'   should contain the run seed, RNG kind, seed-derivation scheme, and stable
-#'   task or stream identity needed to reproduce the draw. Ambient RNG state is
-#'   deliberately not captured.
+#' @param rng optional declared RNG identity list. Stochastic callers must
+#'   provide code{run_seed}, code{rng_kind}, code{seed_derivation}, and
+#'   code{task_id}; multi-stream operations also provide a uniquely named
+#'   integer code{streams} vector. Ambient RNG state is deliberately not
+#'   captured.
 #' @param status character \code{"success"} or \code{"failure"}
 #' @return StateTransitionData with provenance appended
 #' @export
@@ -73,14 +123,7 @@ record_provenance <- function(data, stage, contract, implementation,
             "record_provenance(): input_hashes must be character"
         )
     if (!is.null(rng)) {
-        if (!is.list(rng) || !length(rng) || is.null(names(rng)) ||
-                any(!nzchar(names(rng)))) {
-            .stop_landscapeR_validation(paste0(
-                "record_provenance(): rng must be NULL or a non-empty named ",
-                "list describing the declared seed or stream identity"
-            ))
-        }
-        params$rng <- rng
+        params$rng <- .validate_rng_identity(rng)
     }
     if (is(data, "StateTransitionData"))
         params$sampling_design <- .sampling_design_provenance(data@sampling_design)

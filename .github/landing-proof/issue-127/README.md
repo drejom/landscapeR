@@ -29,3 +29,11 @@ The proof is reproducible through the focused test file:
 ```sh
 Rscript -e 'devtools::test(filter="core-construction-provenance")'
 ```
+
+**Cold-reader conclusion:** construction, stored-stage access, scientific input
+hashing, and random-stream identity now cross explicit validated boundaries;
+invalid inputs fail before they can be mistaken for successful provenance.
+
+**Claim status:** implementation proof for architecture and reproducibility
+contracts only. This does not validate a scientific estimator or acceptance
+threshold.

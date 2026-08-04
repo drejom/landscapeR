@@ -148,3 +148,31 @@ test_that("record_provenance requires scoped hashes and declared RNG identity", 
     expect_identical(step@params$rng$run_seed, 918L)
     expect_named(step@input_hashes, "expression_matrix")
 })
+
+test_that("record_provenance rejects incomplete RNG identities", {
+    data <- empty_std()
+    base <- list(
+        run_seed = 7L,
+        rng_kind = "L'Ecuyer-CMRG",
+        seed_derivation = "direct-set-seed-v1",
+        task_id = "unit-test"
+    )
+    expect_error(
+        record_provenance(
+            data, "test", "Contract", "implementation",
+            input_hashes = c(expression_matrix = "abc"),
+            rng = list(note = "unknown")
+        ),
+        "containing run_seed, rng_kind, seed_derivation, task_id",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        record_provenance(
+            data, "test", "Contract", "implementation",
+            input_hashes = c(expression_matrix = "abc"),
+            rng = c(base, list(streams = c(unnamed = -1L)))
+        ),
+        "rng\\$streams",
+        class = "landscapeR_validation_error"
+    )
+})

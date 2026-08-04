@@ -18,17 +18,6 @@
     compute_tier
 }
 
-.validate_run_seed <- function(run_seed) {
-    if (!is.numeric(run_seed) || length(run_seed) != 1L || is.na(run_seed) ||
-        !is.finite(run_seed) || run_seed < 0 ||
-        run_seed > .Machine$integer.max || run_seed != floor(run_seed)) {
-        .stop_landscapeR_validation(
-            "run seed must be one finite non-negative integer"
-        )
-    }
-    as.integer(run_seed)
-}
-
 .derive_task_stream <- function(run_seed, task_id) {
     run_seed <- .validate_run_seed(run_seed)
     if (!.is_scalar_nonempty_text(task_id)) {
