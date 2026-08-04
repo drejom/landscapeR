@@ -115,6 +115,10 @@ local/CI parity workflow in
 [`docs/agents/contributor-workflow.md`](docs/agents/contributor-workflow.md).
 The complete documentation authority map is in
 [`docs/README.md`](docs/README.md).
+Remote execution remains user-configured; the package provides a typed worker
+preflight and an operational
+[Gadi deployment guide](docs/agents/gadi-future-deployment.md) without choosing
+scheduler or resource defaults.
 
 ## Reference
 

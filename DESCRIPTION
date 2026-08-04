@@ -66,6 +66,7 @@ Collate:
     '09-boundary.R'
     '10-rng.R'
     '10a-future-repetition.R'
+    '10b-remote-worker-preflight.R'
     '11-runner.R'
     '12-stage1-hogsvd.R'
     '12a-stage1-svd.R'
