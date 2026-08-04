@@ -52,6 +52,11 @@ actually consumes. Stochastic callers must additionally supply a validated RNG
 identity containing `run_seed`, `rng_kind`, `seed_derivation`, and `task_id`;
 multi-stream operations also provide uniquely named integer `streams`.
 
+Input names are unique and values are lowercase hexadecimal MD5, SHA-1,
+SHA-256, or SHA-512 digests. The dedicated `rng` argument is the only route to
+the canonical `params$rng` record; callers cannot bypass validation by placing
+that field inside general parameters.
+
 `record_provenance()` validates and stores this identity under `params$rng`.
 It does not inspect or store ambient `.Random.seed`. The legacy
 `ProvenanceStep@rng_seed` slot remains readable for schema compatibility but is

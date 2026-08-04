@@ -29,13 +29,18 @@ setClass("ProvenanceStep",
 
 setValidity("ProvenanceStep", function(object) {
     errs <- character()
+    valid_hash <- grepl(
+        "^([0-9a-f]{32}|[0-9a-f]{40}|[0-9a-f]{64}|[0-9a-f]{128})$",
+        object@input_hashes
+    )
     if (!length(object@input_hashes) || is.null(names(object@input_hashes)) ||
             anyNA(names(object@input_hashes)) ||
             any(!nzchar(names(object@input_hashes))) ||
-            anyNA(object@input_hashes) || any(!nzchar(object@input_hashes))) {
+            anyDuplicated(names(object@input_hashes)) ||
+            anyNA(object@input_hashes) || any(!valid_hash)) {
         errs <- c(errs, paste0(
-            "input_hashes must be a non-empty named character vector of ",
-            "scientifically scoped pre-stage hashes"
+            "input_hashes must have unique non-empty names and lowercase ",
+            "hexadecimal MD5, SHA-1, SHA-256, or SHA-512 digest values"
         ))
     }
     if (length(errs)) errs else TRUE
@@ -99,7 +104,9 @@ setValidity("ProvenanceStep", function(object) {
 #' @param params list of parameters used
 #' @param input_hashes required named character vector of scientifically scoped
 #'   pre-stage input hashes. Callers, rather than this recorder, define which
-#'   inputs constitute the scientific operation.
+#'   inputs constitute the scientific operation. Names must be unique and
+#'   values must be lowercase hexadecimal MD5, SHA-1, SHA-256, or SHA-512
+#'   digests.
 #' @param rng optional declared RNG identity list. Stochastic callers must
 #'   provide \code{run_seed}, \code{rng_kind}, \code{seed_derivation}, and
 #'   \code{task_id}; multi-stream operations also provide a uniquely named
@@ -122,13 +129,20 @@ record_provenance <- function(data, stage, contract, implementation,
         .stop_landscapeR_validation(
             "record_provenance(): input_hashes must be character"
         )
+    if (!is.list(params))
+        .stop_landscapeR_validation("record_provenance(): params must be a list")
+    if ("rng" %in% names(params))
+        .stop_landscapeR_validation(paste0(
+            "record_provenance(): params$rng is reserved; supply replay ",
+            "identity through the rng argument"
+        ))
     if (!is.null(rng)) {
         params$rng <- .validate_rng_identity(rng)
     }
     if (is(data, "StateTransitionData"))
         params$sampling_design <- .sampling_design_provenance(data@sampling_design)
 
-    step <- new("ProvenanceStep",
+    step <- .with_landscapeR_validation(new("ProvenanceStep",
         stage          = stage,
         contract       = contract,
         implementation = implementation,
@@ -138,8 +152,7 @@ record_provenance <- function(data, stage, contract, implementation,
         rng_seed       = integer(0L),
         timestamp      = as.POSIXct(NA),
         status         = status
-    )
-    validObject(step)
+    ))
     data@provenance <- c(data@provenance, list(step))
     data
 }

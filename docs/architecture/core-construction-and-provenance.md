@@ -33,6 +33,10 @@ equivalent scientific inputs appear different. Names should identify the
 scientific object being hashed, such as `expression_matrix`, `stage1_result`,
 or `simulation_specification`.
 
+Hash names must be unique. Values use the lowercase hexadecimal representation
+returned by `digest::digest()` for MD5, SHA-1, SHA-256, or SHA-512. Short opaque
+labels and checksums are not scientific input hashes.
+
 ## Random-number identity
 
 Ambient `.Random.seed` state is not a usable replay contract and is no longer

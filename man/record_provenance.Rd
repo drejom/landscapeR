@@ -28,7 +28,9 @@ record_provenance(
 
 \item{input_hashes}{required named character vector of scientifically scoped
 pre-stage input hashes. Callers, rather than this recorder, define which
-inputs constitute the scientific operation.}
+inputs constitute the scientific operation. Names must be unique and
+values must be lowercase hexadecimal MD5, SHA-1, SHA-256, or SHA-512
+digests.}
 
 \item{rng}{optional declared RNG identity list. Stochastic callers must
 provide \code{run_seed}, \code{rng_kind}, \code{seed_derivation}, and

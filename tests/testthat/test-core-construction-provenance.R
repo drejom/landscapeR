@@ -160,7 +160,7 @@ test_that("record_provenance rejects incomplete RNG identities", {
     expect_error(
         record_provenance(
             data, "test", "Contract", "implementation",
-            input_hashes = c(expression_matrix = "abc"),
+            input_hashes = c(expression_matrix = strrep("a", 32L)),
             rng = list(note = "unknown")
         ),
         "containing run_seed, rng_kind, seed_derivation, task_id",
@@ -169,10 +169,42 @@ test_that("record_provenance rejects incomplete RNG identities", {
     expect_error(
         record_provenance(
             data, "test", "Contract", "implementation",
-            input_hashes = c(expression_matrix = "abc"),
+            input_hashes = c(expression_matrix = strrep("a", 32L)),
             rng = c(base, list(streams = c(unnamed = -1L)))
         ),
         "rng\\$streams",
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("provenance hashes are unique named hexadecimal digests", {
+    data <- empty_std()
+    expect_error(
+        record_provenance(
+            data, "test", "Contract", "implementation",
+            input_hashes = c(first = strrep("a", 32L), first = strrep("b", 32L))
+        ),
+        "unique non-empty names",
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        record_provenance(
+            data, "test", "Contract", "implementation",
+            input_hashes = c(expression_matrix = "not-a-digest")
+        ),
+        "hexadecimal",
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("general parameters cannot bypass RNG identity validation", {
+    expect_error(
+        record_provenance(
+            empty_std(), "test", "Contract", "implementation",
+            params = list(rng = list(note = "not replayable")),
+            input_hashes = c(expression_matrix = strrep("a", 32L))
+        ),
+        "params\\$rng is reserved",
         class = "landscapeR_validation_error"
     )
 })
