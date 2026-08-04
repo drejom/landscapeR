@@ -201,18 +201,30 @@ test_that("accepted K=1 identifiability has no invented competitor axis", {
         assessed,
         view = "diagnostic"
     )
+    audit <- plot_component_identifiability(assessed, view = "audit")
     expect_s3_class(primary, "ggplot")
     expect_s3_class(diagnostic, "ggplot")
+    expect_s3_class(audit, "ggplot")
     expect_setequal(
         unique(primary$data$surface),
         c(
-            "Axis recurrence", "Matching similarity",
-            "Assignment margin", "Subspace angle"
+            "A  Loading agreement (larger is better)",
+            "B  Subspace rotation (smaller is better)"
         )
     )
-    expect_true(all(primary$data$series %in% c(
-        "Component 1", "Dimension 1"
-    )))
+    expect_true(all(c(
+        "absolute_similarity", "maximum_angle_degrees", "highlight"
+    ) %in% names(diagnostic$data)))
+    expect_identical(sum(diagnostic$data$highlight), 3L)
+    expect_setequal(
+        unique(audit$data$surface),
+        c(
+            "Spectrum", "Matching similarity", "Assignment margin",
+            "Individual-axis recurrence", "Index recurrence",
+            "Orientation recurrence", "Proposal rank", "Subspace angle",
+            "Replicate completion"
+        )
+    )
     primary_caption <- gsub("\\s+", " ", scientific_caption(primary))
     diagnostic_caption <- gsub(
         "\\s+",
@@ -231,15 +243,20 @@ test_that("accepted K=1 identifiability has no invented competitor axis", {
     )
     expect_match(
         primary_caption,
-        "(C) For K=1, no competing axis exists",
+        "(A) Loading agreement is the distribution",
         fixed = TRUE
     )
     expect_match(
         diagnostic_caption,
+        "Points toward the upper left",
+        fixed = TRUE
+    )
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(audit)),
         "(C) For K=1, no competing axis exists",
         fixed = TRUE
     )
-    expect_false(grepl("black", primary_caption, fixed = TRUE))
+    expect_match(primary_caption, "black bars span the middle 50%", fixed = TRUE)
 })
 
 test_that("K=1 evidence keeps success, abstention, and failure counts coherent", {
@@ -557,6 +574,11 @@ test_that("identifiability assessment repeats the complete discovery search", {
     expect_identical(diagnostic$labels$colour, "Discovery component")
     expect_identical(diagnostic$labels$shape, "Evidence series")
     expect_identical(diagnostic$labels$size, "Nominated component")
+    audit <- plot_component_identifiability(assessed, view = "audit")
+    expect_setequal(
+        unique(audit$data$surface),
+        unique(diagnostic$data$surface)
+    )
     expect_error(
         plot_component_identifiability(assessed, view = "radial"),
         "should be one of"

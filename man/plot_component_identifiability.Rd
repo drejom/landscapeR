@@ -4,23 +4,29 @@
 \alias{plot_component_identifiability}
 \title{Plot component-axis identifiability evidence}
 \usage{
-plot_component_identifiability(proposal, view = c("primary", "diagnostic"))
+plot_component_identifiability(
+  proposal,
+  view = c("primary", "diagnostic", "audit")
+)
 }
 \arguments{
 \item{proposal}{a \code{ComponentProposal} assessed by
 \code{assess_component_identifiability()}}
 
-\item{view}{either \code{"primary"} (the default scientific summary) or
-\code{"diagnostic"} (the complete audit surface)}
+\item{view}{one of \code{"primary"} (the default scientific summary),
+\code{"diagnostic"} (the focused diagnostic), or \code{"audit"} (the complete
+nine-panel evidence surface)}
 }
 \value{
 a \code{ggplot2} object whose separate scientific figure caption is
 available through \code{\link[=scientific_caption]{scientific_caption()}}
 }
 \description{
-The default primary view summarizes individual-axis recurrence, joint
-matching, assignment ambiguity, and enclosing-subspace angles. The detailed
-diagnostic view retains the full nine-panel audit surface, including the
-spectrum, index and orientation recurrence, proposal rank, and replicate
-completion. Values are shown without uncalibrated stability thresholds.
+For a single-component decomposition, the default primary view summarizes
+loading agreement and one-dimensional subspace rotation, while the
+diagnostic view shows how those quantities co-occur within resamples. For
+multi-component decompositions, the primary and diagnostic views retain the
+component and subspace summaries. The audit view exposes the complete
+nine-panel evidence surface. Values are shown without uncalibrated stability
+thresholds.
 }

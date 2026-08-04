@@ -1,0 +1,18 @@
+Component-axis identifiability under design-preserving resampling. Axis identifiability was
+assessed for the treatment versus control contrast using RNA expression data from the Synthetic
+single-axis expression study. The analysis used cross-sectional biological samples. All 99
+bootstrap replicates completed the full assessment. Resampling used a stratified bootstrap of
+biological sampling units within target groups. (A) The singular-value spectrum is shown for
+each molecular layer. (B) Absolute feature-loading cosine similarity measures agreement between
+matched axes. (C) For K=1, no competing axis exists, so assignment margins are undefined rather
+than zero. (D) Individual-axis recurrence records, for every discovery component, whether its
+axis was recovered in each resample. (E) Component-index recurrence records whether its
+original component index was retained. (F) Orientation recurrence records whether each
+sign-corrected biological-effect direction agrees with its discovery estimate. (G) Proposal
+rank records the repeated biological-effect ranking. (H) Largest principal angles summarize
+recurrence of each enclosing subspace dimension. (I) Replicate completion equals one only when
+the complete assessment succeeded. The red mark denotes the sole nominated discovery component.
+Components were matched jointly by maximizing total absolute feature-loading cosine similarity.
+No stability threshold was applied. The nominated axis therefore remains exploratory and must
+not be interpreted as stably recovered. These results describe numerical identifiability and do
+not, by themselves, establish biological validity.

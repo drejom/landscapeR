@@ -1504,7 +1504,25 @@ proposal_identifiability <- function(proposal) {
             "one-to-one assignments."
         )
     }
-    panel_description <- if (identical(view, "primary")) {
+    panel_description <- if (single_axis && identical(view, "primary")) {
+        paste(
+            "(A) Loading agreement is the distribution of absolute",
+            "feature-loading cosine similarities across completed resamples;",
+            "values approaching one indicate closer agreement.",
+            "(B) Subspace rotation is the distribution of one-dimensional",
+            "principal angles; values approaching zero indicate less",
+            "rotation. Red diamonds mark medians, black bars span the middle",
+            "50%, and grey points represent completed resamples."
+        )
+    } else if (single_axis && identical(view, "diagnostic")) {
+        paste(
+            "(A) Each point represents one completed resample, locating its",
+            "absolute feature-loading cosine similarity against its",
+            "one-dimensional principal angle. Points toward the upper left",
+            "combine weaker loading agreement with greater rotation; the",
+            "three resamples with the largest rotation are highlighted in red."
+        )
+    } else if (identical(view, "primary")) {
         paste(
             "(A) Axis recurrence is the proportion of resamples assigned",
             "to the corresponding discovery axis.",
@@ -1538,7 +1556,18 @@ proposal_identifiability <- function(proposal) {
         )
     }
     encodings <- paste(
-        if (single_axis) {
+        if (single_axis && identical(view, "primary")) {
+            paste(
+                "Because K=1 contains only the nominated component, no",
+                "comparison-axis or assignment-margin encoding is shown."
+            )
+        } else if (single_axis && identical(view, "diagnostic")) {
+            paste(
+                "Red points identify the completed resamples with the",
+                "largest observed rotation; they do not denote failures or",
+                "apply an acceptance threshold."
+            )
+        } else if (single_axis) {
             "The red mark denotes the sole nominated discovery component."
         } else if (identical(view, "primary")) {
             paste(
@@ -1659,32 +1688,35 @@ proposal_identifiability <- function(proposal) {
 
 #' Plot component-axis identifiability evidence
 #'
-#' The default primary view summarizes individual-axis recurrence, joint
-#' matching, assignment ambiguity, and enclosing-subspace angles. The detailed
-#' diagnostic view retains the full nine-panel audit surface, including the
-#' spectrum, index and orientation recurrence, proposal rank, and replicate
-#' completion. Values are shown without uncalibrated stability thresholds.
+#' For a single-component decomposition, the default primary view summarizes
+#' loading agreement and one-dimensional subspace rotation, while the
+#' diagnostic view shows how those quantities co-occur within resamples. For
+#' multi-component decompositions, the primary and diagnostic views retain the
+#' component and subspace summaries. The audit view exposes the complete
+#' nine-panel evidence surface. Values are shown without uncalibrated stability
+#' thresholds.
 #'
 #' @param proposal a `ComponentProposal` assessed by
 #'   `assess_component_identifiability()`
-#' @param view either `"primary"` (the default scientific summary) or
-#'   `"diagnostic"` (the complete audit surface)
+#' @param view one of `"primary"` (the default scientific summary),
+#'   `"diagnostic"` (the focused diagnostic), or `"audit"` (the complete
+#'   nine-panel evidence surface)
 #' @return a `ggplot2` object whose separate scientific figure caption is
 #'   available through [scientific_caption()]
 #' @export
 plot_component_identifiability <- function(
     proposal,
-    view = c("primary", "diagnostic")
+    view = c("primary", "diagnostic", "audit")
 ) {
     view <- match.arg(view)
     evidence <- proposal_identifiability(proposal)
+    single_axis <- nrow(evidence$recurrence_summary) == 1L
     surface_data <- if (identical(view, "primary")) {
         .identifiability_primary_data(evidence)
     } else {
         .identifiability_surface_data(evidence)
     }
     palette <- landscapeR_palette("semantic")
-    single_axis <- nrow(evidence$recurrence_summary) == 1L
     subtitle <- paste(strwrap(sprintf(
         "Evidence outcome: %s; full-assessment completion: %d/%d",
         .identifiability_outcome_label(evidence$structured_outcome),
@@ -1705,6 +1737,155 @@ plot_component_identifiability <- function(
         },
         name = "Discovery component"
     )
+    if (single_axis && view %in% c("primary", "diagnostic")) {
+        recurrence <- evidence$recurrence[
+            evidence$recurrence$nominated_reference,
+            c("replicate", "absolute_similarity"),
+            drop = FALSE
+        ]
+        angles <- evidence$subspace_angle_summary[
+            evidence$subspace_angle_summary$dimension == 1L,
+            c("replicate", "maximum_angle_degrees"),
+            drop = FALSE
+        ]
+        replicate_data <- merge(
+            recurrence,
+            angles,
+            by = "replicate",
+            all = FALSE
+        )
+        if (identical(view, "diagnostic")) {
+            highlight_count <- min(3L, nrow(replicate_data))
+            replicate_data$highlight <- FALSE
+            if (highlight_count > 0L) {
+                highlight <- order(
+                    -replicate_data$maximum_angle_degrees,
+                    replicate_data$absolute_similarity
+                )[seq_len(highlight_count)]
+                replicate_data$highlight[highlight] <- TRUE
+            }
+            plot <- ggplot2::ggplot(
+                replicate_data,
+                ggplot2::aes(
+                    x = absolute_similarity,
+                    y = maximum_angle_degrees
+                )
+            ) +
+                ggplot2::geom_point(
+                    ggplot2::aes(colour = highlight),
+                    alpha = 0.65,
+                    size = 1.8
+                ) +
+                ggplot2::scale_colour_manual(
+                    values = c(
+                        `FALSE` = unname(palette[["nuisance"]]),
+                        `TRUE` = unname(palette[["focal"]])
+                    ),
+                    guide = "none"
+                ) +
+                ggplot2::labs(
+                    title = "A  Replicate-level recovery map",
+                    subtitle = subtitle,
+                    x = "Absolute loading cosine (larger is better)",
+                    y = "Principal angle in degrees (smaller is better)"
+                ) +
+                theme_landscapeR(square = TRUE)
+            return(.with_scientific_caption(plot, caption))
+        }
+        interval_data <- function(values, surface) {
+            if (!length(values)) {
+                return(data.frame(
+                    surface = character(), xmin = numeric(), xmax = numeric(),
+                    value = numeric(), y = numeric()
+                ))
+            }
+            data.frame(
+                surface = surface,
+                xmin = unname(stats::quantile(values, 0.25, na.rm = TRUE)),
+                xmax = unname(stats::quantile(values, 0.75, na.rm = TRUE)),
+                value = stats::median(values, na.rm = TRUE),
+                y = 1
+            )
+        }
+        distribution_data <- rbind(
+            data.frame(
+                surface = rep(
+                    "A  Loading agreement (larger is better)",
+                    nrow(replicate_data)
+                ),
+                value = replicate_data$absolute_similarity,
+                y = rep(1, nrow(replicate_data))
+            ),
+            data.frame(
+                surface = rep(
+                    "B  Subspace rotation (smaller is better)",
+                    nrow(replicate_data)
+                ),
+                value = replicate_data$maximum_angle_degrees,
+                y = rep(1, nrow(replicate_data))
+            )
+        )
+        interval_data <- rbind(
+            interval_data(
+                replicate_data$absolute_similarity,
+                "A  Loading agreement (larger is better)"
+            ),
+            interval_data(
+                replicate_data$maximum_angle_degrees,
+                "B  Subspace rotation (smaller is better)"
+            )
+        )
+        distribution_data$surface <- factor(
+            distribution_data$surface,
+            levels = c(
+                "A  Loading agreement (larger is better)",
+                "B  Subspace rotation (smaller is better)"
+            )
+        )
+        interval_data$surface <- factor(
+            interval_data$surface,
+            levels = levels(distribution_data$surface)
+        )
+        plot <- ggplot2::ggplot(
+            distribution_data,
+            ggplot2::aes(x = value, y = y)
+        ) +
+            ggplot2::geom_jitter(
+                width = 0,
+                height = 0.08,
+                colour = unname(palette[["nuisance"]]),
+                alpha = 0.45,
+                size = 1.1
+            ) +
+            ggplot2::geom_segment(
+                data = interval_data,
+                ggplot2::aes(x = xmin, xend = xmax, y = y, yend = y),
+                inherit.aes = FALSE,
+                colour = unname(palette[["ink"]]),
+                linewidth = 1.5
+            ) +
+            ggplot2::geom_point(
+                data = interval_data,
+                ggplot2::aes(x = value, y = y),
+                inherit.aes = FALSE,
+                colour = unname(palette[["focal"]]),
+                shape = 18,
+                size = 3
+            ) +
+            ggplot2::facet_wrap(
+                ggplot2::vars(surface),
+                ncol = 1L,
+                scales = "free_x"
+            ) +
+            ggplot2::scale_y_continuous(NULL, breaks = NULL) +
+            ggplot2::labs(
+                title = "Single-axis recovery summary",
+                subtitle = subtitle,
+                x = "Observed value"
+            ) +
+            theme_landscapeR(square = FALSE)
+        return(.with_scientific_caption(plot, caption))
+    }
     if (identical(view, "primary")) {
         shape_scale <- ggplot2::scale_shape_manual(
             values = c(`FALSE` = 16, `TRUE` = 17),

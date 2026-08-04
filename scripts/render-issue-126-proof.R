@@ -79,7 +79,8 @@ evidence <- proposal_identifiability(assessed)
 
 plots <- list(
     primary = plot_component_identifiability(assessed),
-    diagnostic = plot_component_identifiability(assessed, view = "diagnostic")
+    diagnostic = plot_component_identifiability(assessed, view = "diagnostic"),
+    audit = plot_component_identifiability(assessed, view = "audit")
 )
 for (name in names(plots)) {
     save_landscapeR_plot(
