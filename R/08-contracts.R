@@ -3,8 +3,13 @@
 # The pipeline only ever touches the contract; algorithms are plug-ins.
 
 .validate_stage_completion <- function(result, stage, operation) {
-    if (!is(result, "StageResult") ||
-            !identical(result@status, "success")) {
+    if (!is(result, "StageResult")) {
+        return(stage_failure(sprintf(
+            "[%s] implementation did not return a StageResult",
+            operation
+        )))
+    }
+    if (!identical(result@status, "success")) {
         return(result)
     }
     if (!is(result@value, "StateTransitionData")) {

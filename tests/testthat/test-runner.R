@@ -44,6 +44,11 @@ test_that("run_pipeline catches a stage that returns a non-StageResult", {
         function(params) new("BrokenDecomposerForTest", params = params))
 
     std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
+    direct <- decompose(new("BrokenDecomposerForTest", params = list()), std)
+    expect_s4_class(direct, "StageResult")
+    expect_identical(direct@status, "failure")
+    expect_match(direct@reason, "did not return a StageResult")
+
     cfg <- new("PipelineConfig",
         dataset    = "test",
         strategies = list(Decomposer = "_broken_for_test"),

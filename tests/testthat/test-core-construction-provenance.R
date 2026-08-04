@@ -208,3 +208,19 @@ test_that("general parameters cannot bypass RNG identity validation", {
         class = "landscapeR_validation_error"
     )
 })
+
+test_that("stage completion normalizes malformed implementation returns", {
+    for (case in list(
+        list(stage = "stage1", operation = "decompose"),
+        list(stage = "stage2", operation = "estimate_dynamics")
+    )) {
+        result <- landscapeR:::.validate_stage_completion(
+            list(not = "a StageResult"),
+            case$stage,
+            case$operation
+        )
+        expect_s4_class(result, "StageResult")
+        expect_identical(result@status, "failure")
+        expect_match(result@reason, "did not return a StageResult")
+    }
+})
