@@ -3112,13 +3112,13 @@ plot.PermutationEvidence <- function(x, y, ...) {
                     max(5L, floor(sqrt(summary$n_completed)))
                 ),
                 boundary = 0,
-                colour = "#111111",
-                fill = "#D9D9D9",
+                colour = .landscapeR_colour("ink"),
+                fill = .landscapeR_colour("structure"),
                 linewidth = 0.4
             ) +
             ggplot2::geom_vline(
                 xintercept = summary$observed_max_effect,
-                colour = "#B2182B",
+                colour = .landscapeR_colour("focal"),
                 linewidth = 0.8
             )
     } else {
@@ -3127,7 +3127,7 @@ plot.PermutationEvidence <- function(x, y, ...) {
             x = 0,
             y = 0,
             label = diagnostic$diagnostic,
-            colour = "#B2182B"
+            colour = .landscapeR_colour("ink")
         )
     }
     plot <- plot +
@@ -3300,7 +3300,7 @@ plot.AssociationAbstention <- function(x, y, ...) {
                 ),
                 collapse = "\n"
             ),
-            colour = "#111111",
+            colour = .landscapeR_colour("ink"),
             size = 3.2
         ) +
         ggplot2::labs(
@@ -3311,7 +3311,9 @@ plot.AssociationAbstention <- function(x, y, ...) {
         ) +
         theme_landscapeR() +
         ggplot2::theme(
-            plot.subtitle = ggplot2::element_text(colour = "#B2182B"),
+            plot.subtitle = ggplot2::element_text(
+                colour = .landscapeR_colour("ink")
+            ),
             axis.text = ggplot2::element_blank(),
             axis.ticks = ggplot2::element_blank(),
             axis.line = ggplot2::element_blank()
@@ -3355,8 +3357,8 @@ plot.ComponentAbstention <- function(x, y, ...) {
         ) +
             ggplot2::geom_col(
                 width = 0.62,
-                colour = "#111111",
-                fill = "#D9D9D9",
+                colour = .landscapeR_colour("ink"),
+                fill = .landscapeR_colour("structure"),
                 linewidth = 0.45
             )
     } else {
@@ -3372,7 +3374,7 @@ plot.ComponentAbstention <- function(x, y, ...) {
                 label = visual_evidence_display(
                     view, "empty_annotation"
                 ),
-                colour = "#111111"
+                colour = .landscapeR_colour("ink")
             )
     }
     plot <- plot +
@@ -3384,7 +3386,9 @@ plot.ComponentAbstention <- function(x, y, ...) {
         ) +
         theme_landscapeR() +
         ggplot2::theme(
-            plot.subtitle = ggplot2::element_text(colour = "#B2182B")
+            plot.subtitle = ggplot2::element_text(
+                colour = .landscapeR_colour("ink")
+            )
         )
     .with_scientific_caption(plot, visual_evidence_caption(view))
 }
@@ -3739,6 +3743,28 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
     monotone <- visual_evidence_display(view, "monotone_fit")
     flexible <- visual_evidence_display(view, "flexible_fit")
     max_atom_count <- visual_evidence_display(view, "max_atom_count")
+    panel_keys <- .cross_sectional_panel_keys(data)
+    panel_key <- paste(
+        panel_keys$metadata_field,
+        panel_keys$component_label,
+        sep = "\r"
+    )
+    atlas_labeller <- function(labels) {
+        key <- paste(
+            labels$metadata_field,
+            labels$component_label,
+            sep = "\r"
+        )
+        index <- match(key, panel_key)
+        data.frame(
+            metadata_field = paste0(
+                "(", panel_keys$panel_letter[index], ") ",
+                labels$metadata_field
+            ),
+            component_label = labels$component_label,
+            stringsAsFactors = FALSE
+        )
+    }
     atom_guide <- if (visual_evidence_display(view, "show_atom_guide")) {
         ggplot2::waiver()
     } else {
@@ -3753,8 +3779,8 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             ),
             width = 0.5,
             outlier.shape = NA,
-            colour = "#111111",
-            fill = "#FFFFFF",
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("paper"),
             linewidth = 0.45
         ) +
         ggplot2::geom_point(
@@ -3766,8 +3792,8 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             ),
             shape = 21,
             stroke = 0.45,
-            colour = "#111111",
-            fill = "#FFFFFF",
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("paper"),
             position = ggplot2::position_jitter(
                 width = 0.08,
                 height = 0,
@@ -3783,8 +3809,8 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             ),
             shape = 21,
             stroke = 0.45,
-            colour = "#111111",
-            fill = "#FFFFFF"
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("paper")
         ) +
         ggplot2::geom_line(
             data = monotone,
@@ -3792,7 +3818,7 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
                 x = .data[["metadata_numeric"]],
                 y = .data[["monotone_fitted"]]
             ),
-            colour = "#111111",
+            colour = .landscapeR_colour("ink"),
             linewidth = 0.6
         ) +
         ggplot2::geom_line(
@@ -3801,10 +3827,10 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
                 x = .data[["metadata_numeric"]],
                 y = .data[["flexible_fitted"]]
             ),
-            colour = "#B2182B",
+            colour = .landscapeR_colour("nuisance"),
             linewidth = 0.7
         ) +
-        ggplot2::geom_text(
+        ggplot2::geom_label(
             data = diagnostics,
             mapping = ggplot2::aes(
                 label = .data[["display_label"]]
@@ -3812,9 +3838,12 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             x = -Inf,
             y = Inf,
             hjust = -0.05,
-            vjust = 1.2,
-            colour = "#B2182B",
-            size = 3,
+            vjust = 1.05,
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("paper"),
+            linewidth = 0,
+            label.padding = grid::unit(0.08, "lines"),
+            size = 2.1,
             inherit.aes = FALSE
         ) +
         ggplot2::scale_size_continuous(
@@ -3823,10 +3852,14 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             limits = c(1, max(2L, max_atom_count)),
             guide = atom_guide
         ) +
-        ggplot2::facet_grid(
-            rows = ggplot2::vars(metadata_field),
-            cols = ggplot2::vars(component_label),
-            scales = "free"
+        ggplot2::scale_y_continuous(
+            expand = ggplot2::expansion(mult = c(0.05, 0.22))
+        ) +
+        ggplot2::facet_wrap(
+            ggplot2::vars(metadata_field, component_label),
+            scales = "free",
+            ncol = length(unique(data$component_label)),
+            labeller = atlas_labeller
         ) +
         ggplot2::labs(
             title = "Metadata association atlas",
@@ -3837,7 +3870,15 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             x = "Metadata value",
             y = "Component score"
         ) +
-        theme_landscapeR()
+        theme_landscapeR() +
+        ggplot2::theme(
+            axis.text.x = ggplot2::element_text(
+                angle = 30,
+                hjust = 1,
+                vjust = 1
+            ),
+            plot.margin = ggplot2::margin(4, 9, 7, 4)
+        )
     .with_scientific_caption(plot, visual_evidence_caption(view))
 }
 
@@ -3874,6 +3915,11 @@ plot.ComponentProposal <- function(x, y, ...) {
         "none"
     }
     facet_labels <- visual_evidence_display(view, "facet_labels")
+    component_order <- unique(data$component_label)
+    component_letters <- .publication_panel_letters(length(component_order))
+    facet_labels[component_order] <- paste0(
+        "(", component_letters, ") ", facet_labels[component_order]
+    )
     categorical_marker <- visual_evidence_display(
         view, "categorical_marker"
     )
@@ -3888,8 +3934,8 @@ plot.ComponentProposal <- function(x, y, ...) {
             ),
             width = 0.5,
             outlier.shape = NA,
-            colour = "#111111",
-            fill = "#FFFFFF",
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("paper"),
             linewidth = 0.45
         ) +
         ggplot2::geom_point(
@@ -3901,8 +3947,8 @@ plot.ComponentProposal <- function(x, y, ...) {
             ),
             shape = 21,
             stroke = 0.45,
-            colour = "#111111",
-            fill = "#FFFFFF",
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("paper"),
             position = ggplot2::position_jitter(
                 width = 0.08,
                 height = 0,
@@ -3918,8 +3964,8 @@ plot.ComponentProposal <- function(x, y, ...) {
             ),
             shape = 21,
             stroke = 0.45,
-            colour = "#111111",
-            fill = "#FFFFFF"
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("paper")
         ) +
         ggplot2::geom_line(
             data = monotone,
@@ -3927,7 +3973,7 @@ plot.ComponentProposal <- function(x, y, ...) {
                 x = .data[["metadata_numeric"]],
                 y = .data[["monotone_fitted"]]
             ),
-            colour = "#111111",
+            colour = .landscapeR_colour("ink"),
             linewidth = 0.6
         ) +
         ggplot2::geom_line(
@@ -3936,7 +3982,7 @@ plot.ComponentProposal <- function(x, y, ...) {
                 x = .data[["metadata_numeric"]],
                 y = .data[["flexible_fitted"]]
             ),
-            colour = "#B2182B",
+            colour = .landscapeR_colour("nuisance"),
             linewidth = 0.7
         ) +
         ggplot2::geom_point(
@@ -3949,8 +3995,8 @@ plot.ComponentProposal <- function(x, y, ...) {
             shape = 23,
             size = 3.2,
             stroke = 0.65,
-            colour = "#111111",
-            fill = "#C61A2A"
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("focal")
         ) +
         ggplot2::geom_point(
             data = numeric_marker,
@@ -3962,8 +4008,8 @@ plot.ComponentProposal <- function(x, y, ...) {
             shape = 23,
             size = 3.2,
             stroke = 0.65,
-            colour = "#111111",
-            fill = "#C61A2A"
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("focal")
         ) +
         ggplot2::scale_size_continuous(
             name = "Coincident observations",
@@ -3988,6 +4034,13 @@ plot.ComponentProposal <- function(x, y, ...) {
             x = "Target value",
             y = "Component score"
         ) +
-        theme_landscapeR()
+        theme_landscapeR() +
+        ggplot2::theme(
+            axis.text.x = ggplot2::element_text(
+                angle = 30,
+                hjust = 1,
+                vjust = 1
+            )
+        )
     .with_scientific_caption(plot, visual_evidence_caption(view))
 }

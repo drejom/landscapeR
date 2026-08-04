@@ -14,7 +14,9 @@ palette is generated from the same discrete Viridis policy used by the
 scale helpers and is not capped at eight levels.}
 }
 \value{
-A character vector of hexadecimal colours.
+A character vector of hexadecimal colours. The semantic palette
+names the \code{ink}, \code{paper}, \code{structure}, \code{focal}, \code{nuisance}, \code{missing},
+and \code{negative} roles consumed by package renderers.
 }
 \description{
 The default visual grammar is black, white, and grey. Red is reserved for a

@@ -129,7 +129,7 @@ test_that("caption contract rejects invented or internal language", {
             panels = c("unlabelled"),
             claim_boundary = "Descriptive only"
         ),
-        "unique single-letter"
+        "unique uppercase alphabetic"
     )
     forged <- caption_contract_view()
     forged$experiment_label <- character()
@@ -162,6 +162,28 @@ test_that("caption prose preserves panels and normalizes punctuation", {
     expect_match(prose, "(A) Both panels show", fixed = TRUE)
     expect_match(prose, "(B) Both panels show", fixed = TRUE)
     expect_false(grepl("..", prose, fixed = TRUE))
+})
+
+test_that("caption contract supports extended alphabetic panel labels", {
+    caption <- landscapeR:::.build_scientific_caption(
+        caption_contract_view(
+            panels = c(AA = "The twenty-seventh panel remains visible")
+        )
+    )
+
+    expect_match(caption, "(AA)", fixed = TRUE)
+    expect_identical(
+        landscapeR:::.publication_panel_letters(28L)[27:28],
+        c("AA", "AB")
+    )
+    expect_error(
+        landscapeR:::.publication_panel_letters(Inf),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        landscapeR:::.publication_panel_letters(.Machine$integer.max + 1),
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("caption views reject whitespace-only text", {
@@ -258,11 +280,16 @@ test_that("renderer and exception registries are explicit and valid", {
         registry = registry_without_exception,
         exceptions = self_explanatory
     ))
-    internal_exception <- landscapeR:::.scientific_caption_exceptions
-    internal_plot <- landscapeR:::.plot_caption_contract_diagnostic()
+    internal_exception <- .scientific_caption_test_exception
+    internal_plot <- .plot_caption_contract_diagnostic()
     expect_s3_class(internal_plot, "ggplot")
     expect_null(scientific_caption(internal_plot))
     expect_false(internal_exception$public_examples)
+    expect_false(exists(
+        ".plot_caption_contract_diagnostic",
+        envir = asNamespace("landscapeR"),
+        inherits = FALSE
+    ))
     public_docs <- list.files(
         c("vignettes", "man"),
         pattern = "[.](Rmd|Rd)$",
@@ -280,18 +307,7 @@ test_that("renderer and exception registries are explicit and valid", {
         logical(1L)
     )
     expect_false(any(documented))
-    internal_exception$renderer <- "plot_component_identifiability"
-    expect_error(
-        landscapeR:::.validate_scientific_caption_registry(
-            registry = registry,
-            exceptions = internal_exception
-        ),
-        "exception registry is invalid"
-    )
-    overlapping <- rbind(
-        landscapeR:::.scientific_caption_exceptions,
-        self_explanatory
-    )
+    overlapping <- rbind(self_explanatory, self_explanatory)
     expect_error(
         landscapeR:::.validate_scientific_caption_registry(
             registry = registry,

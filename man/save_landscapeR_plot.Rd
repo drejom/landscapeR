@@ -10,7 +10,7 @@ save_landscapeR_plot(
   width_mm = 100,
   height_mm = width_mm,
   dpi = 450,
-  bg = "white",
+  bg = unname(landscapeR_palette("semantic")[["paper"]]),
   ...
 )
 }
