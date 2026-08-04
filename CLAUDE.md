@@ -87,19 +87,13 @@ tests/testthat/
   test-boundary.R     validate_boundary() three-way behaviour
 ```
 
-## Stage implementation status
+## Current status and next work
 
-| Stage | Name | Status |
-|---|---|---|
-| 0 | Synthetic control ladder | K=1 subspace and exact-stationary double-well calibration controls are implemented. Frozen independent K=1 thinness/negative/AML-shaped acceptance remains #51/#67. |
-| 0.5 | Signature library + archetype classifier | Deferred contract surface only; no accepted implementation. |
-| 0.75 | Distributional fit assessment | Deferred contract surface only; no accepted implementation. |
-| 1 | Decomposition and interpretation | Exactly-one-omic-layer `svd` is implemented. Legacy K≥2 strategies exist, but the heterogeneous v2 evidence was negative and no K≥2 production strategy is accepted. Atlas/proposal/confirmation remains #55. |
-| 2 | Dynamics (quasi-potential) | Cross-sectional KDE/log-density estimation is provisional-accepted. Longitudinal and multi-axis strategies are not implemented. |
-
-Do not hard-code a next issue here. Follow the active milestone and deterministic
-next-task rule in `ROADMAP.md`. Stage 0 remains the evidence oracle for every
-scientific strategy and real-data claim boundary.
+Do not maintain stage status or a next-issue list in this file. The active
+milestone, implemented and unsupported capabilities, dependency gates, and
+deterministic next-task rule live only in `ROADMAP.md`. Stage and subsystem
+dependency direction lives under `docs/architecture/`; scientific acceptance
+and algorithm choices live in `decisions/` and frozen specifications.
 
 ## ADR workflow — mandatory for algorithm choices
 
@@ -131,17 +125,6 @@ workflows.
 Do not call an issue complete because tests, package checks, or Rd files pass
 while this proof is missing. The development log is a concise current-status
 index; the pull request is the canonical transition record.
-
-## Key open decisions
-
-- **ADR 0001** (Stage 1 HO-GSVD): `multiblock::hogsvd` vs Kempf rank-deficient
-  HO-GSVD. Both should be registered; Stage 0 thinness sweep with rank-deficiency
-  as an explicit axis decides. The rank-deficiency axis is critical — the diabetes
-  genotype layer will be rank-deficient.
-
-- **ADR 0002** (Stage 2 estimator): log-density inversion with constrained
-  polynomial smoothing. Provisional-accepted. Fill in the `[tbd]` thresholds
-  from Stage 0 double-well recovery to move to fully accepted.
 
 ## Key external references
 
@@ -206,3 +189,5 @@ Multi-context layout — `CONTEXT-MAP.md` at the root points to per-context file
 ### CI check selection → See `docs/agents/ci-check-selection.md`.
 
 ### Execution and reproducibility → See `docs/agents/execution-reproducibility.md`.
+
+### Contributor workflow → See `docs/agents/contributor-workflow.md`.
