@@ -1,7 +1,10 @@
 # 0020 — Stage 1 component-interpretation statistical strategy
 
+> **Archived draft.** This record is superseded by the authoritative
+> [ADR 0020 component interpretation strategy](../../decisions/0020-stage1-component-interpretation-strategy.md).
+
 **Stage:** 1 / cross-cutting
-**Status:** provisional-accepted; external human review remains open
+**Status:** superseded-by 0020
 **Date:** 2026-07-15
 **Amended:** 2026-07-22
 

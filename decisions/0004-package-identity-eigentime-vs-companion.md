@@ -1,7 +1,7 @@
 # 0004 — Package identity: eigentime extension vs companion package
 
 **Stage:** cross-cutting
-**Status:** proposed
+**Status:** accepted
 **Date:** 2026-06-27
 
 ## Context
@@ -34,7 +34,7 @@ is built later, a thin adapter implementing those contracts can wrap it — the 
 handles the swap with zero change to the pipeline. The contract *is* the interface;
 the package boundary is an organisational question, not an architectural one.
 
-**Status: accepted** — this unblocks implementation without prejudicing the future.
+This accepted decision unblocks implementation without prejudicing the future.
 
 ## Review trigger
 

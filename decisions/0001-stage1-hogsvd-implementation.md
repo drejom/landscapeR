@@ -1,7 +1,8 @@
 # 0001 — Stage 1 HO-GSVD implementation
 
 **Stage:** 1 (comparative decomposition)
-**Status:** provisional-accepted for legacy equal-feature use; reopened for a heterogeneous baseline
+**Status:** reopened
+**Resolution issue:** #49
 **Date:** 2026-06-27
 **Updated:** 2026-07-13
 

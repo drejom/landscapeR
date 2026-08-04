@@ -1,6 +1,7 @@
 # 0015 — Stage 1 protocol v3: dimension-aware acceptance thresholds
 
-**Status:** provisional  
+**Status:** provisional-accepted
+**Resolution issue:** #49
 **Date:** 2026-07-12  
 **Supersedes:** ADR 0011 (v2 absolute thresholds)  
 **Depends on:** ADR 0011, ADR 0012
@@ -135,8 +136,8 @@ harmful relative to processing layers separately. The v3 candidate list should:
 - **#24 remains blocked**: no v3 candidate may proceed to a real-data
   discovery/confirmation run until this ADR is fully accepted (margins
   finalised, floor table frozen, protocol v3 document written).
-- **New issue needed**: track (a) floor estimation pass, (b) protocol v3
-  document, (c) v3 candidate run.
+- **Issue #49 resolves this decision** by tracking (a) the floor estimation
+  pass, (b) the protocol v3 document, and (c) the v3 candidate run.
 - **ADR 0011 amended**: append a cross-reference to this ADR noting that v2
   thresholds are superseded for all future protocol versions.
 

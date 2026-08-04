@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#67 — calibrate the AML-shaped
-synthetic control without consuming frozen acceptance seeds**.
+**Next task after this change lands:** **#130 — make package-test selection
+automatic and auditable in CI**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -208,9 +208,9 @@ interpretation lane lands.
 
 The [2026-07-31 whole-codebase technical-debt audit](docs/archive/technical-debt-audit-2026-07-31.md)
 and follow-up architecture and HPC reviews are fully represented by issues.
-They do not displace #67 as the single next task. Agent-ready items may run only
-as a deliberately opened parallel maintenance lane; issue labels do not
-independently change this schedule.
+The maintenance lane is deliberately active until the audited backlog is clean.
+Issue #67 remains the next scientific task but is not the current repository
+task; issue labels do not independently change this schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -230,8 +230,8 @@ its roadmap row and stop the loop rather than silently selecting a later item.
 The loop never merges with unresolved review threads or failing required
 checks. Each pull request must also wait for the actual GitHub Copilot review;
 actionable comments are fixed and evidentially incorrect findings are declined
-before every thread is resolved. This maintenance order does not change the
-sole scientific next task, #67.
+before every thread is resolved. After the maintenance loop is clean, stop for
+human confirmation before restoring #67 as the repository's next task.
 
 **Review memory:** #138 established the incident-backed Ratchet Principle before
 the audited backlog proceeded, so review knowledge earned by #119 onward remains
@@ -458,7 +458,7 @@ bodies may state dependencies but do not change this ordering.
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
 | [#65](https://github.com/drejom/landscapeR/issues/65) | Longitudinal extensions | parked |
 | [#66](https://github.com/drejom/landscapeR/issues/66) | Longitudinal observation design | queued |
-| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — next |
+| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | queued — resume after maintenance cleanup |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
@@ -492,9 +492,9 @@ bodies may state dependencies but do not change this ordering.
 | [#125](https://github.com/drejom/landscapeR/issues/125) | Audited assurance — Stage 1 artifact publication | complete |
 | [#126](https://github.com/drejom/landscapeR/issues/126) | Audited assurance — K=1 identifiability | complete on merge; then resume #128 |
 | [#127](https://github.com/drejom/landscapeR/issues/127) | Audited architecture — core construction and provenance | parked — coordinates with #95 |
-| [#128](https://github.com/drejom/landscapeR/issues/128) | Audited visual grammar — canonical palette | queued — agent-ready |
-| [#129](https://github.com/drejom/landscapeR/issues/129) | Audited governance — ADR authority | queued — agent-ready |
-| [#130](https://github.com/drejom/landscapeR/issues/130) | Audited CI — package-test selection | queued — agent-ready |
+| [#128](https://github.com/drejom/landscapeR/issues/128) | Audited visual grammar — canonical palette | complete |
+| [#129](https://github.com/drejom/landscapeR/issues/129) | Audited governance — ADR authority | complete on merge |
+| [#130](https://github.com/drejom/landscapeR/issues/130) | Audited CI — package-test selection | active — next |
 | [#131](https://github.com/drejom/landscapeR/issues/131) | Audited governance — contributor safeguards | parked — blocked by #129/#117/#118/#57 |
 | [#132](https://github.com/drejom/landscapeR/issues/132) | Execution scalability — association futures migration | queued — blocked by #57 |
 | [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | queued — blocked by #57 |

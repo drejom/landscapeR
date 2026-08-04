@@ -1,8 +1,9 @@
 # ADR 0014 — Unix-only platform support (macOS and Linux)
 
+**Status:** accepted
+
 | Field | Value |
 |---|---|
-| Status | Accepted |
 | Date | 2026-07-13 |
 | Deciders | Dom O'Meally |
 | Issue | #45 review (Gemini) |
