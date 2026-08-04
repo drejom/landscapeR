@@ -202,3 +202,5 @@ Multi-context layout — `CONTEXT-MAP.md` at the root points to per-context file
 ### Repo hygiene → See `docs/agents/repo-hygiene.md`.
 
 ### Review ratchet → See `docs/agents/review-ratchet.md`.
+
+### CI check selection → See `docs/agents/ci-check-selection.md`.

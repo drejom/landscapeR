@@ -5,7 +5,7 @@
 #
 # Checks (all blocking):
 #   1. Roadmap integrity    — roadmap agrees with live GitHub issue state
-#   2. R tests pass         — R/  or tests/  changed
+#   2. Package tests pass   — shared CI path policy selects the full path
 #   3. ADR coverage         — any new register_strategy() call has a backing ADR
 #   4. ADR governance       — unique numbers, valid statuses, resolution issues
 #   5. Registry compliance  — no if/switch dispatchers, no hardcoded config
@@ -83,10 +83,12 @@ RAN=1
 echo "[pre-push] Roadmap integrity"
 run_check "roadmap integrity" check_roadmap
 
-# ── 2. R tests ───────────────────────────────────────────────────────────────
-if needs_check "R/" || needs_check "tests/"; then
+# ── 2. Package tests ─────────────────────────────────────────────────────────
+PACKAGE_CHECK_SCOPE=$(printf '%s\n' "$CHANGED" | \
+  python3 scripts/classify-package-check.py --stdin)
+if [[ "$PACKAGE_CHECK_SCOPE" == "full" ]]; then
   RAN=1
-  echo "[pre-push] R tests"
+  echo "[pre-push] Package tests (full path selected)"
   run_check "devtools::test()" Rscript -e "
     scratch_root <- file.path(getwd(), '.scratch')
     dir.create(scratch_root, recursive = TRUE, showWarnings = FALSE)
@@ -105,6 +107,8 @@ if needs_check "R/" || needs_check "tests/"; then
       quit(status = 1)
     }
   "
+else
+  echo "[pre-push] Package tests (documentation-only short path)"
 fi
 
 # ── 3. ADR coverage ──────────────────────────────────────────────────────────
