@@ -1,0 +1,13 @@
+Component-axis identifiability under design-preserving resampling. Axis identifiability was
+assessed for the treatment versus control contrast using RNA expression data from the Synthetic
+single-axis expression study. The analysis used cross-sectional biological samples. All 99
+bootstrap replicates completed the full assessment. Resampling used a stratified bootstrap of
+biological sampling units within target groups. (A) Each point represents one completed
+resample, locating its absolute feature-loading cosine similarity against the magnitude of its
+repeated biological-effect estimate. This shows whether geometric recovery and the declared
+biological contrast vary together without treating either quantity as an acceptance rule. Grey
+points represent completed biological-unit resamples. Components were matched jointly by
+maximizing total absolute feature-loading cosine similarity. No stability threshold was
+applied. The nominated axis therefore remains exploratory and must not be interpreted as stably
+recovered. These results describe numerical identifiability and do not, by themselves,
+establish biological validity.

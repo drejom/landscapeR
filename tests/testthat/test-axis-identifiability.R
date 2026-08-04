@@ -86,7 +86,7 @@ test_that("decomposition strategies declare their alignment geometry", {
     )
 })
 
-.axis_identifiability_fixture <- function() {
+.axis_identifiability_fixture <- function(k_components = 3L) {
     n <- 12L
     primary <- sprintf("sample_%02d", seq_len(n))
     assay_ids <- sprintf("rna_%02d", seq_len(n))
@@ -131,7 +131,10 @@ test_that("decomposition strategies declare their alignment geometry", {
     config <- new(
         "PipelineConfig",
         strategies = list(Decomposer = "svd"),
-        params = list(svd = list(center = TRUE, k_components = 3L)),
+        params = list(svd = list(
+            center = TRUE,
+            k_components = as.integer(k_components)
+        )),
         dataset = "axis-identifiability-fixture",
         analysis = specification
     )
@@ -154,6 +157,240 @@ test_that("decomposition strategies declare their alignment geometry", {
         proposal = propose_component(atlas)
     )
 }
+
+test_that("accepted K=1 identifiability has no invented competitor axis", {
+    fixture <- .axis_identifiability_fixture(k_components = 1L)
+
+    assessed <- assess_component_identifiability(
+        data = fixture$source,
+        proposal = fixture$proposal,
+        config = fixture$config,
+        non_analytical_fields = "sample_id",
+        n_resamples = 5L,
+        seed = 12601L
+    )
+    evidence <- proposal_identifiability(assessed)
+
+    expect_identical(evidence$status, "estimable-exploratory-only")
+    expect_identical(evidence$structured_outcome, "not-calibrated")
+    expect_identical(evidence$n_requested, 5L)
+    expect_identical(evidence$n_completed, 5L)
+    expect_identical(evidence$n_failed, 0L)
+    expect_identical(evidence$nominated_component, 1L)
+    expect_equal(nrow(evidence$recurrence), 5L)
+    expect_equal(nrow(evidence$recurrence_summary), 1L)
+    expect_identical(evidence$target_recurrence$reference_component, 1L)
+    expect_equal(evidence$target_recurrence$matched_fraction, 1)
+    expect_equal(evidence$target_recurrence$index_recurrence, 1)
+    expect_true(all(vapply(evidence$replicates, function(replicate) {
+        nrow(replicate$assignment) == 1L &&
+            identical(replicate$assignment$reference_component, 1L) &&
+            identical(replicate$assignment$replicate_component, 1L) &&
+            identical(replicate$assignment$orientation, 1L) &&
+            is.na(replicate$assignment$assignment_margin) &&
+            length(replicate$competing_assignments) == 0L &&
+            is.na(replicate$global_assignment_margin)
+    }, logical(1L))))
+    expect_identical(
+        unique(evidence$subspace_angle_summary$dimension),
+        1L
+    )
+
+    primary <- plot_component_identifiability(assessed)
+    diagnostic <- plot_component_identifiability(
+        assessed,
+        view = "diagnostic"
+    )
+    audit <- plot_component_identifiability(assessed, view = "audit")
+    expect_s3_class(primary, "ggplot")
+    expect_s3_class(diagnostic, "ggplot")
+    expect_s3_class(audit, "ggplot")
+    expect_setequal(
+        unique(primary$data$surface),
+        c(
+            "A  Loading agreement (larger is better)",
+            "B  Subspace rotation (smaller is better)"
+        )
+    )
+    expect_true(all(c(
+        "absolute_similarity", "maximum_angle_degrees", "effect_magnitude"
+    ) %in% names(diagnostic$data)))
+    expect_setequal(
+        unique(audit$data$surface),
+        c(
+            "Spectrum", "Matching similarity", "Assignment margin",
+            "Individual-axis recurrence", "Index recurrence",
+            "Orientation recurrence", "Proposal rank", "Subspace angle",
+            "Replicate completion"
+        )
+    )
+    primary_caption <- gsub("\\s+", " ", scientific_caption(primary))
+    diagnostic_caption <- gsub(
+        "\\s+",
+        " ",
+        scientific_caption(diagnostic)
+    )
+    expect_match(
+        primary_caption,
+        "No stability threshold was applied",
+        fixed = TRUE
+    )
+    expect_match(
+        diagnostic_caption,
+        "All 5 bootstrap replicates completed the full assessment",
+        fixed = TRUE
+    )
+    expect_match(
+        primary_caption,
+        "(A) Loading agreement is the distribution",
+        fixed = TRUE
+    )
+    expect_match(
+        diagnostic_caption,
+        "geometric recovery and the declared biological contrast",
+        fixed = TRUE
+    )
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(audit)),
+        "(C) For K=1, no competing axis exists",
+        fixed = TRUE
+    )
+    expect_match(primary_caption, "black bars span the middle 50%", fixed = TRUE)
+})
+
+test_that("K=1 evidence keeps success, abstention, and failure counts coherent", {
+    fixture <- .axis_identifiability_fixture(k_components = 1L)
+
+    setClass(
+        "K1OutcomeDecomposerForTest",
+        contains = "Decomposer",
+        representation(params = "list")
+    )
+    setMethod(
+        "component_loading_geometry",
+        "K1OutcomeDecomposerForTest",
+        function(strategy) "feature-loading-cosine"
+    )
+    setMethod(
+        ".decompose_impl",
+        signature("K1OutcomeDecomposerForTest", "StateTransitionData"),
+        function(strategy, data, ...) {
+            replicate_index <- S4Vectors::metadata(data)$
+                identifiability_resample$replicate
+            if (identical(replicate_index, 3L)) {
+                return(stage_failure(
+                    "controlled K=1 decomposition failure"
+                ))
+            }
+            result <- landscapeR:::.decompose_impl(
+                new("SvdDecomposer", params = strategy@params),
+                data
+            )
+            result
+        }
+    )
+    register_strategy(
+        "Decomposer",
+        "_k1_outcomes_for_test",
+        function(params) {
+            new("K1OutcomeDecomposerForTest", params = params)
+        }
+    )
+    fixture$config@strategies$Decomposer <- "_k1_outcomes_for_test"
+    fixture$config@params$`_k1_outcomes_for_test` <- list(
+        center = TRUE,
+        k_components = 1L
+    )
+
+    proposal_implementation <- propose_component
+    proposal_calls <- 0L
+    testthat::local_mocked_bindings(
+        propose_component = function(atlas, target = NULL, ...) {
+            proposal_calls <<- proposal_calls + 1L
+            proposal <- proposal_implementation(
+                atlas,
+                target = target,
+                ...
+            )
+            if (identical(proposal_calls, 2L)) {
+                return(landscapeR:::.new_component_abstention(
+                    atlas = atlas,
+                    target = target,
+                    reason = "no-eligible-association",
+                    ranking = proposal@ranking[0L, , drop = FALSE],
+                    candidate_components = integer()
+                ))
+            }
+            proposal
+        },
+        .package = "landscapeR"
+    )
+
+    assessed <- assess_component_identifiability(
+        data = fixture$source,
+        proposal = fixture$proposal,
+        config = fixture$config,
+        non_analytical_fields = "sample_id",
+        n_resamples = 3L,
+        seed = 12602L
+    )
+    observed <- proposal_identifiability(assessed)
+
+    expect_identical(observed$n_requested, 3L)
+    expect_identical(observed$n_completed, 1L)
+    expect_identical(observed$n_failed, 2L)
+    expect_identical(observed$failure_summary$n_computational_failures, 1L)
+    expect_identical(observed$failure_summary$n_proposal_abstentions, 1L)
+    expect_identical(observed$failure_summary$n_proposal_execution_failures, 0L)
+    expect_identical(observed$failure_summary$failed_replicates, c(2L, 3L))
+    expect_identical(observed$replicates[[2L]]$proposal_status, "abstention")
+    expect_true(nzchar(observed$replicates[[2L]]$diagnostic))
+    expect_equal(nrow(observed$replicates[[2L]]$assignment), 1L)
+    expect_length(observed$replicates[[2L]]$subspace_angles$dimension, 1L)
+    expect_identical(
+        observed$replicates[[3L]]$diagnostic,
+        "controlled K=1 decomposition failure"
+    )
+    expect_s3_class(plot_component_identifiability(assessed), "ggplot")
+    expect_s3_class(
+        plot_component_identifiability(assessed, view = "diagnostic"),
+        "ggplot"
+    )
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(
+            plot_component_identifiability(assessed)
+        )),
+        "Of 3 bootstrap replicates, 1 completed the full assessment; 2 did not",
+        fixed = TRUE
+    )
+})
+
+test_that("identifiability public boundaries return typed validation failures", {
+    fixture <- .axis_identifiability_fixture(k_components = 1L)
+
+    expect_error(
+        assess_component_identifiability(
+            data = list(),
+            proposal = fixture$proposal,
+            config = fixture$config,
+            n_resamples = 2L
+        ),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        assess_component_identifiability(
+            data = fixture$source,
+            proposal = fixture$proposal,
+            config = fixture$config,
+            n_resamples = 0L
+        ),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        plot_component_identifiability(fixture$proposal),
+        class = "landscapeR_validation_error"
+    )
+})
 
 test_that("identifiability assessment repeats the complete discovery search", {
     fixture <- .axis_identifiability_fixture()
@@ -336,6 +573,11 @@ test_that("identifiability assessment repeats the complete discovery search", {
     expect_identical(diagnostic$labels$colour, "Discovery component")
     expect_identical(diagnostic$labels$shape, "Evidence series")
     expect_identical(diagnostic$labels$size, "Nominated component")
+    audit <- plot_component_identifiability(assessed, view = "audit")
+    expect_setequal(
+        unique(audit$data$surface),
+        unique(diagnostic$data$surface)
+    )
     expect_error(
         plot_component_identifiability(assessed, view = "radial"),
         "should be one of"

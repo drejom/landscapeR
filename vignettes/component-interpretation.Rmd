@@ -217,6 +217,9 @@ evidence <- proposal_identifiability(assessed)
 evidence$recurrence_summary
 evidence$target_recurrence
 plot_component_identifiability(assessed)
+plot_component_identifiability(assessed, view = "diagnostic")
+# Complete nine-panel evidence record when a detailed audit is needed:
+plot_component_identifiability(assessed, view = "audit")
 ```
 
 Each replicate reruns the declared decomposition and complete eligible
@@ -231,6 +234,22 @@ matrix, selected and competing assignments, margins, unmatched axes, sign
 orientation, index recurrence, proposal-rank recurrence, subspace angles,
 spectral gaps, source sampling units, and failed replicates. Sign correction
 occurs only after matching; no Procrustes rotation is applied.
+
+For an accepted single-component decomposition (`K = 1`), the same contract
+remains explicit rather than inventing a comparison axis. The sole component
+is matched to itself, its sign orientation is retained, and axis recurrence is
+reported together with the one-dimensional subspace angle. Because there is no
+competing assignment, local and global assignment margins are `NA`, not zero.
+Requested, completed, abstaining, and failed resamples remain separately
+counted in the evidence and in every plot view. For `K = 1`, the primary view
+shows the distributions of loading agreement and one-dimensional subspace
+rotation. The diagnostic view relates loading agreement to the independently
+repeated biological-effect magnitude in each resample. The audit view retains
+the complete nine-panel evidence record, including assignment-margin
+non-applicability.
+These quantities are
+descriptive until the known-truth calibration in issue #67 freezes an
+acceptance rule.
 
 Before a known-truth calibration is frozen, the structured outcome is
 `not-calibrated` and the evidence remains

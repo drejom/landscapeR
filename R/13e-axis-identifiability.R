@@ -41,6 +41,9 @@ utils::globalVariables(c(
 
 .competing_loading_assignments <- function(solution) {
     size <- nrow(solution$padded)
+    if (size == 1L) {
+        return(list())
+    }
     lapply(seq_len(size), function(reference_index) {
         forbidden <- solution$padded
         replicate_index <- solution$assignment[[reference_index]]
@@ -481,9 +484,12 @@ utils::globalVariables(c(
     source_primary,
     stage,
     diagnostic,
-    replicate_subject = NULL
+    replicate_subject = NULL,
+    alignment = NULL,
+    reference_loadings = NULL,
+    replicate_decomposition = NULL
 ) {
-    list(
+    failure <- list(
         replicate = as.integer(index),
         seed = as.integer(seed),
         source_primary = source_primary,
@@ -515,6 +521,21 @@ utils::globalVariables(c(
         subspace_angles = data.frame(),
         spectral_gaps = data.frame()
     )
+    if (!is.null(alignment)) {
+        failure$similarity <- alignment$similarity
+        failure$signed_similarity <- alignment$signed_similarity
+        failure$assignment <- alignment$assignment
+        failure$competing_assignments <- alignment$competing_assignments
+        failure$global_assignment_margin <- alignment$global_assignment_margin
+        failure$subspace_angles <- .subspace_angle_evidence(
+            reference_loadings,
+            dr_V_k(replicate_decomposition)
+        )
+        failure$spectral_gaps <- .spectral_gap_evidence(
+            replicate_decomposition
+        )
+    }
+    failure
 }
 
 .run_identifiability_replicate <- function(
@@ -537,7 +558,7 @@ utils::globalVariables(c(
     if (!is(decomposition, "StageResult") ||
         !identical(decomposition@status, "success")) {
         diagnostic <- if (is(decomposition, "StageResult")) {
-            decomposition@message
+            decomposition@reason
         } else {
             "decomposer did not return a StageResult"
         }
@@ -575,56 +596,34 @@ utils::globalVariables(c(
         } else {
             atlas@diagnostic
         }
-        failed <- .failed_identifiability_replicate(
+        return(.failed_identifiability_replicate(
             index,
             replicate_seed,
             draw$source_primary,
             "association",
             diagnostic,
-            draw$replicate_subject
-        )
-        failed$similarity <- alignment$similarity
-        failed$signed_similarity <- alignment$signed_similarity
-        failed$assignment <- alignment$assignment
-        failed$competing_assignments <- alignment$competing_assignments
-        failed$global_assignment_margin <-
-            alignment$global_assignment_margin
-        failed$subspace_angles <- .subspace_angle_evidence(
+            draw$replicate_subject,
+            alignment,
             reference_loadings,
-            replicate_loadings
-        )
-        failed$spectral_gaps <- .spectral_gap_evidence(
             replicate_decomposition
-        )
-        return(failed)
+        ))
     }
     replicate_proposal <- tryCatch(
         propose_component(atlas, target = config@analysis@target_field),
         error = identity
     )
     if (inherits(replicate_proposal, "error")) {
-        failed <- .failed_identifiability_replicate(
+        return(.failed_identifiability_replicate(
             index,
             replicate_seed,
             draw$source_primary,
             "proposal",
             conditionMessage(replicate_proposal),
-            draw$replicate_subject
-        )
-        failed$similarity <- alignment$similarity
-        failed$signed_similarity <- alignment$signed_similarity
-        failed$assignment <- alignment$assignment
-        failed$competing_assignments <- alignment$competing_assignments
-        failed$global_assignment_margin <-
-            alignment$global_assignment_margin
-        failed$subspace_angles <- .subspace_angle_evidence(
+            draw$replicate_subject,
+            alignment,
             reference_loadings,
-            replicate_loadings
-        )
-        failed$spectral_gaps <- .spectral_gap_evidence(
             replicate_decomposition
-        )
-        return(failed)
+        ))
     }
     proposal_status <- if (is(replicate_proposal, "ComponentProposal")) {
         "proposal"
@@ -1487,16 +1486,50 @@ proposal_identifiability <- function(proposal) {
     } else {
         NULL
     }
-    panel_description <- if (identical(view, "primary")) {
+    single_axis <- nrow(evidence$recurrence_summary) == 1L
+    assignment_description <- if (single_axis) {
+        paste(
+            "(C) For K=1, no competing axis exists, so assignment margins",
+            "are undefined rather than zero."
+        )
+    } else if (identical(view, "primary")) {
+        paste(
+            "(C) Assignment margins are shown for individual resamples;",
+            "smaller values indicate greater ambiguity between competing",
+            "one-to-one assignments."
+        )
+    } else {
+        paste(
+            "(C) Assignment margins quantify ambiguity between competing",
+            "one-to-one assignments."
+        )
+    }
+    panel_description <- if (single_axis && identical(view, "primary")) {
+        paste(
+            "(A) Loading agreement is the distribution of absolute",
+            "feature-loading cosine similarities across completed resamples;",
+            "values approaching one indicate closer agreement.",
+            "(B) Subspace rotation is the distribution of one-dimensional",
+            "principal angles; values approaching zero indicate less",
+            "rotation. Black diamonds mark medians, black bars span the middle",
+            "50%, and grey points represent completed resamples."
+        )
+    } else if (single_axis && identical(view, "diagnostic")) {
+        paste(
+            "(A) Each point represents one completed resample, locating its",
+            "absolute feature-loading cosine similarity against the magnitude",
+            "of its repeated biological-effect estimate. This shows whether",
+            "geometric recovery and the declared biological contrast vary",
+            "together without treating either quantity as an acceptance rule."
+        )
+    } else if (identical(view, "primary")) {
         paste(
             "(A) Axis recurrence is the proportion of resamples assigned",
             "to the corresponding discovery axis.",
             "(B) Mean absolute feature-loading cosine similarity measures",
             "agreement between matched resampled and discovery axes;",
             "values approaching one indicate closer agreement.",
-            "(C) Assignment margins are shown for individual resamples;",
-            "smaller values indicate greater ambiguity between competing",
-            "one-to-one assignments.",
+            assignment_description,
             "(D) The largest principal angle is shown for each enclosing",
             "subspace dimension; smaller angles indicate greater subspace",
             "recurrence."
@@ -1507,8 +1540,7 @@ proposal_identifiability <- function(proposal) {
             "layer.",
             "(B) Absolute feature-loading cosine similarity measures",
             "agreement between matched axes.",
-            "(C) Assignment margins quantify ambiguity between competing",
-            "one-to-one assignments.",
+            assignment_description,
             "(D) Individual-axis recurrence records, for every discovery",
             "component, whether its axis was recovered in each resample.",
             "(E) Component-index recurrence records whether its original",
@@ -1524,7 +1556,16 @@ proposal_identifiability <- function(proposal) {
         )
     }
     encodings <- paste(
-        if (identical(view, "primary")) {
+        if (single_axis && identical(view, "primary")) {
+            paste(
+                "Because K=1 contains only the nominated component, no",
+                "comparison-axis or assignment-margin encoding is shown."
+            )
+        } else if (single_axis && identical(view, "diagnostic")) {
+            "Grey points represent completed biological-unit resamples."
+        } else if (single_axis) {
+            "The red mark denotes the sole nominated discovery component."
+        } else if (identical(view, "primary")) {
             paste(
                 "Red triangles denote the nominated component and black",
                 "circles denote the remaining candidate components in",
@@ -1643,25 +1684,29 @@ proposal_identifiability <- function(proposal) {
 
 #' Plot component-axis identifiability evidence
 #'
-#' The default primary view summarizes individual-axis recurrence, joint
-#' matching, assignment ambiguity, and enclosing-subspace angles. The detailed
-#' diagnostic view retains the full nine-panel audit surface, including the
-#' spectrum, index and orientation recurrence, proposal rank, and replicate
-#' completion. Values are shown without uncalibrated stability thresholds.
+#' For a single-component decomposition, the default primary view summarizes
+#' loading agreement and one-dimensional subspace rotation, while the
+#' diagnostic view relates loading agreement to the repeated biological-effect
+#' magnitude within resamples. For multi-component decompositions, the primary
+#' and diagnostic views retain the component and subspace summaries. The audit
+#' view exposes the complete nine-panel evidence surface. Values are shown
+#' without uncalibrated stability thresholds.
 #'
 #' @param proposal a `ComponentProposal` assessed by
 #'   `assess_component_identifiability()`
-#' @param view either `"primary"` (the default scientific summary) or
-#'   `"diagnostic"` (the complete audit surface)
+#' @param view one of `"primary"` (the default scientific summary),
+#'   `"diagnostic"` (the focused diagnostic), or `"audit"` (the complete
+#'   nine-panel evidence surface)
 #' @return a `ggplot2` object whose separate scientific figure caption is
 #'   available through [scientific_caption()]
 #' @export
 plot_component_identifiability <- function(
     proposal,
-    view = c("primary", "diagnostic")
+    view = c("primary", "diagnostic", "audit")
 ) {
     view <- match.arg(view)
     evidence <- proposal_identifiability(proposal)
+    single_axis <- nrow(evidence$recurrence_summary) == 1L
     surface_data <- if (identical(view, "primary")) {
         .identifiability_primary_data(evidence)
     } else {
@@ -1681,14 +1726,185 @@ plot_component_identifiability <- function(
             `TRUE` = unname(palette[["focal"]])
         ),
         breaks = c(FALSE, TRUE),
-        labels = c("Comparison components", "Nominated component"),
+        labels = if (single_axis) {
+            c("Context evidence", "Nominated component")
+        } else {
+            c("Comparison components", "Nominated component")
+        },
         name = "Discovery component"
     )
+    if (single_axis && view %in% c("primary", "diagnostic")) {
+        recurrence <- evidence$recurrence[
+            evidence$recurrence$nominated_reference,
+            c("replicate", "absolute_similarity"),
+            drop = FALSE
+        ]
+        angles <- evidence$subspace_angle_summary[
+            evidence$subspace_angle_summary$dimension == 1L,
+            c("replicate", "maximum_angle_degrees"),
+            drop = FALSE
+        ]
+        replicate_data <- merge(
+            recurrence,
+            angles,
+            by = "replicate",
+            all = FALSE
+        )
+        effect_magnitude <- vapply(
+            evidence$replicates,
+            function(replicate) {
+                ranking <- replicate$ranking
+                assignment <- replicate$assignment
+                if (!is.data.frame(ranking) || !nrow(ranking) ||
+                        !is.data.frame(assignment) || !nrow(assignment)) {
+                    return(NA_real_)
+                }
+                selected <- ranking$component ==
+                    assignment$replicate_component[[1L]]
+                values <- ranking$effect_magnitude[selected]
+                if (length(values) == 1L && is.finite(values)) {
+                    as.numeric(values)
+                } else {
+                    NA_real_
+                }
+            },
+            numeric(1L)
+        )
+        effect_data <- data.frame(
+            replicate = seq_along(evidence$replicates),
+            effect_magnitude = effect_magnitude
+        )
+        replicate_data <- merge(
+            replicate_data,
+            effect_data,
+            by = "replicate",
+            all.x = TRUE
+        )
+        if (identical(view, "diagnostic")) {
+            plot <- ggplot2::ggplot(
+                replicate_data,
+                ggplot2::aes(
+                    x = absolute_similarity,
+                    y = effect_magnitude
+                )
+            ) +
+                ggplot2::geom_point(
+                    colour = unname(palette[["nuisance"]]),
+                    alpha = 0.65,
+                    size = 1.8
+                ) +
+                ggplot2::labs(
+                    title = "A  Replicate-level recovery map",
+                    subtitle = subtitle,
+                    x = "Absolute loading cosine (larger is better)",
+                    y = "Repeated biological-effect magnitude"
+                ) +
+                theme_landscapeR(square = TRUE)
+            return(.with_scientific_caption(plot, caption))
+        }
+        interval_data <- function(values, surface) {
+            if (!length(values)) {
+                return(data.frame(
+                    surface = character(), xmin = numeric(), xmax = numeric(),
+                    value = numeric(), y = numeric()
+                ))
+            }
+            data.frame(
+                surface = surface,
+                xmin = unname(stats::quantile(values, 0.25, na.rm = TRUE)),
+                xmax = unname(stats::quantile(values, 0.75, na.rm = TRUE)),
+                value = stats::median(values, na.rm = TRUE),
+                y = 1
+            )
+        }
+        distribution_data <- rbind(
+            data.frame(
+                surface = rep(
+                    "A  Loading agreement (larger is better)",
+                    nrow(replicate_data)
+                ),
+                value = replicate_data$absolute_similarity,
+                y = rep(1, nrow(replicate_data))
+            ),
+            data.frame(
+                surface = rep(
+                    "B  Subspace rotation (smaller is better)",
+                    nrow(replicate_data)
+                ),
+                value = replicate_data$maximum_angle_degrees,
+                y = rep(1, nrow(replicate_data))
+            )
+        )
+        interval_data <- rbind(
+            interval_data(
+                replicate_data$absolute_similarity,
+                "A  Loading agreement (larger is better)"
+            ),
+            interval_data(
+                replicate_data$maximum_angle_degrees,
+                "B  Subspace rotation (smaller is better)"
+            )
+        )
+        distribution_data$surface <- factor(
+            distribution_data$surface,
+            levels = c(
+                "A  Loading agreement (larger is better)",
+                "B  Subspace rotation (smaller is better)"
+            )
+        )
+        interval_data$surface <- factor(
+            interval_data$surface,
+            levels = levels(distribution_data$surface)
+        )
+        plot <- ggplot2::ggplot(
+            distribution_data,
+            ggplot2::aes(x = value, y = y)
+        ) +
+            ggplot2::geom_jitter(
+                width = 0,
+                height = 0.08,
+                colour = unname(palette[["nuisance"]]),
+                alpha = 0.45,
+                size = 1.1
+            ) +
+            ggplot2::geom_segment(
+                data = interval_data,
+                ggplot2::aes(x = xmin, xend = xmax, y = y, yend = y),
+                inherit.aes = FALSE,
+                colour = unname(palette[["ink"]]),
+                linewidth = 1.5
+            ) +
+            ggplot2::geom_point(
+                data = interval_data,
+                ggplot2::aes(x = value, y = y),
+                inherit.aes = FALSE,
+                colour = unname(palette[["ink"]]),
+                shape = 18,
+                size = 3
+            ) +
+            ggplot2::facet_wrap(
+                ggplot2::vars(surface),
+                ncol = 1L,
+                scales = "free_x"
+            ) +
+            ggplot2::scale_y_continuous(NULL, breaks = NULL) +
+            ggplot2::labs(
+                title = "Single-axis recovery summary",
+                subtitle = subtitle,
+                x = "Observed value"
+            ) +
+            theme_landscapeR(square = FALSE)
+        return(.with_scientific_caption(plot, caption))
+    }
     if (identical(view, "primary")) {
         shape_scale <- ggplot2::scale_shape_manual(
             values = c(`FALSE` = 16, `TRUE` = 17),
             breaks = c(FALSE, TRUE),
-            labels = c("Comparison components", "Nominated component"),
+            labels = if (single_axis) {
+                c("Context evidence", "Nominated component")
+            } else {
+                c("Comparison components", "Nominated component")
+            },
             name = "Discovery component"
         )
         summary_surfaces <- c("Axis recurrence", "Matching similarity")
@@ -1705,6 +1921,15 @@ plot_component_identifiability <- function(
             ),
             evidence_index = NA_real_,
             value = rep(c(0, 1), length(summary_surfaces))
+        )
+        undefined_margin <- data.frame(
+            surface = factor(
+                "Assignment margin",
+                levels = levels(surface_data$surface)
+            ),
+            evidence_index = evidence$nominated_component,
+            value = 0.5,
+            label = "Not applicable\nNo competing axis"
         )
         plot <- ggplot2::ggplot(
                 surface_data,
@@ -1762,6 +1987,19 @@ plot_component_identifiability <- function(
                 ggplot2::theme(
                     legend.position = "bottom"
                 )
+        if (single_axis) {
+            plot <- plot + ggplot2::geom_text(
+                data = undefined_margin,
+                ggplot2::aes(
+                    x = evidence_index,
+                    y = value,
+                    label = label
+                ),
+                inherit.aes = FALSE,
+                size = 3,
+                colour = unname(palette[["nuisance"]])
+            )
+        }
         return(.with_scientific_caption(plot, caption))
     }
     binary_limits <- data.frame(
@@ -1788,15 +2026,29 @@ plot_component_identifiability <- function(
     names(series_shapes) <- series_levels
     diagnostic_panel_labels <- c(
         Spectrum = "A  Spectrum",
-        `Matching similarity` = "B  Matching similarity",
-        `Assignment margin` = "C  Assignment margin",
-        `Individual-axis recurrence` = "D  Individual-axis recurrence",
+        `Matching similarity` = "B  Match cosine",
+        `Assignment margin` = "C  Margin",
+        `Individual-axis recurrence` = "D  Axis recurrence",
         `Index recurrence` = "E  Index recurrence",
-        `Orientation recurrence` = "F  Orientation recurrence",
+        `Orientation recurrence` = "F  Orientation",
         `Proposal rank` = "G  Proposal rank",
         `Subspace angle` = "H  Subspace angle",
-        `Replicate completion` = "I  Replicate completion"
+        `Replicate completion` = "I  Completion"
     )
+    diagnostic_margin <- data.frame(
+        surface = factor(
+            "Assignment margin",
+            levels = levels(surface_data$surface)
+        ),
+        evidence_index = median(surface_data$evidence_index, na.rm = TRUE),
+        value = 0.5,
+        label = "Not applicable\nNo competing axis"
+    )
+    spectrum_line <- surface_data[
+        surface_data$surface == "Spectrum",
+        ,
+        drop = FALSE
+    ]
     plot <- ggplot2::ggplot(
         surface_data,
         ggplot2::aes(
@@ -1810,17 +2062,6 @@ plot_component_identifiability <- function(
             data = binary_limits,
             ggplot2::aes(x = evidence_index, y = value),
             inherit.aes = FALSE
-        ) +
-        ggplot2::geom_line(
-            data = surface_data[
-                surface_data$surface == "Spectrum",
-                ,
-                drop = FALSE
-            ],
-            ggplot2::aes(group = series),
-            linewidth = 0.45,
-            alpha = 0.75,
-            na.rm = TRUE
         ) +
         ggplot2::geom_point(
             data = surface_data[
@@ -1904,7 +2145,30 @@ plot_component_identifiability <- function(
         theme_landscapeR(square = FALSE) +
         ggplot2::theme(
             legend.position = "bottom",
-            legend.box = "vertical"
+            legend.box = "vertical",
+            strip.text = ggplot2::element_text(size = 7.5)
         )
+    if (single_axis) {
+        plot <- plot + ggplot2::geom_text(
+            data = diagnostic_margin,
+            ggplot2::aes(
+                x = evidence_index,
+                y = value,
+                label = label
+            ),
+            inherit.aes = FALSE,
+            size = 2.3,
+            colour = unname(palette[["nuisance"]])
+        )
+    }
+    if (nrow(spectrum_line) > 1L) {
+        plot <- plot + ggplot2::geom_line(
+            data = spectrum_line,
+            ggplot2::aes(group = series),
+            linewidth = 0.45,
+            alpha = 0.75,
+            na.rm = TRUE
+        )
+    }
     .with_scientific_caption(plot, caption)
 }
