@@ -6,7 +6,9 @@
     "permutation",
     "abstention",
     "independent_time_course",
-    "repeated_time_course"
+    "repeated_time_course",
+    "stage1",
+    "stage2"
 )
 
 .visual_evidence_states <- c(
@@ -277,6 +279,42 @@ visual_evidence_display <- function(view, name) {
     view@display_data[[name]]
 }
 
+.visual_evidence_displays <- function(view) {
+    item_names <- visual_evidence_display_names(view)
+    stats::setNames(
+        lapply(
+            item_names,
+            function(name) visual_evidence_display(view, name)
+        ),
+        item_names
+    )
+}
+
+.replace_visual_evidence_caption <- function(
+    view,
+    caption_view,
+    display_data = list()
+) {
+    .validate_visual_evidence_view(view)
+    .new_visual_evidence_view(
+        surface = visual_evidence_surface(view),
+        state = caption_view$state,
+        observations = visual_evidence_observations(view),
+        summaries = visual_evidence_summaries(view),
+        diagnostics = visual_evidence_diagnostics(view),
+        display_data = c(.visual_evidence_displays(view), display_data),
+        caption_view = caption_view
+    )
+}
+
+.visual_evidence_surface_state <- function(view) {
+    if (identical(visual_evidence_state(view), "partial")) {
+        "partial"
+    } else {
+        "uncalibrated"
+    }
+}
+
 #' Build the publication caption for visual evidence
 #'
 #' @param view a `VisualEvidenceView`
@@ -285,4 +323,41 @@ visual_evidence_display <- function(view, name) {
 visual_evidence_caption <- function(view) {
     .validate_visual_evidence_view(view)
     .build_scientific_caption(view@caption_view)
+}
+
+.render_unavailable_visual_evidence <- function(view) {
+    .validate_visual_evidence_view(view)
+    if (!identical(visual_evidence_state(view), "missing")) {
+        .stop_landscapeR_validation(
+            "unavailable renderer requires missing visual evidence"
+        )
+    }
+    reason <- visual_evidence_display(view, "unavailable_reason")
+    title <- switch(
+        visual_evidence_surface(view),
+        stage1 = "Stage 1 display unavailable",
+        stage2 = "Stage 2 display unavailable",
+        "Scientific display unavailable"
+    )
+    label <- paste(strwrap(reason, width = 42L), collapse = "\n")
+    plot <- ggplot2::ggplot() +
+        ggplot2::annotate(
+            "text", x = 0.5, y = 0.5, label = label,
+            colour = .landscapeR_colour("ink"), size = 3.5,
+            lineheight = 1.1
+        ) +
+        ggplot2::xlim(0, 1) +
+        ggplot2::ylim(0, 1) +
+        ggplot2::labs(title = title, x = NULL, y = NULL) +
+        ggplot2::theme_void(base_size = 9) +
+        ggplot2::theme(
+            plot.title = ggplot2::element_text(
+                colour = .landscapeR_colour("ink"),
+                face = "plain",
+                size = 11,
+                hjust = 0
+            ),
+            plot.margin = ggplot2::margin(8, 8, 8, 8)
+        )
+    .with_scientific_caption(plot, visual_evidence_caption(view))
 }

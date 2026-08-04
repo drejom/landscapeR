@@ -168,7 +168,9 @@ setMethod("decompose", signature("Decomposer", "StateTransitionData"),
             identical(result@status, "success") &&
             is(result@value, "StateTransitionData") &&
             is(metadata(result@value)[["stage1"]], "DecompositionResult")) {
-            result@value <- .store_stage1_plot_evidence(result@value)
+            result@value <- .try_store_stage_plot_evidence(
+                result@value, "stage1"
+            )
         }
         result
     }
@@ -359,7 +361,9 @@ setMethod("estimate_dynamics", signature("DynamicsEstimator", "StateTransitionDa
             identical(result@status, "success") &&
             is(result@value, "StateTransitionData") &&
             !is.null(metadata(result@value)[["stage2"]])) {
-            result@value <- .store_stage2_plot_evidence(result@value)
+            result@value <- .try_store_stage_plot_evidence(
+                result@value, "stage2"
+            )
         }
         result
     }

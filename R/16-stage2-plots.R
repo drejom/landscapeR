@@ -37,8 +37,13 @@ plot_potential <- function(std, colour_by = NULL,
     if (!is.logical(show_critical_points) ||
         length(show_critical_points) != 1L || is.na(show_critical_points))
         stop("show_critical_points must be a single non-missing logical")
-    evidence <- .stage_plot_evidence(std, "stage2")
-    displays <- evidence@displays
+    view <- .stage_visual_evidence(
+        std, "stage2", colour_by = colour_by, caller = "plot_potential"
+    )
+    if (identical(visual_evidence_state(view), "missing")) {
+        return(.render_unavailable_visual_evidence(view))
+    }
+    displays <- .visual_evidence_displays(view)
     curve_df <- displays$curve
     cp_df <- displays$critical_points
     seg_df <- displays$barrier_segments
@@ -52,12 +57,7 @@ plot_potential <- function(std, colour_by = NULL,
         aligned_metadata <- lapply(
             layer_indices,
             function(layer) {
-                .component_gallery_metadata(
-                    std,
-                    layer,
-                    colour_by,
-                    caller = "plot_potential"
-                )
+                displays$aligned_metadata[[displays$experiment_names[[layer]]]]
             }
         )
         rug_df[[colour_by]] <- unlist(
@@ -159,15 +159,41 @@ plot_potential <- function(std, colour_by = NULL,
         }
     }
 
-    context <- .plot_caption_context(
-        std,
-        if (length(layer_indices)) layer_indices else seq_along(experiments(std))
+    view <- .stage2_potential_surface_view(
+        view, colour_by, show_critical_points
     )
-    metadata_values <- if (
-        !is.null(rug_df) &&
-            !is.null(colour_by) &&
-            colour_by %in% colnames(rug_df)
-    ) {
+    if (!is.null(colour_by) && isTRUE(show_critical_points) && nrow(cp_df)) {
+        p <- p +
+            ggplot2::guides(
+                colour = ggplot2::guide_legend(order = 1L),
+                shape = ggplot2::guide_legend(order = 2L)
+            ) +
+            ggplot2::theme(legend.box = "vertical")
+    }
+    .with_scientific_caption(p, visual_evidence_caption(view))
+}
+
+.stage2_potential_surface_view <- function(
+    view,
+    colour_by,
+    show_critical_points
+) {
+    displays <- .visual_evidence_displays(view)
+    rug_df <- displays$rug
+    if (!nrow(rug_df)) rug_df <- NULL
+    if (!is.null(rug_df) && !is.null(colour_by)) {
+        aligned_metadata <- lapply(
+            displays$layers,
+            function(layer) {
+                displays$aligned_metadata[[displays$experiment_names[[layer]]]]
+            }
+        )
+        rug_df[[colour_by]] <- unlist(aligned_metadata, use.names = FALSE)
+        rug_df$.primary_sample <- unlist(
+            lapply(aligned_metadata, names), use.names = FALSE
+        )
+    }
+    metadata_values <- if (!is.null(rug_df) && !is.null(colour_by)) {
         rug_df[[colour_by]]
     } else {
         NULL
@@ -182,12 +208,13 @@ plot_potential <- function(std, colour_by = NULL,
             .plot_metadata_encoding(metadata_values, colour_by, "rug colours")
         )
     }
+    cp_df <- displays$critical_points
+    seg_df <- displays$barrier_segments
     critical_encoding <- if (!isTRUE(show_critical_points)) {
         "Critical-point symbols and barrier-height segments are omitted"
     } else if (!nrow(cp_df) && !nrow(seg_df)) {
         paste0(
-            "Critical-point overlays were requested, but no stored wells, ",
-            "barriers, or barrier-height segments are available"
+            "Critical-point overlays were requested, but no stored wells, barriers, or barrier-height segments are available"
         )
     } else {
         c(
@@ -198,25 +225,12 @@ plot_potential <- function(std, colour_by = NULL,
                 "Exploratory upward triangles mark stored barriers"
             },
             if (nrow(seg_df)) {
-                paste0(
-                    "Dotted vertical segments show point-estimate barrier ",
-                    "heights"
-                )
+                "Dotted vertical segments show point-estimate barrier heights"
             }
         )
     }
-    missingness <- if (!is.null(metadata_values) && anyNA(metadata_values)) {
-        missing_units <- unique(
-            rug_df$.primary_sample[is.na(metadata_values)]
-        )
-        sprintf(
-            "Dashed rug marks %d observations with missing %s",
-            length(missing_units), colour_by
-        )
-    } else {
-        NULL
-    }
-    view <- .new_scientific_caption_view(
+    context <- displays$caption_context
+    caption <- .new_scientific_caption_view(
         title = "Density-derived quasi-potential landscape",
         experiment_label = context$experiment_label,
         molecular_layer = context$molecular_layer,
@@ -229,7 +243,7 @@ plot_potential <- function(std, colour_by = NULL,
         encodings = c(
             paste0(
                 "The black curve shows U(x) = -log p(x), derived from the ",
-                "stored density estimate for component ", comp
+                "stored density estimate for component ", displays$component
             ),
             rug_encoding,
             critical_encoding
@@ -247,24 +261,36 @@ plot_potential <- function(std, colour_by = NULL,
                     "without uncertainty"
                 )
             }
+        } else if (identical(visual_evidence_state(view), "partial")) {
+            "The quasi-potential curve is shown, but one or more supporting display elements are unavailable"
         } else {
             NA_character_
         },
-        missingness = missingness,
+        missingness = if (!is.null(metadata_values) && anyNA(metadata_values)) {
+            sprintf(
+                "Dashed rug marks %d observations with missing %s",
+                length(unique(rug_df$.primary_sample[is.na(metadata_values)])),
+                colour_by
+            )
+        } else {
+            NULL
+        },
         threshold = "No calibrated critical-point or barrier threshold is applied",
         claim_boundary = paste0(
             "The landscape is an exploratory description and does not by ",
             "itself establish a biological state transition"
         ),
-        state = "uncalibrated"
+        state = .visual_evidence_surface_state(view)
     )
-    if (!is.null(colour_by) && isTRUE(show_critical_points) && nrow(cp_df)) {
-        p <- p +
-            ggplot2::guides(
-                colour = ggplot2::guide_legend(order = 1L),
-                shape = ggplot2::guide_legend(order = 2L)
-            ) +
-            ggplot2::theme(legend.box = "vertical")
-    }
-    .with_scientific_caption(p, .build_scientific_caption(view))
+    .replace_visual_evidence_caption(
+        view,
+        caption,
+        display_data = list(
+            surface_request = list(
+                plot = "potential",
+                colour_by = colour_by,
+                show_critical_points = show_critical_points
+            )
+        )
+    )
 }
