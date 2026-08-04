@@ -350,11 +350,14 @@ test_that("kde_logdensity provenance hashes the pre-stage input", {
         k        = 1L
     )
     metadata(std_pot) <- md
-    input_hash <- digest::digest(std_pot)
+    input_hash <- digest::digest(stage_artifact(std_pot, "stage1"))
 
     res <- estimate_dynamics(get_strategy("DynamicsEstimator", "kde_logdensity")(), std_pot)
     step <- res@provenance[[1L]]
-    expect_identical(unname(step@input_hashes[["data"]]), input_hash)
+    expect_identical(
+        unname(step@input_hashes[["stage1_result"]]),
+        input_hash
+    )
     expect_true(is.na(step@timestamp))
     expect_equal(step@params$sampling_design$kind, "cross_sectional")
 })

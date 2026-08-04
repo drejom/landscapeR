@@ -8,7 +8,7 @@ StateTransitionData(
   experiments = list(),
   colData = S4Vectors::DataFrame(),
   ground_truth = NULL,
-  sampling_design = new("SamplingDesign"),
+  sampling_design = NULL,
   ...
 )
 }

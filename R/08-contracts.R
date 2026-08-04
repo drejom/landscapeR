@@ -2,6 +2,43 @@
 # An implementation is a concrete subclass + setMethod() for the generic.
 # The pipeline only ever touches the contract; algorithms are plug-ins.
 
+.validate_stage_completion <- function(result, stage, operation) {
+    if (!is(result, "StageResult")) {
+        return(stage_failure(sprintf(
+            "[%s] implementation did not return a StageResult",
+            operation
+        )))
+    }
+    if (!identical(result@status, "success")) {
+        return(result)
+    }
+    if (!is(result@value, "StateTransitionData")) {
+        return(stage_failure(
+            sprintf(
+                "[%s] successful stage must return StateTransitionData",
+                operation
+            ),
+            provenance = result@provenance
+        ))
+    }
+    artifact <- tryCatch(
+        stage_artifact(result@value, stage, required = TRUE),
+        error = identity
+    )
+    if (inherits(artifact, "error")) {
+        return(stage_failure(
+            sprintf(
+                "[%s] invalid %s artifact: %s",
+                operation,
+                gsub("stage", "Stage ", stage, fixed = TRUE),
+                conditionMessage(artifact)
+            ),
+            provenance = result@provenance
+        ))
+    }
+    result
+}
+
 # ---------------------------------------------------------------------------
 # Stage 0 — Synthetic data generation
 # ---------------------------------------------------------------------------
@@ -164,10 +201,10 @@ setMethod("decompose", signature("Decomposer", "StateTransitionData"),
         bv <- validate_boundary(data, stage = "decompose")
         if (is(bv, "StageResult")) return(bv)
         result <- .decompose_impl(strategy, bv, ...)
+        result <- .validate_stage_completion(result, "stage1", "decompose")
         if (is(result, "StageResult") &&
             identical(result@status, "success") &&
-            is(result@value, "StateTransitionData") &&
-            is(metadata(result@value)[["stage1"]], "DecompositionResult")) {
+            is(result@value, "StateTransitionData")) {
             result@value <- .try_store_stage_plot_evidence(
                 result@value, "stage1"
             )
@@ -357,10 +394,12 @@ setMethod("estimate_dynamics", signature("DynamicsEstimator", "StateTransitionDa
             )))
 
         result <- .estimate_dynamics_impl(strategy, bv, ...)
+        result <- .validate_stage_completion(
+            result, "stage2", "estimate_dynamics"
+        )
         if (is(result, "StageResult") &&
             identical(result@status, "success") &&
-            is(result@value, "StateTransitionData") &&
-            !is.null(metadata(result@value)[["stage2"]])) {
+            is(result@value, "StateTransitionData")) {
             result@value <- .try_store_stage_plot_evidence(
                 result@value, "stage2"
             )

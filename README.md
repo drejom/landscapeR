@@ -42,6 +42,22 @@ library(landscapeR)
 # Single-omic-layer synthetic double-well calibration control
 std <- synthetic_k1_double_well_control(n = 80L, p = 100L, seed = 42L)
 
+# A reproducible run is an explicit, validated value object
+config <- PipelineConfig(
+  dataset = "synthetic-k1-double-well",
+  analysis = analysis_specification(
+    id = "double-well-coordinate",
+    target_field = "x_coord",
+    target_type = "continuous",
+    continuous_direction = "increasing"
+  ),
+  strategies = list(
+    Decomposer = "svd",
+    DynamicsEstimator = "kde_logdensity"
+  ),
+  params = list(svd = list(), kde_logdensity = list())
+)
+
 # Stage 1: explicit registered SVD
 svd_ctor <- get_strategy("Decomposer", "svd")
 std1 <- decompose(svd_ctor(), std)@value

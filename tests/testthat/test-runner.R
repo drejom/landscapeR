@@ -44,6 +44,11 @@ test_that("run_pipeline catches a stage that returns a non-StageResult", {
         function(params) new("BrokenDecomposerForTest", params = params))
 
     std <- synthetic_control(n = 20L, p = 50L, K = 2L, signal = 30, seed = 1L)
+    direct <- decompose(new("BrokenDecomposerForTest", params = list()), std)
+    expect_s4_class(direct, "StageResult")
+    expect_identical(direct@status, "failure")
+    expect_match(direct@reason, "did not return a StageResult")
+
     cfg <- new("PipelineConfig",
         dataset    = "test",
         strategies = list(Decomposer = "_broken_for_test"),
@@ -58,6 +63,40 @@ test_that("run_pipeline catches a stage that returns a non-StageResult", {
 
     removeMethod(".decompose_impl", signature("BrokenDecomposerForTest", "StateTransitionData"))
     removeClass("BrokenDecomposerForTest")
+})
+
+test_that("decompose returns a typed failure for an invalid Stage 1 artifact", {
+    setClass(
+        "UntypedStageArtifactDecomposerForTest",
+        contains = "Decomposer"
+    )
+    setMethod(
+        ".decompose_impl",
+        signature("UntypedStageArtifactDecomposerForTest", "StateTransitionData"),
+        function(strategy, data, ...) {
+            md <- metadata(data)
+            md$stage1 <- list(not = "a DecompositionResult")
+            metadata(data) <- md
+            stage_success(data)
+        }
+    )
+    on.exit({
+        removeMethod(
+            ".decompose_impl",
+            signature("UntypedStageArtifactDecomposerForTest", "StateTransitionData")
+        )
+        removeClass("UntypedStageArtifactDecomposerForTest")
+    }, add = TRUE)
+
+    result <- decompose(
+        new("UntypedStageArtifactDecomposerForTest"),
+        synthetic_control(n = 8L, p = 8L, K = 1L, seed = 127L)
+    )
+
+    expect_s4_class(result, "StageResult")
+    expect_identical(result@status, "failure")
+    expect_match(result@reason, "invalid Stage 1 artifact")
+    expect_match(result@reason, "requires a DecompositionResult")
 })
 
 test_that("run_pipeline skips stages with no strategy configured", {

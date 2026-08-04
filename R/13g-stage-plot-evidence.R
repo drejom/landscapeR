@@ -5,10 +5,10 @@
 .stage_plot_source_digest <- function(std, stage) {
     scientific_result <- switch(
         stage,
-        stage1 = metadata(std)[["stage1"]],
+        stage1 = stage_artifact(std, "stage1", required = FALSE),
         stage2 = list(
-            stage1 = metadata(std)[["stage1"]],
-            stage2 = metadata(std)[["stage2"]]
+            stage1 = stage_artifact(std, "stage1", required = FALSE),
+            stage2 = stage_artifact(std, "stage2", required = FALSE)
         )
     )
     digest::digest(
@@ -1044,7 +1044,7 @@ setMethod("visual_evidence", "StagePlotEvidence", function(x) {
 }
 
 .store_stage1_plot_evidence <- function(std, spectra = NULL) {
-    stage1 <- metadata(std)[["stage1"]]
+    stage1 <- stage_artifact(std, "stage1", required = FALSE)
     displays <- list(
         spectrum = .stage1_spectrum_evidence(std, spectra)
     )
@@ -1069,7 +1069,7 @@ setMethod("visual_evidence", "StagePlotEvidence", function(x) {
 }
 
 .stage2_plot_displays <- function(std) {
-    stage2 <- metadata(std)[["stage2"]]
+    stage2 <- stage_artifact(std, "stage2", required = FALSE)
     if (is.null(stage2)) {
         .stop_plot_evidence_unavailable(
             "Stage 2 has not been run; Stage 2 plot evidence cannot be prepared"
@@ -1131,7 +1131,7 @@ setMethod("visual_evidence", "StagePlotEvidence", function(x) {
             y = numeric(), yend = numeric()
         )
     }
-    stage1 <- metadata(std)[["stage1"]]
+    stage1 <- stage_artifact(std, "stage1", required = FALSE)
     rug <- data.frame(
         layer = integer(),
         x = numeric(),

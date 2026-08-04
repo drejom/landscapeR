@@ -17,7 +17,10 @@ setMethod("component_loading_geometry", "SvdDecomposer",
 #' @rdname decompose
 setMethod(".decompose_impl", signature("SvdDecomposer", "StateTransitionData"),
     function(strategy, data, ...) {
-        input_hashes <- c(data = digest::digest(data))
+        input_hashes <- c(
+            omic_layers = digest::digest(experiments(data)),
+            sample_map = digest::digest(sampleMap(data))
+        )
         omic_layers <- as.list(experiments(data))
         if (length(omic_layers) != 1L)
             return(stage_failure("svd requires exactly 1 omic layer"))

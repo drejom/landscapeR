@@ -22,7 +22,9 @@ Provenance step recorded by each stage
 
 \item{\code{input_hashes}}{named character vector of \code{digest::digest} hashes}
 
-\item{\code{rng_seed}}{integer RNG state captured before stage ran}
+\item{\code{rng_seed}}{deprecated compatibility slot; new records store no ambient
+RNG state because an incidental \code{.Random.seed} is not a replay
+contract. Declared seed/stream identity belongs in \code{params$rng}.}
 
 \item{\code{timestamp}}{POSIXct legacy compatibility field; always \code{NA} in deterministic provenance}
 
