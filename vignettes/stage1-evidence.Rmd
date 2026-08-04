@@ -37,6 +37,25 @@ synthetic-evidence artifact. It does **not** rerun the benchmark, tune a
 candidate, or make a biological claim. The complete artifact is hash-verified
 before its contents are read.
 
+## Summary-bootstrap execution
+
+Current Stage 1 calibration and holdout summaries send both the paired-mean
+bootstrap and the per-stratum median bootstrap through landscapeR's shared
+future-backed repetition boundary. The package does not select a future plan:
+users may choose sequential, multisession, cluster, or scheduler-backed
+execution before calling the evidence functions. Each 10,000-repetition
+summary records stable task identities, its declared run seed and derived
+L'Ecuyer-CMRG streams, all requested/completed/failed counts, and serialized
+payload measurements. Scheduling and worker-count defaults remain unchanged
+because the measured tasks are small enough that local multisession startup
+and serialization can dominate their runtime.
+
+The committed v2 artifact below predates that execution-provenance extension
+and is deliberately not regenerated or recalibrated. Its manifest, estimates,
+thresholds, decision, and content address remain frozen. Newly executed
+selection and holdout reports carry `bootstrap_executions` and
+`bootstrap_measurements` alongside the same scientific summaries.
+
 ## Result
 
 The calibration rule selected `C2_block_scaled_svd`, but the frozen holdout

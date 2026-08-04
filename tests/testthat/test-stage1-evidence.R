@@ -23,6 +23,76 @@ test_that("calibration selector is split-safe and applies frozen C1 rule", {
     fallback$gate_passed[fallback$candidate == "C1_symmetric_consensus"] <- FALSE
     selection <- select_stage1_candidate(fallback)
     expect_identical(selection$selected_candidate, "C2_block_scaled_svd")
+    execution <- selection$bootstrap_executions$shared_recovery_error
+    expect_s3_class(execution, "landscapeR_repetition_result")
+    expect_identical(execution$account$n_requested, 10000L)
+    expect_identical(execution$account$n_completed, 10000L)
+    expect_identical(execution$account$n_failed, 0L)
+    expect_identical(execution$provenance$compute_tier, "evidence")
+    expect_identical(execution$provenance$run_seed, 11001L)
+    expect_true(all(selection$bootstrap_measurements[[1L]] > 0))
+})
+
+test_that("Stage 1 summary bootstraps are invariant across future plans", {
+    previous <- future::plan()
+    on.exit(future::plan(previous), add = TRUE)
+    calibration <- stage1_evidence_fixture("calibration")
+    exact <- landscapeR:::.stage1_exact_rows(calibration)
+    rules <- stage1_benchmark_manifest()$selection_rules
+
+    future::plan(future::sequential)
+    paired_sequential <- landscapeR:::.stage1_paired_bootstrap(
+        exact,
+        "shared_recovery_error",
+        rules
+    )
+    median_sequential <- landscapeR:::.stage1_bootstrap_median_ci(
+        c(0.1, 0.2, 0.3, 0.4),
+        11002L,
+        list(bootstrap_resamples = 10000L),
+        "test-stratum:shared_recovery_error"
+    )
+    expect_identical(paired_sequential$execution$account$n_requested, 10000L)
+    expect_identical(median_sequential$execution$account$n_requested, 10000L)
+    expect_identical(paired_sequential$execution$account$n_failed, 0L)
+    expect_identical(median_sequential$execution$account$n_failed, 0L)
+    expect_match(
+        paired_sequential$execution$provenance$task_ids[[1L]],
+        "^stage1-calibration:shared_recovery_error:paired-bootstrap:00001$"
+    )
+    expect_match(
+        median_sequential$execution$provenance$task_ids[[10000L]],
+        "^stage1-holdout:test-stratum:shared_recovery_error:median-bootstrap:10000$"
+    )
+
+    skip_if(
+        pkgload::is_dev_package("landscapeR"),
+        "multisession requires the installed-package check context"
+    )
+    available <- suppressWarnings(tryCatch({
+        future::plan(future::multisession, workers = 2L)
+        identical(future::value(future::future(TRUE)), TRUE)
+    }, error = function(condition) FALSE))
+    if (!available) {
+        if (nzchar(Sys.getenv("CI"))) {
+            testthat::fail("CI must provide a working multisession backend")
+        }
+        testthat::skip("multisession workers are unavailable in this test context")
+    }
+    paired_parallel <- landscapeR:::.stage1_paired_bootstrap(
+        exact,
+        "shared_recovery_error",
+        rules
+    )
+    median_parallel <- landscapeR:::.stage1_bootstrap_median_ci(
+        c(0.1, 0.2, 0.3, 0.4),
+        11002L,
+        list(bootstrap_resamples = 10000L),
+        "test-stratum:shared_recovery_error"
+    )
+
+    expect_identical(paired_parallel, paired_sequential)
+    expect_identical(median_parallel, median_sequential)
 })
 
 test_that("expected typed negative control is an eligible passed gate", {
@@ -43,6 +113,19 @@ test_that("holdout assessment rejects other splits and reports frozen medians", 
     expect_true(report$all_gates_passed)
     expect_true(report$thresholds_passed)
     expect_identical(report$decision, "accepted")
+    expect_true(length(report$bootstrap_executions) > 0L)
+    expect_true(all(vapply(
+        report$bootstrap_executions,
+        function(execution) execution$account$n_requested == 10000L &&
+            execution$account$n_completed == 10000L &&
+            execution$account$n_failed == 0L,
+        logical(1L)
+    )))
+    expect_true(all(vapply(
+        report$bootstrap_measurements,
+        function(measurements) all(measurements > 0),
+        logical(1L)
+    )))
     expect_error(assess_stage1_holdout("C1_symmetric_consensus",
         stage1_evidence_fixture("calibration")[1, , drop = FALSE]), class = "stage1_evidence_error")
 })
