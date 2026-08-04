@@ -69,6 +69,9 @@ jobs:
       - name: ADR coverage
         run: python3 scripts/check-adr-coverage.py
 
+      - name: ADR governance
+        run: python3 scripts/check-adr-governance.py
+
       - name: Registry compliance
         run: bash scripts/check-registry-compliance.sh
 

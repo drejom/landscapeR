@@ -7,9 +7,10 @@
 #   1. Roadmap integrity    — roadmap agrees with live GitHub issue state
 #   2. R tests pass         — R/  or tests/  changed
 #   3. ADR coverage         — any new register_strategy() call has a backing ADR
-#   4. Registry compliance  — no if/switch dispatchers, no hardcoded config
-#   5. Repository hygiene   — no unexpected untracked files outside .scratch/
-#   6. Review ratchet       — bounded incident-backed review memory is valid
+#   4. ADR governance       — unique numbers, valid statuses, resolution issues
+#   5. Registry compliance  — no if/switch dispatchers, no hardcoded config
+#   6. Repository hygiene   — no unexpected untracked files outside .scratch/
+#   7. Review ratchet       — bounded incident-backed review memory is valid
 #
 # Add [skip-hooks] to any commit message to bypass (emergencies only).
 
@@ -113,19 +114,24 @@ if needs_check "R/" || needs_check "decisions/"; then
   run_check "ADR coverage" python3 scripts/check-adr-coverage.py
 fi
 
-# ── 4. Registry compliance ───────────────────────────────────────────────────
+# ── 4. ADR governance ────────────────────────────────────────────────────────
+RAN=1
+echo "[pre-push] ADR governance"
+run_check "ADR governance" python3 scripts/check-adr-governance.py
+
+# ── 5. Registry compliance ───────────────────────────────────────────────────
 if needs_check "R/"; then
   RAN=1
   echo "[pre-push] registry compliance"
   run_check "registry compliance" bash scripts/check-registry-compliance.sh
 fi
 
-# ── 5. Repository hygiene ────────────────────────────────────────────────────
+# ── 6. Repository hygiene ────────────────────────────────────────────────────
 RAN=1
 echo "[pre-push] repository hygiene"
 run_check "repository hygiene" bash scripts/check-repo-hygiene.sh
 
-# ── 6. Review ratchet ────────────────────────────────────────────────────────
+# ── 7. Review ratchet ────────────────────────────────────────────────────────
 RAN=1
 echo "[pre-push] review ratchet"
 run_check "review ratchet" python3 scripts/check-review-ratchet.py

@@ -2,6 +2,7 @@
 
 **Stage:** 2 (quasi-potential / flow)
 **Status:** provisional-accepted
+**Resolution issue:** #51
 **Date:** 2026-06-27
 
 ## Context

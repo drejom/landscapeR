@@ -1,7 +1,8 @@
 # NNNN — Title
 
 **Stage:** (0 / 0.5 / 0.75 / 1 / 2 / cross-cutting)
-**Status:** proposed | accepted | superseded-by NNNN | rejected
+**Status:** proposed | provisional-accepted | accepted | reopened | superseded-by NNNN | rejected
+**Resolution issue:** #NN (required only for provisional-accepted or reopened)
 **Date:** YYYY-MM-DD
 
 ## Context

@@ -36,6 +36,16 @@ See `0000-template.md`.
 ## Status vocabulary
 
 - **proposed** — written, not yet acted on
+- **provisional-accepted** — authorizes bounded work while a named resolution
+  issue remains open
 - **accepted** — decision made, implementation may or may not exist yet
+- **reopened** — a previously accepted decision is under active reconsideration
+  through a named resolution issue
 - **superseded-by NNNN** — replaced; link to the new ADR
 - **rejected** — considered and ruled out; keep for the record
+
+Active ADRs use exactly one status declaration from this vocabulary.
+`provisional-accepted` and `reopened` ADRs must also declare
+`**Resolution issue:** #NN`. ADR numbers are unique among active files. If a
+duplicate draft is retained for history, archive it outside `decisions/` and
+identify its authoritative successor.
