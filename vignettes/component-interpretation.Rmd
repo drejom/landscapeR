@@ -151,6 +151,17 @@ accounting, and typed unavailable outcomes. The requested count is fixed before
 refitting. A failed eligible refit remains in that denominator and is never
 silently replaced with another draw.
 
+Independent and repeated time-course bootstraps use the package's shared
+`future.apply` execution seam. Set the future backend outside landscapeR; the
+package never changes `future::plan()`. A workflow already running inside an
+outer future can pass `sequential_internal = TRUE` to `associate_metadata()`
+to avoid nested worker multiplication. `future_scheduling` is optional and has
+no package-defined default. The stored execution record includes the
+`inspect`, `standard`, or `evidence` compute tier, the run seed, deterministic
+task-specific L'Ecuyer-CMRG streams, all requested tasks, and stable failure
+codes. These fields make results reproducible across worker counts and
+scheduling without changing the biological resampling unit.
+
 The shared mechanics do not erase experimental design. Cross-sectional
 analyses resample independent biological observations, destructive time
 courses resample within condition-by-time cells, and repeated designs resample

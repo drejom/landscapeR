@@ -202,7 +202,7 @@ setClass("MetadataAssociationAtlas",
         sampling_design = new("SamplingDesign"),
         input_digest = character(0L),
         state_space_digest = character(0L),
-        compute_tier = "analytic-unadjusted",
+        compute_tier = "inspect",
         provenance = list(),
         evidence_status = "estimable-exploratory-only"
     )
@@ -254,11 +254,7 @@ setValidity("MetadataAssociationAtlas", function(object) {
     if (!.is_sha256_digest(object@state_space_digest)) {
         errors <- c(errors, "state_space_digest must be one SHA-256 digest")
     }
-    allowed_compute_tiers <- c(
-        "analytic-unadjusted",
-        "analytic-adjusted",
-        "standard-resampled"
-    )
+    allowed_compute_tiers <- c(.compute_tiers, .legacy_compute_tiers)
     if (length(object@compute_tier) != 1L ||
         !object@compute_tier %in% allowed_compute_tiers) {
         errors <- c(errors, "compute_tier is not supported")
@@ -1138,6 +1134,10 @@ register_strategy(
 #' @param exchangeability whether independent biological-unit exchangeability
 #'   is defensible for permutation; `"not_identifiable"` preserves point
 #'   evidence but prohibits a search-aware p-value
+#' @param sequential_internal force resampling to execute in the current R
+#'   process when this workflow already runs inside an outer future
+#' @param future_scheduling optional future.apply scheduling value; `NULL`
+#'   leaves scheduling to future.apply and the user-selected backend
 #'
 #' @return a validated `MetadataAssociationAtlas`, or an
 #'   `AssociationAbstention` when declared target type and observed metadata
@@ -1150,7 +1150,9 @@ associate_metadata <- function(
     dataset_id = NULL,
     n_resamples = 0L,
     seed = 1L,
-    exchangeability = c("independent", "not_identifiable")
+    exchangeability = c("independent", "not_identifiable"),
+    sequential_internal = FALSE,
+    future_scheduling = NULL
 ) {
     if (!is(std, "StateTransitionData")) {
         .stop_landscapeR_validation(
@@ -1166,12 +1168,13 @@ associate_metadata <- function(
         )
     }
     n_resamples <- as.integer(n_resamples)
-    if (length(seed) != 1L || is.na(seed) || seed != as.integer(seed)) {
+    seed <- .validate_run_seed(seed)
+    if (!is.logical(sequential_internal) || length(sequential_internal) != 1L ||
+        is.na(sequential_internal)) {
         .stop_landscapeR_validation(
-            "associate_metadata(): seed must be one integer"
+            "associate_metadata(): sequential_internal must be TRUE or FALSE"
         )
     }
-    seed <- as.integer(seed)
     exchangeability <- match.arg(exchangeability)
     stage1 <- metadata(std)$stage1
     if (is.null(stage1)) {
@@ -1191,7 +1194,9 @@ associate_metadata <- function(
             dataset_id = dataset_id,
             n_resamples = n_resamples,
             seed = seed,
-            exchangeability = exchangeability
+            exchangeability = exchangeability,
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling
         ))
     }
     if (identical(std@sampling_design@kind, "longitudinal")) {
@@ -1203,7 +1208,9 @@ associate_metadata <- function(
             dataset_id = dataset_id,
             n_resamples = n_resamples,
             seed = seed,
-            exchangeability = exchangeability
+            exchangeability = exchangeability,
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling
         ))
     }
     if (!identical(std@sampling_design@kind, "cross_sectional")) {
@@ -1702,14 +1709,9 @@ associate_metadata <- function(
         input_digest = input_digest,
         state_space_digest = state_space_digest,
         compute_tier = if (n_resamples > 0L) {
-            "standard-resampled"
-        } else if (
-            !is.null(specification) &&
-            length(specification@nuisance_fields)
-        ) {
-            "analytic-adjusted"
+            "standard"
         } else {
-            "analytic-unadjusted"
+            "inspect"
         },
         provenance = evidence@provenance,
         evidence_status = "estimable-exploratory-only"

@@ -25,21 +25,10 @@
 
 .resampling_policy_with_seed <- function(seed, operation) {
     .resampling_policy_integer(seed, "resampling policy seed")
-    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-    if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv)
-    on.exit({
-        if (had_seed) {
-            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
-        } else if (exists(
-            ".Random.seed",
-            envir = .GlobalEnv,
-            inherits = FALSE
-        )) {
-            rm(".Random.seed", envir = .GlobalEnv)
-        }
-    }, add = TRUE)
-    set.seed(as.integer(seed))
-    operation()
+    .with_rng_stream(
+        .derive_task_stream(as.integer(seed), "resampling-plan"),
+        operation
+    )
 }
 
 .resampling_policy_record <- function(
