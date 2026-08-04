@@ -14,24 +14,44 @@ permissions:
 
 jobs:
   R-CMD-check:
-    if: >-
-      github.event_name != 'pull_request' ||
-      contains(github.event.pull_request.labels.*.name, 'full-check')
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Select package-check path
+        id: package-check
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            python3 scripts/classify-package-check.py --force-full --github-output "$GITHUB_OUTPUT"
+          else
+            git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" |
+              python3 scripts/classify-package-check.py --stdin-zero --github-output "$GITHUB_OUTPUT"
+          fi
+
+      - name: Documentation-only short path
+        if: steps.package-check.outputs.run_full != 'true'
+        run: echo "Package execution is unchanged; the required check is satisfied without installing R dependencies."
 
       - uses: r-lib/actions/setup-r@v2
+        if: steps.package-check.outputs.run_full == 'true'
         with:
           r-version: "4.5"
           use-public-rspm: true
 
       - name: Install Bioconductor
+        if: steps.package-check.outputs.run_full == 'true'
         run: |
           Rscript -e 'install.packages("BiocManager"); BiocManager::install(version = "3.22", ask = FALSE)'
 
       - uses: r-lib/actions/setup-r-dependencies@v2
+        if: steps.package-check.outputs.run_full == 'true'
         with:
           extra-packages: |
             any::rcmdcheck
@@ -40,13 +60,16 @@ jobs:
             any::pkgdown
 
       - name: Check
+        if: steps.package-check.outputs.run_full == 'true'
         run: rcmdcheck::rcmdcheck(args = c("--no-manual"), error_on = "warning")
         shell: Rscript {0}
 
       - name: Build pkgdown site
+        if: steps.package-check.outputs.run_full == 'true'
         run: bash scripts/build-pkgdown-site.sh
 
       - name: Check pkgdown article images
+        if: steps.package-check.outputs.run_full == 'true'
         run: |
           python3 scripts/check-pkgdown-images.py --site-root .scratch/site .scratch/site/articles/development-log.html
           python3 scripts/check-pkgdown-images.py --site-root .scratch/site .scratch/site/articles/stage1-evidence.html
