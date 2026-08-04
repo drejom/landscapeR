@@ -65,6 +65,7 @@ Collate:
     '04a-decomposition-result.R'
     '09-boundary.R'
     '10-rng.R'
+    '10a-future-repetition.R'
     '11-runner.R'
     '12-stage1-hogsvd.R'
     '12a-stage1-svd.R'

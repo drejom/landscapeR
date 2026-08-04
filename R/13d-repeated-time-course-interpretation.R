@@ -674,26 +674,48 @@ register_strategy(
     comparison_level,
     plan,
     orientation_multiplier,
-    study_time_range
+    study_time_range,
+    task_identity,
+    sequential_internal,
+    future_scheduling
 ) {
-    estimates <- vapply(seq_along(plan$indices), function(i) {
-        index <- plan$indices[[i]]
-        result <- .fit_repeated_time_course(
-            scores[index],
-            target[index],
-            observed_time[index],
-            plan$replicate_subject_ids[[i]],
-            lapply(nuisance_values, `[`, index),
-            reference_level,
-            comparison_level,
-            orientation_multiplier = orientation_multiplier,
-            study_time_range = study_time_range
-        )
-        if (identical(result$status, "estimable")) {
-            result$estimate
-        } else {
-            NA_real_
-        }
+    tasks <- lapply(seq_along(plan$indices), function(i) list(
+        index = plan$indices[[i]],
+        subject = plan$replicate_subject_ids[[i]]
+    ))
+    execution <- .future_repetition(
+        tasks = tasks,
+        task_ids = sprintf(
+            "repeated:%s:bootstrap:%04d",
+            task_identity,
+            seq_along(tasks)
+        ),
+        run_seed = plan$seed,
+        compute_tier = "standard",
+        worker = function(task, task_id, task_stream) {
+            index <- task$index
+            result <- .fit_repeated_time_course(
+                scores[index],
+                target[index],
+                observed_time[index],
+                task$subject,
+                lapply(nuisance_values, `[`, index),
+                reference_level,
+                comparison_level,
+                orientation_multiplier = orientation_multiplier,
+                study_time_range = study_time_range
+            )
+            if (identical(result$status, "estimable")) {
+                result$estimate
+            } else {
+                .repetition_failure("model-not-estimable", NA_real_)
+            }
+        },
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling
+    )
+    estimates <- vapply(execution$values, function(value) {
+        if (is.numeric(value) && length(value) == 1L) value else NA_real_
     }, numeric(1L))
     summary <- .resampling_summary(estimates, plan)
     summary$resampling_method <- if (length(plan$indices)) {
@@ -702,6 +724,7 @@ register_strategy(
         "not-requested"
     }
     summary$bootstrap_estimates <- estimates
+    summary$execution <- execution
     summary
 }
 
@@ -784,7 +807,9 @@ register_strategy(
     dataset_id,
     n_resamples,
     seed,
-    exchangeability
+    exchangeability,
+    sequential_internal,
+    future_scheduling
 ) {
     if (is.null(specification) ||
         !is(specification, "AnalysisSpecification") ||
@@ -980,7 +1005,10 @@ register_strategy(
             comparison_level,
             plan,
             unadjusted$orientation_multiplier,
-            study_time_range
+            study_time_range,
+            task_identity = paste0(component_labels[[component]], ":unadjusted"),
+            sequential_internal = sequential_internal,
+            future_scheduling = future_scheduling
         )
         rows[[length(rows) + 1L]] <- .time_course_pooled_row(
             component,
@@ -1027,7 +1055,10 @@ register_strategy(
                 comparison_level,
                 plan,
                 adjusted$orientation_multiplier,
-                study_time_range
+                study_time_range,
+                task_identity = paste0(component_labels[[component]], ":adjusted"),
+                sequential_internal = sequential_internal,
+                future_scheduling = future_scheduling
             )
             rows[[length(rows) + 1L]] <- .time_course_association_row(
                 component,
@@ -1195,11 +1226,9 @@ register_strategy(
         input_digest = input_digest,
         state_space_digest = state_space_digest,
         compute_tier = if (n_resamples > 0L) {
-            "standard-resampled"
-        } else if (length(nuisance_values)) {
-            "analytic-adjusted"
+            "standard"
         } else {
-            "analytic-unadjusted"
+            "inspect"
         },
         provenance = list(
             association_strategy = association_strategy_id(

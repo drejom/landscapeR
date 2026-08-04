@@ -88,7 +88,7 @@ test_that("cross-sectional binary metadata produces a typed association atlas", 
 
     expect_s4_class(atlas, "MetadataAssociationAtlas")
     expect_identical(atlas@version, "1.0.0")
-    expect_identical(atlas@compute_tier, "analytic-unadjusted")
+    expect_identical(atlas@compute_tier, "inspect")
     expect_identical(
         atlas_provenance(atlas)$association_strategy,
         "cross-sectional-binary-signed-rank-biserial-v1"
@@ -331,7 +331,7 @@ test_that("association uncertainty resamples independent biological units", {
         drop = FALSE
     ]
 
-    expect_identical(atlas@compute_tier, "standard-resampled")
+    expect_identical(atlas@compute_tier, "standard")
     expect_identical(condition$n_resamples, rep(19L, 4L))
     expect_identical(condition$resample_failures, rep(0L, 4L))
     expect_identical(
