@@ -31,9 +31,9 @@ pre-stage input hashes. Callers, rather than this recorder, define which
 inputs constitute the scientific operation.}
 
 \item{rng}{optional declared RNG identity list. Stochastic callers must
-provide code{run_seed}, code{rng_kind}, code{seed_derivation}, and
-code{task_id}; multi-stream operations also provide a uniquely named
-integer code{streams} vector. Ambient RNG state is deliberately not
+provide \code{run_seed}, \code{rng_kind}, \code{seed_derivation}, and
+\code{task_id}; multi-stream operations also provide a uniquely named
+integer \code{streams} vector. Ambient RNG state is deliberately not
 captured.}
 
 \item{status}{character \code{"success"} or \code{"failure"}}
