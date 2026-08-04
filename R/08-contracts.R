@@ -248,6 +248,51 @@ setGeneric("associate_component",
 setGeneric("association_strategy_id",
     function(strategy) standardGeneric("association_strategy_id"))
 
+#' Declare a complete association-strategy contract
+#'
+#' A strategy contract declares the sampling designs and target types supported
+#' by an implementation, together with its estimand, cohort, diagnostic,
+#' abstention, refitting, and normalized-evidence policies. The package
+#' validates this declaration before invoking a registered strategy.
+#'
+#' Method authors normally implement this generic and
+#' [associate_component()] only. Package-owned defaults provide complete-case
+#' cohort construction and index-based refitting; strategies override those
+#' hooks only when their sampling design requires a different biological unit.
+#'
+#' @param strategy an `AssociationStrategy` implementation
+#' @return a named association-strategy contract list
+#' @export
+setGeneric("association_contract",
+    function(strategy) standardGeneric("association_contract"))
+
+#' Construct the analysis cohort for an association strategy
+#'
+#' @param strategy an `AssociationStrategy` implementation
+#' @param data a `StateTransitionData` object
+#' @param specification an `AnalysisSpecification` or `NULL`
+#' @param values aligned target metadata
+#' @return a package-normalized preparation list
+#' @export
+setGeneric("prepare_association",
+    function(strategy, data, specification, values) {
+        standardGeneric("prepare_association")
+    })
+
+#' Refit an association strategy on one governed resample
+#'
+#' @param strategy a configured `AssociationStrategy` implementation
+#' @param scores one numeric component-score vector
+#' @param values aligned target metadata
+#' @param index integer resampling indices
+#' @param context optional design-specific resampling context
+#' @return the same narrow result contract as [associate_component()]
+#' @export
+setGeneric("refit_association",
+    function(strategy, scores, values, index, context = list()) {
+        standardGeneric("refit_association")
+    })
+
 # ---------------------------------------------------------------------------
 # Stage 2 — Dynamics estimation
 # ---------------------------------------------------------------------------

@@ -30,6 +30,27 @@ setClass(
     )
 )
 
+.repeated_association_result <- function(result, strategy) {
+    association <- list(
+        status = result$status,
+        diagnostic = result$diagnostic,
+        model_result = result
+    )
+    if (!identical(result$status, "estimable")) return(association)
+    c(association, list(
+        estimand = "standardized-condition-time-interaction",
+        estimate = result$estimate,
+        reference_level = strategy@reference_level,
+        comparison_level = strategy@comparison_level,
+        n_available = result$n_available,
+        n_score_ties = result$n_score_ties,
+        n_target_ties = result$n_target_ties,
+        p_value = result$p_value,
+        cohort_digest = result$cohort_digest,
+        design_digest = result$design_digest
+    ))
+}
+
 #' @rdname association_applicable
 #' @export
 setMethod(
@@ -65,24 +86,7 @@ setMethod(
             comparison_level = strategy@comparison_level,
             study_time_range = strategy@study_time_range
         )
-        association <- list(
-            status = result$status,
-            diagnostic = result$diagnostic,
-            model_result = result
-        )
-        if (!identical(result$status, "estimable")) return(association)
-        c(association, list(
-            estimand = "standardized-condition-time-interaction",
-            estimate = result$estimate,
-            reference_level = strategy@reference_level,
-            comparison_level = strategy@comparison_level,
-            n_available = result$n_available,
-            n_score_ties = result$n_score_ties,
-            n_target_ties = result$n_target_ties,
-            p_value = result$p_value,
-            cohort_digest = result$cohort_digest,
-            design_digest = result$design_digest
-        ))
+        .repeated_association_result(result, strategy)
     }
 )
 
@@ -92,6 +96,164 @@ setMethod(
     "association_strategy_id",
     signature(strategy = "RepeatedTimeCourseLmerAssociationStrategy"),
     function(strategy) "repeated-time-course-lmer-v1"
+)
+
+#' @rdname association_contract
+#' @export
+setMethod(
+    "association_contract",
+    signature(strategy = "RepeatedTimeCourseLmerAssociationStrategy"),
+    function(strategy) {
+        .new_association_contract(
+            sampling_designs = "longitudinal",
+            target_types = "binary",
+            estimand = "standardized-condition-time-interaction",
+            cohort_policy = "complete-subject-trajectories",
+            diagnostic_prefix = "none",
+            abstention_statuses = c(
+                "not-estimable", "non-convergent", "singular"
+            ),
+            refit_policy = "condition-stratified-complete-subject",
+            evidence_version = .repeated_time_evidence_version
+        )
+    }
+)
+
+#' @rdname refit_association
+#' @export
+setMethod(
+    "refit_association",
+    signature(
+        strategy = "RepeatedTimeCourseLmerAssociationStrategy",
+        scores = "numeric",
+        values = "ANY",
+        index = "integer"
+    ),
+    function(strategy, scores, values, index, context = list()) {
+        unknown <- setdiff(
+            names(context),
+            c("subject", "orientation_multiplier")
+        )
+        if (length(unknown)) {
+            .stop_landscapeR_validation(sprintf(
+                "repeated time-course refitting received unknown context '%s'",
+                unknown[[1L]]
+            ))
+        }
+        subject <- context$subject %||% strategy@subject[index]
+        if (length(subject) != length(index)) {
+            .stop_landscapeR_validation(
+                "resampled subject identity must align with resampling index"
+            )
+        }
+        result <- .fit_repeated_time_course(
+            scores[index],
+            values[index],
+            strategy@observed_time[index],
+            as.character(subject),
+            lapply(strategy@nuisance_values, `[`, index),
+            strategy@reference_level,
+            strategy@comparison_level,
+            orientation_multiplier = context$orientation_multiplier %||% NULL,
+            study_time_range = strategy@study_time_range
+        )
+        .repeated_association_result(result, strategy)
+    }
+)
+
+#' @rdname prepare_association
+#' @export
+setMethod(
+    "prepare_association",
+    signature(
+        strategy = "RepeatedTimeCourseLmerAssociationStrategy",
+        data = "StateTransitionData",
+        specification = "AnalysisSpecification",
+        values = "ANY"
+    ),
+    function(strategy, data, specification, values) {
+        contract <- .validated_association_contract(strategy)
+        if (!identical(data@sampling_design@kind, "longitudinal") ||
+            !"longitudinal" %in% contract$sampling_designs) {
+            .stop_landscapeR_validation(
+                "repeated time-course strategy received the wrong design"
+            )
+        }
+        time_field <- data@sampling_design@time_col
+        subject_field <- data@sampling_design@subject_id_col
+        observed_time_raw <- .aligned_component_metadata(
+            data, 1L, time_field, "associate_metadata", "observed-time field"
+        )
+        observed_time <- .time_values_numeric(observed_time_raw, time_field)
+        names(observed_time) <- names(observed_time_raw)
+        subject <- as.character(.aligned_component_metadata(
+            data, 1L, subject_field, "associate_metadata", "subject field"
+        ))
+        names(subject) <- names(values)
+        nuisance_values <- stats::setNames(
+            lapply(specification@nuisance_fields, function(field) {
+                .aligned_component_metadata(
+                    data, 1L, field, "associate_metadata", "nuisance field"
+                )
+            }),
+            specification@nuisance_fields
+        )
+        complete <- .time_required_complete(
+            values,
+            observed_time,
+            c(list(subject = subject), nuisance_values)
+        )
+        complete_subject <- tapply(complete, subject, all)
+        retained_subject <- names(complete_subject)[complete_subject]
+        complete <- complete & subject %in% retained_subject
+        study_time_grid <- sort(unique(
+            observed_time[is.finite(observed_time)]
+        ))
+        study_time_range <- if (length(study_time_grid)) {
+            range(study_time_grid)
+        } else {
+            numeric()
+        }
+        retained_time <- observed_time[complete]
+        retained_subject_values <- subject[complete]
+        retained_nuisance <- lapply(nuisance_values, `[`, complete)
+        strategy_params <- list(
+            observed_time = retained_time,
+            study_time_range = study_time_range,
+            subject = retained_subject_values,
+            reference_level = specification@reference_level,
+            comparison_level = specification@comparison_level
+        )
+        unadjusted <- do.call(methods::new, c(
+            list(Class = class(strategy)[[1L]]),
+            strategy_params,
+            list(nuisance_values = list())
+        ))
+        adjusted <- if (length(retained_nuisance)) {
+            do.call(methods::new, c(
+                list(Class = class(strategy)[[1L]]),
+                strategy_params,
+                list(nuisance_values = retained_nuisance)
+            ))
+        } else {
+            NULL
+        }
+        .new_association_preparation(
+            strategy = unadjusted,
+            values = values,
+            complete = complete,
+            nuisance_values = retained_nuisance,
+            context = list(
+                adjusted_strategy = adjusted,
+                observed_time = retained_time,
+                subject = retained_subject_values,
+                study_time_grid = study_time_grid,
+                study_time_range = study_time_range,
+                analysis_cohort = names(values)[complete],
+                excluded_cohort = names(values)[!complete]
+            )
+        )
+    }
 )
 
 register_strategy(
@@ -667,14 +829,9 @@ register_strategy(
 .repeated_time_uncertainty <- function(
     scores,
     target,
-    observed_time,
-    subject,
-    nuisance_values,
-    reference_level,
-    comparison_level,
+    strategy,
     plan,
     orientation_multiplier,
-    study_time_range,
     task_identity,
     sequential_internal,
     future_scheduling
@@ -694,16 +851,15 @@ register_strategy(
         compute_tier = "standard",
         worker = function(task, task_id, task_stream) {
             index <- task$index
-            result <- .fit_repeated_time_course(
-                scores[index],
-                target[index],
-                observed_time[index],
-                task$subject,
-                lapply(nuisance_values, `[`, index),
-                reference_level,
-                comparison_level,
-                orientation_multiplier = orientation_multiplier,
-                study_time_range = study_time_range
+            result <- refit_association(
+                strategy,
+                scores,
+                target,
+                as.integer(index),
+                context = list(
+                    subject = task$subject,
+                    orientation_multiplier = orientation_multiplier
+                )
             )
             if (identical(result$status, "estimable")) {
                 result$estimate
@@ -884,41 +1040,26 @@ register_strategy(
         "associate_metadata",
         "target field"
     )
-    observed_time_raw <- .aligned_component_metadata(
-        std,
-        1L,
-        time_field,
-        "associate_metadata",
-        "observed-time field"
-    )
-    observed_time <- .time_values_numeric(
-        observed_time_raw,
-        strategy@observed_time
-    )
-    names(observed_time) <- names(observed_time_raw)
-    subject <- as.character(.aligned_component_metadata(
-        std,
-        1L,
-        subject_field,
-        "associate_metadata",
-        "subject field"
-    ))
-    names(subject) <- names(target)
-    nuisance_values <- stats::setNames(
-        lapply(specification@nuisance_fields, function(field) {
-            .aligned_component_metadata(
-                std,
-                1L,
-                field,
-                "associate_metadata",
-                "nuisance field"
-            )
-        }),
-        specification@nuisance_fields
-    )
-    study_time_grid <- sort(unique(
-        observed_time[is.finite(observed_time)]
-    ))
+    strategy <- .resolve_registered_association_strategy(std, target)
+    if (is.null(strategy)) {
+        return(.new_association_abstention(
+            std,
+            stage1,
+            specification,
+            "no unique registered strategy supports this design and target",
+            reason = "unsupported-design-target",
+            interpretation_module = .repeated_time_evidence_version
+        ))
+    }
+    preparation <- prepare_association(strategy, std, specification, target)
+    analysis_complete <- preparation$complete
+    analysis_cohort <- preparation$context$analysis_cohort
+    excluded_cohort <- preparation$context$excluded_cohort
+    observed_time <- preparation$context$observed_time
+    subject <- preparation$context$subject
+    study_time_grid <- preparation$context$study_time_grid
+    study_time_range <- preparation$context$study_time_range
+    nuisance_values <- preparation$nuisance_values
     if (length(study_time_grid) < 2L) {
         return(.new_association_abstention(
             std,
@@ -929,16 +1070,6 @@ register_strategy(
             interpretation_module = .repeated_time_evidence_version
         ))
     }
-    study_time_range <- range(study_time_grid)
-    complete <- .time_required_complete(
-        target,
-        observed_time,
-        c(list(subject = subject), nuisance_values)
-    )
-    complete_subject <- tapply(complete, subject, all)
-    retained_subject <- names(complete_subject)[complete_subject]
-    analysis_complete <- complete & subject %in% retained_subject
-    all_sample_ids <- names(target)
     if (!any(analysis_complete)) {
         return(.new_association_abstention(
             std,
@@ -949,12 +1080,7 @@ register_strategy(
             interpretation_module = .repeated_time_evidence_version
         ))
     }
-    analysis_cohort <- all_sample_ids[analysis_complete]
-    excluded_cohort <- all_sample_ids[!analysis_complete]
-    target <- target[analysis_complete]
-    observed_time <- observed_time[analysis_complete]
-    subject <- subject[analysis_complete]
-    nuisance_values <- lapply(nuisance_values, `[`, analysis_complete)
+    target <- preparation$values[analysis_complete]
     coordinate_matrix <- coordinate_matrix[
         analysis_complete,
         ,
@@ -976,20 +1102,14 @@ register_strategy(
     model_records <- list()
     observations <- list()
     display_lines <- list()
-    constructor <- get_strategy(
-        "AssociationStrategy",
-        "repeated_time_course_lmer"
-    )
+    unadjusted_strategy <- preparation$strategy
+    adjusted_strategy <- preparation$context$adjusted_strategy
+    diagnostic_prefix <- association_contract(
+        unadjusted_strategy
+    )$diagnostic_prefix
+    if (identical(diagnostic_prefix, "none")) diagnostic_prefix <- ""
     for (component in seq_len(ncol(coordinate_matrix))) {
         scores <- coordinate_matrix[, component]
-        unadjusted_strategy <- constructor(list(
-            observed_time = observed_time,
-            study_time_range = study_time_range,
-            subject = subject,
-            nuisance_values = list(),
-            reference_level = reference_level,
-            comparison_level = comparison_level
-        ))
         unadjusted <- associate_component(
             unadjusted_strategy,
             scores,
@@ -998,14 +1118,9 @@ register_strategy(
         unadjusted_uncertainty <- .repeated_time_uncertainty(
             scores,
             target,
-            observed_time,
-            subject,
-            list(),
-            reference_level,
-            comparison_level,
+            unadjusted_strategy,
             plan,
             unadjusted$orientation_multiplier,
-            study_time_range,
             task_identity = paste0(component_labels[[component]], ":unadjusted"),
             sequential_internal = sequential_internal,
             future_scheduling = future_scheduling
@@ -1027,19 +1142,11 @@ register_strategy(
             unadjusted_uncertainty,
             reference_level,
             comparison_level,
-            diagnostic_prefix = ""
+            diagnostic_prefix = diagnostic_prefix
         )
         adjusted <- NULL
         adjusted_uncertainty <- NULL
         if (length(nuisance_values)) {
-            adjusted_strategy <- constructor(list(
-                observed_time = observed_time,
-                study_time_range = study_time_range,
-                subject = subject,
-                nuisance_values = nuisance_values,
-                reference_level = reference_level,
-                comparison_level = comparison_level
-            ))
             adjusted <- associate_component(
                 adjusted_strategy,
                 scores,
@@ -1048,14 +1155,9 @@ register_strategy(
             adjusted_uncertainty <- .repeated_time_uncertainty(
                 scores,
                 target,
-                observed_time,
-                subject,
-                nuisance_values,
-                reference_level,
-                comparison_level,
+                adjusted_strategy,
                 plan,
                 adjusted$orientation_multiplier,
-                study_time_range,
                 task_identity = paste0(component_labels[[component]], ":adjusted"),
                 sequential_internal = sequential_internal,
                 future_scheduling = future_scheduling
@@ -1069,7 +1171,7 @@ register_strategy(
                 reference_level,
                 comparison_level,
                 nuisance_fields = names(nuisance_values),
-                diagnostic_prefix = ""
+                diagnostic_prefix = diagnostic_prefix
             )
         }
         standardized <- unadjusted$standardized_scores
@@ -1232,6 +1334,9 @@ register_strategy(
         },
         provenance = list(
             association_strategy = association_strategy_id(
+                unadjusted_strategy
+            ),
+            association_contract = association_contract(
                 unadjusted_strategy
             ),
             package_version = as.character(

@@ -899,6 +899,57 @@ setValidity("InterpretationEvidence", function(object) {
     )
 })
 
+.new_interpretation_evidence <- function(
+    module,
+    sampling_design,
+    associations,
+    observations,
+    exclusions,
+    cohort_members,
+    provenance
+) {
+    tables <- list(
+        associations = associations,
+        observations = observations,
+        exclusions = exclusions,
+        cohort_members = cohort_members
+    )
+    if (!all(vapply(tables, is.data.frame, logical(1L)))) {
+        .stop_landscapeR_validation(
+            "normalized interpretation evidence must contain data frames"
+        )
+    }
+    tables <- lapply(tables, function(table) {
+        rownames(table) <- NULL
+        table
+    })
+    provenance$interpretation_module <- module
+    display_evidence <- if (identical(sampling_design, "cross_sectional")) {
+        provenance$visual_evidence
+    } else {
+        .time_course_display_evidence(provenance, sampling_design)
+    }
+    provenance$evidence_contract <- .new_interpretation_contract(
+        module,
+        sampling_design,
+        tables$associations,
+        tables$observations,
+        tables$exclusions,
+        tables$cohort_members,
+        display_evidence
+    )
+    evidence <- new(
+        "InterpretationEvidence",
+        module = module,
+        associations = tables$associations,
+        observations = tables$observations,
+        exclusions = tables$exclusions,
+        provenance = provenance
+    )
+    validObject(evidence)
+    evidence
+}
+
 .new_cross_sectional_evidence <- function(
     association_rows,
     observation_rows,
@@ -936,27 +987,15 @@ setValidity("InterpretationEvidence", function(object) {
         .empty_cohort_members()
     }
     associations$.cohort_members <- NULL
-    rownames(associations) <- NULL
-    rownames(observations) <- NULL
-    rownames(exclusions) <- NULL
-    rownames(cohort_members) <- NULL
-    provenance$evidence_contract <- .new_cross_sectional_contract(
+    .new_interpretation_evidence(
+        module = .cross_sectional_evidence_version,
+        sampling_design = "cross_sectional",
         associations,
         observations,
         exclusions,
         cohort_members,
-        provenance$visual_evidence
+        provenance
     )
-    evidence <- new(
-        "InterpretationEvidence",
-        module = .cross_sectional_evidence_version,
-        associations = associations,
-        observations = observations,
-        exclusions = exclusions,
-        provenance = provenance
-    )
-    validObject(evidence)
-    evidence
 }
 
 .new_time_course_evidence <- function(
@@ -968,30 +1007,15 @@ setValidity("InterpretationEvidence", function(object) {
     cohort_members,
     provenance
 ) {
-    rownames(associations) <- NULL
-    rownames(observations) <- NULL
-    rownames(exclusions) <- NULL
-    rownames(cohort_members) <- NULL
-    provenance$interpretation_module <- module
-    provenance$evidence_contract <- .new_interpretation_contract(
-        module,
-        sampling_design,
+    .new_interpretation_evidence(
+        module = module,
+        sampling_design = sampling_design,
         associations,
         observations,
         exclusions,
         cohort_members,
-        .time_course_display_evidence(provenance, sampling_design)
+        provenance
     )
-    evidence <- new(
-        "InterpretationEvidence",
-        module = module,
-        associations = associations,
-        observations = observations,
-        exclusions = exclusions,
-        provenance = provenance
-    )
-    validObject(evidence)
-    evidence
 }
 
 .time_course_cohort_members <- function(

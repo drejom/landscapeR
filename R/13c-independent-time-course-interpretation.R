@@ -29,6 +29,27 @@ setClass(
     )
 )
 
+.independent_association_result <- function(result, strategy) {
+    association <- list(
+        status = result$status,
+        diagnostic = result$diagnostic,
+        model_result = result
+    )
+    if (!identical(result$status, "estimable")) return(association)
+    c(association, list(
+        estimand = "standardized-condition-time-interaction",
+        estimate = result$estimate,
+        reference_level = strategy@reference_level,
+        comparison_level = strategy@comparison_level,
+        n_available = result$n_available,
+        n_score_ties = result$n_score_ties,
+        n_target_ties = result$n_target_ties,
+        p_value = result$p_value,
+        cohort_digest = result$cohort_digest,
+        design_digest = result$design_digest
+    ))
+}
+
 #' @rdname association_applicable
 #' @export
 setMethod(
@@ -65,24 +86,7 @@ setMethod(
             comparison_level = strategy@comparison_level,
             study_time_range = strategy@study_time_range
         )
-        association <- list(
-            status = result$status,
-            diagnostic = result$diagnostic,
-            model_result = result
-        )
-        if (!identical(result$status, "estimable")) return(association)
-        c(association, list(
-            estimand = "standardized-condition-time-interaction",
-            estimate = result$estimate,
-            reference_level = strategy@reference_level,
-            comparison_level = strategy@comparison_level,
-            n_available = result$n_available,
-            n_score_ties = result$n_score_ties,
-            n_target_ties = result$n_target_ties,
-            p_value = result$p_value,
-            cohort_digest = result$cohort_digest,
-            design_digest = result$design_digest
-        ))
+        .independent_association_result(result, strategy)
     }
 )
 
@@ -92,6 +96,147 @@ setMethod(
     "association_strategy_id",
     signature(strategy = "IndependentTimeCourseLinearAssociationStrategy"),
     function(strategy) "independent-time-course-linear-v1"
+)
+
+#' @rdname association_contract
+#' @export
+setMethod(
+    "association_contract",
+    signature(strategy = "IndependentTimeCourseLinearAssociationStrategy"),
+    function(strategy) {
+        .new_association_contract(
+            sampling_designs = "independent_time_course",
+            target_types = "binary",
+            estimand = "standardized-condition-time-interaction",
+            cohort_policy = "complete-condition-time-cell-observations",
+            diagnostic_prefix = "non-identifiable-design:",
+            abstention_statuses = c("not-estimable", "non-identifiable-design"),
+            refit_policy = "condition-time-cell-observation-index",
+            evidence_version = .independent_time_evidence_version
+        )
+    }
+)
+
+#' @rdname refit_association
+#' @export
+setMethod(
+    "refit_association",
+    signature(
+        strategy = "IndependentTimeCourseLinearAssociationStrategy",
+        scores = "numeric",
+        values = "ANY",
+        index = "integer"
+    ),
+    function(strategy, scores, values, index, context = list()) {
+        unknown <- setdiff(names(context), "orientation_multiplier")
+        if (length(unknown)) {
+            .stop_landscapeR_validation(sprintf(
+                "independent time-course refitting received unknown context '%s'",
+                unknown[[1L]]
+            ))
+        }
+        result <- .fit_independent_time_course(
+            scores[index],
+            values[index],
+            strategy@observed_time[index],
+            lapply(strategy@nuisance_values, `[`, index),
+            strategy@reference_level,
+            strategy@comparison_level,
+            orientation_multiplier = context$orientation_multiplier %||% NULL,
+            study_time_range = strategy@study_time_range
+        )
+        .independent_association_result(result, strategy)
+    }
+)
+
+#' @rdname prepare_association
+#' @export
+setMethod(
+    "prepare_association",
+    signature(
+        strategy = "IndependentTimeCourseLinearAssociationStrategy",
+        data = "StateTransitionData",
+        specification = "AnalysisSpecification",
+        values = "ANY"
+    ),
+    function(strategy, data, specification, values) {
+        contract <- .validated_association_contract(strategy)
+        if (!identical(data@sampling_design@kind, "independent_time_course") ||
+            !"independent_time_course" %in% contract$sampling_designs) {
+            .stop_landscapeR_validation(
+                "independent time-course strategy received the wrong design"
+            )
+        }
+        observed_time_raw <- .aligned_component_metadata(
+            data,
+            1L,
+            data@sampling_design@time_col,
+            "associate_metadata",
+            "observed-time field"
+        )
+        observed_time <- .time_values_numeric(
+            observed_time_raw,
+            data@sampling_design@time_col
+        )
+        names(observed_time) <- names(observed_time_raw)
+        nuisance_values <- stats::setNames(
+            lapply(specification@nuisance_fields, function(field) {
+                .aligned_component_metadata(
+                    data, 1L, field, "associate_metadata", "nuisance field"
+                )
+            }),
+            specification@nuisance_fields
+        )
+        complete <- .time_required_complete(
+            values,
+            observed_time,
+            nuisance_values
+        )
+        study_time_grid <- sort(unique(
+            observed_time[is.finite(observed_time)]
+        ))
+        study_time_range <- if (length(study_time_grid)) {
+            range(study_time_grid)
+        } else {
+            numeric()
+        }
+        retained_time <- observed_time[complete]
+        retained_nuisance <- lapply(nuisance_values, `[`, complete)
+        strategy_params <- list(
+            observed_time = retained_time,
+            study_time_range = study_time_range,
+            reference_level = specification@reference_level,
+            comparison_level = specification@comparison_level
+        )
+        unadjusted <- do.call(methods::new, c(
+            list(Class = class(strategy)[[1L]]),
+            strategy_params,
+            list(nuisance_values = list())
+        ))
+        adjusted <- if (length(retained_nuisance)) {
+            do.call(methods::new, c(
+                list(Class = class(strategy)[[1L]]),
+                strategy_params,
+                list(nuisance_values = retained_nuisance)
+            ))
+        } else {
+            NULL
+        }
+        .new_association_preparation(
+            strategy = unadjusted,
+            values = values,
+            complete = complete,
+            nuisance_values = retained_nuisance,
+            context = list(
+                adjusted_strategy = adjusted,
+                observed_time = retained_time,
+                study_time_grid = study_time_grid,
+                study_time_range = study_time_range,
+                analysis_cohort = names(values)[complete],
+                excluded_cohort = names(values)[!complete]
+            )
+        )
+    }
 )
 
 register_strategy(
@@ -131,29 +276,6 @@ register_strategy(
         )
     }
 )
-
-.time_values_numeric <- function(values, field = "observed time") {
-    if (inherits(values, c("Date", "POSIXct", "POSIXlt"))) {
-        return(as.numeric(values))
-    }
-    if (is.ordered(values)) return(as.numeric(values))
-    if (is.numeric(values)) return(as.numeric(values))
-    .stop_landscapeR_validation(sprintf(
-        "observed-time field '%s' must be numeric, Date/POSIXct, or ordered",
-        field
-    ))
-}
-
-.time_required_complete <- function(target, observed_time, nuisance_values) {
-    complete <- !is.na(target) &
-        !is.na(observed_time) &
-        is.finite(observed_time)
-    for (values in nuisance_values) {
-        complete <- complete & !is.na(values)
-        if (is.numeric(values)) complete <- complete & is.finite(values)
-    }
-    complete
-}
 
 .time_nuisance_matrix <- function(nuisance_values) {
     if (!length(nuisance_values)) {
@@ -246,36 +368,6 @@ register_strategy(
         return("insufficient-independent-cell-replication")
     }
     ""
-}
-
-.time_course_orientation <- function(
-    scores,
-    target,
-    reference_level,
-    comparison_level,
-    multiplier = NULL
-) {
-    score_sd <- stats::sd(scores)
-    if (!is.finite(score_sd) || score_sd == 0) {
-        return(list(
-            status = "zero-component-variance",
-            multiplier = 1,
-            standardized_scores = rep(NA_real_, length(scores))
-        ))
-    }
-    standardized <- as.numeric((scores - mean(scores)) / score_sd)
-    target <- as.character(target)
-    difference <- mean(
-        standardized[target == comparison_level]
-    ) - mean(standardized[target == reference_level])
-    if (is.null(multiplier)) {
-        multiplier <- if (is.finite(difference) && difference < 0) -1 else 1
-    }
-    list(
-        status = "",
-        multiplier = multiplier,
-        standardized_scores = multiplier * standardized
-    )
 }
 
 .fit_independent_time_course <- function(
@@ -550,13 +642,9 @@ register_strategy(
 .time_course_uncertainty <- function(
     scores,
     target,
-    observed_time,
-    nuisance_values,
-    reference_level,
-    comparison_level,
+    strategy,
     plan,
     orientation_multiplier,
-    study_time_range,
     task_identity,
     sequential_internal,
     future_scheduling
@@ -575,15 +663,14 @@ register_strategy(
         compute_tier = "standard",
         worker = function(task, task_id, task_stream) {
             index <- task$index
-            result <- .fit_independent_time_course(
-                scores[index],
-                target[index],
-                observed_time[index],
-                lapply(nuisance_values, `[`, index),
-                reference_level,
-                comparison_level,
-                orientation_multiplier = orientation_multiplier,
-                study_time_range = study_time_range
+            result <- refit_association(
+                strategy,
+                scores,
+                target,
+                as.integer(index),
+                context = list(
+                    orientation_multiplier = orientation_multiplier
+                )
             )
             if (identical(result$status, "estimable")) {
                 result$estimate
@@ -606,249 +693,6 @@ register_strategy(
     summary$bootstrap_estimates <- estimates
     summary$execution <- execution
     summary
-}
-
-.time_course_resample_rankings <- function(
-    model_records,
-    primary_variant
-) {
-    adjusted_variants <- c(
-        "adjusted",
-        "time-course-adjusted",
-        "repeated-time-course-adjusted"
-    )
-    uncertainty_field <- if (primary_variant %in% adjusted_variants) {
-        "adjusted_uncertainty"
-    } else {
-        "unadjusted_uncertainty"
-    }
-    n_resamples <- length(
-        model_records[[1L]][[uncertainty_field]]$bootstrap_estimates
-    )
-    estimates <- vapply(model_records, function(record) {
-        record[[uncertainty_field]]$bootstrap_estimates
-    }, numeric(n_resamples))
-    if (!n_resamples) {
-        rankings <- data.frame(
-            resample = integer(),
-            component = integer(),
-            component_label = character(),
-            estimate = numeric(),
-            proposal_rank = integer(),
-            estimable = logical(),
-            complete_search = logical(),
-            stringsAsFactors = FALSE
-        )
-    } else {
-        if (is.null(dim(estimates))) {
-            estimates <- matrix(estimates, ncol = length(model_records))
-        }
-        rankings <- do.call(rbind, lapply(seq_len(nrow(estimates)), function(i) {
-            estimate <- estimates[i, ]
-            estimable <- is.finite(estimate)
-            complete_search <- all(estimable)
-            proposal_rank <- rep.int(NA_integer_, length(estimate))
-            if (complete_search) {
-                proposal_rank <- rank(-abs(estimate), ties.method = "first")
-            }
-            data.frame(
-                resample = as.integer(i),
-                component = vapply(
-                    model_records,
-                    `[[`,
-                    integer(1L),
-                    "component"
-                ),
-                component_label = vapply(
-                    model_records,
-                    `[[`,
-                    character(1L),
-                    "component_label"
-                ),
-                estimate = estimate,
-                proposal_rank = as.integer(proposal_rank),
-                estimable = estimable,
-                complete_search = rep.int(complete_search, length(estimate)),
-                stringsAsFactors = FALSE
-            )
-        }))
-        rownames(rankings) <- NULL
-    }
-    summary <- do.call(rbind, lapply(model_records, function(record) {
-        component_rows <- rankings$component == record$component
-        complete <- component_rows & rankings$complete_search
-        ranks <- rankings$proposal_rank[complete]
-        n_requested <- length(unique(rankings$resample))
-        data.frame(
-            component = record$component,
-            component_label = record$component_label,
-            n_resamples = as.integer(n_requested),
-            n_complete_searches = as.integer(length(ranks)),
-            component_fit_failures = as.integer(sum(
-                component_rows & !rankings$estimable
-            )),
-            mean_rank = if (length(ranks)) mean(ranks) else NA_real_,
-            rank_one_count = as.integer(sum(ranks == 1L)),
-            rank_one_fraction = if (n_requested) {
-                sum(ranks == 1L) / n_requested
-            } else {
-                NA_real_
-            },
-            stringsAsFactors = FALSE
-        )
-    }))
-    list(rankings = rankings, summary = summary)
-}
-
-.time_course_nuisance_reference <- function(nuisance_values) {
-    if (!length(nuisance_values)) return(numeric())
-    reference <- lapply(nuisance_values, function(values) {
-        if (is.ordered(values) || is.numeric(values)) {
-            return(stats::median(as.numeric(values)))
-        }
-        factor_values <- if (is.factor(values)) values else factor(values)
-        factor(
-            levels(factor_values)[[1L]],
-            levels = levels(factor_values)
-        )
-    })
-    matrix <- .time_nuisance_matrix(reference)
-    if (!nrow(matrix)) return(numeric())
-    matrix[1L, , drop = TRUE]
-}
-
-.time_course_association_row <- function(
-    component,
-    component_label,
-    variant,
-    result,
-    uncertainty,
-    reference_level,
-    comparison_level,
-    nuisance_fields = character(),
-    proposal_eligible = TRUE,
-    diagnostic_prefix = "non-identifiable-design:"
-) {
-    estimable <- identical(result$status, "estimable")
-    data.frame(
-        metadata_field = "condition",
-        component = as.integer(component),
-        component_label = component_label,
-        estimand = "standardized-condition-time-interaction",
-        estimate = if (estimable) result$estimate else NA_real_,
-        effect_magnitude = if (estimable) abs(result$estimate) else NA_real_,
-        reference_level = reference_level,
-        comparison_level = comparison_level,
-        n_available = as.integer(result$n_available %||% 0L),
-        n_missing = as.integer(
-            length(result$standardized_scores %||% numeric()) -
-                (result$n_available %||% 0L)
-        ),
-        n_score_ties = as.integer(result$n_score_ties %||% NA_integer_),
-        n_target_ties = as.integer(result$n_target_ties %||% NA_integer_),
-        evidence_variant = variant,
-        proposal_eligible = proposal_eligible,
-        nuisance_fields = paste(nuisance_fields, collapse = " + "),
-        cohort_digest = result$cohort_digest %||% NA_character_,
-        design_digest = result$design_digest %||% NA_character_,
-        diagnostic = if (estimable) {
-            ""
-        } else {
-            paste0(
-                diagnostic_prefix,
-                result$diagnostic %||% "unknown"
-            )
-        },
-        p_value = if (estimable) result$p_value else NA_real_,
-        q_value = NA_real_,
-        effect_conf_low = uncertainty$effect_conf_low,
-        effect_conf_high = uncertainty$effect_conf_high,
-        n_resamples = uncertainty$n_resamples,
-        resample_failures = uncertainty$resample_failures,
-        resampling_method = uncertainty$resampling_method,
-        resampling_plan_digest = uncertainty$resampling_plan_digest,
-        evidence_status = "estimable-exploratory-only",
-        stringsAsFactors = FALSE
-    )
-}
-
-.time_course_pooled_row <- function(
-    component,
-    component_label,
-    scores,
-    target,
-    reference_level,
-    comparison_level,
-    non_estimable_diagnostic = ""
-) {
-    effect <- NULL
-    if (length(scores) == length(target)) {
-        effect <- .signed_rank_biserial(
-            scores,
-            target,
-            reference_level,
-            comparison_level
-        )
-    }
-    estimable <- !is.null(effect) &&
-        is.finite(effect$estimate)
-    if (!estimable) {
-        effect <- list(
-            estimate = NA_real_,
-            n_available = 0L,
-            n_score_ties = NA_integer_,
-            p_value = NA_real_
-        )
-        scores <- rep(NA_real_, length(target))
-    }
-    data.frame(
-        metadata_field = "condition",
-        component = as.integer(component),
-        component_label = component_label,
-        estimand = "pooled-signed-rank-biserial",
-        estimate = effect$estimate,
-        effect_magnitude = abs(effect$estimate),
-        reference_level = reference_level,
-        comparison_level = comparison_level,
-        n_available = as.integer(effect$n_available),
-        n_missing = as.integer(length(scores) - effect$n_available),
-        n_score_ties = as.integer(effect$n_score_ties),
-        n_target_ties = NA_integer_,
-        evidence_variant = "pooled-descriptive",
-        proposal_eligible = FALSE,
-        nuisance_fields = "",
-        cohort_digest = .association_cohort_digest(
-            names(target),
-            is.finite(scores) & !is.na(target)
-        ),
-        design_digest = NA_character_,
-        diagnostic = if (estimable) {
-            "descriptive-only-not-trajectory-evidence"
-        } else {
-            paste0(
-                "descriptive-only-component-not-estimable",
-                if (nzchar(non_estimable_diagnostic)) {
-                    paste0(": ", non_estimable_diagnostic)
-                } else {
-                    ""
-                }
-            )
-        },
-        p_value = effect$p_value,
-        q_value = NA_real_,
-        effect_conf_low = NA_real_,
-        effect_conf_high = NA_real_,
-        n_resamples = 0L,
-        resample_failures = 0L,
-        resampling_method = "not-requested",
-        resampling_plan_digest = NA_character_,
-        evidence_status = if (estimable) {
-            "estimable-exploratory-only"
-        } else {
-            "not-estimable"
-        },
-        stringsAsFactors = FALSE
-    )
 }
 
 .time_course_display_lines <- function(
@@ -916,22 +760,6 @@ register_strategy(
     grid$component <- as.integer(component)
     grid$component_label <- component_label
     grid
-}
-
-.time_course_dataset_id <- function(std, input_digest, dataset_id) {
-    metadata_dataset_id <- metadata(std)$dataset_id
-    if (is.null(dataset_id) && .is_scalar_nonempty_text(metadata_dataset_id)) {
-        dataset_id <- metadata_dataset_id
-    }
-    if (is.null(dataset_id)) {
-        dataset_id <- paste0("dataset-", substr(input_digest, 1L, 12L))
-    }
-    if (!.is_scalar_nonempty_text(dataset_id)) {
-        .stop_landscapeR_validation(
-            "associate_metadata(): dataset_id must be one non-empty string"
-        )
-    }
-    dataset_id
 }
 
 .associate_independent_time_course <- function(
@@ -1016,21 +844,25 @@ register_strategy(
         "associate_metadata",
         "target field"
     )
-    observed_time_raw <- .aligned_component_metadata(
-        std,
-        1L,
-        std@sampling_design@time_col,
-        "associate_metadata",
-        "observed-time field"
-    )
-    observed_time <- .time_values_numeric(
-        observed_time_raw,
-        strategy@observed_time
-    )
-    names(observed_time) <- names(observed_time_raw)
-    study_time_grid <- sort(unique(
-        observed_time[is.finite(observed_time)]
-    ))
+    strategy <- .resolve_registered_association_strategy(std, target)
+    if (is.null(strategy)) {
+        return(.new_association_abstention(
+            std,
+            stage1,
+            specification,
+            "no unique registered strategy supports this design and target",
+            reason = "unsupported-design-target",
+            interpretation_module = .independent_time_evidence_version
+        ))
+    }
+    preparation <- prepare_association(strategy, std, specification, target)
+    analysis_complete <- preparation$complete
+    analysis_cohort <- preparation$context$analysis_cohort
+    excluded_cohort <- preparation$context$excluded_cohort
+    observed_time <- preparation$context$observed_time
+    study_time_grid <- preparation$context$study_time_grid
+    study_time_range <- preparation$context$study_time_range
+    nuisance_values <- preparation$nuisance_values
     if (length(study_time_grid) < 2L) {
         return(.new_association_abstention(
             std,
@@ -1044,27 +876,6 @@ register_strategy(
             interpretation_module = .independent_time_evidence_version
         ))
     }
-    study_time_range <- range(study_time_grid)
-    nuisance_values <- stats::setNames(
-        lapply(specification@nuisance_fields, function(field) {
-            .aligned_component_metadata(
-                std,
-                1L,
-                field,
-                "associate_metadata",
-                "nuisance field"
-            )
-        }),
-        specification@nuisance_fields
-    )
-    all_sample_ids <- names(target)
-    analysis_complete <- .time_required_complete(
-        target,
-        observed_time,
-        nuisance_values
-    )
-    analysis_cohort <- all_sample_ids[analysis_complete]
-    excluded_cohort <- all_sample_ids[!analysis_complete]
     if (!length(analysis_cohort)) {
         return(.new_association_abstention(
             std,
@@ -1078,9 +889,7 @@ register_strategy(
             interpretation_module = .independent_time_evidence_version
         ))
     }
-    target <- target[analysis_complete]
-    observed_time <- observed_time[analysis_complete]
-    nuisance_values <- lapply(nuisance_values, `[`, analysis_complete)
+    target <- preparation$values[analysis_complete]
     coordinate_matrix <- coordinate_matrix[
         analysis_complete,
         ,
@@ -1103,19 +912,13 @@ register_strategy(
     model_records <- list()
     observations <- list()
     display_lines <- list()
-    strategy_constructor <- get_strategy(
-        "AssociationStrategy",
-        "independent_time_course_linear"
-    )
+    unadjusted_strategy <- preparation$strategy
+    adjusted_strategy <- preparation$context$adjusted_strategy
+    diagnostic_prefix <- association_contract(
+        unadjusted_strategy
+    )$diagnostic_prefix
     for (component in seq_len(ncol(coordinate_matrix))) {
         scores <- coordinate_matrix[, component]
-        unadjusted_strategy <- strategy_constructor(list(
-            observed_time = observed_time,
-            study_time_range = study_time_range,
-            nuisance_values = list(),
-            reference_level = reference_level,
-            comparison_level = comparison_level
-        ))
         unadjusted_effect <- associate_component(
             unadjusted_strategy,
             scores,
@@ -1125,13 +928,9 @@ register_strategy(
         unadjusted_uncertainty <- .time_course_uncertainty(
             scores,
             target,
-            observed_time,
-            list(),
-            reference_level,
-            comparison_level,
+            unadjusted_strategy,
             plan,
             orientation_multiplier = unadjusted$orientation_multiplier,
-            study_time_range = study_time_range,
             task_identity = paste0(component_labels[[component]], ":unadjusted"),
             sequential_internal = sequential_internal,
             future_scheduling = future_scheduling
@@ -1151,17 +950,11 @@ register_strategy(
             unadjusted,
             unadjusted_uncertainty,
             reference_level,
-            comparison_level
+            comparison_level,
+            diagnostic_prefix = diagnostic_prefix
         )
         adjusted <- NULL
         if (length(nuisance_values)) {
-            adjusted_strategy <- strategy_constructor(list(
-                observed_time = observed_time,
-                study_time_range = study_time_range,
-                nuisance_values = nuisance_values,
-                reference_level = reference_level,
-                comparison_level = comparison_level
-            ))
             adjusted_effect <- associate_component(
                 adjusted_strategy,
                 scores,
@@ -1171,13 +964,9 @@ register_strategy(
             adjusted_uncertainty <- .time_course_uncertainty(
                 scores,
                 target,
-                observed_time,
-                nuisance_values,
-                reference_level,
-                comparison_level,
+                adjusted_strategy,
                 plan,
                 orientation_multiplier = adjusted$orientation_multiplier,
-                study_time_range = study_time_range,
                 task_identity = paste0(component_labels[[component]], ":adjusted"),
                 sequential_internal = sequential_internal,
                 future_scheduling = future_scheduling
@@ -1190,7 +979,8 @@ register_strategy(
                 adjusted_uncertainty,
                 reference_level,
                 comparison_level,
-                nuisance_fields = names(nuisance_values)
+                nuisance_fields = names(nuisance_values),
+                diagnostic_prefix = diagnostic_prefix
             )
         }
         standardized <- unadjusted$standardized_scores
@@ -1366,6 +1156,9 @@ register_strategy(
         },
         provenance = list(
             association_strategy = association_strategy_id(
+                unadjusted_strategy
+            ),
+            association_contract = association_contract(
                 unadjusted_strategy
             ),
             package_version = as.character(

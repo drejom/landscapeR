@@ -621,6 +621,25 @@ setMethod(
     }
 )
 
+#' @rdname association_contract
+#' @export
+setMethod(
+    "association_contract",
+    signature(strategy = "CrossSectionalBinaryAssociationStrategy"),
+    function(strategy) {
+        .new_association_contract(
+            sampling_designs = "cross_sectional",
+            target_types = "binary",
+            estimand = "signed-rank-biserial",
+            cohort_policy = "available-independent-observations",
+            diagnostic_prefix = "cross-sectional-binary",
+            abstention_statuses = "not-estimable",
+            refit_policy = "biological-observation-index",
+            evidence_version = .cross_sectional_evidence_version
+        )
+    }
+)
+
 register_strategy(
     "AssociationStrategy",
     "cross_sectional_binary",
@@ -712,6 +731,25 @@ setMethod(
     signature(strategy = "CrossSectionalContinuousAssociationStrategy"),
     function(strategy) {
         "cross-sectional-continuous-spearman-v1"
+    }
+)
+
+#' @rdname association_contract
+#' @export
+setMethod(
+    "association_contract",
+    signature(strategy = "CrossSectionalContinuousAssociationStrategy"),
+    function(strategy) {
+        .new_association_contract(
+            sampling_designs = "cross_sectional",
+            target_types = "continuous",
+            estimand = "spearman",
+            cohort_policy = "available-independent-observations",
+            diagnostic_prefix = "cross-sectional-continuous",
+            abstention_statuses = "not-estimable",
+            refit_policy = "biological-observation-index",
+            evidence_version = .cross_sectional_evidence_version
+        )
     }
 )
 
@@ -808,6 +846,25 @@ setMethod(
     }
 )
 
+#' @rdname association_contract
+#' @export
+setMethod(
+    "association_contract",
+    signature(strategy = "CrossSectionalOrderedAssociationStrategy"),
+    function(strategy) {
+        .new_association_contract(
+            sampling_designs = "cross_sectional",
+            target_types = "ordered",
+            estimand = "kendall-tau-b",
+            cohort_policy = "available-independent-observations",
+            diagnostic_prefix = "cross-sectional-ordered",
+            abstention_statuses = "not-estimable",
+            refit_policy = "biological-observation-index",
+            evidence_version = .cross_sectional_evidence_version
+        )
+    }
+)
+
 register_strategy(
     "AssociationStrategy",
     "cross_sectional_ordered",
@@ -825,18 +882,7 @@ register_strategy(
 )
 
 .resolve_component_association_strategy <- function(std, values) {
-    keys <- list_strategies("AssociationStrategy")
-    strategy_names <- sub("^AssociationStrategy:", "", keys)
-    strategies <- lapply(
-        sort(strategy_names),
-        function(name) get_strategy("AssociationStrategy", name)()
-    )
-    applicable <- Filter(
-        function(strategy) association_applicable(strategy, std, values),
-        strategies
-    )
-    if (length(applicable) != 1L) return(NULL)
-    applicable[[1L]]
+    .resolve_registered_association_strategy(std, values)
 }
 
 .atlas_input_digest <- function(std) {
@@ -1344,6 +1390,7 @@ associate_metadata <- function(
     observation_rows <- list()
     bootstrap_executions <- list()
     association_strategy_ids <- character()
+    association_contracts <- list()
     coordinate_matrix <- coordinates[[1L]]
     if (!is.matrix(coordinate_matrix) ||
         !is.numeric(coordinate_matrix) ||
@@ -1420,10 +1467,19 @@ associate_metadata <- function(
             next
         }
         if (!is.null(strategy)) {
+            strategy_id <- association_strategy_id(strategy)
             association_strategy_ids <- c(
                 association_strategy_ids,
-                association_strategy_id(strategy)
+                strategy_id
             )
+            association_contracts[[strategy_id]] <- association_contract(
+                strategy
+            )
+        }
+        preparation <- if (!is.null(strategy)) {
+            prepare_association(strategy, std, specification, values)
+        } else {
+            NULL
         }
         field_nuisance_values <- if (
             !is.null(specification) &&
@@ -1448,8 +1504,14 @@ associate_metadata <- function(
                 associate_component(strategy, scores, values)
             }
             if (is.null(effect)) return(NULL)
-            complete <- is.finite(scores) & !is.na(values)
-            if (is.numeric(values) && !is.ordered(values)) {
+            complete <- is.finite(scores) & if (is.null(preparation)) {
+                !is.na(values)
+            } else {
+                preparation$complete
+            }
+            if (is.null(preparation) &&
+                is.numeric(values) &&
+                !is.ordered(values)) {
                 complete <- complete & is.finite(values)
             }
             repetition <- .future_numeric_repetition(
@@ -1469,10 +1531,11 @@ associate_metadata <- function(
                             values[index]
                         )
                     } else {
-                        associate_component(
+                        refit_association(
                             strategy,
-                            scores[index],
-                            values[index]
+                            scores,
+                            values,
+                            as.integer(index)
                         )
                     }
                     if (is.null(resampled)) NA_real_ else resampled$estimate
@@ -1728,6 +1791,9 @@ associate_metadata <- function(
         exclusion_rows = exclusion_rows,
         provenance = c(list(
             association_strategy = sort(unique(association_strategy_ids)),
+            association_contracts = association_contracts[
+                sort(names(association_contracts))
+            ],
             package_version = as.character(
                 utils::packageVersion("landscapeR")
             ),

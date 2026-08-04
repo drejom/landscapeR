@@ -23,6 +23,7 @@ is built under `.scratch/site/` and deployed by CI; it is not committed here.
 | [`agents/review-ratchet.md`](agents/review-ratchet.md) | Mandatory review gate, incident-backed review knowledge, correction, deduplication, and graduation | Implementation conventions, domain vocabulary, scheduling, or decisions |
 | [`agents/ci-check-selection.md`](agents/ci-check-selection.md) | Shared path policy for full package checks and the documentation-only short path | Scientific test content or branch-protection administration |
 | [`agents/execution-reproducibility.md`](agents/execution-reproducibility.md) | Compute-tier meanings, run-seed derivation, future backend ownership, and repetition accounting | Scientific exchangeability rules or scheduler configuration |
+| [`agents/association-strategy-authoring.md`](agents/association-strategy-authoring.md) | Stage 1 interpretation adapter contract, author responsibilities, and conformance workflow | New estimator acceptance or scientific scope |
 | [`vignettes/`](../vignettes/) | Current user workflow, implementation status, and evidence presentation | Historical transition proof or scheduling |
 | Pull requests | Visual landing proof co-located with a diff | Immutable scientific acceptance evidence |
 | `inst/benchmarks/` | Immutable/content-addressed benchmark evidence | Development scheduling |

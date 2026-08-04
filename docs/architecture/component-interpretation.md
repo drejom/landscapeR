@@ -7,8 +7,11 @@ consumers.
 ## Shared evidence seam
 
 `associate_metadata()` is the public workflow boundary. Each supported sampling
-design delegates its score-vector calculation to a registered
-`AssociationStrategy` adapter, then crosses one package-owned evidence seam.
+design resolves a registered `AssociationStrategy` by its validated declarative
+contract. The adapter owns cohort preparation, estimand mapping, diagnostics,
+typed abstention and scientific refitting; package-owned future execution owns
+scheduling and failure accounting. Every design then crosses one package-owned
+evidence seam.
 That seam normalizes and validates:
 
 - association rows at metadata field, component, and evidence-variant grain;
@@ -17,7 +20,8 @@ That seam normalizes and validates:
 - available-case cohort identity and counts;
 - deterministic table and cohort-membership digests and provenance.
 
-The internal `InterpretationEvidence` type owns this complete invariant before
+One `.new_interpretation_evidence()` constructor and the internal
+`InterpretationEvidence` type own this complete invariant before
 a `MetadataAssociationAtlas` can be constructed. Cross-sectional, independent
 destructive-time-course, and repeated-subject modules all cross this boundary.
 Their contract lists have the same fields and normalized evidence grain, while
@@ -25,11 +29,15 @@ their registered module versions retain distinct sampling-design validation.
 New designs supply design-specific validation without creating peer evidence
 containers.
 
-Strategies therefore own the estimand calculation, while package-owned modules
-own the evidence that proposal, permutation, plotting, serialization, and
-confirmation consumers require. Method authors continue to return the narrow
-`AssociationStrategy` result and do not construct S4 evidence objects, manage
-digests, or assemble provenance.
+Strategies therefore own the scientific interpretation calculation, while
+package-owned modules own the evidence that proposal, permutation, plotting,
+serialization, and confirmation consumers require. Independent and repeated
+time-course strategies use the explicit shared primitives in
+`R/13b-time-course-common.R`; neither design module depends on helpers hidden in
+the other. Method authors return narrow preparation and fit results and do not
+construct S4 evidence objects, manage digests, or assemble provenance. The
+practical authoring contract is documented in
+[`docs/agents/association-strategy-authoring.md`](../agents/association-strategy-authoring.md).
 
 `atlas_evidence_contract()` exposes a stable summary of the normalized row
 counts, cohorts, and digests as an inspection-friendly list. This summary is
