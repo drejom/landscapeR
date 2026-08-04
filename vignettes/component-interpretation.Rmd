@@ -176,6 +176,23 @@ replicate-subject identifiers so they remain statistically distinct copies of
 one source trajectory. Unsupported exchangeability or insufficient distinct
 assignments produces a typed abstention rather than a fallback sampling rule.
 
+### Extending association methods
+
+`AssociationStrategy` is the supported extension seam for additional metadata
+interpretation methods. A registered adapter declares its supported sampling
+designs and target types, estimand, cohort policy, diagnostics, abstention
+statuses, scientific refit policy, and evidence version through
+`association_contract()`. Simple adapters can inherit available-case cohort
+preparation and index-based refitting; methods with different biological units
+override `prepare_association()` and `refit_association()`.
+
+The adapter does not construct atlas tables, digests, provenance, or public
+result objects. `associate_metadata()` validates the contract, runs refits
+through the shared future-backed execution layer, and normalizes the evidence
+into the same atlas, proposal, and typed-abstention workflow used by the
+built-in strategies. The practical author checklist and complete conformance
+fixture are described in `docs/agents/association-strategy-authoring.md`.
+
 ## Produce an exploratory proposal
 
 ```{r proposal}
