@@ -110,6 +110,12 @@ the next task. The
 [pkgdown site](https://drejom.github.io/landscapeR/) presents current package
 behavior and evidence, not the work schedule.
 
+Contributors should install the repository safeguards and use the documented
+local/CI parity workflow in
+[`docs/agents/contributor-workflow.md`](docs/agents/contributor-workflow.md).
+The complete documentation authority map is in
+[`docs/README.md`](docs/README.md).
+
 ## Reference
 
 - Rockne et al. *Cancer Research* 2020 · PMID 32414754
