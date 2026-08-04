@@ -103,11 +103,11 @@ test_that("Stage 1 summary bootstraps are invariant across future plans", {
     expect_identical(paired_sequential$interval, legacy_paired_interval)
     expect_identical(median_sequential$interval, legacy_median_interval)
     expect_identical(
-        paired_sequential$draw_provenance$seed_derivation,
+        paired_sequential$execution$provenance$seed_derivation,
         "legacy-sequential-stream-v1"
     )
-    expect_identical(paired_sequential$draw_provenance$run_seed, 11001L)
-    expect_identical(median_sequential$draw_provenance$run_seed, 11002L)
+    expect_identical(paired_sequential$execution$provenance$run_seed, 11001L)
+    expect_identical(median_sequential$execution$provenance$run_seed, 11002L)
     expect_match(
         paired_sequential$execution$provenance$task_ids[[1L]],
         "^stage1-calibration:shared_recovery_error:paired-bootstrap:00001$"

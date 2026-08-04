@@ -531,7 +531,6 @@ execute_stage1_benchmark_full <- function(artifact_root, workers = 1L, workspace
                 ci_lower = numeric(), ci_upper = numeric(), n = integer(), stringsAsFactors = FALSE),
             bootstrap_executions = list(),
             bootstrap_measurements = list(),
-            bootstrap_draw_provenance = list(),
             rules = manifest$reporting_rules)
     } else {
         holdout <- results[results$split == "holdout" & results$candidate == selection$selected_candidate, , drop = FALSE]

@@ -16,6 +16,12 @@ depend on worker count, scheduling, chunking, or completion order. Typed
 repetition results retain every requested task in the denominator and record
 completed tasks, stable failure codes, tier, seed scheme, task identities,
 child stream states, and a content digest. Stream collisions are rejected.
+Frozen workflows whose accepted estimates were produced from one canonical
+sequential stream instead use the seam's explicit
+`legacy-sequential-stream-v1` derivation. The seam captures each task's stream
+state while advancing the declared seed in canonical task order, then performs
+the stochastic draw inside the future worker. This preserves the frozen draw
+sequence without moving RNG ownership outside the execution substrate.
 
 Package functions use `future.apply` but never call `future::plan()` or change
 `future.*` options. Users select sequential, multisession, cluster, or remote

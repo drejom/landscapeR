@@ -80,19 +80,6 @@
     )
 }
 
-.stage1_draw_provenance <- function(run_seed, task_ids) {
-    list(
-        run_seed = as.integer(run_seed),
-        rng_kind = "L'Ecuyer-CMRG",
-        seed_derivation = "legacy-sequential-stream-v1",
-        task_order_digest = digest::digest(
-            task_ids,
-            algo = "sha256",
-            serialize = TRUE
-        )
-    )
-}
-
 .stage1_require_summary_completion <- function(repetition, label) {
     if (repetition$execution$account$n_failed > 0L) {
         .stage1_evidence_abort(
@@ -119,12 +106,7 @@
             .stage1_evidence_abort("calibration candidates must be paired by seed in every stratum")
         c1[[metric]] - c2[[metric]]
     })
-    setup_rng(rules$bootstrap_seed)
-    tasks <- lapply(seq_len(rules$bootstrap_resamples), function(i) {
-        lapply(paired, function(values) {
-            sample(values, length(values), replace = TRUE)
-        })
-    })
+    tasks <- as.list(seq_len(rules$bootstrap_resamples))
     task_ids <- sprintf(
         "stage1-calibration:%s:paired-bootstrap:%05d",
         metric,
@@ -137,13 +119,23 @@
         compute_tier = "evidence",
         worker = function(task, task_id, task_stream) {
             mean(vapply(
-                task,
-                mean,
+                paired,
+                function(values) mean(sample(
+                    values,
+                    length(values),
+                    replace = TRUE
+                )),
                 numeric(1L)
             ))
         },
         future_scheduling = future_scheduling,
-        failure_code = "stage1-paired-bootstrap-failure"
+        failure_code = "stage1-paired-bootstrap-failure",
+        legacy_stream_advance = function(task, task_id) {
+            lapply(paired, function(values) {
+                sample(values, length(values), replace = TRUE)
+            })
+            invisible(NULL)
+        }
     )
     .stage1_require_summary_completion(repetition, "paired bootstrap")
     list(
@@ -154,10 +146,6 @@
             type = 7L
         ),
         execution = repetition$execution,
-        draw_provenance = .stage1_draw_provenance(
-            rules$bootstrap_seed,
-            task_ids
-        ),
         measurements = .stage1_summary_measurements(
             tasks,
             task_ids,
@@ -242,9 +230,6 @@ select_stage1_candidate <- function(calibration_rows,
         bootstrap_measurements = list(
             shared_recovery_error = shared_bootstrap$measurements
         ),
-        bootstrap_draw_provenance = list(
-            shared_recovery_error = shared_bootstrap$draw_provenance
-        ),
         rules = rules
     )
 }
@@ -259,10 +244,7 @@ select_stage1_candidate <- function(calibration_rows,
     if (!.is_scalar_nonempty_text(task_scope)) {
         .stage1_evidence_abort("median bootstrap requires a stable task scope")
     }
-    setup_rng(seed)
-    tasks <- lapply(seq_len(rules$bootstrap_resamples), function(i) {
-        sample(values, length(values), replace = TRUE)
-    })
+    tasks <- as.list(seq_len(rules$bootstrap_resamples))
     task_ids <- sprintf(
         "stage1-holdout:%s:median-bootstrap:%05d",
         task_scope,
@@ -273,9 +255,19 @@ select_stage1_candidate <- function(calibration_rows,
         task_ids = task_ids,
         run_seed = seed,
         compute_tier = "evidence",
-        worker = function(task, task_id, task_stream) stats::median(task),
+        worker = function(task, task_id, task_stream) {
+            stats::median(sample(
+                values,
+                length(values),
+                replace = TRUE
+            ))
+        },
         future_scheduling = future_scheduling,
-        failure_code = "stage1-median-bootstrap-failure"
+        failure_code = "stage1-median-bootstrap-failure",
+        legacy_stream_advance = function(task, task_id) {
+            sample(values, length(values), replace = TRUE)
+            invisible(NULL)
+        }
     )
     .stage1_require_summary_completion(repetition, "median bootstrap")
     list(
@@ -286,7 +278,6 @@ select_stage1_candidate <- function(calibration_rows,
             type = 7L
         ),
         execution = repetition$execution,
-        draw_provenance = .stage1_draw_provenance(seed, task_ids),
         measurements = .stage1_summary_measurements(
             tasks,
             task_ids,
@@ -345,8 +336,7 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
                     estimate = mean(rows$gate_observed == "typed_failure"), ci_lower = NA_real_,
                     ci_upper = NA_real_, n = nrow(rows), stringsAsFactors = FALSE),
                 executions = list(),
-                measurements = list(),
-                draw_provenance = list()
+                measurements = list()
             ))
         }
         metric_summaries <- lapply(metrics, function(metric) {
@@ -363,20 +353,14 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
                     ci_lower = bootstrap$interval[[1L]], ci_upper = bootstrap$interval[[2L]],
                     n = nrow(rows), stringsAsFactors = FALSE),
                 execution = bootstrap$execution,
-                measurements = bootstrap$measurements,
-                draw_provenance = bootstrap$draw_provenance
+                measurements = bootstrap$measurements
             )
         })
         names(metric_summaries) <- metrics
         list(
             rows = do.call(rbind, lapply(metric_summaries, `[[`, "row")),
             executions = lapply(metric_summaries, `[[`, "execution"),
-            measurements = lapply(metric_summaries, `[[`, "measurements"),
-            draw_provenance = lapply(
-                metric_summaries,
-                `[[`,
-                "draw_provenance"
-            )
+            measurements = lapply(metric_summaries, `[[`, "measurements")
         )
     })
     summary <- do.call(rbind, lapply(summaries, `[[`, "rows"))
@@ -394,19 +378,6 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
             stats::setNames(
                 summaries[[i]]$measurements,
                 paste(strata$stratum_digest[[i]], names(summaries[[i]]$measurements), sep = ":")
-            )
-        }),
-        recursive = FALSE
-    )
-    bootstrap_draw_provenance <- unlist(
-        lapply(seq_along(summaries), function(i) {
-            stats::setNames(
-                summaries[[i]]$draw_provenance,
-                paste(
-                    strata$stratum_digest[[i]],
-                    names(summaries[[i]]$draw_provenance),
-                    sep = ":"
-                )
             )
         }),
         recursive = FALSE
@@ -431,7 +402,6 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
         summary = summary,
         bootstrap_executions = bootstrap_executions,
         bootstrap_measurements = bootstrap_measurements,
-        bootstrap_draw_provenance = bootstrap_draw_provenance,
         rules = manifest$reporting_rules
     )
 }

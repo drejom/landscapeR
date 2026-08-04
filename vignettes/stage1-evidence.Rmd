@@ -47,8 +47,10 @@ execution before calling the evidence functions. Each 10,000-repetition
 summary records stable task identities, its declared run seed and derived
 L'Ecuyer-CMRG streams, all requested/completed/failed counts, and serialized
 input, output, provenance, and complete-execution measurements. Bootstrap draws
-are generated from the original declared seeds before execution, preserving the
-pre-migration 10,000-iteration estimates and cross-metric pairing exactly.
+use the future seam's explicit legacy sequential-stream derivation: it captures
+the original per-task RNG states in canonical order and performs each draw in
+the worker, preserving the pre-migration 10,000-iteration estimates and
+cross-metric pairing exactly.
 Scheduling and worker-count defaults remain unchanged because the measured
 tasks are small enough that local multisession startup and serialization can
 dominate their runtime.

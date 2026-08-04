@@ -33,8 +33,8 @@ They describe this small proof payload, not a general performance promise.
 
 | Summary path | Scheduling | Sequential (s) | Multisession, 2 workers (s) | Tasks (bytes) | IDs (bytes) | Shared input (bytes) | Values (bytes) | Provenance (bytes) | Complete execution (bytes) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Paired calibration mean | default / 0.5 | 0.784 | 3.861 | 1,280,044 | 710,031 | 164 | 160,031 | 1,070,295 | 1,350,775 |
-| Per-stratum holdout median | default / 0.5 | 0.728 | 0.985 | 400,031 | 730,031 | 63 | 160,031 | 1,090,295 | 1,370,775 |
+| Paired calibration mean | default / 0.5 | 0.567 | 3.541 | 120,031 | 710,031 | 164 | 160,031 | 1,070,299 | 1,350,779 |
+| Per-stratum holdout median | default / 0.5 | 0.505 | 0.535 | 120,031 | 730,031 | 63 | 160,031 | 1,090,299 | 1,370,779 |
 
 The observed local multisession overhead is larger than the computation saved,
 and the retained provenance is larger than the returned numerical values.
