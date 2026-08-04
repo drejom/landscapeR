@@ -23,7 +23,8 @@ confidence intervals exactly.
 
 Stable task identities include the summary scope and replicate index. The
 execution record retains the declared run seed, `L'Ecuyer-CMRG` RNG kind,
-`sha256-lecuyer-state-v1` derivation scheme, and one child stream per task.
+`legacy-sequential-stream-v1` derivation scheme, and the canonical pre-draw
+stream state for each task.
 
 ## Runtime and serialization
 
