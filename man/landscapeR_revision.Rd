@@ -10,7 +10,7 @@ landscapeR_revision()
 One non-empty revision identity.
 }
 \description{
-Uses revision metadata embedded by an installer when available. Otherwise it
-computes a SHA-256 identity from the installed package files. It never trusts
-an environment variable supplied by the calling job.
+Reads revision metadata embedded by the installer. It never trusts an
+environment variable supplied by the calling job and does not substitute a
+partial fingerprint when installation metadata is absent.
 }

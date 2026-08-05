@@ -27,9 +27,11 @@ working-directory, and storage requests.
 module load R/4.5.0
 export LANDSCAPER_SOURCE=/path/to/landscapeR
 export LANDSCAPER_R_LIB=/path/to/shared/project/R-library
+export LANDSCAPER_BUILD_ROOT=/path/to/user-owned/project/scratch
 export R_LIBS_USER="$LANDSCAPER_R_LIB"
 export LANDSCAPER_REVISION="$(git -C "$LANDSCAPER_SOURCE" rev-parse HEAD)"
 mkdir -p "$LANDSCAPER_R_LIB"
+mkdir -p "$LANDSCAPER_BUILD_ROOT"
 ```
 
 First install dependencies into that library with the project's chosen lockfile
@@ -38,7 +40,7 @@ Git identity into installation metadata, and install it. The stamp comes from
 the checked-out source rather than from a claim propagated to workers:
 
 ```sh
-BUILD_SOURCE="$PBS_JOBFS/landscapeR-build"
+BUILD_SOURCE="$LANDSCAPER_BUILD_ROOT/landscapeR-build"
 cp -R "$LANDSCAPER_SOURCE" "$BUILD_SOURCE"
 printf '\nConfig/landscapeR/Revision: %s\n' "$LANDSCAPER_REVISION" >> "$BUILD_SOURCE/DESCRIPTION"
 R CMD INSTALL --library="$LANDSCAPER_R_LIB" "$BUILD_SOURCE"

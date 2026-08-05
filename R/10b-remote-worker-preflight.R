@@ -24,9 +24,9 @@
 
 #' Report the identity of the loaded landscapeR artifact
 #'
-#' Uses revision metadata embedded by an installer when available. Otherwise it
-#' computes a SHA-256 identity from the installed package files. It never trusts
-#' an environment variable supplied by the calling job.
+#' Reads revision metadata embedded by the installer. It never trusts an
+#' environment variable supplied by the calling job and does not substitute a
+#' partial fingerprint when installation metadata is absent.
 #'
 #' @return One non-empty revision identity.
 #' @export
@@ -42,21 +42,9 @@ landscapeR_revision <- function() {
         candidates <- candidates[!is.na(candidates) & nzchar(candidates)]
         if (length(candidates)) return(unname(candidates[[1L]]))
     }
-    namespace <- asNamespace("landscapeR")
-    symbols <- ls(namespace, all.names = TRUE)
-    definitions <- lapply(symbols, function(symbol) {
-        value <- get0(symbol, envir = namespace, inherits = FALSE)
-        if (!is.function(value)) return(NULL)
-        list(formals = formals(value), body = body(value))
-    })
-    names(definitions) <- symbols
-    definitions <- definitions[!vapply(definitions, is.null, logical(1L))]
-    manifest <- list(
-        package_version = as.character(utils::packageVersion("landscapeR")),
-        functions = definitions
-    )
-    paste0("sha256:", digest::digest(
-        manifest, algo = "sha256", serialize = TRUE
+    .worker_preflight_error(paste0(
+        "the loaded landscapeR installation has no recorded revision; ",
+        "install a revision-stamped artifact before remote execution"
     ))
 }
 
@@ -108,7 +96,8 @@ preflight_future_workers <- function(
     packages <- .validate_preflight_packages(packages)
     if (is.null(workers)) workers <- future::nbrOfWorkers()
     if (!is.numeric(workers) || length(workers) != 1L || is.na(workers) ||
-        !is.finite(workers) || workers < 1 || workers != as.integer(workers)) {
+        !is.finite(workers) || workers < 1 || workers > .Machine$integer.max ||
+        workers != floor(workers)) {
         .stop_landscapeR_validation(
             "workers must be one positive finite integer; declare it explicitly for unbounded backends"
         )
@@ -256,7 +245,8 @@ benchmark_future_assay <- function(
     }
     if (!is.numeric(chunk_sizes) || !length(chunk_sizes) ||
         anyNA(chunk_sizes) || any(!is.finite(chunk_sizes)) ||
-        any(chunk_sizes < 1) || any(chunk_sizes != as.integer(chunk_sizes))) {
+        any(chunk_sizes < 1) || any(chunk_sizes > .Machine$integer.max) ||
+        any(chunk_sizes != floor(chunk_sizes))) {
         .stop_landscapeR_validation(
             "chunk_sizes must contain positive finite integers"
         )
@@ -264,7 +254,7 @@ benchmark_future_assay <- function(
     chunk_sizes <- unique(pmin(as.integer(chunk_sizes), ncol(assay)))
     if (!is.numeric(repetitions) || length(repetitions) != 1L ||
         is.na(repetitions) || !is.finite(repetitions) || repetitions < 1 ||
-        repetitions != as.integer(repetitions)) {
+        repetitions > .Machine$integer.max || repetitions != floor(repetitions)) {
         .stop_landscapeR_validation("repetitions must be one positive integer")
     }
     repetitions <- as.integer(repetitions)
@@ -279,6 +269,7 @@ benchmark_future_assay <- function(
         function(package) as.character(utils::packageVersion(package)),
         character(1L)
     )
+    package_revision <- landscapeR_revision()
     source_digest <- digest::digest(assay, algo = "sha256", serialize = TRUE)
     serialized <- serialize(assay, NULL, version = 3L)
     serialization_times <- replicate(repetitions, unname(system.time(
@@ -349,6 +340,7 @@ benchmark_future_assay <- function(
                 collapse = ";"
             ),
             benchmarked_at_utc = benchmarked_at,
+            landscapeR_revision = package_revision,
             stringsAsFactors = FALSE
         )
     })

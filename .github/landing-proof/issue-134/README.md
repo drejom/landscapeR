@@ -36,8 +36,9 @@ Negative tests show that revision mismatch and incomplete worker coverage raise
 The representative assay contained 1,200 features by 200 observations. Its
 serialized payload and reconstructed collection were each 960,070 bytes.
 Times are medians of three repetitions on the development Mac and are not a
-performance guarantee. Saved benchmark rows also carry the backend, worker
-count, repetitions, R/package versions, platform, and UTC timestamp.
+performance guarantee. Saved benchmark rows also carry the landscapeR revision,
+backend, worker count, repetitions, R/package versions, platform, and UTC
+timestamp.
 
 | Observations per chunk | Submitted chunks | Sequential (s) | Two-worker cluster (s) | Reconstructed digest identical |
 |---:|---:|---:|---:|---|

@@ -1,8 +1,12 @@
 test_that("future worker preflight validates declared environment identity", {
+    testthat::local_mocked_bindings(
+        landscapeR_revision = function() "test-revision-134",
+        .package = "landscapeR"
+    )
     previous_plan <- future::plan()
     on.exit(future::plan(previous_plan), add = TRUE)
     future::plan(future::sequential)
-    revision <- landscapeR_revision()
+    revision <- "test-revision-134"
 
     result <- preflight_future_workers(revision, workers = 1L)
     expect_s3_class(result, "landscapeR_worker_preflight")
@@ -20,11 +24,15 @@ test_that("future worker preflight validates declared environment identity", {
 })
 
 test_that("incomplete worker coverage remains a typed diagnostic", {
+    testthat::local_mocked_bindings(
+        landscapeR_revision = function() "test-revision-134",
+        .package = "landscapeR"
+    )
     previous_plan <- future::plan()
     on.exit(future::plan(previous_plan), add = TRUE)
     future::plan(future::sequential)
     condition <- tryCatch(
-        preflight_future_workers(landscapeR_revision(), workers = 2L),
+        preflight_future_workers("test-revision-134", workers = 2L),
         landscapeR_worker_preflight_error = identity
     )
     expect_s3_class(condition, "landscapeR_worker_preflight_error")
@@ -36,6 +44,10 @@ test_that("incomplete worker coverage remains a typed diagnostic", {
 })
 
 test_that("assay transfer benchmark preserves payload across chunk sizes", {
+    testthat::local_mocked_bindings(
+        landscapeR_revision = function() "test-revision-134",
+        .package = "landscapeR"
+    )
     previous_plan <- future::plan()
     on.exit(future::plan(previous_plan), add = TRUE)
     future::plan(future::sequential)
@@ -61,6 +73,23 @@ test_that("assay transfer benchmark preserves payload across chunk sizes", {
     expect_match(unique(result$backend), "sequential", ignore.case = TRUE)
     expect_match(unique(result$package_versions), "future=")
     expect_match(unique(result$benchmarked_at_utc), "Z$")
+    expect_identical(unique(result$landscapeR_revision), "test-revision-134")
+})
+
+test_that("oversized execution inputs remain typed validation failures", {
+    assay <- matrix(1:4, nrow = 2L)
+    expect_error(
+        preflight_future_workers("revision", workers = 1e20),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        benchmark_future_assay(assay, chunk_sizes = 1e20),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        benchmark_future_assay(assay, repetitions = 1e20),
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("future benchmark failures retain typed stage diagnostics", {
@@ -101,8 +130,13 @@ test_that("cluster plan reproduces execution and payload digests", {
     )
 
     future::plan(future::cluster, workers = 2L)
+    revision <- tryCatch(
+        landscapeR_revision(),
+        landscapeR_worker_preflight_error = function(condition) NULL
+    )
+    skip_if(is.null(revision), "installed package has no revision metadata")
     cluster_preflight <- preflight_future_workers(
-        landscapeR_revision(), workers = 2L
+        revision, workers = 2L
     )
     cluster <- landscapeR:::.future_repetition(
         tasks, ids, 13401L, "standard", worker
