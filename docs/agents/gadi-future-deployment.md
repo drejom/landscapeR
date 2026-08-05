@@ -35,13 +35,13 @@ mkdir -p "$LANDSCAPER_BUILD_ROOT"
 ```
 
 First install dependencies into that library with the project's chosen lockfile
-or package-management procedure. Then create a disposable build copy, stamp its
-Git identity into installation metadata, and install it. The stamp comes from
-the checked-out source rather than from a claim propagated to workers:
+or package-management procedure. Then materialize the declared commit, not the
+mutable working tree, in a fresh build directory; stamp its Git identity into
+installation metadata; and install it:
 
 ```sh
-BUILD_SOURCE="$LANDSCAPER_BUILD_ROOT/landscapeR-build"
-cp -R "$LANDSCAPER_SOURCE" "$BUILD_SOURCE"
+BUILD_SOURCE="$(mktemp -d "$LANDSCAPER_BUILD_ROOT/landscapeR-build.XXXXXX")"
+git -C "$LANDSCAPER_SOURCE" archive "$LANDSCAPER_REVISION" | tar -x -C "$BUILD_SOURCE"
 printf '\nConfig/landscapeR/Revision: %s\n' "$LANDSCAPER_REVISION" >> "$BUILD_SOURCE/DESCRIPTION"
 R CMD INSTALL --library="$LANDSCAPER_R_LIB" "$BUILD_SOURCE"
 ```

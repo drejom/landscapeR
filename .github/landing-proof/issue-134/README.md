@@ -62,8 +62,8 @@ module is ready to run landscapeR.
 
 ## Reproduction
 
-Stamp the checked-out Git identity into `Config/landscapeR/Revision` in a
-disposable source copy, install that copy into a clean library, set
+Materialize the declared commit with `git archive`, stamp its identity into
+`Config/landscapeR/Revision` in that fresh source tree, install it into a clean library, set
 `LANDSCAPER_REVISION` to the same expected identity, then run
 [`reproduce.R`](reproduce.R). The script selects sequential and two-worker
 cluster plans externally, invokes the package preflight and benchmark, and

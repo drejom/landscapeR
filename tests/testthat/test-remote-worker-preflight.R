@@ -36,11 +36,9 @@ test_that("incomplete worker coverage remains a typed diagnostic", {
         landscapeR_worker_preflight_error = identity
     )
     expect_s3_class(condition, "landscapeR_worker_preflight_error")
-    expect_true(all(grepl(
-        "worker-coverage-incomplete",
-        condition$diagnostics$diagnostic,
-        fixed = TRUE
-    )))
+    expect_identical(
+        condition$diagnostics$diagnostic, "plan-worker-count-mismatch"
+    )
 })
 
 test_that("assay transfer benchmark preserves payload across chunk sizes", {
@@ -150,6 +148,15 @@ test_that("cluster plan reproduces execution and payload digests", {
         landscapeR_worker_preflight_error = function(condition) NULL
     )
     skip_if(is.null(revision), "installed package has no revision metadata")
+    partial_condition <- tryCatch(
+        preflight_future_workers(revision, workers = 1L),
+        landscapeR_worker_preflight_error = identity
+    )
+    expect_s3_class(partial_condition, "landscapeR_worker_preflight_error")
+    expect_identical(
+        partial_condition$diagnostics$diagnostic,
+        "plan-worker-count-mismatch"
+    )
     cluster_preflight <- preflight_future_workers(
         revision, workers = 2L
     )

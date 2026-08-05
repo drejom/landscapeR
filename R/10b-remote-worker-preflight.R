@@ -103,6 +103,20 @@ preflight_future_workers <- function(
         )
     }
     workers <- as.integer(workers)
+    active_workers <- future::nbrOfWorkers()
+    if (is.finite(active_workers) && active_workers >= 1L &&
+        workers != as.integer(active_workers)) {
+        diagnostics <- data.frame(
+            requested_workers = workers,
+            active_workers = as.integer(active_workers),
+            diagnostic = "plan-worker-count-mismatch",
+            stringsAsFactors = FALSE
+        )
+        .worker_preflight_error(
+            "future worker preflight must cover every worker in the active plan",
+            diagnostics
+        )
+    }
     expected_versions <- vapply(
         packages,
         function(package) as.character(utils::packageVersion(package)),
