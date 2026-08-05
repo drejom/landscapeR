@@ -74,6 +74,21 @@ test_that("assay transfer benchmark preserves payload across chunk sizes", {
     expect_match(unique(result$package_versions), "future=")
     expect_match(unique(result$benchmarked_at_utc), "Z$")
     expect_identical(unique(result$landscapeR_revision), "test-revision-134")
+    expect_identical(unique(result$revision_status), "recorded")
+})
+
+test_that("unstamped local assay benchmarks record unavailable provenance", {
+    testthat::local_mocked_bindings(
+        landscapeR_revision = function() {
+            landscapeR:::.worker_preflight_error("revision unavailable")
+        },
+        .package = "landscapeR"
+    )
+    result <- benchmark_future_assay(
+        matrix(1:4, nrow = 2L), chunk_sizes = 2L, repetitions = 1L
+    )
+    expect_true(is.na(result$landscapeR_revision))
+    expect_identical(result$revision_status, "unavailable")
 })
 
 test_that("oversized execution inputs remain typed validation failures", {

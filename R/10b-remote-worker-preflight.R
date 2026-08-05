@@ -230,7 +230,9 @@ preflight_future_workers <- function(
 #'   dispatch/collection, result-size measurements, and execution provenance.
 #'   Times are medians in seconds and are operational observations, not
 #'   performance guarantees. Operational failures raise
-#'   `landscapeR_future_benchmark_error` with stage diagnostics attached.
+#'   `landscapeR_future_benchmark_error` with stage diagnostics attached. An
+#'   unstamped local installation remains benchmarkable and records unavailable
+#'   revision provenance; remote worker preflight remains strict.
 #' @export
 benchmark_future_assay <- function(
     assay,
@@ -269,7 +271,11 @@ benchmark_future_assay <- function(
         function(package) as.character(utils::packageVersion(package)),
         character(1L)
     )
-    package_revision <- landscapeR_revision()
+    package_revision <- tryCatch(
+        landscapeR_revision(),
+        landscapeR_worker_preflight_error = function(condition) NA_character_
+    )
+    revision_status <- if (is.na(package_revision)) "unavailable" else "recorded"
     source_digest <- digest::digest(assay, algo = "sha256", serialize = TRUE)
     serialized <- serialize(assay, NULL, version = 3L)
     serialization_times <- replicate(repetitions, unname(system.time(
@@ -341,6 +347,7 @@ benchmark_future_assay <- function(
             ),
             benchmarked_at_utc = benchmarked_at,
             landscapeR_revision = package_revision,
+            revision_status = revision_status,
             stringsAsFactors = FALSE
         )
     })

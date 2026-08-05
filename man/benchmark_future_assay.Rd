@@ -22,7 +22,9 @@ A data frame with serialization, global-export/collection, chunked
 dispatch/collection, result-size measurements, and execution provenance.
 Times are medians in seconds and are operational observations, not
 performance guarantees. Operational failures raise
-\code{landscapeR_future_benchmark_error} with stage diagnostics attached.
+\code{landscapeR_future_benchmark_error} with stage diagnostics attached. An
+unstamped local installation remains benchmarkable and records unavailable
+revision provenance; remote worker preflight remains strict.
 }
 \description{
 Benchmark assay transfer and chunk collection through the current future plan
