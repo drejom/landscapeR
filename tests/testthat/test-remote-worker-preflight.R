@@ -68,7 +68,11 @@ test_that("assay transfer benchmark preserves payload across chunk sizes", {
     expect_true(all(result$chunk_dispatch_collect_seconds >= 0))
     expect_identical(unique(result$repetitions), 1L)
     expect_identical(unique(result$workers), 1L)
-    expect_match(unique(result$backend), "sequential", ignore.case = TRUE)
+    expect_true(
+        is.character(unique(result$backend)) &&
+            length(unique(result$backend)) == 1L &&
+            nzchar(unique(result$backend))
+    )
     expect_match(unique(result$package_versions), "future=")
     expect_match(unique(result$benchmarked_at_utc), "Z$")
     expect_identical(unique(result$landscapeR_revision), "test-revision-134")

@@ -278,7 +278,15 @@ benchmark_future_assay <- function(
         as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"
     )
     plan <- future::plan("list")
-    backend <- if (length(plan)) class(plan[[1L]])[[1L]] else "unknown"
+    backend <- "unknown"
+    if (length(plan)) {
+        strategy_call <- attr(plan[[1L]], "call", exact = TRUE)
+        backend <- if (is.null(strategy_call)) {
+            paste(class(plan[[1L]]), collapse = "/")
+        } else {
+            paste(deparse(strategy_call, width.cutoff = 500L), collapse = " ")
+        }
+    }
     worker_count <- future::nbrOfWorkers()
     package_versions <- vapply(
         c("landscapeR", "future", "future.apply", "digest"),
