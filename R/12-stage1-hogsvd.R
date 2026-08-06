@@ -155,7 +155,10 @@
 }
 
 .run_legacy_hogsvd <- function(strategy, data, strategy_name, mode) {
-    input_hashes <- c(data = digest::digest(data))
+    input_hashes <- c(
+        omic_layers = digest::digest(experiments(data)),
+        sample_map = digest::digest(sampleMap(data))
+    )
     layers <- as.list(experiments(data))
     params <- modifyList(list(center = TRUE, k_components = 6L), strategy@params)
     validated <- .validate_legacy_hogsvd(strategy_name, layers, params)

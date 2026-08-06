@@ -212,7 +212,10 @@ test_that("svd deterministically recovers planted K=1 subspace", {
 test_that("svd records truthful deterministic provenance", {
     std <- synthetic_control(n = 15L, p = 40L, K = 1L,
                              signal = 50, seed = 106L)
-    input_hash <- digest::digest(std)
+    input_hashes <- c(
+        omic_layers = digest::digest(experiments(std)),
+        sample_map = digest::digest(sampleMap(std))
+    )
     ctor <- get_strategy("Decomposer", "svd")
 
     result_1 <- suppressWarnings(decompose(ctor(), std))
@@ -228,7 +231,7 @@ test_that("svd records truthful deterministic provenance", {
     expect_identical(provenance@params$K, 1L)
     expect_identical(provenance@params$center, TRUE)
     expect_identical(provenance@params$k_components, 6L)
-    expect_identical(unname(provenance@input_hashes[["data"]]), input_hash)
+    expect_identical(provenance@input_hashes, input_hashes)
     expect_identical(result_1@value, result_2@value)
 
     forged <- suppressWarnings(decompose(

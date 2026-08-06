@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#118 — unify typed visual evidence and
-total display preparation**.
+**Next task after this change lands:** **#135 — add scheduler-backed durable
+workflow orchestration**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -482,7 +482,7 @@ bodies may state dependencies but do not change this ordering.
 | [#109](https://github.com/drejom/landscapeR/issues/109) | Component-identifiability primary/diagnostic views | complete on merge |
 | [#114](https://github.com/drejom/landscapeR/issues/114) | Legacy Stage 1/2 typed plot evidence | complete on merge |
 | [#117](https://github.com/drejom/landscapeR/issues/117) | Audited architecture — association strategy and evidence | complete on merge |
-| [#118](https://github.com/drejom/landscapeR/issues/118) | Audited architecture — typed visual evidence | active — next |
+| [#118](https://github.com/drejom/landscapeR/issues/118) | Audited architecture — typed visual evidence | complete on merge |
 | [#119](https://github.com/drejom/landscapeR/issues/119) | Audited correctness — multiplicity | complete on merge |
 | [#120](https://github.com/drejom/landscapeR/issues/120) | Audited integrity — strategy registry | complete on merge |
 | [#121](https://github.com/drejom/landscapeR/issues/121) | Audited safety — legacy HO-GSVD | complete on merge |
@@ -491,17 +491,19 @@ bodies may state dependencies but do not change this ordering.
 | [#124](https://github.com/drejom/landscapeR/issues/124) | Audited safety — typed public validation | complete |
 | [#125](https://github.com/drejom/landscapeR/issues/125) | Audited assurance — Stage 1 artifact publication | complete |
 | [#126](https://github.com/drejom/landscapeR/issues/126) | Audited assurance — K=1 identifiability | complete on merge; then resume #128 |
-| [#127](https://github.com/drejom/landscapeR/issues/127) | Audited architecture — core construction and provenance | parked — coordinates with #95 |
+| [#127](https://github.com/drejom/landscapeR/issues/127) | Audited architecture — core construction and provenance | complete on merge |
 | [#128](https://github.com/drejom/landscapeR/issues/128) | Audited visual grammar — canonical palette | complete |
 | [#129](https://github.com/drejom/landscapeR/issues/129) | Audited governance — ADR authority | complete |
 | [#130](https://github.com/drejom/landscapeR/issues/130) | Audited CI — package-test selection | complete |
-| [#131](https://github.com/drejom/landscapeR/issues/131) | Audited governance — contributor safeguards | parked — blocked by #129/#117/#118/#57 |
+| [#131](https://github.com/drejom/landscapeR/issues/131) | Audited governance — contributor safeguards | complete on merge |
 | [#132](https://github.com/drejom/landscapeR/issues/132) | Execution scalability — association futures migration | complete |
-| [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | queued — blocked by #57 |
-| [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | conditional — blocked by #132/#133 |
-| [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | conditional — blocked by #134 |
+| [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | complete |
+| [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | complete on merge |
+| [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | queued — next; blocker complete on #134 merge |
 | [#138](https://github.com/drejom/landscapeR/issues/138) | Cross-cutting governance — incident-backed review ratchet | complete |
 | [#144](https://github.com/drejom/landscapeR/issues/144) | Maintenance — pkgdown stack-imbalance warnings | complete on merge; then resume #123 |
+| [#158](https://github.com/drejom/landscapeR/issues/158) | Candidate decomposition method — rhoPCA | parked — research question |
+| [#159](https://github.com/drejom/landscapeR/issues/159) | Candidate temporal biological dataset — snake brumation | parked — research question |
 <!-- issue-map:end -->
 
 ---

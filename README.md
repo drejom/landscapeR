@@ -42,6 +42,22 @@ library(landscapeR)
 # Single-omic-layer synthetic double-well calibration control
 std <- synthetic_k1_double_well_control(n = 80L, p = 100L, seed = 42L)
 
+# A reproducible run is an explicit, validated value object
+config <- PipelineConfig(
+  dataset = "synthetic-k1-double-well",
+  analysis = analysis_specification(
+    id = "double-well-coordinate",
+    target_field = "x_coord",
+    target_type = "continuous",
+    continuous_direction = "increasing"
+  ),
+  strategies = list(
+    Decomposer = "svd",
+    DynamicsEstimator = "kde_logdensity"
+  ),
+  params = list(svd = list(), kde_logdensity = list())
+)
+
 # Stage 1: explicit registered SVD
 svd_ctor <- get_strategy("Decomposer", "svd")
 std1 <- decompose(svd_ctor(), std)@value
@@ -93,6 +109,16 @@ is the single authoritative run sheet for scope, sequencing, dependencies, and
 the next task. The
 [pkgdown site](https://drejom.github.io/landscapeR/) presents current package
 behavior and evidence, not the work schedule.
+
+Contributors should install the repository safeguards and use the documented
+local/CI parity workflow in
+[`docs/agents/contributor-workflow.md`](docs/agents/contributor-workflow.md).
+The complete documentation authority map is in
+[`docs/README.md`](docs/README.md).
+Remote execution remains user-configured; the package provides a typed worker
+preflight and an operational
+[Gadi deployment guide](docs/agents/gadi-future-deployment.md) without choosing
+scheduler or resource defaults.
 
 ## Reference
 

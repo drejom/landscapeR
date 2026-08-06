@@ -117,27 +117,24 @@ test_that("plot_decomposition omits an angle without matching stored truth", {
     expect_false(grepl("ground-truth angle", scientific_caption(p)))
 })
 
-test_that("plot_spectrum errors on empty StateTransitionData", {
-    # plot_spectrum needs at least one experiment
-    expect_error(plot_spectrum(empty_std()), regexp = NULL)
+test_that("plot_spectrum renders typed unavailability on empty data", {
+    plot <- plot_spectrum(empty_std())
+    expect_s3_class(plot, "ggplot")
+    expect_match(scientific_caption(plot), "No Stage 1 display is")
 })
 
-test_that("plot_decomposition errors when Stage 1 is absent", {
+test_that("plot_decomposition renders typed unavailability without Stage 1", {
     std <- synthetic_control(n = 10L, p = 20L, K = 2L, signal = 30, seed = 1L)
-    expect_error(
-        plot_decomposition(std),
-        "plot evidence is unavailable",
-        class = "landscapeR_plot_evidence_unavailable"
-    )
+    plot <- plot_decomposition(std)
+    expect_s3_class(plot, "ggplot")
+    expect_match(scientific_caption(plot), "No Stage 1 display is")
 })
 
-test_that("plot_components errors when Stage 1 is absent", {
+test_that("plot_components renders typed unavailability without Stage 1", {
     std <- synthetic_control(n = 10L, p = 20L, K = 2L, signal = 30, seed = 1L)
-    expect_error(
-        plot_components(std),
-        "plot evidence is unavailable",
-        class = "landscapeR_plot_evidence_unavailable"
-    )
+    plot <- plot_components(std)
+    expect_s3_class(plot, "ggplot")
+    expect_match(scientific_caption(plot), "No Stage 1 display is")
 })
 
 component_gallery_fixture <- function() {
@@ -319,31 +316,25 @@ test_that("plot_components rejects missing and duplicate metadata fields", {
     cd$condition_copy <- cd$condition
     names(cd)[ncol(cd)] <- "condition"
     colData(duplicate) <- cd
-    expect_error(
-        plot_components(duplicate, colour_by = "condition"),
-        "plot evidence is stale",
-        class = "landscapeR_plot_evidence_unavailable"
-    )
+    plot <- plot_components(duplicate, colour_by = "condition")
+    expect_s3_class(plot, "ggplot")
+    expect_match(scientific_caption(plot), "current scientific result")
 })
 
 test_that("plot_components rejects missing and ambiguous canonical mappings", {
     std <- component_gallery_fixture()
     missing <- std
     missing@sampleMap <- missing@sampleMap[-1L, ]
-    expect_error(
-        plot_components(missing, colour_by = "condition"),
-        "plot evidence is stale",
-        class = "landscapeR_plot_evidence_unavailable"
-    )
+    missing_plot <- plot_components(missing, colour_by = "condition")
+    expect_s3_class(missing_plot, "ggplot")
+    expect_match(scientific_caption(missing_plot), "current scientific result")
 
     ambiguous <- std
     sm <- sampleMap(ambiguous)
     duplicate_row <- sm[1L, ]
     duplicate_row$primary <- sm$primary[2L]
     sampleMap(ambiguous) <- rbind(sm, duplicate_row)
-    expect_error(
-        plot_components(ambiguous, colour_by = "condition"),
-        "plot evidence is stale",
-        class = "landscapeR_plot_evidence_unavailable"
-    )
+    ambiguous_plot <- plot_components(ambiguous, colour_by = "condition")
+    expect_s3_class(ambiguous_plot, "ggplot")
+    expect_match(scientific_caption(ambiguous_plot), "current scientific result")
 })

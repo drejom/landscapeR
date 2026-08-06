@@ -10,7 +10,8 @@ record_provenance(
   contract,
   implementation,
   params = list(),
-  input_hashes = c(data = digest::digest(data)),
+  input_hashes,
+  rng = NULL,
   status = "success"
 )
 }
@@ -25,7 +26,17 @@ record_provenance(
 
 \item{params}{list of parameters used}
 
-\item{input_hashes}{named character vector of pre-stage input hashes}
+\item{input_hashes}{required named character vector of scientifically scoped
+pre-stage input hashes. Callers, rather than this recorder, define which
+inputs constitute the scientific operation. Names must be unique and
+values must be lowercase hexadecimal MD5, SHA-1, SHA-256, or SHA-512
+digests.}
+
+\item{rng}{optional declared RNG identity list. Stochastic callers must
+provide \code{run_seed}, \code{rng_kind}, \code{seed_derivation}, and
+\code{task_id}; multi-stream operations also provide a uniquely named
+integer \code{streams} vector. Ambient RNG state is deliberately not
+captured.}
 
 \item{status}{character \code{"success"} or \code{"failure"}}
 }

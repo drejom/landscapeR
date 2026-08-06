@@ -23,6 +23,186 @@ test_that("calibration selector is split-safe and applies frozen C1 rule", {
     fallback$gate_passed[fallback$candidate == "C1_symmetric_consensus"] <- FALSE
     selection <- select_stage1_candidate(fallback)
     expect_identical(selection$selected_candidate, "C2_block_scaled_svd")
+    execution <- selection$bootstrap_executions$shared_recovery_error
+    expect_s3_class(execution, "landscapeR_repetition_result")
+    expect_identical(execution$account$n_requested, 10000L)
+    expect_identical(execution$account$n_completed, 10000L)
+    expect_identical(execution$account$n_failed, 0L)
+    expect_identical(execution$provenance$compute_tier, "evidence")
+    expect_identical(execution$provenance$run_seed, 11001L)
+    expect_true(all(selection$bootstrap_measurements[[1L]] > 0))
+})
+
+test_that("Stage 1 summary bootstraps are invariant across future plans", {
+    previous <- future::plan()
+    on.exit(future::plan(previous), add = TRUE)
+    calibration <- stage1_evidence_fixture("calibration")
+    exact <- landscapeR:::.stage1_exact_rows(calibration)
+    rules <- stage1_benchmark_manifest()$selection_rules
+
+    strata <- split(exact, exact$stratum_digest)
+    paired <- lapply(strata, function(stratum) {
+        c1 <- stratum[
+            stratum$candidate == "C1_symmetric_consensus",
+            c("seed", "shared_recovery_error"),
+            drop = FALSE
+        ]
+        c2 <- stratum[
+            stratum$candidate == "C2_block_scaled_svd",
+            c("seed", "shared_recovery_error"),
+            drop = FALSE
+        ]
+        c1 <- c1[order(c1$seed), , drop = FALSE]
+        c2 <- c2[order(c2$seed), , drop = FALSE]
+        c1$shared_recovery_error - c2$shared_recovery_error
+    })
+    setup_rng(rules$bootstrap_seed)
+    legacy_paired <- vapply(seq_len(rules$bootstrap_resamples), function(i) {
+        mean(vapply(paired, function(values) {
+            mean(sample(values, length(values), replace = TRUE))
+        }, numeric(1L)))
+    }, numeric(1L))
+    legacy_paired_interval <- stats::quantile(
+        legacy_paired,
+        probs = c(0.025, 0.975),
+        names = FALSE,
+        type = 7L
+    )
+    median_values <- c(0.1, 0.2, 0.3, 0.4)
+    setup_rng(11002L)
+    legacy_medians <- vapply(seq_len(10000L), function(i) {
+        stats::median(sample(
+            median_values,
+            length(median_values),
+            replace = TRUE
+        ))
+    }, numeric(1L))
+    legacy_median_interval <- stats::quantile(
+        legacy_medians,
+        probs = c(0.025, 0.975),
+        names = FALSE,
+        type = 7L
+    )
+
+    future::plan(future::sequential)
+    paired_sequential <- landscapeR:::.stage1_paired_bootstrap(
+        exact,
+        "shared_recovery_error",
+        rules
+    )
+    median_sequential <- landscapeR:::.stage1_bootstrap_median_ci(
+        median_values,
+        11002L,
+        list(bootstrap_resamples = 10000L),
+        "test-stratum:shared_recovery_error"
+    )
+    paired_nested <- landscapeR:::.stage1_paired_bootstrap(
+        exact,
+        "shared_recovery_error",
+        rules,
+        sequential_internal = TRUE
+    )
+    median_nested <- landscapeR:::.stage1_bootstrap_median_ci(
+        median_values,
+        11002L,
+        list(bootstrap_resamples = 10000L),
+        "test-stratum:shared_recovery_error",
+        sequential_internal = TRUE
+    )
+    expect_identical(paired_sequential$execution$account$n_requested, 10000L)
+    expect_identical(median_sequential$execution$account$n_requested, 10000L)
+    expect_identical(paired_sequential$execution$account$n_failed, 0L)
+    expect_identical(median_sequential$execution$account$n_failed, 0L)
+    expect_identical(paired_sequential$interval, legacy_paired_interval)
+    expect_identical(median_sequential$interval, legacy_median_interval)
+    expect_identical(paired_nested, paired_sequential)
+    expect_identical(median_nested, median_sequential)
+    expect_identical(
+        paired_sequential$execution$provenance$seed_derivation,
+        "legacy-sequential-stream-v1"
+    )
+    expect_identical(paired_sequential$execution$provenance$run_seed, 11001L)
+    expect_identical(median_sequential$execution$provenance$run_seed, 11002L)
+    expect_match(
+        paired_sequential$execution$provenance$task_ids[[1L]],
+        "^stage1-calibration:shared_recovery_error:paired-bootstrap:00001$"
+    )
+    expect_match(
+        median_sequential$execution$provenance$task_ids[[10000L]],
+        "^stage1-holdout:test-stratum:shared_recovery_error:median-bootstrap:10000$"
+    )
+
+    skip_if(
+        pkgload::is_dev_package("landscapeR"),
+        "multisession requires the installed-package check context"
+    )
+    available <- suppressWarnings(tryCatch({
+        future::plan(future::multisession, workers = 2L)
+        identical(future::value(future::future(TRUE)), TRUE)
+    }, error = function(condition) FALSE))
+    if (!available) {
+        if (nzchar(Sys.getenv("CI"))) {
+            testthat::fail("CI must provide a working multisession backend")
+        }
+        testthat::skip("multisession workers are unavailable in this test context")
+    }
+    paired_parallel <- landscapeR:::.stage1_paired_bootstrap(
+        exact,
+        "shared_recovery_error",
+        rules,
+        future_scheduling = 0.5
+    )
+    median_parallel <- landscapeR:::.stage1_bootstrap_median_ci(
+        median_values,
+        11002L,
+        list(bootstrap_resamples = 10000L),
+        "test-stratum:shared_recovery_error",
+        future_scheduling = 0.5
+    )
+
+    expect_identical(paired_parallel, paired_sequential)
+    expect_identical(median_parallel, median_sequential)
+})
+
+test_that("Stage 1 public evidence workflows expose nested-future control", {
+    for (fn in list(
+        select_stage1_candidate,
+        assess_stage1_holdout,
+        execute_stage1_benchmark_full
+    )) {
+        expect_true(all(c(
+            "sequential_internal",
+            "future_scheduling"
+        ) %in% names(formals(fn))))
+    }
+})
+
+test_that("Stage 1 summary failures retain typed execution accounting", {
+    repetition <- landscapeR:::.future_numeric_repetition(
+        tasks = list(1L),
+        task_ids = "stage1-summary-failure:00001",
+        run_seed = 11001L,
+        compute_tier = "evidence",
+        worker = function(task, task_id, task_stream) NA_real_,
+        failure_code = "stage1-summary-test-failure"
+    )
+    condition <- tryCatch(
+        landscapeR:::.stage1_require_summary_completion(
+            repetition,
+            "test summary"
+        ),
+        stage1_evidence_error = identity
+    )
+
+    expect_s3_class(condition, "stage1_evidence_error")
+    expect_s3_class(condition$execution, "landscapeR_repetition_result")
+    expect_identical(condition$execution$account$n_requested, 1L)
+    expect_identical(condition$execution$account$n_completed, 0L)
+    expect_identical(condition$execution$account$n_failed, 1L)
+    expect_identical(
+        condition$execution$account$failure_codes,
+        "stage1-summary-test-failure"
+    )
 })
 
 test_that("expected typed negative control is an eligible passed gate", {
@@ -43,6 +223,19 @@ test_that("holdout assessment rejects other splits and reports frozen medians", 
     expect_true(report$all_gates_passed)
     expect_true(report$thresholds_passed)
     expect_identical(report$decision, "accepted")
+    expect_true(length(report$bootstrap_executions) > 0L)
+    expect_true(all(vapply(
+        report$bootstrap_executions,
+        function(execution) execution$account$n_requested == 10000L &&
+            execution$account$n_completed == 10000L &&
+            execution$account$n_failed == 0L,
+        logical(1L)
+    )))
+    expect_true(all(vapply(
+        report$bootstrap_measurements,
+        function(measurements) all(measurements > 0),
+        logical(1L)
+    )))
     expect_error(assess_stage1_holdout("C1_symmetric_consensus",
         stage1_evidence_fixture("calibration")[1, , drop = FALSE]), class = "stage1_evidence_error")
 })

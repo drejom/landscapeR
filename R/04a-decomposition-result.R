@@ -81,61 +81,56 @@ DecompositionResult <- function(V_star, sigma, coords, warnings = character(),
     obj
 }
 
+.require_decomposition_result <- function(x, caller) {
+    if (!is(x, "DecompositionResult")) {
+        .stop_landscapeR_validation(sprintf(
+            "%s requires a DecompositionResult; got class '%s'",
+            caller,
+            class(x)[[1L]]
+        ))
+    }
+    x
+}
+
 #' @rdname DecompositionResult
 #' @export
 dr_V_star   <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_V_star() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@V_star
+    .require_decomposition_result(x, "dr_V_star()")@V_star
 }
 #' @rdname DecompositionResult
 #' @export
 dr_sigma    <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_sigma() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@sigma
+    .require_decomposition_result(x, "dr_sigma()")@sigma
 }
 #' @rdname DecompositionResult
 #' @export
 dr_coords   <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_coords() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@coords
+    .require_decomposition_result(x, "dr_coords()")@coords
 }
 #' @rdname DecompositionResult
 #' @export
 dr_warnings <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_warnings() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@warnings
+    .require_decomposition_result(x, "dr_warnings()")@warnings
 }
 #' @rdname DecompositionResult
 #' @export
 dr_V_k      <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_V_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@V_k
+    .require_decomposition_result(x, "dr_V_k()")@V_k
 }
 #' @rdname DecompositionResult
 #' @export
 dr_sigma_k  <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_sigma_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@sigma_k
+    .require_decomposition_result(x, "dr_sigma_k()")@sigma_k
 }
 #' @rdname DecompositionResult
 #' @export
 dr_coords_k <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_coords_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@coords_k
+    .require_decomposition_result(x, "dr_coords_k()")@coords_k
 }
 #' @rdname DecompositionResult
 #' @export
 dr_k        <- function(x) {
-    if (!is(x, "DecompositionResult"))
-        stop("dr_k() requires a DecompositionResult; got class '", class(x)[[1L]], "'")
-    x@k
+    .require_decomposition_result(x, "dr_k()")@k
 }
 
 #' @rdname shared_axis

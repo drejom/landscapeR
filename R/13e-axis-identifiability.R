@@ -572,7 +572,7 @@ utils::globalVariables(c(
         ))
     }
     decomposed <- decomposition@value
-    replicate_decomposition <- metadata(decomposed)$stage1
+    replicate_decomposition <- stage_artifact(decomposed, "stage1")
     replicate_loadings <- dr_V_k(replicate_decomposition)
     alignment <- .match_component_loadings(
         reference_loadings,
@@ -1075,7 +1075,7 @@ assess_component_identifiability <- function(
         )
     }
     discovery <- discovery_result@value
-    reference_decomposition <- metadata(discovery)$stage1
+    reference_decomposition <- stage_artifact(discovery, "stage1")
     reference_digest <- .atlas_state_space_digest(reference_decomposition)
     if (!identical(
         reference_digest,

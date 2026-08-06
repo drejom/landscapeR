@@ -18,17 +18,6 @@
     compute_tier
 }
 
-.validate_run_seed <- function(run_seed) {
-    if (!is.numeric(run_seed) || length(run_seed) != 1L || is.na(run_seed) ||
-        !is.finite(run_seed) || run_seed < 0 ||
-        run_seed > .Machine$integer.max || run_seed != floor(run_seed)) {
-        .stop_landscapeR_validation(
-            "run seed must be one finite non-negative integer"
-        )
-    }
-    as.integer(run_seed)
-}
-
 .derive_task_stream <- function(run_seed, task_id) {
     run_seed <- .validate_run_seed(run_seed)
     if (!.is_scalar_nonempty_text(task_id)) {
@@ -51,7 +40,8 @@
 }
 
 .with_rng_stream <- function(stream, operation) {
-    if (!is.integer(stream) || length(stream) != 7L || stream[[1L]] != 407L) {
+    if (!is.integer(stream) || length(stream) != 7L ||
+            stream[[1L]] %% 10000L != 407L) {
         .stop_landscapeR_validation("RNG stream must be a valid L'Ecuyer-CMRG state")
     }
     previous_kind <- RNGkind()
@@ -84,6 +74,31 @@
     }
 }
 
+.legacy_sequential_task_streams <- function(
+    run_seed,
+    tasks,
+    task_ids,
+    legacy_stream_advance
+) {
+    previous_kind <- RNGkind()
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (had_seed) previous_seed <- get(".Random.seed", envir = .GlobalEnv)
+    on.exit({
+        do.call(RNGkind, as.list(previous_kind))
+        if (had_seed) {
+            assign(".Random.seed", previous_seed, envir = .GlobalEnv)
+        } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+            rm(".Random.seed", envir = .GlobalEnv)
+        }
+    }, add = TRUE)
+    setup_rng(run_seed)
+    lapply(seq_along(tasks), function(i) {
+        stream <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+        legacy_stream_advance(tasks[[i]], task_ids[[i]])
+        stream
+    })
+}
+
 .future_repetition <- function(
     tasks,
     task_ids,
@@ -91,7 +106,8 @@
     compute_tier,
     worker,
     sequential_internal = FALSE,
-    future_scheduling = NULL
+    future_scheduling = NULL,
+    legacy_stream_advance = NULL
 ) {
     compute_tier <- .validate_compute_tier(compute_tier)
     run_seed <- .validate_run_seed(run_seed)
@@ -115,10 +131,27 @@
             "future_scheduling must be NULL or one non-negative number"
         )
     }
-    task_streams <- lapply(
-        task_ids,
-        function(task_id) .derive_task_stream(run_seed, task_id)
-    )
+    if (!is.null(legacy_stream_advance) &&
+            !is.function(legacy_stream_advance)) {
+        .stop_landscapeR_validation(
+            "legacy_stream_advance must be NULL or a function"
+        )
+    }
+    if (is.null(legacy_stream_advance)) {
+        task_streams <- lapply(
+            task_ids,
+            function(task_id) .derive_task_stream(run_seed, task_id)
+        )
+        seed_derivation <- .repetition_seed_scheme
+    } else {
+        task_streams <- .legacy_sequential_task_streams(
+            run_seed,
+            tasks,
+            task_ids,
+            legacy_stream_advance
+        )
+        seed_derivation <- "legacy-sequential-stream-v1"
+    }
     stream_keys <- vapply(task_streams, paste, collapse = ":", character(1L))
     if (anyDuplicated(stream_keys)) {
         .stop_landscapeR_validation(
@@ -172,7 +205,7 @@
         compute_tier = compute_tier,
         run_seed = run_seed,
         rng_kind = .repetition_rng_kind,
-        seed_derivation = .repetition_seed_scheme,
+        seed_derivation = seed_derivation,
         task_ids = task_ids,
         task_streams = task_streams
     )
@@ -195,7 +228,8 @@
     worker,
     sequential_internal = FALSE,
     future_scheduling = NULL,
-    failure_code = "non-estimable-refit"
+    failure_code = "non-estimable-refit",
+    legacy_stream_advance = NULL
 ) {
     execution <- .future_repetition(
         tasks = tasks,
@@ -212,7 +246,8 @@
             }
         },
         sequential_internal = sequential_internal,
-        future_scheduling = future_scheduling
+        future_scheduling = future_scheduling,
+        legacy_stream_advance = legacy_stream_advance
     )
     list(
         values = vapply(execution$values, function(value) {

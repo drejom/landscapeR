@@ -81,7 +81,7 @@ test_that("a new Decomposer strategy that skips validate_boundary still gets bou
     removeClass("FakeDecomposerForTest")
 })
 
-test_that("a new Decomposer strategy that skips validate_boundary still runs for valid data", {
+test_that("a successful Decomposer must publish its Stage 1 artifact", {
     setClass("FakeDecomposerForTest2",
         contains = "Decomposer",
         representation(params = "list"))
@@ -100,8 +100,46 @@ test_that("a new Decomposer strategy that skips validate_boundary still runs for
 
     expect_true(called)
     expect_s4_class(result, "StageResult")
-    expect_equal(result@status, "success")
+    expect_equal(result@status, "failure")
+    expect_match(result@reason, "stage1 artifact is not available")
 
     removeMethod(".decompose_impl", signature("FakeDecomposerForTest2", "StateTransitionData"))
     removeClass("FakeDecomposerForTest2")
+})
+
+test_that("a successful DynamicsEstimator must publish its Stage 2 artifact", {
+    setClass(
+        "IncompleteDynamicsEstimatorForTest",
+        contains = "DynamicsEstimator"
+    )
+    setMethod(
+        "supported_sampling_designs",
+        "IncompleteDynamicsEstimatorForTest",
+        function(strategy) "cross_sectional"
+    )
+    setMethod(
+        ".estimate_dynamics_impl",
+        signature("IncompleteDynamicsEstimatorForTest", "StateTransitionData"),
+        function(strategy, data, ...) stage_success(data)
+    )
+    on.exit({
+        removeMethod(
+            ".estimate_dynamics_impl",
+            signature("IncompleteDynamicsEstimatorForTest", "StateTransitionData")
+        )
+        removeMethod(
+            "supported_sampling_designs",
+            "IncompleteDynamicsEstimatorForTest"
+        )
+        removeClass("IncompleteDynamicsEstimatorForTest")
+    }, add = TRUE)
+
+    result <- estimate_dynamics(
+        new("IncompleteDynamicsEstimatorForTest"),
+        potential_with_stage1(n = 20L, seed = 128L)
+    )
+
+    expect_s4_class(result, "StageResult")
+    expect_identical(result@status, "failure")
+    expect_match(result@reason, "stage2 artifact is not available")
 })

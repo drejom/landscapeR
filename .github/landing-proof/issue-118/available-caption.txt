@@ -1,0 +1,7 @@
+Singular-value spectra. Molecular layers layer1, layer2. Lines and points show ordered
+raw-assay singular values for layer traces: layer1, layer2; The dashed horizontal line marks
+the BBP reference at 6.62. The analysis unit is independent biological observation; the design
+is cross_sectional; the estimand is the raw, uncentred assay singular-value spectrum of each
+molecular layer. The BBP line uses (n x p)^(1/4) from the first layer under a spiked
+white-noise model; it is a model-based detectability reference, not empirical proof. Position
+relative to this reference does not establish recovery or biological validity of an axis.
