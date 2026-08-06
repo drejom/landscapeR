@@ -278,14 +278,23 @@ benchmark_future_assay <- function(
         as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"
     )
     plan <- future::plan("list")
-    backend <- "unknown"
-    if (length(plan)) {
-        strategy_call <- attr(plan[[1L]], "call", exact = TRUE)
-        backend <- if (is.null(strategy_call)) {
-            paste(class(plan[[1L]]), collapse = "/")
-        } else {
-            paste(deparse(strategy_call, width.cutoff = 500L), collapse = " ")
-        }
+    active_backend <- tryCatch(
+        future::plan("backend"),
+        error = function(condition) NULL
+    )
+    backend_classes <- if (is.null(active_backend)) character() else {
+        setdiff(class(active_backend), c("FutureBackend", "environment"))
+    }
+    backend <- if (length(backend_classes)) {
+        backend_classes[[1L]]
+    } else if (length(plan)) {
+        paste(class(plan[[1L]]), collapse = "/")
+    } else "unknown"
+    strategy_call <- if (length(plan)) {
+        attr(plan[[1L]], "call", exact = TRUE)
+    } else NULL
+    backend_call <- if (is.null(strategy_call)) NA_character_ else {
+        paste(deparse(strategy_call, width.cutoff = 500L), collapse = " ")
     }
     worker_count <- future::nbrOfWorkers()
     package_versions <- vapply(
@@ -361,6 +370,7 @@ benchmark_future_assay <- function(
             source_digest = source_digest, collected_digest = collected_digest,
             identical = identical(source_digest, collected_digest),
             repetitions = repetitions, backend = backend,
+            backend_call = backend_call,
             workers = worker_count, r_version = R.version.string,
             platform = R.version$platform,
             package_versions = paste(

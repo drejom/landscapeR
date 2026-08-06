@@ -68,11 +68,8 @@ test_that("assay transfer benchmark preserves payload across chunk sizes", {
     expect_true(all(result$chunk_dispatch_collect_seconds >= 0))
     expect_identical(unique(result$repetitions), 1L)
     expect_identical(unique(result$workers), 1L)
-    expect_true(
-        is.character(unique(result$backend)) &&
-            length(unique(result$backend)) == 1L &&
-            nzchar(unique(result$backend))
-    )
+    expect_identical(unique(result$backend), "SequentialFutureBackend")
+    expect_match(unique(result$backend_call), "sequential", ignore.case = TRUE)
     expect_match(unique(result$package_versions), "future=")
     expect_match(unique(result$benchmarked_at_utc), "Z$")
     expect_identical(unique(result$landscapeR_revision), "test-revision-134")
@@ -178,4 +175,8 @@ test_that("cluster plan reproduces execution and payload digests", {
         cluster_payload$source_digest, sequential_payload$source_digest
     )
     expect_true(all(cluster_payload$identical))
+    expect_false(identical(
+        cluster_payload$backend, sequential_payload$backend
+    ))
+    expect_match(unique(cluster_payload$backend), "cluster", ignore.case = TRUE)
 })
