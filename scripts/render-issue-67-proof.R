@@ -113,6 +113,12 @@ writeLines(
 )
 
 effects <- atlas_associations(calibration$atlas)
+raw_effects <- effects[
+    effects$evidence_variant == "repeated-time-course-unadjusted",
+    c("component", "estimate", "effect_magnitude", "proposal_eligible",
+      "diagnostic", "evidence_status"),
+    drop = FALSE
+]
 effects <- effects[
     effects$evidence_variant == "repeated-time-course-adjusted",
     c("component", "estimate", "effect_magnitude", "proposal_eligible",
@@ -122,6 +128,25 @@ effects <- effects[
 write.table(
     effects,
     file.path(output_dir, "adjusted-component-effects.tsv"),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+)
+write.table(
+    raw_effects,
+    file.path(output_dir, "unadjusted-component-effects.tsv"),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+)
+batch_structure <- as.data.frame(with(
+    design,
+    table(condition = condition, batch = batch)
+))
+names(batch_structure)[[3L]] <- "n_observations"
+write.table(
+    batch_structure,
+    file.path(output_dir, "batch-structure.tsv"),
     sep = "\t",
     quote = FALSE,
     row.names = FALSE

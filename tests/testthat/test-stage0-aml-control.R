@@ -139,6 +139,20 @@ test_that("AML-shaped K=1 control validates public inputs", {
         "at least 2",
         class = "landscapeR_validation_error"
     )
+    confirmatory <- landscapeR:::.aml_k1_calibration_config()
+    confirmatory@analysis@claim_intent <- "confirmatory"
+    expect_error(
+        k1_aml_longitudinal_calibration(config = confirmatory),
+        "exploratory",
+        class = "landscapeR_validation_error"
+    )
+    unadjusted <- landscapeR:::.aml_k1_calibration_config()
+    unadjusted@analysis@nuisance_fields <- character()
+    expect_error(
+        k1_aml_longitudinal_calibration(config = unadjusted),
+        "batch",
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("default AML weeks retain packaged-source provenance", {

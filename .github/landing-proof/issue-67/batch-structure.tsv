@@ -1,0 +1,5 @@
+condition	batch	n_observations
+CTL	run_a	66
+CM	run_a	66
+CTL	run_b	66
+CM	run_b	66

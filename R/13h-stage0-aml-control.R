@@ -341,6 +341,10 @@ aml_longitudinal_control_truth <- function(x) {
             "condition contrast"
         ))
     }
+    if (!identical(specification@claim_intent, "exploratory"))
+        return("config analysis claim_intent must remain exploratory")
+    if (!identical(specification@nuisance_fields, "batch"))
+        return("config analysis must declare batch as its nuisance field")
     NULL
 }
 

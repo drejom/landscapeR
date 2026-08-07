@@ -40,6 +40,18 @@ The planted disease-divergence component is nominated ahead of the dominant
 collection-time component. Components 3–6 are retained as non-estimable noise
 comparisons in `proposal-ranking.tsv`, rather than silently removed.
 
+| Component | Unadjusted effect | Batch-adjusted effect |
+|---:|---:|---:|
+| PC1 | 0.0240 | 0.0240 |
+| PC2 | 4.3675 | 4.3675 |
+
+Raw and adjusted repeated-time-course associations remain separately
+inspectable in `unadjusted-component-effects.tsv` and
+`adjusted-component-effects.tsv`. They agree here because the planted nuisance
+is balanced: `batch-structure.tsv` records 66 observations in every
+condition-by-batch cell (`CTL`/`CM` by `run_a`/`run_b`). The adjustment is still
+executed and retained rather than inferred unnecessary from the balance.
+
 | Target stability quantity | Observed fraction or mean |
 |---|---:|
 | Matched across refits | 1.000 |
