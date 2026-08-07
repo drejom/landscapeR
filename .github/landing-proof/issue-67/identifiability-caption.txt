@@ -1,0 +1,17 @@
+Component-axis identifiability under design-preserving resampling. Axis identifiability was
+assessed for the CM versus CTL contrast using rna data from the dataset-c34e7846ae83. The
+analysis used repeated observations of complete subject trajectories. Observed time was
+recorded as weeks in weeks. Repeated observations were grouped by mouse_id. The analysis
+adjusted for batch. All 49 bootstrap replicates completed the full assessment. Resampling used
+a stratified bootstrap of complete subject trajectories within conditions. (A) Axis recurrence
+is the proportion of resamples assigned to the corresponding discovery axis. (B) Mean absolute
+feature-loading cosine similarity measures agreement between matched resampled and discovery
+axes; values approaching one indicate closer agreement. (C) Assignment margins are shown for
+individual resamples; smaller values indicate greater ambiguity between competing one-to-one
+assignments. (D) The largest principal angle is shown for each enclosing subspace dimension;
+smaller angles indicate greater subspace recurrence. Red triangles denote the nominated
+component and black circles denote the remaining candidate components in panels A-C. Components
+were matched jointly by maximizing total absolute feature-loading cosine similarity. No
+stability threshold was applied. The nominated axis therefore remains exploratory and must not
+be interpreted as stably recovered. These results describe numerical identifiability and do
+not, by themselves, establish biological validity.

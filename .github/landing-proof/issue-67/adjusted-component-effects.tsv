@@ -1,0 +1,7 @@
+component	estimate	effect_magnitude	proposal_eligible	diagnostic	evidence_status
+1	0.0239701167519806	0.0239701167519806	TRUE		estimable-exploratory-only
+2	-4.36749642667168	4.36749642667168	TRUE		estimable-exploratory-only
+3	NA	NA	TRUE	singular-random-effects-covariance	estimable-exploratory-only
+4	NA	NA	TRUE	singular-random-effects-covariance	estimable-exploratory-only
+5	NA	NA	TRUE	singular-random-effects-covariance	estimable-exploratory-only
+6	NA	NA	TRUE	singular-random-effects-covariance	estimable-exploratory-only

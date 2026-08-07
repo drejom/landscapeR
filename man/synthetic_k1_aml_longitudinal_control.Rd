@@ -6,7 +6,7 @@
 \usage{
 synthetic_k1_aml_longitudinal_control(
   subjects_per_condition = 12L,
-  times = c(0, 6, 10, 14.6, 19, 23.4, 27.6, 31.6, 34.7, 38.7, 43.6),
+  times = .aml_k1_default_times(),
   p = 100L,
   noise_sd = 0.03,
   time_signal = 8,

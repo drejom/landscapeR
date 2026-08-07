@@ -6,7 +6,7 @@
 \usage{
 k1_aml_longitudinal_calibration(
   subjects_per_condition = 12L,
-  times = c(0, 6, 10, 14.6, 19, 23.4, 27.6, 31.6, 34.7, 38.7, 43.6),
+  times = .aml_k1_default_times(),
   p = 100L,
   noise_sd = 0.03,
   time_signal = 8,
@@ -14,7 +14,8 @@ k1_aml_longitudinal_calibration(
   dropout_subjects = character(),
   seed = 42L,
   n_resamples = 9L,
-  n_permutations = 0L
+  n_permutations = 0L,
+  config = NULL
 )
 }
 \arguments{
@@ -38,6 +39,9 @@ removed}
 \item{n_resamples}{number of biological-unit bootstrap refits}
 
 \item{n_permutations}{number of search-aware permutations}
+
+\item{config}{optional code{PipelineConfig}; defaults to the disclosed SVD
+and KDE configuration for this control}
 }
 \value{
 named calibration diagnostics with the generated control, atlas,

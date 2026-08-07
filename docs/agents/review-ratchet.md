@@ -119,6 +119,20 @@ alone leaves the scientific decision unchanged.
 **Incident:** issue #135 review found that the elapsed-time ratio differed by
 execution backend and was also used as a candidate-selection gate.
 
+### RR-012 — Build and inspect pull-request bodies from the repository template
+
+Before opening or updating a pull request, read
+`.github/pull_request_template.md`, populate every required section from
+committed evidence, and inspect the rendered body on GitHub. Do not compose a
+free-form substitute from memory, claim proof that is not linked, or defer an
+obvious missing-proof failure to CI. When proof is required, the rendering
+script, inspected artifacts, cold-reader conclusion, and reproduction command
+must already exist before the pull request is presented as ready for review.
+
+**Incident:** [PR #167](https://github.com/drejom/landscapeR/pull/167) was
+opened with a malformed free-form body that claimed rendered proof while no
+proof artifact was committed or visible.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A

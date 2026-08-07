@@ -19,6 +19,16 @@ test_that("AML-shaped K=1 control is repeated, deterministic, and provenanced", 
     expect_equal(dim(assay(experiments(first)[[1L]])), c(30L, 40L))
     expect_identical(metadata(first)$aml_k1_control$target_component, 2L)
     expect_identical(metadata(first)$aml_k1_control$nuisance_component, 1L)
+    expect_identical(metadata(first)$aml_k1_control$time_source,
+                     "user-supplied")
+    expect_equal(
+        dim(metadata(first)$aml_k1_control$planted_sample_scores),
+        c(40L, 2L)
+    )
+    expect_identical(
+        colnames(metadata(first)$aml_k1_control$planted_sample_scores),
+        c("collection_time", "condition_by_time")
+    )
     expect_identical(
         metadata(first)$aml_k1_control$claim_status,
         "non_evidentiary_calibration"
@@ -46,7 +56,7 @@ test_that("AML-shaped K=1 calibration uses production contracts", {
     expect_s4_class(calibration$proposal, "ComponentProposal")
     expect_identical(calibration$proposal@recommended_component, 2L)
     expect_s4_class(calibration$identifiability, "ComponentProposal")
-    identifiability <- proposal_identifiability(calibration$identifiability)
+    identifiability <- calibration$identifiability_evidence
     expect_identical(identifiability$n_requested, 2L)
     expect_gte(identifiability$n_completed, 1L)
     effects <- atlas_associations(calibration$atlas)
@@ -62,6 +72,17 @@ test_that("AML-shaped K=1 calibration uses production contracts", {
     expect_s4_class(calibration$stage2, "StageResult")
     expect_identical(calibration$stage2@status, "failure")
     expect_match(calibration$stage2@reason, "sampling design 'longitudinal'")
+    expect_identical(calibration$config@strategies[["Decomposer"]], "svd")
+    expect_identical(
+        calibration$config@strategies[["DynamicsEstimator"]],
+        "kde_logdensity"
+    )
+    expect_equal(calibration$recovery$component, c(1L, 2L))
+    expect_true(all(is.finite(calibration$recovery$absolute_loading_cosine)))
+    expect_true(all(is.finite(
+        calibration$recovery$subspace_principal_angle_degrees
+    )))
+    expect_true(all(calibration$recovery$absolute_loading_cosine > 0.95))
     expect_s3_class(plot_component_identifiability(
         calibration$identifiability
     ), "ggplot")
@@ -79,5 +100,43 @@ test_that("AML-shaped K=1 control validates public inputs", {
     expect_error(
         synthetic_k1_aml_longitudinal_control(dropout_subjects = NA_character_),
         class = "landscapeR_validation_error"
+    )
+    expect_error(
+        synthetic_k1_aml_longitudinal_control(
+            dropout_subjects = "not_a_mouse"
+        ),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        synthetic_k1_aml_longitudinal_control(
+            time_signal = 3, disease_signal = 3
+        ),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        synthetic_k1_aml_longitudinal_control(
+            seed = .Machine$integer.max - 2L
+        ),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        k1_aml_longitudinal_calibration(n_resamples = 1.5),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        k1_aml_longitudinal_calibration(n_permutations = -1L),
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("default AML weeks retain packaged-source provenance", {
+    control <- synthetic_k1_aml_longitudinal_control(
+        subjects_per_condition = 3L,
+        p = 10L,
+        seed = 6703L
+    )
+    expect_identical(
+        metadata(control)$aml_k1_control$time_source,
+        "inst/extdata/gse133642-sample-weeks.csv"
     )
 })

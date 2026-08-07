@@ -1,0 +1,56 @@
+# Issue #67 visual landing proof
+
+**Claim status:** calibration-only. These renders show that the AML-shaped
+longitudinal control exercises the intended package contracts. They do not
+freeze acceptance thresholds, consume the independent acceptance seeds from
+issue #51, or close issue #67.
+
+## Recovered components
+
+| Condition encoding | Collection-time encoding |
+|---|---|
+| ![Two recovered components coloured by condition](components_by_condition.png) | ![Two recovered components coloured by collection time](components_by_time.png) |
+
+The same two recovered components are shown with different declared metadata
+encodings. Condition separates primarily on the non-dominant planted target,
+while collection time changes primarily along the dominant nuisance direction.
+The adjacent `*-caption.txt` files contain the exact separate captions returned
+by `scientific_caption()`.
+
+## Longitudinal structure and identifiability
+
+| Repeated synthetic mice | Resampling evidence |
+|---|---|
+| ![Recovered repeated-mouse trajectories](recovered-trajectories.png) | ![Primary component-identifiability evidence](identifiability.png) |
+
+The trajectory render makes the repeated-subject design visible: every line is
+one synthetic mouse, with 12 CTL and 12 CM mice sampled at the irregular
+AML-informed weeks. The identifiability surface is the package's actual primary
+view after 49 complete-subject bootstrap refits; its exact dynamic caption is
+stored in `identifiability-caption.txt`.
+
+## Numerical and capability evidence
+
+`adjusted-component-effects.tsv` records the repeated-time-course adjusted
+effects used by the proposal. `loading-recovery.tsv` and
+`subspace-recovery.tsv` compare the recovered loadings and enclosing subspace
+with the disclosed planted truth without applying an acceptance threshold.
+`stage2-boundary.txt` records the typed refusal to apply the cross-sectional KDE
+landscape estimator to longitudinal observations. `calibration-result.rds`
+retains the complete typed result and provenance.
+
+## Cold-reader conclusion
+
+The package can generate a deterministic repeated-mouse AML-shaped control,
+recover and distinguish its dominant collection-time direction from its weaker
+condition-by-time direction, rank the declared biological effect, expose axis
+and subspace recurrence, and stop at the declared Stage 2 capability boundary.
+This is a visible implementation and calibration check, not scientific
+acceptance evidence.
+
+## Reproduction
+
+```sh
+Rscript scripts/render-issue-67-proof.R
+Rscript -e 'devtools::test(filter = "stage0-aml-control")'
+```

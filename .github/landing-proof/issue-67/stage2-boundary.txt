@@ -1,0 +1,3 @@
+Status: failure
+Reason: [estimate_dynamics] sampling design 'longitudinal' is not supported by KdeLogDensityEstimator. Supported: cross_sectional. Declare a compatible design with declare_sampling_design().
+Claim status: non_evidentiary_calibration
