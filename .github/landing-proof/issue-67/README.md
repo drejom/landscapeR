@@ -17,17 +17,30 @@ while collection time changes primarily along the dominant nuisance direction.
 The adjacent `*-caption.txt` files contain the exact separate captions returned
 by `scientific_caption()`.
 
-## Longitudinal structure and identifiability
+## Longitudinal structure and known-truth recovery
 
-| Repeated synthetic mice | Resampling evidence |
+| Repeated synthetic mice | Target and nuisance recovery |
 |---|---|
-| ![Recovered repeated-mouse trajectories](recovered-trajectories.png) | ![Primary component-identifiability evidence](identifiability.png) |
+| ![Recovered repeated-mouse trajectories](recovered-trajectories.png) | ![Known-truth calibration recovery map](calibration-recovery-map.png) |
 
 The trajectory render makes the repeated-subject design visible: every line is
 one synthetic mouse, with 12 CTL and 12 CM mice sampled at the irregular
-AML-informed weeks. The identifiability surface is the package's actual primary
-view after 49 complete-subject bootstrap refits; its exact dynamic caption is
-stored in `identifiability-caption.txt`.
+AML-informed weeks. The recovery map then separates two questions: whether an
+axis recovers its planted loading and whether it carries the declared
+condition-by-time effect. PC1 accurately recovers the stronger collection-time
+nuisance axis but carries negligible biological effect; PC2 accurately recovers
+the planted condition-by-time axis and is nominated. Its exact separate caption
+is stored in `calibration-recovery-map-caption.txt`.
+
+## Complete identifiability audit
+
+![Complete multi-axis component-identifiability evidence](identifiability.png)
+
+The package's complete multi-axis surface retains recurrence, matching
+similarity, assignment margin, and enclosing-subspace evidence after 49
+complete-subject bootstrap refits. It remains the detailed audit view rather
+than the first scientific result a reader must decode. Its exact dynamic caption
+is stored in `identifiability-caption.txt`.
 
 ## Numerical and capability evidence
 
