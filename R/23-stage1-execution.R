@@ -485,10 +485,13 @@ execute_stage1_benchmark_development <- function(workspace = NULL, workers = 1L,
          workspace = if (keep_workspace) workspace else NA_character_)
 }
 
-#' Execute the complete frozen Stage 1 evidence protocol
+#' Execute the complete frozen Stage 1 evidence protocol locally
 #'
-#' This explicit long-running operation resumes only local temporary
-#' checkpoints, then atomically publishes a hash-verified synthetic artifact.
+#' This legacy local coordinator remains a development and migration adapter.
+#' Production or scheduler-backed evidence runs use
+#' [stage1_evidence_targets()] so targets owns durable invalidation and retries.
+#' This function resumes only local temporary checkpoints, then atomically
+#' publishes a hash-verified synthetic artifact.
 #'
 #' @param artifact_root directory in which to publish a new content-addressed artifact.
 #' @param workers positive number of Unix worker processes; use `1` for sequential execution.

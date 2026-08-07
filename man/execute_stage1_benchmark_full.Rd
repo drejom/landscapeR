@@ -2,7 +2,7 @@
 % Please edit documentation in R/23-stage1-execution.R
 \name{execute_stage1_benchmark_full}
 \alias{execute_stage1_benchmark_full}
-\title{Execute the complete frozen Stage 1 evidence protocol}
+\title{Execute the complete frozen Stage 1 evidence protocol locally}
 \usage{
 execute_stage1_benchmark_full(
   artifact_root,
@@ -37,6 +37,9 @@ calibration and holdout summary bootstraps.}
 path to the immutable artifact directory.
 }
 \description{
-This explicit long-running operation resumes only local temporary
-checkpoints, then atomically publishes a hash-verified synthetic artifact.
+This legacy local coordinator remains a development and migration adapter.
+Production or scheduler-backed evidence runs use
+\code{\link[=stage1_evidence_targets]{stage1_evidence_targets()}} so targets owns durable invalidation and retries.
+This function resumes only local temporary checkpoints, then atomically
+publishes a hash-verified synthetic artifact.
 }

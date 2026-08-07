@@ -500,7 +500,8 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
 }
 
 .stage1_write_full_artifact <- function(artifact_root, manifest, results, selection, holdout,
-                                        workers, source_commit = .stage1_source_commit(FALSE)) {
+                                        workers, source_commit = .stage1_source_commit(FALSE),
+                                        execution = NULL) {
     if (!dir.exists(artifact_root) && !dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE))
         .stage1_evidence_abort("could not create benchmark artifact root")
     stage <- tempfile(".stage1-evidence-", tmpdir = artifact_root)
@@ -512,10 +513,15 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
     saveRDS(selection, file.path(stage, "calibration-selection.rds"))
     saveRDS(holdout, file.path(stage, "holdout-report.rds"))
     utils::write.csv(holdout$summary, file.path(stage, "holdout-summary.csv"), row.names = FALSE)
-    saveRDS(list(commit = source_commit, r_version = R.version.string,
-                 package_version = as.character(utils::packageVersion("landscapeR")),
-                 executed_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE), workers = workers),
-            file.path(stage, "environment.rds"))
+    environment <- list(
+        commit = source_commit,
+        r_version = R.version.string,
+        package_version = as.character(utils::packageVersion("landscapeR")),
+        executed_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
+        workers = workers
+    )
+    if (!is.null(execution)) environment$execution <- execution
+    saveRDS(environment, file.path(stage, "environment.rds"))
     .stage1_write_figures(stage, holdout)
     hashes <- .stage1_payload_hashes(stage)
     payload_digest <- .stage1_payload_digest(hashes)

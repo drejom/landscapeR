@@ -36,6 +36,8 @@ Imports:
     rlang,
     viridisLite
 Suggests:
+    crew,
+    crew.cluster,
     deSolve,
     ReacTran,
     pracma,
@@ -44,6 +46,7 @@ Suggests:
     reticulate,
     pomp,
     ranger,
+    targets,
     testthat (>= 3.0.0),
     pkgload,
     knitr,
@@ -92,5 +95,6 @@ Collate:
     '21-stage1-benchmark.R'
     '22-stage1-evidence.R'
     '23-stage1-execution.R'
+    '23a-stage1-targets-orchestration.R'
 Config/testthat/edition: 3
 biocViews: Software, DimensionReduction, MultipleComparison, StatisticalMethod

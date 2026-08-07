@@ -1,0 +1,5 @@
+"workflow_part","execution_location","internal_future_policy"
+"Benchmark replicate branches","crew worker","not used"
+"Calibration and holdout summaries","crew worker","current worker, sequential"
+"Artifact publication","controller","not used"
+"Artifact verification","controller","not used"

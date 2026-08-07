@@ -111,7 +111,65 @@ result <- landscapeR::associate_metadata(
 `future::cluster` accepts host names and creates PSOCK workers; future's own
 documentation leaves backend selection to the user. A direct PBS scheduler
 backend such as `future.batchtools::batchtools_torque` is optional user
-configuration. Durable workflow scheduling is owned by issue #135.
+configuration.
+
+## Durable full-evidence workflow with PBS
+
+Full Stage 1 evidence uses `targets` for durable dependencies and `crew` for
+worker lifecycle. The analysis owner supplies every PBS resource choice. For
+example, a user-owned `_targets.R` can contain the following after replacing
+every placeholder:
+
+```r
+library(targets)
+library(landscapeR)
+
+pbs_options <- crew.cluster::crew_options_pbs(
+    command_submit = Sys.which("qsub"),
+    script_directory = "/path/to/user-owned/project/scratch/crew-scripts",
+    script_lines = c(
+        "#PBS -P <project>",
+        "#PBS -q <queue>",
+        "#PBS -l storage=<required-filesystems>",
+        "module load R/4.5.0",
+        "export R_LIBS_USER=/path/to/shared/project/R-library"
+    ),
+    cwd = TRUE,
+    log_output = "/path/to/user-owned/project/scratch/crew-stdout.log",
+    log_error = "/path/to/user-owned/project/scratch/crew-stderr.log",
+    memory_gigabytes_required = <memory-gb>,
+    cores = <cores-per-worker>,
+    walltime_hours = <hours>
+)
+
+controller <- stage1_crew_controller(
+    scheduler = "pbs",
+    name = "stage1-evidence",
+    workers = <maximum-workers>,
+    options_cluster = pbs_options
+)
+tar_option_set(controller = controller)
+
+stage1_evidence_targets(
+    artifact_root = "/path/to/shared/project/evidence-artifacts",
+    controller = "stage1-evidence"
+)
+```
+
+Run it from the clean source revision that matches the stamped shared
+installation:
+
+```sh
+Rscript -e 'targets::tar_make(use_crew = TRUE)'
+```
+
+Each dynamic replicate branch observes the installed revision and runtime
+versions independently. Calibration and holdout bootstraps execute sequentially
+inside their crew worker, so crew is the only parallel layer by default.
+Artifacts are staged, content-addressed, and verified on the controller only
+after the complete grid and summaries exist. If a worker or target fails, the
+artifact target remains blocked; correct the operational problem and rerun
+`tar_make()` to resume invalid work from the same targets store.
 
 ## Failure and security boundary
 

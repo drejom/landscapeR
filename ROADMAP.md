@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#135 — add scheduler-backed durable
-workflow orchestration**.
+**Next task after this change lands:** **#67 — resume the frozen exploratory AML
+Stage 1 acceptance lane**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -458,7 +458,7 @@ bodies may state dependencies but do not change this ordering.
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
 | [#65](https://github.com/drejom/landscapeR/issues/65) | Longitudinal extensions | parked |
 | [#66](https://github.com/drejom/landscapeR/issues/66) | Longitudinal observation design | queued |
-| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | queued — resume after maintenance cleanup |
+| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — next |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
@@ -498,8 +498,8 @@ bodies may state dependencies but do not change this ordering.
 | [#131](https://github.com/drejom/landscapeR/issues/131) | Audited governance — contributor safeguards | complete on merge |
 | [#132](https://github.com/drejom/landscapeR/issues/132) | Execution scalability — association futures migration | complete |
 | [#133](https://github.com/drejom/landscapeR/issues/133) | Execution scalability — Stage 1 futures migration | complete |
-| [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | complete on merge |
-| [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | queued — next; blocker complete on #134 merge |
+| [#134](https://github.com/drejom/landscapeR/issues/134) | Execution scalability — remote workers and Gadi | complete |
+| [#135](https://github.com/drejom/landscapeR/issues/135) | Execution scalability — scheduler orchestration | complete on merge |
 | [#138](https://github.com/drejom/landscapeR/issues/138) | Cross-cutting governance — incident-backed review ratchet | complete |
 | [#144](https://github.com/drejom/landscapeR/issues/144) | Maintenance — pkgdown stack-imbalance warnings | complete on merge; then resume #123 |
 | [#158](https://github.com/drejom/landscapeR/issues/158) | Candidate decomposition method — rhoPCA | parked — research question |
@@ -527,6 +527,7 @@ plans.
 | 2026-07-24 | Component-interpretation statistical strategy | ADR 0020 accepted; #55 implementation gate open |
 | 2026-07-25 | General cross-sectional component interpretation | #80 complete; continuous, ordered, adjusted, resampled, and search-aware evidence landed |
 | 2026-07-27 | Pogona master-registry reconciliation | #101 complete; canonical manifests derive from the audited registry while unresolved records remain excluded |
+| 2026-08-06 | Durable evidence execution substrate | #132–#135 complete on merge; future-backed repetition, remote-worker identity, transfer benchmarking, and targets/crew scheduler orchestration retain one scientific interface |
 
 ---
 

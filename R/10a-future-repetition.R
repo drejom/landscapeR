@@ -179,17 +179,19 @@
                 )
             )
     }
-    future_args <- list(
-        X = seq_along(tasks),
-        FUN = run_one,
-        future.seed = TRUE
-    )
     if (sequential_internal) {
-        future_args$future.scheduling <- 0
-    } else if (!is.null(future_scheduling)) {
-        future_args$future.scheduling <- future_scheduling
+        raw <- lapply(seq_along(tasks), run_one)
+    } else {
+        future_args <- list(
+            X = seq_along(tasks),
+            FUN = run_one,
+            future.seed = TRUE
+        )
+        if (!is.null(future_scheduling)) {
+            future_args$future.scheduling <- future_scheduling
+        }
+        raw <- do.call(future.apply::future_lapply, future_args)
     }
-    raw <- do.call(future.apply::future_lapply, future_args)
     completed <- vapply(raw, `[[`, logical(1L), "completed")
     failure_codes <- vapply(raw, `[[`, character(1L), "failure_code")
     values <- lapply(raw, `[[`, "value")

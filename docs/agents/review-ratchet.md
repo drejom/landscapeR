@@ -120,6 +120,16 @@ requires exact identity.
 pass revision preflight by echoing the controller-propagated expected SHA while
 running different installed code.
 
+### RR-010 — Prove parallelism boundaries behaviorally
+
+Do not infer that nested parallelism is disabled from a scheduling or chunking
+argument. Exercise the declared inner-sequential path under an ambient parallel
+backend and prove that work remains in the current worker.
+
+**Incident:** issue #135 implementation found that `future.scheduling = 0`
+still creates one future and therefore did not enforce ADR 0018's single-layer
+parallelism policy.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A
