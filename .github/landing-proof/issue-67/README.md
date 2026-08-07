@@ -31,13 +31,35 @@ stored in `identifiability-caption.txt`.
 
 ## Numerical and capability evidence
 
+| Proposal rank | Component | Adjusted effect magnitude |
+|---:|---:|---:|
+| 1 | PC2 | 4.3675 |
+| 2 | PC1 | 0.0240 |
+
+The planted disease-divergence component is nominated ahead of the dominant
+collection-time component. Components 3–6 are retained as non-estimable noise
+comparisons in `proposal-ranking.tsv`, rather than silently removed.
+
+| Target stability quantity | Observed fraction or mean |
+|---|---:|
+| Matched across refits | 1.000 |
+| Mean absolute loading similarity | 0.995 |
+| Same raw orientation | 0.388 |
+| Same component index | 1.000 |
+| Ranked first by repeated effect | 0.735 |
+
+These quantities are deliberately separate. In particular, component identity
+and loading agreement are highly recurrent while raw SVD sign orientation and
+proposal rank recur less often. `target-stability.tsv` is the exact generated
+table; no one quantity substitutes for another and no threshold is applied.
+
 `adjusted-component-effects.tsv` records the repeated-time-course adjusted
 effects used by the proposal. `loading-recovery.tsv` and
 `subspace-recovery.tsv` compare the recovered loadings and enclosing subspace
 with the disclosed planted truth without applying an acceptance threshold.
 `stage2-boundary.txt` records the typed refusal to apply the cross-sectional KDE
 landscape estimator to longitudinal observations. `calibration-result.rds`
-retains the complete typed result and provenance.
+retains the complete classed, digest-bearing result and provenance.
 
 ## Cold-reader conclusion
 

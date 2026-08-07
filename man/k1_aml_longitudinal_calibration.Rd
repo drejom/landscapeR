@@ -45,7 +45,9 @@ and KDE configuration for this control}
 }
 \value{
 named calibration diagnostics with the generated control, atlas,
-proposal, and typed Stage 2 ineligibility result
+proposal, recovery evidence, provenance, digest, and typed Stage 2
+ineligibility result, returned as a
+code{K1AmlLongitudinalCalibrationResult}
 }
 \description{
 Runs registered \code{svd}, repeated-subject association, proposal ranking,

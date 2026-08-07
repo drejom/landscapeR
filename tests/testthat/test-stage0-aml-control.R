@@ -14,23 +14,25 @@ test_that("AML-shaped K=1 control is repeated, deterministic, and provenanced", 
 
     expect_identical(first, second)
     expect_s4_class(first, "StateTransitionData")
-    expect_s4_class(first@ground_truth, "SubspaceGroundTruth")
+    expect_s4_class(first@ground_truth, "K1AmlLongitudinalGroundTruth")
     expect_identical(first@sampling_design@kind, "longitudinal")
     expect_equal(dim(assay(experiments(first)[[1L]])), c(30L, 40L))
-    expect_identical(metadata(first)$aml_k1_control$target_component, 2L)
-    expect_identical(metadata(first)$aml_k1_control$nuisance_component, 1L)
-    expect_identical(metadata(first)$aml_k1_control$time_source,
+    truth <- aml_longitudinal_control_truth(first)
+    info <- aml_longitudinal_control_info(first)
+    expect_identical(truth@target_component, 2L)
+    expect_identical(truth@nuisance_component, 1L)
+    expect_identical(info$time_source,
                      "user-supplied")
     expect_equal(
-        dim(metadata(first)$aml_k1_control$planted_sample_scores),
+        dim(truth@sample_scores),
         c(40L, 2L)
     )
     expect_identical(
-        colnames(metadata(first)$aml_k1_control$planted_sample_scores),
+        colnames(truth@sample_scores),
         c("collection_time", "condition_by_time")
     )
     expect_identical(
-        metadata(first)$aml_k1_control$claim_status,
+        info$claim_status,
         "non_evidentiary_calibration"
     )
     expect_identical(first@provenance[[1L]]@implementation,
@@ -48,6 +50,9 @@ test_that("AML-shaped K=1 calibration uses production contracts", {
     )
 
     expect_identical(calibration$status, "success")
+    expect_s3_class(calibration, "K1AmlLongitudinalCalibrationResult")
+    expect_match(calibration$digest, "^[0-9a-f]{64}$")
+    expect_true(length(calibration$provenance) > 0L)
     expect_identical(calibration$evidence_status,
                      "non_evidentiary_calibration")
     expect_s4_class(calibration$decomposition, "StageResult")
@@ -127,6 +132,13 @@ test_that("AML-shaped K=1 control validates public inputs", {
         k1_aml_longitudinal_calibration(n_permutations = -1L),
         class = "landscapeR_validation_error"
     )
+    incompatible <- landscapeR:::.aml_k1_calibration_config()
+    incompatible@params$svd$k_components <- 1L
+    expect_error(
+        k1_aml_longitudinal_calibration(config = incompatible),
+        "at least 2",
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("default AML weeks retain packaged-source provenance", {
@@ -136,7 +148,7 @@ test_that("default AML weeks retain packaged-source provenance", {
         seed = 6703L
     )
     expect_identical(
-        metadata(control)$aml_k1_control$time_source,
+        aml_longitudinal_control_info(control)$time_source,
         "inst/extdata/gse133642-sample-weeks.csv"
     )
 })

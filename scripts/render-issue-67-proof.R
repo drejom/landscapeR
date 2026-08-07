@@ -126,6 +126,24 @@ write.table(
     quote = FALSE,
     row.names = FALSE
 )
+ranking <- calibration$proposal@ranking[
+    , c("component", "component_label", "effect_magnitude", "proposal_rank"),
+    drop = FALSE
+]
+write.table(
+    ranking,
+    file.path(output_dir, "proposal-ranking.tsv"),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+)
+write.table(
+    calibration$identifiability_evidence$target_recurrence,
+    file.path(output_dir, "target-stability.tsv"),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+)
 recovery <- data.frame(
     component = calibration$recovery$component,
     planted_axis = calibration$recovery$planted_axis,

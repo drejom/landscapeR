@@ -182,10 +182,20 @@ synthetic_k1_aml_longitudinal_control <- function(
         std,
         longitudinal("mouse_id", "weeks", "weeks")
     )
-    truth <- new("SubspaceGroundTruth",
+    subspace_truth <- new("SubspaceGroundTruth",
         shared = v_true,
         exclusive = list(),
         angles = c(0, 0)
+    )
+    truth <- new("K1AmlLongitudinalGroundTruth",
+        subspace = subspace_truth,
+        sample_scores = scores,
+        target_component = 2L,
+        nuisance_component = 1L,
+        target_orientation = paste(
+            "positive planted scores indicate greater CM-versus-CTL",
+            "trajectory divergence"
+        )
     )
     std@ground_truth <- truth
     md <- metadata(std)
@@ -206,11 +216,7 @@ synthetic_k1_aml_longitudinal_control <- function(
         nuisance_component = 1L,
         target_axis = "condition-by-time disease divergence",
         nuisance_axis = "collection-time confounder",
-        target_orientation = paste(
-            "positive scores indicate greater CM-versus-CTL",
-            "trajectory divergence"
-        ),
-        planted_sample_scores = scores,
+        target_orientation = truth@target_orientation,
         dropout_subjects = dropout_subjects,
         time_signal = time_signal,
         disease_signal = disease_signal,
@@ -235,6 +241,42 @@ synthetic_k1_aml_longitudinal_control <- function(
             specification = digest::digest(md$aml_k1_control, algo = "sha256")
         )
     )
+}
+
+#' Inspect the AML-shaped longitudinal control declaration
+#'
+#' @param x a control returned by
+#'   code{synthetic_k1_aml_longitudinal_control()}
+#' @return a versioned descriptive list containing generator parameters and
+#'   provenance labels; planted answer keys are returned separately by
+#'   code{aml_longitudinal_control_truth()}
+#' @export
+aml_longitudinal_control_info <- function(x) {
+    if (!is(x, "StateTransitionData"))
+        .stop_landscapeR_validation(
+            "aml_longitudinal_control_info(): x must be StateTransitionData"
+        )
+    info <- metadata(x)$aml_k1_control
+    if (!is.list(info))
+        .stop_landscapeR_validation(
+            "x does not contain an AML longitudinal control declaration"
+        )
+    c(list(version = "1.0.0"), info)
+}
+
+#' @rdname aml_longitudinal_control_info
+#' @return code{aml_longitudinal_control_truth()} returns a validated
+#'   code{K1AmlLongitudinalGroundTruth}
+#' @export
+aml_longitudinal_control_truth <- function(x) {
+    if (!is(x, "StateTransitionData") ||
+            !is(x@ground_truth, "K1AmlLongitudinalGroundTruth")) {
+        .stop_landscapeR_validation(paste0(
+            "aml_longitudinal_control_truth(): x must carry ",
+            "K1AmlLongitudinalGroundTruth"
+        ))
+    }
+    x@ground_truth
 }
 
 .aml_k1_calibration_config <- function() {
@@ -271,9 +313,40 @@ synthetic_k1_aml_longitudinal_control <- function(
     constructor(config@params[[implementation]] %||% list())
 }
 
+.aml_k1_config_validation <- function(config) {
+    if (!is(config, "PipelineConfig"))
+        return("config must be a PipelineConfig")
+    valid <- validObject(config, test = TRUE)
+    if (!isTRUE(valid))
+        return(paste("config is invalid:", paste(valid, collapse = "; ")))
+    if (!identical(config@strategies[["Decomposer"]], "svd"))
+        return("config must select the registered svd Decomposer")
+    if (!identical(config@strategies[["DynamicsEstimator"]],
+                   "kde_logdensity")) {
+        return(paste0(
+            "config must select the registered kde_logdensity ",
+            "DynamicsEstimator"
+        ))
+    }
+    k_components <- config@params$svd$k_components %||% 6L
+    if (!.is_whole_number(k_components, 2L))
+        return("config svd k_components must be an integer of at least 2")
+    specification <- config@analysis
+    if (!identical(specification@target_field, "condition") ||
+            !identical(specification@target_type, "binary") ||
+            !identical(specification@reference_level, "CTL") ||
+            !identical(specification@comparison_level, "CM")) {
+        return(paste0(
+            "config analysis must declare the binary CTL-versus-CM ",
+            "condition contrast"
+        ))
+    }
+    NULL
+}
+
 .aml_k1_recovery <- function(fitted, truth) {
     loadings <- dr_V_k(stage_artifact(fitted, "stage1"))
-    expected <- truth@shared[, seq_len(2L), drop = FALSE]
+    expected <- truth@subspace@shared[, seq_len(2L), drop = FALSE]
     observed <- loadings[, seq_len(2L), drop = FALSE]
     signed_cosines <- vapply(seq_len(2L), function(i) {
         sum(expected[, i] * observed[, i]) /
@@ -291,6 +364,26 @@ synthetic_k1_aml_longitudinal_control <- function(
     )
 }
 
+.new_k1_aml_calibration_result <- function(values) {
+    values$version <- "1.0.0"
+    values$digest <- NA_character_
+    class(values) <- c("K1AmlLongitudinalCalibrationResult", "list")
+    values$digest <- digest::digest(
+        values[names(values) != "digest"],
+        algo = "sha256"
+    )
+    values
+}
+
+#' @export
+print.K1AmlLongitudinalCalibrationResult <- function(x, ...) {
+    cat("<K1AmlLongitudinalCalibrationResult>\n")
+    cat("  status:", x$status, "\n")
+    cat("  evidence:", x$evidence_status, "\n")
+    if (nzchar(x$reason)) cat("  reason:", x$reason, "\n")
+    invisible(x)
+}
+
 #' Run the AML-shaped K=1 calibration workflow
 #'
 #' Runs registered \code{svd}, repeated-subject association, proposal ranking,
@@ -303,7 +396,9 @@ synthetic_k1_aml_longitudinal_control <- function(
 #' @param config optional code{PipelineConfig}; defaults to the disclosed SVD
 #'   and KDE configuration for this control
 #' @return named calibration diagnostics with the generated control, atlas,
-#'   proposal, and typed Stage 2 ineligibility result
+#'   proposal, recovery evidence, provenance, digest, and typed Stage 2
+#'   ineligibility result, returned as a
+#'   code{K1AmlLongitudinalCalibrationResult}
 #' @export
 k1_aml_longitudinal_calibration <- function(
     subjects_per_condition = 12L,
@@ -328,8 +423,11 @@ k1_aml_longitudinal_calibration <- function(
         )
     if (is.null(config))
         config <- .aml_k1_calibration_config()
-    if (!is(config, "PipelineConfig"))
-        .stop_landscapeR_validation("config must be a PipelineConfig")
+    config_message <- .aml_k1_config_validation(config)
+    if (!is.null(config_message))
+        .stop_landscapeR_validation(paste0(
+            "k1_aml_longitudinal_calibration(): ", config_message
+        ))
     std <- synthetic_k1_aml_longitudinal_control(
         subjects_per_condition = subjects_per_condition,
         times = times, p = p, noise_sd = noise_sd,
@@ -340,13 +438,14 @@ k1_aml_longitudinal_calibration <- function(
         .aml_k1_strategy(config, "Decomposer"), std
     )
     if (decomposition@status != "success") {
-        return(list(
+        return(.new_k1_aml_calibration_result(list(
             status = "failure",
             evidence_status = "non_evidentiary_calibration",
             reason = decomposition@reason,
             control = std,
-            decomposition = decomposition
-        ))
+            decomposition = decomposition,
+            provenance = std@provenance
+        )))
     }
     fitted <- decomposition@value
     specification <- config@analysis
@@ -383,9 +482,10 @@ k1_aml_longitudinal_calibration <- function(
         .aml_k1_strategy(config, "DynamicsEstimator"), fitted
     )
     recovery <- .aml_k1_recovery(fitted, std@ground_truth)
-    list(
+    .new_k1_aml_calibration_result(list(
         status = "success",
         evidence_status = "non_evidentiary_calibration",
+        reason = "",
         control = std,
         decomposition = decomposition,
         atlas = atlas,
@@ -402,6 +502,7 @@ k1_aml_longitudinal_calibration <- function(
         stage2 = stage2,
         target_component = 2L,
         nuisance_component = 1L,
-        seed = as.integer(seed)
-    )
+        seed = as.integer(seed),
+        provenance = fitted@provenance
+    ))
 }

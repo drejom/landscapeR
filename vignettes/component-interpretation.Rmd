@@ -291,9 +291,11 @@ The exported AML-shaped control joins the repeated-subject interpretation and
 identifiability contracts in one disclosed workflow. It plants a dominant
 collection-time direction and a weaker condition-by-time direction at the
 irregular weeks supplied with the package. The control stores its feature
-loadings, sample scores, target orientation, random seed, and time-source
-provenance. A user-supplied time grid is labelled as user supplied rather than
-attributed to the packaged AML mapping.
+loadings, sample scores, and target orientation in
+`K1AmlLongitudinalGroundTruth`. Versioned accessors expose that answer key and
+the generator declaration without making internal `metadata()` fields part of
+the public API. A user-supplied time grid is labelled as user supplied rather
+than attributed to the packaged AML mapping.
 
 ```{r aml-k1-calibration, eval=FALSE}
 aml_control <- k1_aml_longitudinal_calibration(
@@ -303,6 +305,8 @@ aml_control <- k1_aml_longitudinal_calibration(
   n_resamples = 49L
 )
 
+aml_longitudinal_control_truth(aml_control$control)
+aml_longitudinal_control_info(aml_control$control)
 aml_control$recovery
 atlas_associations(aml_control$atlas)
 proposal_identifiability(aml_control$identifiability)
