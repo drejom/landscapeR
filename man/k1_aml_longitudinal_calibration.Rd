@@ -40,14 +40,14 @@ removed}
 
 \item{n_permutations}{number of search-aware permutations}
 
-\item{config}{optional code{PipelineConfig}; defaults to the disclosed SVD
+\item{config}{optional \code{PipelineConfig}; defaults to the disclosed SVD
 and KDE configuration for this control}
 }
 \value{
 named calibration diagnostics with the generated control, atlas,
 proposal, recovery evidence, provenance, digest, and typed Stage 2
 ineligibility result, returned as a
-code{K1AmlLongitudinalCalibrationResult}
+\code{K1AmlLongitudinalCalibrationResult}
 }
 \description{
 Runs registered \code{svd}, repeated-subject association, proposal ranking,

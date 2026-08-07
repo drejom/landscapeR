@@ -11,15 +11,15 @@ aml_longitudinal_control_truth(x)
 }
 \arguments{
 \item{x}{a control returned by
-code{synthetic_k1_aml_longitudinal_control()}}
+\code{synthetic_k1_aml_longitudinal_control()}}
 }
 \value{
 a versioned descriptive list containing generator parameters and
 provenance labels; planted answer keys are returned separately by
-code{aml_longitudinal_control_truth()}
+\code{aml_longitudinal_control_truth()}
 
-code{aml_longitudinal_control_truth()} returns a validated
-code{K1AmlLongitudinalGroundTruth}
+\code{aml_longitudinal_control_truth()} returns a validated
+\code{K1AmlLongitudinalGroundTruth}
 }
 \description{
 Inspect the AML-shaped longitudinal control declaration
