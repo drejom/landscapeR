@@ -37,6 +37,53 @@ synthetic-evidence artifact. It does **not** rerun the benchmark, tune a
 candidate, or make a biological claim. The complete artifact is hash-verified
 before its contents are read.
 
+## Production evidence orchestration
+
+Production and scheduler-backed Stage 1 evidence runs use
+`stage1_evidence_targets()`. The returned targets graph makes the frozen
+manifest, task branches, complete-grid validation, calibration selection,
+holdout assessment, atomic publication, and artifact verification separate
+dependencies. `crew` controls where eligible targets run. Changing from a
+local controller to PBS, Slurm, SGE, or LSF does not change a scientific
+command, manifest identity, or RNG stream.
+Scientific rows, selection, and holdout results are summarized by a dedicated
+scientific digest that is invariant to the controller. The artifact content
+address also covers execution provenance, so local and scheduler artifact
+directory names may correctly differ even when their scientific digests match.
+Elapsed time and peak memory remain available as operational diagnostics, but
+they are deliberately excluded from candidate selection and the scientific
+digest because execution backends can change them without changing the
+scientific calculation.
+
+Each replicate branch independently checks the installed landscapeR revision,
+R version, and package versions against the controller target before doing
+scientific work. Worker results return to the controlling process. Publication
+and hash verification run there only after every upstream target succeeds, so
+an incomplete workflow cannot publish partial evidence as complete. A later
+`tar_make()` retries failed or invalid branches from the durable targets store.
+
+A local targets script can end with:
+
+```r
+controller <- stage1_crew_controller(
+  scheduler = "local",
+  name = "stage1-evidence",
+  workers = 2L
+)
+targets::tar_option_set(controller = controller)
+
+stage1_evidence_targets(
+  artifact_root = "/absolute/path/to/evidence-artifacts",
+  controller = "stage1-evidence"
+)
+```
+
+Run that script with `targets::tar_make(use_crew = TRUE)`. Scheduler runs use
+the same graph and replace only the controller. Scheduler resource options must
+be supplied explicitly by the analysis owner. The legacy
+`execute_stage1_benchmark_full()` function remains a local development and
+migration adapter, not the production orchestration path.
+
 ## Summary-bootstrap execution
 
 Current Stage 1 calibration and holdout summaries send both the paired-mean
@@ -54,9 +101,11 @@ cross-metric pairing exactly.
 Scheduling and worker-count defaults remain unchanged because the measured
 tasks are small enough that local multisession startup and serialization can
 dominate their runtime.
-When an outer `targets` or `crew` task already owns parallel orchestration, pass
-`sequential_internal = TRUE`; `future_scheduling` remains an explicit optional
-control rather than a package default.
+When an outer `targets` or `crew` task already owns parallel orchestration,
+`sequential_internal = TRUE` executes repetition directly in the current
+worker. It does not launch a nested future. Outside that boundary,
+`future_scheduling` remains an explicit optional control rather than a package
+default.
 
 The committed v2 artifact below predates that execution-provenance extension
 and is deliberately not regenerated or recalibrated. Its manifest, estimates,

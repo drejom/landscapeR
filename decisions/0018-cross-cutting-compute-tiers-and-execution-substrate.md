@@ -90,7 +90,17 @@ Repeated analyses resample whole subject trajectories within subject-invariant
 target levels, retain every row/time for a sampled subject, and assign duplicate
 draws new subject IDs. This policy applies both to fixed-decomposition
 `standard` uncertainty and full-pipeline `evidence` stability. Resample counts
-remain protocol-specific and empirically benchmarked.
+ remain protocol-specific and empirically benchmarked.
+
+### 2026-08-07 amendment — backend-independent scientific selection
+
+The frozen Stage 1 manifest retains `maximum_elapsed_ratio` as a reported
+operational diagnostic, and declares `runtime_gate = "diagnostic_only"`.
+Runtime and memory measurements must not gate candidate selection or enter the
+scientific evidence digest: sequential, local, and scheduler execution can
+change those measurements without changing the scientific calculation. This
+amendment preserves the manifest's authoritative reporting field while making
+the backend-invariant evidence criterion explicit.
 
 ### Execution boundary
 

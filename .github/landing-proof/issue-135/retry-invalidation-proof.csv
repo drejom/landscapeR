@@ -1,0 +1,4 @@
+"phase","successful_branch_attempts","failed_then_retried_branch_attempts","published","verified"
+"first run",1,1,FALSE,FALSE
+"retry",1,2,TRUE,TRUE
+"explicit invalidation",2,3,TRUE,TRUE

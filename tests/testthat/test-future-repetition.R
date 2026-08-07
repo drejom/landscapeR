@@ -80,6 +80,29 @@ test_that("future repetition is deterministic across plans and worker counts", {
     )), 8L)
 })
 
+test_that("sequential_internal executes in the current worker without nesting futures", {
+    previous <- future::plan()
+    on.exit(future::plan(previous), add = TRUE)
+    future::plan(future::multicore, workers = 2L)
+
+    observations <- new.env(parent = emptyenv())
+    observations$count <- 0L
+    result <- landscapeR:::.future_repetition(
+        tasks = as.list(1:3),
+        task_ids = paste0("inner-", 1:3),
+        run_seed = 42L,
+        compute_tier = "evidence",
+        worker = function(task, task_id, task_stream) {
+            observations$count <- observations$count + 1L
+            task
+        },
+        sequential_internal = TRUE
+    )
+
+    expect_identical(observations$count, 3L)
+    expect_identical(result$values, as.list(1:3))
+})
+
 test_that("legacy stream derivation restores caller RNG state", {
     previous_kind <- RNGkind()
     had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
