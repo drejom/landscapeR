@@ -87,6 +87,7 @@ Collate:
     '13e-axis-identifiability.R'
     '13f-visual-evidence-adapters.R'
     '13g-stage-plot-evidence.R'
+    '13h-stage0-aml-control.R'
     '14-stage1-plots.R'
     '15-stage2-kde.R'
     '16-stage2-plots.R'
