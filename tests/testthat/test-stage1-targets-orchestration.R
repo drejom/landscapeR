@@ -32,6 +32,10 @@ test_that("crew controller factory keeps scheduler policy explicit", {
         options_cluster = pbs_options
     )
     expect_s3_class(pbs, "crew_class_controller")
+    expect_error(
+        stage1_crew_controller(scheduler = "not-a-scheduler"),
+        class = "stage1_orchestration_error"
+    )
 })
 
 test_that("full evidence graph exposes scientific dependencies and one parallel layer", {
@@ -140,6 +144,25 @@ test_that("workflow result requires verified publication", {
         "stage1_artifact_verified",
         fixed = TRUE
     )
+})
+
+test_that("workflow result preserves typed provenance through serialization", {
+    result <- structure(
+        list(
+            artifact = "/tmp/stage1-artifact",
+            verified = TRUE,
+            protocol_id = "stage1-heterogeneous-v2",
+            manifest_digest = paste(rep("a", 64L), collapse = ""),
+            scientific_digest = paste(rep("b", 64L), collapse = ""),
+            source_commit = paste(rep("c", 40L), collapse = "")
+        ),
+        class = c("stage1_evidence_workflow_result", "list")
+    )
+    path <- tempfile(fileext = ".rds")
+    saveRDS(result, path)
+    restored <- readRDS(path)
+    expect_identical(restored, result)
+    expect_s3_class(restored, "stage1_evidence_workflow_result")
 })
 
 test_that("scientific publication payload excludes backend timing", {

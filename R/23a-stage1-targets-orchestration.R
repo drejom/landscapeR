@@ -58,7 +58,14 @@ stage1_crew_controller <- function(
     options_cluster = NULL,
     ...
 ) {
-    scheduler <- match.arg(scheduler)
+    supported <- c("local", "pbs", "slurm", "sge", "lsf")
+    if (identical(scheduler, supported)) scheduler <- supported[[1L]]
+    if (!is.character(scheduler) || length(scheduler) != 1L ||
+        !scheduler %in% supported) {
+        .stage1_orchestration_abort(
+            "scheduler must be one of local, pbs, slurm, sge, or lsf"
+        )
+    }
     .stage1_validate_controller_identity(name, workers)
     .stage1_require_namespace("crew")
     dots <- list(...)
@@ -299,6 +306,7 @@ stage1_crew_controller <- function(
             engine = "targets-crew",
             controller = controller,
             parallelism_policy = "outer-crew-inner-future-sequential",
+            package_versions = identity$package_versions,
             scientific_digest = scientific_digest
         )
     )
@@ -307,6 +315,14 @@ stage1_crew_controller <- function(
 
 .stage1_target_verified <- function(artifact) {
     verify_stage1_evidence_artifact(artifact)
+    environment <- readRDS(file.path(artifact, "environment.rds"))
+    if (!is.list(environment$execution) ||
+        !is.character(environment$execution$package_versions) ||
+        !length(environment$execution$package_versions)) {
+        .stage1_orchestration_abort(
+            "Stage 1 orchestration artifact has incomplete package provenance"
+        )
+    }
     artifact
 }
 
@@ -317,6 +333,12 @@ stage1_crew_controller <- function(
         )
     }
     environment <- readRDS(file.path(artifact, "environment.rds"))
+    if (!is.list(environment$execution) ||
+        !identical(environment$execution$package_versions, identity$package_versions)) {
+        .stage1_orchestration_abort(
+            "verified Stage 1 evidence has incomplete orchestration provenance"
+        )
+    }
     scientific_digest <- environment$execution$scientific_digest
     if (!.is_scalar_nonempty_text(scientific_digest)) {
         .stage1_orchestration_abort(

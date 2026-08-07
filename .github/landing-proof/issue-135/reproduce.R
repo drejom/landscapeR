@@ -178,7 +178,17 @@ proof_artifact <- landscapeR:::.stage1_target_publication(
     results = timed_results,
     selection = proof_selection,
     holdout = proof_holdout,
-    identity = list(source_commit = paste(rep("a", 40L), collapse = "")),
+    identity = list(
+        source_commit = paste(rep("a", 40L), collapse = ""),
+        package_versions = stats::setNames(
+            vapply(
+                c("landscapeR", "targets", "crew", "future", "future.apply", "digest"),
+                function(package) as.character(utils::packageVersion(package)),
+                character(1L)
+            ),
+            c("landscapeR", "targets", "crew", "future", "future.apply", "digest")
+        )
+    ),
     controller = "proof"
 )
 stopifnot(identical(landscapeR:::.stage1_target_verified(proof_artifact), proof_artifact))
