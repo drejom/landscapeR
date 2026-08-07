@@ -210,14 +210,20 @@ select_stage1_candidate <- function(calibration_rows,
         "projection_error")
     elapsed_ratio <- stats::median(exact$elapsed_sec[exact$candidate == "C1_symmetric_consensus"]) /
         stats::median(exact$elapsed_sec[exact$candidate == "C2_block_scaled_svd"])
+    # Runtime is an operational diagnostic, not a scientific gate.  The
+    # elapsed ratio can legitimately differ across sequential, local, and
+    # scheduler-backed execution while all scientific quantities are equal.
+    # Keeping it out of the decision is therefore required by ADR 0018's
+    # backend-invariant evidence contract.
     c1_conditions <- c(
         both_eligible = all(eligible),
         shared_advantage = shared_difference <= rules$shared_recovery_advantage,
         shared_ci_below_zero = shared_ci[[2L]] < 0,
         leakage_not_worse = leakage_difference <= rules$maximum_leakage_or_projection_disadvantage,
-        projection_not_worse = projection_difference <= rules$maximum_leakage_or_projection_disadvantage,
-        elapsed_within_limit = elapsed_ratio <= rules$maximum_elapsed_ratio
+        projection_not_worse = projection_difference <= rules$maximum_leakage_or_projection_disadvantage
     )
+    if (!identical(rules$runtime_gate, "diagnostic_only"))
+        .stage1_evidence_abort("frozen protocol must declare runtime as diagnostic_only")
     selected <- if (all(c1_conditions)) "C1_symmetric_consensus" else if (eligible[["C2_block_scaled_svd"]])
         "C2_block_scaled_svd" else NA_character_
     list(
@@ -234,6 +240,8 @@ select_stage1_candidate <- function(calibration_rows,
         exclusive_leakage_difference = leakage_difference,
         projection_difference = projection_difference,
         elapsed_ratio = elapsed_ratio,
+        elapsed_within_limit = elapsed_ratio <= rules$maximum_elapsed_ratio,
+        runtime_note = "operational diagnostic only; not used for candidate selection",
         bootstrap_executions = list(
             shared_recovery_error = shared_bootstrap$execution
         ),

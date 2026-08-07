@@ -33,6 +33,18 @@ test_that("calibration selector is split-safe and applies frozen C1 rule", {
     expect_true(all(selection$bootstrap_measurements[[1L]] > 0))
 })
 
+test_that("runtime diagnostics cannot change the scientific selection", {
+    calibration <- stage1_evidence_fixture("calibration")
+    fast <- select_stage1_candidate(calibration)
+    slow <- calibration
+    slow$elapsed_sec[slow$candidate == "C1_symmetric_consensus"] <- 100
+    slow$elapsed_sec[slow$candidate == "C2_block_scaled_svd"] <- 1
+    delayed <- select_stage1_candidate(slow)
+    expect_identical(delayed$selected_candidate, fast$selected_candidate)
+    expect_false(delayed$elapsed_within_limit)
+    expect_match(delayed$runtime_note, "not used for candidate selection", fixed = TRUE)
+})
+
 test_that("Stage 1 summary bootstraps are invariant across future plans", {
     previous <- future::plan()
     on.exit(future::plan(previous), add = TRUE)

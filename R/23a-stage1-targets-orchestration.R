@@ -230,6 +230,44 @@ stage1_crew_controller <- function(
     )
 }
 
+.stage1_scientific_results <- function(results) {
+    operational <- intersect(
+        c("elapsed_sec", "peak_vcells_bytes", "completed_at_utc"),
+        names(results)
+    )
+    results[setdiff(names(results), operational)]
+}
+
+.stage1_scientific_selection <- function(selection) {
+    selection[c(
+        "protocol_id", "protocol_digest", "generator_digest", "split",
+        "decision", "selected_candidate", "eligible", "conditions",
+        "shared_recovery_difference", "shared_recovery_ci",
+        "exclusive_leakage_difference", "projection_difference",
+        "bootstrap_measurements"
+    )]
+}
+
+.stage1_scientific_holdout <- function(holdout) {
+    operational_metrics <- c("elapsed_sec", "peak_vcells_bytes")
+    summary <- holdout$summary
+    if (is.data.frame(summary)) {
+        summary <- summary[!summary$metric %in% operational_metrics, , drop = FALSE]
+    }
+    measurements <- holdout$bootstrap_measurements
+    if (is.list(measurements) && length(measurements)) {
+        measurements <- measurements[!grepl(
+            paste(operational_metrics, collapse = "|"), names(measurements)
+        )]
+    }
+    holdout[c(
+        "protocol_id", "protocol_digest", "generator_digest", "split",
+        "selected_candidate", "all_gates_passed", "thresholds_passed",
+        "decision", "rules"
+    )] |>
+        c(list(summary = summary, bootstrap_measurements = measurements))
+}
+
 .stage1_target_publication <- function(
     artifact_root,
     manifest,
@@ -242,9 +280,9 @@ stage1_crew_controller <- function(
     scientific_digest <- digest::digest(
         list(
             manifest = manifest,
-            results = results,
-            selection = selection,
-            holdout = holdout
+            results = .stage1_scientific_results(results),
+            selection = .stage1_scientific_selection(selection),
+            holdout = .stage1_scientific_holdout(holdout)
         ),
         algo = "sha256",
         serialize = TRUE
@@ -264,7 +302,6 @@ stage1_crew_controller <- function(
             scientific_digest = scientific_digest
         )
     )
-    verify_stage1_evidence_artifact(artifact)
     artifact
 }
 
@@ -319,6 +356,18 @@ stage1_crew_controller <- function(
     )
 }
 
+.stage1_main_target <- function(name, command, pattern = NULL, ...) {
+    targets::tar_target_raw(
+        name = name,
+        command = command,
+        pattern = pattern,
+        ...,
+        deployment = "main",
+        storage = "main",
+        retrieval = "main"
+    )
+}
+
 #' Declare the durable Stage 1 full-evidence targets graph
 #'
 #' This graph branches over the frozen benchmark task manifest, delegates those
@@ -356,37 +405,25 @@ stage1_evidence_targets <- function(
     }
     artifact_root <- path.expand(artifact_root)
     pipeline <- list(
-        targets::tar_target_raw(
+        .stage1_main_target(
             "stage1_manifest",
-            quote(landscapeR::stage1_benchmark_manifest()),
-            deployment = "main",
-            storage = "main",
-            retrieval = "main"
+            quote(landscapeR::stage1_benchmark_manifest())
         ),
-        targets::tar_target_raw(
+        .stage1_main_target(
             "stage1_identity",
-            quote(landscapeR:::.stage1_target_identity(stage1_manifest)),
-            deployment = "main",
-            storage = "main",
-            retrieval = "main"
+            quote(landscapeR:::.stage1_target_identity(stage1_manifest))
         ),
-        targets::tar_target_raw(
+        .stage1_main_target(
             "stage1_tasks",
             quote(landscapeR:::.stage1_execution_tasks(
                 "full",
                 stage1_manifest
-            )),
-            deployment = "main",
-            storage = "main",
-            retrieval = "main"
+            ))
         ),
-        targets::tar_target_raw(
+        .stage1_main_target(
             "stage1_task",
             quote(landscapeR:::.stage1_target_tasks(stage1_tasks)),
-            iteration = "list",
-            deployment = "main",
-            storage = "main",
-            retrieval = "main"
+            iteration = "list"
         ),
         .stage1_worker_target(
             "stage1_rows",
@@ -398,16 +435,13 @@ stage1_evidence_targets <- function(
             controller = controller,
             pattern = quote(map(stage1_task))
         ),
-        targets::tar_target_raw(
+        .stage1_main_target(
             "stage1_results",
             quote(landscapeR:::.stage1_target_results(
                 stage1_rows,
                 stage1_manifest,
                 stage1_tasks$strata
-            )),
-            deployment = "main",
-            storage = "main",
-            retrieval = "main"
+            ))
         ),
         .stage1_worker_target(
             "stage1_selection",
@@ -427,7 +461,7 @@ stage1_evidence_targets <- function(
             )),
             controller = controller
         ),
-        targets::tar_target_raw(
+        .stage1_main_target(
             "stage1_artifact",
             substitute(
                 landscapeR:::.stage1_target_publication(
@@ -443,29 +477,20 @@ stage1_evidence_targets <- function(
                     ARTIFACT_ROOT = artifact_root,
                     CONTROLLER = controller
                 )
-            ),
-            deployment = "main",
-            storage = "main",
-            retrieval = "main"
+            )
         ),
-        targets::tar_target_raw(
+        .stage1_main_target(
             "stage1_artifact_verified",
-            quote(landscapeR:::.stage1_target_verified(stage1_artifact)),
-            deployment = "main",
-            storage = "main",
-            retrieval = "main"
+            quote(landscapeR:::.stage1_target_verified(stage1_artifact))
         ),
-        targets::tar_target_raw(
+        .stage1_main_target(
             "stage1_evidence",
             quote(landscapeR:::.stage1_target_evidence(
                 stage1_artifact,
                 stage1_artifact_verified,
                 stage1_manifest,
                 stage1_identity
-            )),
-            deployment = "main",
-            storage = "main",
-            retrieval = "main"
+            ))
         )
     )
     pipeline

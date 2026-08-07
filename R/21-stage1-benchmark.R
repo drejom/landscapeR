@@ -62,7 +62,8 @@ stage1_benchmark_manifest <- function() {
             ci = "two-sided 95% percentile",
             shared_recovery_advantage = -0.03,
             maximum_leakage_or_projection_disadvantage = 0.02,
-            maximum_elapsed_ratio = 1.5
+            maximum_elapsed_ratio = 1.5,
+            runtime_gate = "diagnostic_only"
         ),
         reporting_rules = list(
             bootstrap_resamples = 10000L,
@@ -92,8 +93,12 @@ validate_stage1_benchmark_manifest <- function(manifest) {
         !identical(manifest$seeds$split, rep(c("calibration", "holdout"), each = 20L)))
         .stage1_benchmark_abort("benchmark manifest seed/split assignment is invalid")
     frozen <- stage1_benchmark_manifest()
+    legacy_selection_rules <- frozen$selection_rules
+    legacy_selection_rules$runtime_gate <- NULL
+    is_legacy_v2 <- identical(manifest$protocol_id, "stage1-heterogeneous-v2") &&
+        identical(manifest$selection_rules, legacy_selection_rules)
     if (!identical(manifest$grid, frozen$grid) || !identical(manifest$feature_counts, frozen$feature_counts) ||
-        !identical(manifest$selection_rules, frozen$selection_rules) ||
+        (!identical(manifest$selection_rules, frozen$selection_rules) && !is_legacy_v2) ||
         !identical(manifest$reporting_rules, frozen$reporting_rules))
         .stage1_benchmark_abort("benchmark manifest differs from frozen protocol")
     invisible(TRUE)

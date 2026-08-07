@@ -4,8 +4,11 @@
 
 This is operational orchestration proof. It does not choose a scheduler,
 project, queue, worker count, memory request, wall time, or scientific
-acceptance threshold. The local crew controller exercises the same target graph
-and worker contract used by the scheduler controller factories.
+acceptance threshold. The package graph and controller factories expose the
+same scientific commands for local and scheduler execution; this proof checks
+that structural contract, while the retry demonstration checks the durable
+publication/verification boundary. It does not claim that a scheduler queue
+was run in this repository checkout.
 
 ## Cold-reader conclusion
 
@@ -35,6 +38,11 @@ The exact rows are retained in
 [`retry-invalidation-proof.csv`](retry-invalidation-proof.csv). The compact
 artifact is [`retry-artifact.rds`](retry-artifact.rds).
 
+The reproduction also constructs the real `stage1_evidence_targets()` graph and
+publishes/verifies a representative artifact through
+`.stage1_target_publication()` and `.stage1_target_verified()`. The full frozen
+40,960-task benchmark is intentionally not rerun by this fast landing proof.
+
 ## One parallelism layer
 
 | Workflow part | Execution location | Internal future policy |
@@ -54,7 +62,9 @@ Controller identity exists only in target resources and artifact execution
 provenance. Unit tests compare every scientific target command across local and
 scheduler controller names and require exact equality. Each dynamic replicate
 branch independently reads the installed landscapeR revision and checks the R
-and package versions against the controller target before computation.
+and package versions against the controller target before computation. Runtime
+measurements are retained as operational diagnostics only; they cannot alter
+candidate selection or the scientific digest.
 
 ## Reproduction
 

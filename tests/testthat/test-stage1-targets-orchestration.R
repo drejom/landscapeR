@@ -142,6 +142,47 @@ test_that("workflow result requires verified publication", {
     )
 })
 
+test_that("scientific publication payload excludes backend timing", {
+    results <- data.frame(
+        candidate = c("C1", "C2"),
+        shared_recovery_error = c(.1, .2),
+        elapsed_sec = c(1, 100),
+        peak_vcells_bytes = c(10, 20),
+        completed_at_utc = c("a", "b"),
+        stringsAsFactors = FALSE
+    )
+    scientific <- landscapeR:::.stage1_scientific_results(results)
+    expect_false(any(c("elapsed_sec", "peak_vcells_bytes", "completed_at_utc") %in%
+        names(scientific)))
+    expect_identical(scientific$candidate, results$candidate)
+})
+
+test_that("scientific holdout payload excludes backend timing", {
+    holdout <- list(
+        protocol_id = "p", protocol_digest = "d", generator_digest = "g",
+        split = "holdout", selected_candidate = "C1",
+        all_gates_passed = TRUE, thresholds_passed = TRUE, decision = "accepted",
+        rules = list(),
+        summary = data.frame(
+            metric = c("shared_recovery_error", "elapsed_sec", "peak_vcells_bytes"),
+            estimate = c(.1, 1, 10), stringsAsFactors = FALSE
+        ),
+        bootstrap_measurements = list(
+            "stratum:shared_recovery_error" = list(value = 1),
+            "stratum:elapsed_sec" = list(value = 2)
+        )
+    )
+    scientific <- landscapeR:::.stage1_scientific_holdout(holdout)
+    expect_identical(scientific$summary$metric, "shared_recovery_error")
+    expect_identical(names(scientific$bootstrap_measurements), "stratum:shared_recovery_error")
+    altered <- holdout
+    altered$summary$estimate[altered$summary$metric == "elapsed_sec"] <- 999
+    expect_identical(
+        digest::digest(scientific, algo = "sha256"),
+        digest::digest(landscapeR:::.stage1_scientific_holdout(altered), algo = "sha256")
+    )
+})
+
 test_that("each crew branch observes installed identity independently", {
     identity <- list(
         source_commit = paste(rep("a", 40L), collapse = ""),

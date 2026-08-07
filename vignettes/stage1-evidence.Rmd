@@ -50,6 +50,10 @@ Scientific rows, selection, and holdout results are summarized by a dedicated
 scientific digest that is invariant to the controller. The artifact content
 address also covers execution provenance, so local and scheduler artifact
 directory names may correctly differ even when their scientific digests match.
+Elapsed time and peak memory remain available as operational diagnostics, but
+they are deliberately excluded from candidate selection and the scientific
+digest because execution backends can change them without changing the
+scientific calculation.
 
 Each replicate branch independently checks the installed landscapeR revision,
 R version, and package versions against the controller target before doing

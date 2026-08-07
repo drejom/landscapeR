@@ -161,7 +161,9 @@ calibration conditions hold:
 2. the paired-bootstrap interval lies strictly below zero;
 3. its equal-stratum-weighted mean exclusive-leakage and exact-ID held-out
    projection errors are each no more than `0.02` worse; and
-4. its median elapsed time is at most `1.5×` C2's median.
+4. operational measurements such as elapsed time and peak memory are reported
+   per stratum but do not affect selection; execution backends must not change
+   the scientific decision.
 
 Otherwise C2 remains the selected baseline if it is eligible. If neither
 candidate is eligible, the decision is `no_eligible_candidate`. The selection

@@ -117,6 +117,71 @@ utils::write.csv(
 )
 
 pkgload::load_all(repository, quiet = TRUE)
+stage1_graph <- stage1_evidence_targets(
+    artifact_root = file.path(scratch_root, "stage1-artifacts"),
+    controller = "proof"
+)
+stopifnot(
+    identical(
+        unname(vapply(stage1_graph, `[[`, character(1L), "name")),
+        c(
+            "stage1_manifest", "stage1_identity", "stage1_tasks", "stage1_task",
+            "stage1_rows", "stage1_results", "stage1_selection", "stage1_holdout",
+            "stage1_artifact", "stage1_artifact_verified", "stage1_evidence"
+        )
+    )
+)
+timed_results <- data.frame(
+    candidate = c("C1", "C2"),
+    scientific_metric = c(.1, .2),
+    elapsed_sec = c(1, 100),
+    peak_vcells_bytes = c(10, 20),
+    stringsAsFactors = FALSE
+)
+scientific_results <- landscapeR:::.stage1_scientific_results(timed_results)
+stopifnot(!any(c("elapsed_sec", "peak_vcells_bytes") %in% names(scientific_results)))
+proof_manifest <- stage1_benchmark_manifest()
+proof_selection <- list(
+    protocol_id = proof_manifest$protocol_id,
+    protocol_digest = landscapeR:::.protocol_digest(proof_manifest),
+    generator_digest = landscapeR:::.generator_digest(),
+    split = "calibration",
+    decision = "selected",
+    selected_candidate = proof_manifest$candidates[[1L]],
+    eligible = stats::setNames(c(TRUE, TRUE), proof_manifest$candidates),
+    conditions = c(complete = TRUE),
+    shared_recovery_difference = -0.1,
+    shared_recovery_ci = c(lower = -0.2, upper = -0.05),
+    exclusive_leakage_difference = 0,
+    projection_difference = 0,
+    bootstrap_measurements = list()
+)
+proof_holdout <- list(
+    protocol_id = proof_manifest$protocol_id,
+    protocol_digest = landscapeR:::.protocol_digest(proof_manifest),
+    generator_digest = landscapeR:::.generator_digest(),
+    split = "holdout",
+    selected_candidate = proof_manifest$candidates[[1L]],
+    all_gates_passed = TRUE,
+    thresholds_passed = TRUE,
+    decision = "accepted",
+    rules = proof_manifest$reporting_rules,
+    summary = data.frame(
+        projection_case = character(), metric = character(), estimate = numeric(),
+        ci_lower = numeric(), ci_upper = numeric(), stringsAsFactors = FALSE
+    ),
+    bootstrap_measurements = list()
+)
+proof_artifact <- landscapeR:::.stage1_target_publication(
+    artifact_root = file.path(scratch_root, "stage1-artifacts"),
+    manifest = proof_manifest,
+    results = timed_results,
+    selection = proof_selection,
+    holdout = proof_holdout,
+    identity = list(source_commit = paste(rep("a", 40L), collapse = "")),
+    controller = "proof"
+)
+stopifnot(identical(landscapeR:::.stage1_target_verified(proof_artifact), proof_artifact))
 nodes <- data.frame(
     label = c(
         "Frozen manifest\nand seed table",

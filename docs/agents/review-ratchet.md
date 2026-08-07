@@ -130,6 +130,16 @@ backend and prove that work remains in the current worker.
 still creates one future and therefore did not enforce ADR 0018's single-layer
 parallelism policy.
 
+### RR-011 — Keep backend-dependent measurements out of scientific decisions
+
+Runtime and resource measurements may be retained for operational diagnostics,
+but they must not affect candidate selection or the scientific evidence digest
+when ADR 0018 promises backend-invariant evidence. Test that changing timing
+alone leaves the scientific decision unchanged.
+
+**Incident:** issue #135 review found that the elapsed-time ratio differed by
+execution backend and was also used as a candidate-selection gate.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A
