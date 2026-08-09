@@ -1,0 +1,8 @@
+Stage 1 component distributions. The rna layer. Facets show components 1-2 in decomposition
+order; stored densities summarize sample-coordinate distributions; rugs mark sample
+coordinates; dotted vertical lines mark zero; Rug colours encode continuous weeks. The analysis
+unit is biological observation nested within a complete subject trajectory; the design is
+longitudinal; the estimand is the descriptive distribution of sample coordinates; time is
+recorded as weeks in weeks; subjects are identified by mouse_id. No component-selection
+threshold is applied. This descriptive gallery does not rank or nominate a biological
+coordinate.

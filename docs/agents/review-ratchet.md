@@ -119,29 +119,32 @@ alone leaves the scientific decision unchanged.
 **Incident:** issue #135 review found that the elapsed-time ratio differed by
 execution backend and was also used as a candidate-selection gate.
 
+### RR-012 — Build and inspect pull-request bodies from the repository template
+
+Before opening or updating a pull request, read `.github/pull_request_template.md`,
+populate it from committed evidence, and inspect the rendered GitHub body. Do
+not substitute a body from memory, claim unlinked proof, or defer an obvious
+missing-proof failure to CI. Required proof must exist before review begins.
+
+**Incident:** [PR #167](https://github.com/drejom/landscapeR/pull/167) claimed
+rendered proof in a malformed free-form body while no proof was visible.
+
 ## Verify, never assume
 
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A
 wrong “fix” is worse than a declined comment: respond with evidence when a
 finding does not apply.
 
-Before substantial work, scan relevant entries, check for contradictions, and
-spot-check two or three against current code or documentation. When this file
-approaches 150 lines, perform a full consolidation pass.
+Before substantial work, scan for contradictions and spot-check relevant entries
+against current code. Near 150 lines, perform a full consolidation pass.
 
 ## Maintenance duties
 
-- **Add:** record a new defect class in the triggering PR, with a concrete
-  incident. No incident means speculation and must not be added.
-- **Correct:** fix or remove an outdated entry and name the correction in the
-  commit and PR disposition.
+- **Add:** record new defect classes with concrete incidents; reject speculation.
+- **Correct:** fix or remove outdated entries and name the correction.
 - **Deduplicate:** search before adding; consolidate overlapping rules.
-- **Graduate:** move mechanical rules into tests or lint checks and recurring
-  architecture or scientific decisions into ADRs. Remove redundant prose or
-  retain only a compact link.
-- **Report:** select exactly one PR disposition: unchanged, updated, corrected,
-  deduplicated, or graduated. Give a substantive rationale for every choice.
+- **Graduate:** move mechanical rules into checks and recurring decisions into ADRs.
+- **Report:** select one disposition and give a substantive rationale.
 
-This document is only for review knowledge. Implementation conventions, domain
-vocabulary, session history, scheduling, and one-off decisions belong to their
+This document is only for review knowledge; other concerns belong to their
 existing authorities.

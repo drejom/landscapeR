@@ -1,0 +1,15 @@
+Known-truth recovery separates the planted condition-by-time target from collection time. The
+AML longitudinal calibration control experiment uses the synthetic expression layer to assess
+the declared condition target contrasts CM with CTL. Horizontal position is absolute loading
+cosine with planted truth, with larger values indicating closer geometric recovery; Vertical
+position is the batch-adjusted condition-by-time effect magnitude used for proposal ranking;
+The red triangle is nominated PC2, which recovers the planted condition-by-time axis (absolute
+cosine 0.995; effect magnitude 4.37); The black circle is PC1, which recovers the planted
+collection-time axis (absolute cosine 0.999; effect magnitude 0.02). The analysis unit is a
+complete synthetic mouse trajectory; the design is repeated-subject longitudinal with irregular
+observation times; the estimand is the batch-adjusted standardized condition-by-time effect
+magnitude; time is recorded as collection time in weeks; subjects are identified by mouse_id;
+adjustment uses batch. Point positions summarize the discovery fit; 49 of 49 complete-subject
+bootstrap refits completed the full assessment and are reported in the companion
+identifiability audit. No acceptance threshold is applied. This disclosed synthetic calibration
+control does not establish biological validity or independent acceptance.

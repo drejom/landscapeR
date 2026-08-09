@@ -70,4 +70,39 @@ setClass("K1DoubleWellGroundTruth",
     )
 )
 
+#' Ground truth for the AML-shaped K=1 longitudinal calibration control
+#'
+#' Keeps the planted feature subspace, sample scores, component identities, and
+#' biological orientation together as one versioned answer key.
+#'
+#' @export
+setClass("K1AmlLongitudinalGroundTruth",
+    contains = "GroundTruth",
+    representation(
+        subspace = "SubspaceGroundTruth",
+        sample_scores = "matrix",
+        target_component = "integer",
+        nuisance_component = "integer",
+        target_orientation = "character"
+    )
+)
+
+setValidity("K1AmlLongitudinalGroundTruth", function(object) {
+    errors <- character()
+    if (ncol(object@sample_scores) != 2L ||
+            any(!is.finite(object@sample_scores))) {
+        errors <- c(errors, "sample_scores must be a finite two-column matrix")
+    }
+    if (!identical(object@target_component, 2L))
+        errors <- c(errors, "target_component must be component 2")
+    if (!identical(object@nuisance_component, 1L))
+        errors <- c(errors, "nuisance_component must be component 1")
+    if (length(object@target_orientation) != 1L ||
+            is.na(object@target_orientation) ||
+            !nzchar(object@target_orientation)) {
+        errors <- c(errors, "target_orientation must be one non-empty string")
+    }
+    if (length(errors)) errors else TRUE
+})
+
 setClassUnion("GroundTruthOrNULL", c("GroundTruth", "NULL"))

@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#67 — resume the frozen exploratory AML
-Stage 1 acceptance lane**.
+**Next task after this change lands:** **#51 — freeze the independent K=1
+acceptance protocol and seeds (phase A)**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -86,8 +86,9 @@ There is no calendar promise. Scientific gates, not dates, advance milestones.
 
 The milestone is complete only when:
 
-1. the K=1 workflow has passed its frozen independent generic and AML-shaped
-   synthetic controls;
+1. the K=1 workflow has passed its frozen independent generic and synchronized
+   AML-shaped synthetic controls, then demonstrated its failure boundary under
+   asynchronous AML manifestation;
 2. a complete AnalysisSpecification v2 retains target intent and a confirmed
    component decision;
 3. the AML state-space is fitted on `primary_2018` only;
@@ -117,6 +118,9 @@ The milestone is complete only when:
                                                          │
                                                          v
                                              #51 phase B: aggregate/finalize
+                                                         │
+                                                         v
+                                             #168 asynchronous-onset robustness
                                                          │
                                                          v
                                              #71 exploratory AML Stage 1
@@ -209,8 +213,9 @@ interpretation lane lands.
 The [2026-07-31 whole-codebase technical-debt audit](docs/archive/technical-debt-audit-2026-07-31.md)
 and follow-up architecture and HPC reviews are fully represented by issues.
 The maintenance lane is deliberately active until the audited backlog is clean.
-Issue #67 remains the next scientific task but is not the current repository
-task; issue labels do not independently change this schedule.
+Issue #67 remains the current scientific lane, but its independent acceptance
+execution is blocked until #51 phase A freezes the protocol and seeds; issue
+labels do not independently change this schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -231,7 +236,8 @@ The loop never merges with unresolved review threads or failing required
 checks. Each pull request must also wait for the actual GitHub Copilot review;
 actionable comments are fixed and evidentially incorrect findings are declined
 before every thread is resolved. After the maintenance loop is clean, stop for
-human confirmation before restoring #67 as the repository's next task.
+human confirmation before restoring the AML acceptance sequence as the
+repository's next task.
 
 **Review memory:** #138 established the incident-backed Ratchet Principle before
 the audited backlog proceeded, so review knowledge earned by #119 onward remains
@@ -313,7 +319,21 @@ Run/aggregate the frozen generic controls, incorporate the frozen #67 result,
 produce content-addressed artifacts, and amend ADR 0002 with the already-frozen
 thresholds, pass rates, false-positive limit, and supported sample range.
 
-### 9. Exploratory primary AML Stage 1 — #71
+### 9. Asynchronous-onset AML robustness control — #168
+
+**Deliverable:** retain approximately stationary CTL trajectories while AML
+animals move coherently along a planted disease direction at heterogeneous
+latent onset times, including non-manifesting animals within the observation
+window. Exercise step-like, sigmoid, and gradual transitions across onset
+dispersion, responder fraction, effect strength, irregular sampling, and
+design-preserving dropout.
+
+**Claim boundary:** this is a known-truth robustness gate, not independent
+biological acceptance. It follows the frozen #51/#67 acceptance sequence so it
+cannot redefine thresholds from its own output. A calibrated structured
+abstention is a valid result where the asynchronous signal is not recoverable.
+
+### 10. Exploratory primary AML Stage 1 — #71
 
 Fit `primary_2018` only, show the observation-before-interpretation sequence,
 require human component confirmation, freeze the state-space definition, and
@@ -328,6 +348,8 @@ claim.
   association implementation may proceed.
 - #60 may locate/verify cKit, blast, or flow metadata at any time; it is useful
   atlas enrichment but does not block the primary target/time analysis.
+- #168 must not run before #51 and #67 complete. It is the final synthetic
+  realism gate before #71, not another calibration source for frozen thresholds.
 - The verified execution audit has satisfied #57's reusable-repetition trigger.
   #57 is agent-ready as a deliberately opened parallel maintenance prefactor;
   it does not displace #67 or justify rewriting stable numerical code.
@@ -442,7 +464,7 @@ bodies may state dependencies but do not change this ordering.
 | [#24](https://github.com/drejom/landscapeR/issues/24) | AML robustness projection | queued |
 | [#41](https://github.com/drejom/landscapeR/issues/41) | Conditional infrastructure | conditional |
 | [#49](https://github.com/drejom/landscapeR/issues/49) | K≥2/islet-diabetes | queued |
-| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active |
+| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — next |
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
 | [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete |
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
@@ -458,7 +480,7 @@ bodies may state dependencies but do not change this ordering.
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
 | [#65](https://github.com/drejom/landscapeR/issues/65) | Longitudinal extensions | parked |
 | [#66](https://github.com/drejom/landscapeR/issues/66) | Longitudinal observation design | queued |
-| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — next |
+| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — calibration completes on merge; acceptance blocked by #51 phase A |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
@@ -504,6 +526,7 @@ bodies may state dependencies but do not change this ordering.
 | [#144](https://github.com/drejom/landscapeR/issues/144) | Maintenance — pkgdown stack-imbalance warnings | complete on merge; then resume #123 |
 | [#158](https://github.com/drejom/landscapeR/issues/158) | Candidate decomposition method — rhoPCA | parked — research question |
 | [#159](https://github.com/drejom/landscapeR/issues/159) | Candidate temporal biological dataset — snake brumation | parked — research question |
+| [#168](https://github.com/drejom/landscapeR/issues/168) | Exploratory AML Stage 1 — asynchronous-onset robustness | active — blocked by #51 and #67 |
 <!-- issue-map:end -->
 
 ---
