@@ -332,6 +332,47 @@ frozen K=1 thinness, negative-control, and independent acceptance protocol is
 tracked in [#51](https://github.com/drejom/landscapeR/issues/51); the
 AML-grounded target/confounder control is [#67](https://github.com/drejom/landscapeR/issues/67).
 
+### Frozen K=1 acceptance protocol (#51 phase A)
+
+The independent acceptance protocol is now inspectable before any acceptance
+replicate is run. Its digest covers the positive, negative, thinness, and
+synchronized AML grids; all metric thresholds and aggregate pass rules; and the
+delayed seed-derivation contract. Protocol construction is definition-only:
+there is deliberately no acceptance executor in phase A.
+
+```{r k1-acceptance-protocol}
+k1_protocol <- k1_acceptance_protocol()
+
+knitr::kable(data.frame(
+  Property = c(
+    "Protocol status",
+    "Acceptance execution",
+    "Generic n grid",
+    "Generic p grid",
+    "Minimum cell pass rate",
+    "Maximum false double-well rate",
+    "Protocol digest"
+  ),
+  Frozen_value = c(
+    k1_protocol$protocol_status,
+    k1_protocol$execution$acceptance_execution_available,
+    paste(k1_protocol$grids$generic_double_well$varying$n, collapse = ", "),
+    paste(k1_protocol$grids$generic_double_well$varying$p, collapse = ", "),
+    k1_protocol$pass_rules$minimum_cell_pass_rate,
+    k1_protocol$thresholds$negative_controls$
+      maximum_false_double_well_rate_per_control_cell,
+    k1_protocol$digest
+  ),
+  check.names = FALSE
+))
+```
+
+This table is protocol-definition proof, not acceptance evidence. The
+acceptance seeds remain hidden and unconsumed until the phase-A merge commit
+supplies the frozen derivation input;
+later phases run the frozen grid, publish immutable evidence, and only then
+amend ADR 0002 with observed pass rates and the supported sample range.
+
 ```{r k1-calibration-table}
 k1_calibration <- suppressWarnings(k1_double_well_calibration(
   n = 200L, p = 100L, noise_sd = 0.03, seed = 50L

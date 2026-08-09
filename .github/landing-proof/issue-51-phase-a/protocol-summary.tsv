@@ -1,0 +1,10 @@
+property	frozen_value
+protocol_status	frozen_before_acceptance
+acceptance_execution_available	FALSE
+generic_n_grid	24,48,96,132,192
+generic_p_grid	100,1000,10000,20000
+minimum_cell_pass_rate	0.9
+minimum_cell_wilson_95_lower_bound	0.8
+maximum_false_double_well_rate	0.05
+replicate_plan	generic_double_well=100;pure_noise=200;single_well=200;aml_synchronized=100
+protocol_digest	cfab0f41626d246beaf90069352b9bc25fd80717c4d6227f26b2852e92b7effc
