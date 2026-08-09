@@ -6,7 +6,10 @@ is frozen and inspectable before any acceptance replicate is executed.
 The protocol contains the complete generic double-well thinness grid,
 pure-noise and single-well negative controls, synchronized AML control,
 control-specific thresholds, aggregate pass rules, biological-unit resampling
-requirements, and a deterministic delayed seed-derivation rule. Its public
+requirements, explicit normalized execution settings, and a deterministic
+delayed seed-derivation rule whose range respects every downstream generator.
+The supported-minimum rule is evaluated only where positive and negative grids
+overlap. Its public
 object validates only
 when every field and its SHA-256 digest match the frozen definition.
 

@@ -9,6 +9,13 @@ test_that("K=1 acceptance protocol is deterministic and content addressed", {
     expect_identical(first$protocol_status, "frozen_before_acceptance")
     expect_false(first$execution$acceptance_execution_available)
     expect_identical(first$execution$phase, "definition_only")
+
+    path <- tempfile(fileext = ".rds")
+    on.exit(unlink(path), add = TRUE)
+    saveRDS(first, path)
+    restored <- readRDS(path)
+    expect_identical(restored, first)
+    expect_true(validate_k1_acceptance_protocol(restored))
 })
 
 test_that("K=1 acceptance seeds remain hidden until the phase-A merge", {
@@ -29,6 +36,11 @@ test_that("K=1 acceptance seeds remain hidden until the phase-A merge", {
         c("subjects_per_condition", "p")
     )
     expect_false(protocol$provenance$acceptance_results_inspected)
+    expect_match(
+        protocol$seed_derivation$integer_mapping,
+        "modulo 2147483644",
+        fixed = TRUE
+    )
 })
 
 test_that("K=1 acceptance protocol freezes metrics and pass rules", {
@@ -73,6 +85,23 @@ test_that("K=1 acceptance protocol freezes metrics and pass rules", {
         names(protocol$grids$aml_synchronized$varying),
         c("subjects_per_condition", "p")
     )
+    expect_identical(
+        protocol$execution_contracts$svd,
+        list(center = TRUE, k_components = 6L)
+    )
+    expect_identical(
+        protocol$execution_contracts$kde_logdensity$bandwidth_method,
+        "hpi"
+    )
+    expect_null(
+        protocol$execution_contracts$kde_logdensity$bandwidth_value
+    )
+    expect_identical(
+        protocol$execution_contracts$aml_synchronized_analysis$
+            dropout_subjects,
+        character()
+    )
+    expect_match(protocol$pass_rules$supported_minimum_n, "48,96,132,192")
 })
 
 test_that("K=1 acceptance protocol rejects mutation and forged digests", {

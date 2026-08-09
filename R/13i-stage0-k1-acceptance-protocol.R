@@ -32,6 +32,58 @@
             dynamics_estimator = "kde_logdensity",
             component_interpretation = "registered_sampling_design_strategy"
         ),
+        execution_contracts = list(
+            version = "k1-stage0-acceptance-runner-v1",
+            parameter_resolution = paste(
+                "use these normalized values exactly; package defaults and",
+                "caller overrides are forbidden"
+            ),
+            svd = list(center = TRUE, k_components = 6L),
+            kde_logdensity = list(
+                n_grid = 512L,
+                poly_degree = 6L,
+                layer = 1L,
+                pool_layers = TRUE,
+                component = 1L,
+                bandwidth_method = "hpi",
+                bandwidth_value = NULL
+            ),
+            generic_double_well_analysis = list(
+                target_field = "x_coord",
+                target_type = "continuous",
+                continuous_direction = "increasing",
+                lifecycle = "confirmed",
+                selected_component = 1L,
+                proposal_decision = "accepted",
+                claim_intent = "exploratory"
+            ),
+            negative_control_analysis = list(
+                target_field = "target",
+                target_type = "binary",
+                reference_level = "reference",
+                comparison_level = "comparison",
+                nuisance_fields = character(),
+                non_analytical_fields = character(),
+                claim_intent = "exploratory"
+            ),
+            aml_synchronized_analysis = list(
+                target_field = "condition",
+                target_type = "binary",
+                reference_level = "CTL",
+                comparison_level = "CM",
+                nuisance_fields = "batch",
+                non_analytical_fields = c("mouse_id", "batch"),
+                dropout_subjects = character(),
+                atlas_resamples = 0L,
+                claim_intent = "exploratory"
+            ),
+            provenance_requirement = paste(
+                "acceptance evidence records protocol digest, runner contract",
+                "version, package version, and source revision; changing a",
+                "named generator, strategy, or normalized value requires a",
+                "new reviewed protocol version"
+            )
+        ),
         generators = list(
             generic_double_well = "exact_cauchy_rejection_v1",
             pure_noise = list(
@@ -144,8 +196,10 @@
             ),
             failed_execution = "failed replicate, never silently excluded",
             supported_minimum_n = paste(
-                "smallest n passing every declared p cell for the generic",
-                "positive and both negative controls"
+                "smallest n in the shared positive/negative candidate set",
+                "48,96,132,192 that passes every declared p cell for the",
+                "generic positive and both negative controls; n=24 remains a",
+                "positive thinness cell and cannot establish support alone"
             ),
             aml_gate = paste(
                 "every declared subjects-per-condition by p cell passes;",
@@ -182,7 +236,9 @@
                 "replicate_index"
             ),
             integer_mapping = paste(
-                "1 + (first 13 hexadecimal digest digits modulo 2147483645)"
+                "1 + (first 13 hexadecimal digest digits modulo 2147483644);",
+                "the maximum is reserved below the strictest downstream",
+                "seed-plus-three limit"
             ),
             collision_rule =
                 "collision is a protocol failure; do not redraw or perturb"
