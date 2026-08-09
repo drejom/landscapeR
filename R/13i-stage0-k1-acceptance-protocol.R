@@ -240,14 +240,47 @@
                 "the maximum is reserved below the strictest downstream",
                 "seed-plus-three limit"
             ),
-            collision_rule =
-                "collision is a protocol failure; do not redraw or perturb"
+            acceptance_stream_offsets = list(
+                generic_double_well = c(
+                    state_coordinates = 0L, expression = 1L
+                ),
+                pure_noise = c(
+                    generator = 0L, metadata = 1L,
+                    permutations = 2L, identifiability = 3L
+                ),
+                single_well = c(
+                    generator = 0L, metadata = 1L,
+                    permutations = 2L, identifiability = 3L
+                ),
+                aml_synchronized = c(
+                    generator = 0L, association = 1L,
+                    permutations = 2L, identifiability = 3L
+                )
+            ),
+            collision_rule = paste(
+                "a derived root plus every control-specific stream offset",
+                "must be disjoint from all reserved calibration RNG streams",
+                "and all previously derived acceptance streams; collision is",
+                "a protocol failure, never redrawn or perturbed"
+            )
         ),
         separation = list(
-            disclosed_calibration_seeds = c(42L, 6701L, 6702L, 6703L),
+            disclosed_calibration_root_seeds = c(
+                42L, 50L, 6701L, 6702L, 6703L
+            ),
+            reserved_calibration_rng_streams = c(
+                42L, 43L, 44L, 45L, 50L, 51L,
+                6701L, 6702L, 6703L, 6704L, 6705L
+            ),
+            calibration_sources = c(
+                "public generator/calibration defaults",
+                "issue-50 development-log calibration seed 50",
+                "issue-67 AML calibration/development seeds 6701:6703"
+            ),
             rule = paste(
                 "acceptance seeds are unknowable until the phase-A merge",
-                "commit exists and may not be derived or executed before then"
+                "commit exists and may not be derived or executed before then;",
+                "the later runner rejects every reserved-stream collision"
             )
         ),
         provenance = list(

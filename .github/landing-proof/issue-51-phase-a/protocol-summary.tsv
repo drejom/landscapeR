@@ -7,4 +7,4 @@ minimum_cell_pass_rate	0.9
 minimum_cell_wilson_95_lower_bound	0.8
 maximum_false_double_well_rate	0.05
 replicate_plan	generic_double_well=100;pure_noise=200;single_well=200;aml_synchronized=100
-protocol_digest	075674ebecf855870cb4a1882d5747e3945583bca15be0b817a6da0c0444d01b
+protocol_digest	2235d002cc1e8df908507f34fcf8fb5556b7caece2738ea681438f450a9e7dc6

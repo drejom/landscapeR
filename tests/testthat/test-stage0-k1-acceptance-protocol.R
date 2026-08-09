@@ -41,6 +41,21 @@ test_that("K=1 acceptance seeds remain hidden until the phase-A merge", {
         "modulo 2147483644",
         fixed = TRUE
     )
+    expect_identical(
+        protocol$separation$disclosed_calibration_root_seeds,
+        c(42L, 50L, 6701L, 6702L, 6703L)
+    )
+    expect_identical(
+        protocol$separation$reserved_calibration_rng_streams,
+        c(42L, 43L, 44L, 45L, 50L, 51L,
+          6701L, 6702L, 6703L, 6704L, 6705L)
+    )
+    expect_identical(
+        unname(protocol$seed_derivation$acceptance_stream_offsets$
+                   aml_synchronized),
+        0:3
+    )
+    expect_match(protocol$seed_derivation$collision_rule, "reserved")
 })
 
 test_that("K=1 acceptance protocol freezes metrics and pass rules", {
