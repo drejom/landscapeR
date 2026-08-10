@@ -79,11 +79,12 @@ address, and cross-checks runtime revision provenance.
 
 ## Gemini operations
 
-The supplied Gemini profile creates a dedicated hprcc controller. Its resource
-request is provisional until a development-only largest-cell pilot is measured
-with `hprcc::summarize_resource_usage()`. Native hprcc CPU, memory, and duration
-measurements may tune only controller resources; they cannot enter the
-scientific digest or change the frozen protocol.
+The supplied Gemini profile creates a dedicated hprcc controller. A
+development-only largest-cell pilot measured 1.5 GB peak memory, 6.8% peak CPU,
+and 2.9 minutes with `hprcc::summarize_resource_usage()`, which recommended its
+`tiny` tier. The resulting profile requests 2 CPUs, 8 GB, and 60 minutes for
+one complete replicate per worker. These operational measurements cannot enter
+the scientific digest or change the frozen protocol.
 
 ## Reproduction
 

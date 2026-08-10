@@ -42,7 +42,9 @@ installation metadata; and install it:
 ```sh
 BUILD_SOURCE="$(mktemp -d "$LANDSCAPER_BUILD_ROOT/landscapeR-build.XXXXXX")"
 git -C "$LANDSCAPER_SOURCE" archive "$LANDSCAPER_REVISION" | tar -x -C "$BUILD_SOURCE"
-printf '\nConfig/landscapeR/Revision: %s\n' "$LANDSCAPER_REVISION" >> "$BUILD_SOURCE/DESCRIPTION"
+printf 'Config/landscapeR/Revision: %s\n' "$LANDSCAPER_REVISION" >> "$BUILD_SOURCE/DESCRIPTION"
+Rscript -e 'stopifnot(nrow(read.dcf(commandArgs(TRUE)[[1L]])) == 1L)' \
+  "$BUILD_SOURCE/DESCRIPTION"
 R CMD INSTALL --library="$LANDSCAPER_R_LIB" "$BUILD_SOURCE"
 ```
 

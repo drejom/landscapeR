@@ -2,8 +2,10 @@
 
 This guide owns the City of Hope Gemini execution profile for durable
 landscapeR acceptance workloads. The scientific protocol and task graph remain
-package-owned. Slurm resources, worker scale, the targets store, and monitoring
-remain caller-owned operational policy supplied through `hprcc`.
+package-owned. Slurm resources, active worker concurrency, the targets store,
+and monitoring remain operational policy supplied through `hprcc` and Slurm.
+The package profile fixes only the resources and number of complete tasks
+handled by each worker.
 
 ## Verified environment
 
@@ -54,10 +56,10 @@ directory.
 ## Custom controller and native metrics
 
 The supplied profile adds a dedicated `k1-acceptance` controller with
-`hprcc::add_controller()`. Its initial resource request is deliberately
-conservative. Before the independent run, execute the largest generic and
-negative cells with development-only seeds, then inspect hprcc's native
-autometric evidence:
+`hprcc::add_controller()`. Its measured resource request follows the completed
+development pilot below. If the runner, container, scheduler, or largest-cell
+workload changes materially, repeat that pilot with development-only seeds and
+inspect hprcc's native autometric evidence:
 
 ```r
 logs <- hprcc::read_targets_logs(
@@ -69,10 +71,34 @@ hprcc::summarize_resource_usage(
 )
 ```
 
-Set the custom controller's CPUs, memory, wall time, and tasks per worker from
-those measurements with a documented safety margin. Do not change scientific
-grid values, repetition counts, normalized estimator settings, or thresholds
-in response to the pilot.
+Update the custom controller's CPUs, memory, wall time, and tasks per worker
+only from those measurements with a documented safety margin. Do not change
+scientific grid values, repetition counts, normalized estimator settings, or
+thresholds in response to the pilot.
+
+### Development pilot evidence
+
+On 2026-08-09, exact development revision
+`868a87b407db74dc8d21bb909c1c940270fac67f` ran one largest-cell replicate for
+each implemented phase-B1 control at `n = 192` and `p = 20,000`. The three
+tasks used fixed development-only roots that were not derived from the frozen
+acceptance manifest. All three workers completed. Their scientific values are
+not acceptance evidence and are not retained by the package.
+
+hprcc's native resource summary reported:
+
+| Measurement | Observed value |
+|---|---:|
+| Peak memory | 1.5 GB |
+| Peak CPU | 6.8% |
+| Duration | 2.9 minutes |
+| hprcc recommendation | `tiny` |
+
+The package profile therefore requests 2 CPUs, 8 GB, and 60 minutes for one
+complete replicate per worker. This retains more than five times the observed
+peak memory and more than twenty times the observed duration while following
+hprcc's named recommendation. Native resource logs remain operational evidence
+outside the scientific artifact digest.
 
 ## Production launch
 

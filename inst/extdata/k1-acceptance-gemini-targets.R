@@ -38,14 +38,15 @@ library(targets)
 library(hprcc)
 library(landscapeR)
 
-# Dedicated acceptance resources are operational policy. Re-size these values
-# only from hprcc::summarize_resource_usage() on the development-only largest
-# cell pilot; changing them does not change the scientific graph.
+# Dedicated acceptance resources are operational policy. These values follow
+# hprcc::summarize_resource_usage() on the development-only largest-cell pilot
+# recorded in docs/agents/gemini-hprcc-deployment.md. Changing them does not
+# change the scientific graph.
 hprcc::add_controller(
     name = "k1-acceptance",
-    slurm_cpus = 4L,
-    slurm_mem_gigabytes = 40L,
-    slurm_walltime_minutes = 360L,
+    slurm_cpus = 2L,
+    slurm_mem_gigabytes = 8L,
+    slurm_walltime_minutes = 60L,
     slurm_partition = "compute",
     tasks_max = 1L
 )

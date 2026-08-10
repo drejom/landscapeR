@@ -332,7 +332,7 @@ frozen K=1 thinness, negative-control, and independent acceptance protocol is
 tracked in [#51](https://github.com/drejom/landscapeR/issues/51); the
 AML-grounded target/confounder control is [#67](https://github.com/drejom/landscapeR/issues/67).
 
-### Frozen K=1 acceptance protocol (#51 phase A)
+### Frozen K=1 acceptance protocol and independent runner (#51)
 
 The independent acceptance protocol is now inspectable before any acceptance
 replicate is run. Its digest covers the positive, negative, thinness, and
@@ -340,8 +340,9 @@ synchronized AML grids; all metric thresholds and aggregate pass rules; and the
 normalized SVD, KDE, association, dropout, and resampling settings; plus the
 delayed seed-derivation contract. Package defaults cannot silently change an
 acceptance run: evidence must record the protocol digest, runner-contract
-version, package version, and source revision. Protocol construction is definition-only:
-there is deliberately no acceptance executor in phase A.
+version, package version, and source revision. Phase B1 now provides the
+independent executor, typed aggregation, publication, verification, and
+summary plots without changing the phase-A protocol.
 
 ```{r k1-acceptance-protocol}
 k1_protocol <- k1_acceptance_protocol()
@@ -370,13 +371,19 @@ knitr::kable(data.frame(
 ))
 ```
 
-This table is protocol-definition proof, not acceptance evidence. The
-acceptance seeds remain hidden and unconsumed until the phase-A merge commit
-supplies the frozen derivation input;
-later phases run the frozen grid, publish immutable evidence, and only then
-amend ADR 0002 with observed pass rates and the supported sample range. That
-minimum is evaluated over the shared positive/negative `n` grid beginning at
-48; the positive-only `n = 24` cell remains a thinness stress test.
+This table is protocol-definition proof, not acceptance evidence. The exported
+`k1_acceptance_manifest()` reveals the deterministic seed manifest only when
+supplied the reviewed phase-A merge commit. `k1_acceptance_targets()` then
+delegates one complete replicate per worker, retains failures in the requested
+denominator, and blocks publication until all requested branches return.
+`summarize_k1_acceptance()`, `plot_k1_acceptance_summary()`, and
+`verify_k1_acceptance_artifact()` provide typed aggregation, separate dynamic
+captions, and semantic artifact verification. None of those functions has run
+the frozen acceptance set in this vignette. Only independently executed,
+verified evidence can amend ADR 0002 with observed pass rates and a supported
+sample range. The minimum is evaluated over the shared positive/negative `n`
+grid beginning at 48; the positive-only `n = 24` cell remains a thinness stress
+test.
 
 ```{r k1-calibration-table}
 k1_calibration <- suppressWarnings(k1_double_well_calibration(
@@ -595,4 +602,4 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
   co-located with the diff in [PR #69](https://github.com/drejom/landscapeR/pull/69).
   This remains implementation work, not K=1 acceptance evidence.
 
-*Last updated: 2026-07-14. Documentation site: <https://drejom.github.io/landscapeR/>.*
+*Last updated: 2026-08-09. Documentation site: <https://drejom.github.io/landscapeR/>.*
