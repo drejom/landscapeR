@@ -371,6 +371,39 @@ claim.
 - The verified execution audit has satisfied #57's reusable-repetition trigger.
   #57 is agent-ready as a deliberately opened parallel maintenance prefactor;
   it does not displace #67 or justify rewriting stable numerical code.
+- #172 may run now as a human-led documentation-standards and audit lane while
+  the frozen #51 execution proceeds. It does not consume acceptance seeds or
+  displace the scientific next task.
+
+## Cross-cutting documentation clarity lane
+
+This lane starts during the active AML milestone rather than waiting for a
+generic productisation phase. It preserves the current technical record while
+adding a concept-first path for bioinformaticians and future contributors. It
+must not simplify away mathematical definitions, uncertainty, abstention,
+claim boundaries, or reproducibility contracts.
+
+The sequence is:
+
+1. #172 defines the audience-specific standard through human grilling and
+   audits representative documentation. This work is active now and may run in
+   parallel with #51 phase-B1 execution.
+2. #173 applies the approved standard to the complete K=1 acceptance journey.
+   It must land before #51 phase B publishes a supported operating range, so
+   the first major acceptance result uses the agreed explanatory structure.
+3. #174 establishes the canonical contributor path after #172. It does not
+   block #67, #168, or #71, but it must complete before v1 or before the project
+   solicits implementation of new modules from external contributors,
+   whichever comes first.
+4. #175 automates only mechanically safe requirements after #172 and the #173
+   pilot. It is a pre-v1 gate and must leave scientific clarity and appropriate
+   technical depth as review judgments.
+
+The #172 audit may create additional issues grouped by scientific journey and
+root cause. Each new issue must be placed explicitly in this roadmap. Material
+gaps in a public workflow must be corrected before that workflow becomes part
+of the v1 surface; the audit must not become an uncontrolled package-wide
+rewrite.
 
 ---
 
@@ -549,6 +582,10 @@ bodies may state dependencies but do not change this ordering.
 | [#159](https://github.com/drejom/landscapeR/issues/159) | Candidate temporal biological dataset — snake brumation | parked — research question |
 | [#168](https://github.com/drejom/landscapeR/issues/168) | Exploratory AML Stage 1 — asynchronous-onset robustness | active — blocked by #51 and #67 |
 | [#170](https://github.com/drejom/landscapeR/issues/170) | Maintenance — K=1 acceptance runner module seams | queued after governed #51 execution |
+| [#172](https://github.com/drejom/landscapeR/issues/172) | Cross-cutting documentation clarity: standard and audit | active; parallel human decision lane |
+| [#173](https://github.com/drejom/landscapeR/issues/173) | Cross-cutting documentation clarity: K=1 pilot | queued; blocked by #172; before #51 phase B publication |
+| [#174](https://github.com/drejom/landscapeR/issues/174) | Productisation: contributor module path | queued; blocked by #172; pre-v1 gate |
+| [#175](https://github.com/drejom/landscapeR/issues/175) | Cross-cutting documentation clarity: mechanical enforcement | queued; blocked by #172 and #173; pre-v1 gate |
 <!-- issue-map:end -->
 
 ---
