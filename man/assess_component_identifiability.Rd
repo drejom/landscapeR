@@ -10,7 +10,9 @@ assess_component_identifiability(
   config,
   non_analytical_fields = character(),
   n_resamples,
-  seed = 1L
+  seed = 1L,
+  sequential_internal = FALSE,
+  future_scheduling = NULL
 )
 }
 \arguments{
@@ -25,6 +27,12 @@ assess_component_identifiability(
 \item{n_resamples}{positive number of evidence bootstrap replicates}
 
 \item{seed}{deterministic resampling seed}
+
+\item{sequential_internal}{force resampling to execute in the current R
+process when this assessment already runs inside an outer future}
+
+\item{future_scheduling}{optional future.apply scheduling value; \code{NULL}
+leaves scheduling to future.apply and the user-selected backend}
 }
 \value{
 the proposal with digest-bound identifiability evidence

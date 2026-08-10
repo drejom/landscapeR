@@ -1,0 +1,11 @@
+K=1 negative-control false-positive rates. The k1-stage0-acceptance-v1 experiment. (A) False
+double-well topology in pure noise. (B) False target selection in pure noise. (C) False
+double-well topology in single-well data. (D) False target selection in single-well data. Black
+points show per-cell false-positive rates by feature count; Open points identify incomplete
+frozen cells; the red horizontal line marks the frozen 5% maximum. The estimand is Each rate
+uses all requested replicates in its control and grid cell, including failed executions in the
+denominator.. Rates remain descriptive until every frozen replicate is present and the
+complete-cell acceptance rules are applied. The displayed execution is incomplete and cannot
+establish acceptance. Both negative-control false-positive rates must not exceed 5%. Negative
+controls measure false topology and false target selection; pure noise has no planted subspace
+recovery target.

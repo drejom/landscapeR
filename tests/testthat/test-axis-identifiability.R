@@ -258,6 +258,35 @@ test_that("accepted K=1 identifiability has no invented competitor axis", {
     expect_match(primary_caption, "black bars span the middle 50%", fixed = TRUE)
 })
 
+test_that("sequential identifiability stays inside an outer worker", {
+    previous_plan <- future::plan()
+    on.exit(future::plan(previous_plan), add = TRUE)
+    future::plan(future::multicore, workers = 2L)
+    fixture <- .axis_identifiability_fixture(k_components = 1L)
+    original <- landscapeR:::.run_identifiability_replicate
+    observed_pids <- integer()
+    testthat::local_mocked_bindings(
+        .run_identifiability_replicate = function(...) {
+            observed_pids <<- c(observed_pids, Sys.getpid())
+            original(...)
+        },
+        .package = "landscapeR"
+    )
+
+    assessed <- assess_component_identifiability(
+        data = fixture$source,
+        proposal = fixture$proposal,
+        config = fixture$config,
+        non_analytical_fields = "sample_id",
+        n_resamples = 2L,
+        seed = 12611L,
+        sequential_internal = TRUE
+    )
+
+    expect_identical(observed_pids, rep(Sys.getpid(), 2L))
+    expect_identical(proposal_identifiability(assessed)$n_requested, 2L)
+})
+
 test_that("K=1 evidence keeps success, abstention, and failure counts coherent", {
     fixture <- .axis_identifiability_fixture(k_components = 1L)
 

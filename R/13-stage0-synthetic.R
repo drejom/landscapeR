@@ -410,9 +410,50 @@ synthetic_k1_double_well_control <- function(n = 200L,
             "synthetic_k1_double_well_control(): ", validation_message
         ))
 
-    n <- as.integer(n)
-    p <- as.integer(p)
-    seed <- as.integer(seed)
+    .synthetic_k1_double_well_control(
+        n = as.integer(n),
+        p = as.integer(p),
+        noise_sd = noise_sd,
+        beta = beta,
+        seed = as.integer(seed),
+        governance = list(
+            calibration_only = TRUE,
+            evidence_status = "non_evidentiary_calibration",
+            claim_status = "non_evidentiary_calibration"
+        ),
+        provenance_implementation = "k1_double_well",
+        provenance_input_hashes = NULL
+    )
+}
+
+.synthetic_k1_double_well_control <- function(
+    n,
+    p,
+    noise_sd,
+    beta,
+    seed,
+    governance,
+    provenance_implementation,
+    provenance_input_hashes = NULL
+) {
+    required_governance <- c(
+        "calibration_only", "evidence_status", "claim_status"
+    )
+    if (!is.list(governance) ||
+            !all(required_governance %in% names(governance)) ||
+            !is.logical(governance$calibration_only) ||
+            length(governance$calibration_only) != 1L ||
+            is.na(governance$calibration_only) ||
+            any(!vapply(
+                governance[c("evidence_status", "claim_status")],
+                .is_scalar_nonempty_text,
+                logical(1L)
+            )) ||
+            !.is_scalar_nonempty_text(provenance_implementation)) {
+        .stop_landscapeR_validation(
+            "K=1 double-well generation requires explicit evidence governance"
+        )
+    }
 
     setup_rng(seed)
     x_raw <- .sample_double_well_stationary(n, beta)
@@ -470,7 +511,7 @@ synthetic_k1_double_well_control <- function(n = 200L,
         sampling_design = cross_sectional()
     )
     md <- metadata(std)
-    md$k1_double_well_control <- list(
+    control_metadata <- c(list(
         n = n,
         p = p,
         K = 1L,
@@ -483,29 +524,27 @@ synthetic_k1_double_well_control <- function(n = 200L,
         true_wells = c(-1 - center_shift, 1 - center_shift),
         true_barrier = -center_shift,
         # Stage 2 estimates -log(p) = beta * U + constant.
-        true_barrier_height = beta,
-        calibration_only = TRUE,
-        evidence_status = "non_evidentiary_calibration",
-        claim_status = "non_evidentiary_calibration"
-    )
+        true_barrier_height = beta
+    ), governance)
+    md$k1_double_well_control <- control_metadata
     metadata(std) <- md
+    if (is.null(provenance_input_hashes)) {
+        provenance_input_hashes <- c(
+            specification = digest::digest(control_metadata, algo = "sha256")
+        )
+    }
     std <- record_provenance(
         std,
         stage = "generate_control",
         contract = "SyntheticControlGenerator",
-        implementation = "k1_double_well",
-        params = md$k1_double_well_control,
+        implementation = provenance_implementation,
+        params = control_metadata,
         rng = .generator_rng_identity(
             seed,
-            "synthetic_k1_double_well_control",
+            provenance_implementation,
             c(state_coordinates = seed, expression = seed + 1L)
         ),
-        input_hashes = c(
-            specification = digest::digest(
-                md$k1_double_well_control,
-                algo = "sha256"
-            )
-        )
+        input_hashes = provenance_input_hashes
     )
     std
 }

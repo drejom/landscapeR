@@ -351,6 +351,7 @@
 .scientific_caption_renderer_registry <- data.frame(
     renderer = c(
         "plot_component_identifiability",
+        "plot_k1_acceptance_summary",
         "plot_components",
         "plot_spectrum",
         "plot_decomposition",
@@ -362,10 +363,10 @@
         "plot.ComponentAbstention"
     ),
     policy = c(
-        rep("caption-required", 10L)
+        rep("caption-required", 11L)
     ),
     tracking_issue = c(
-        rep(NA_integer_, 10L)
+        rep(NA_integer_, 11L)
     ),
     stringsAsFactors = FALSE
 )
