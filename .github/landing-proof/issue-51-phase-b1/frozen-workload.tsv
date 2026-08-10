@@ -1,0 +1,5 @@
+phase	control	grid_cells	replicates_per_cell	tasks	execution_status
+B1	Double-well recovery	20	100	2000	runner implemented; not executed
+B1	Pure noise	16	200	3200	runner implemented; not executed
+B1	Single well	16	200	3200	runner implemented; not executed
+later	Synchronized AML	9	100	900	blocked until issue #67 acceptance

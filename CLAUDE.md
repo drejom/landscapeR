@@ -190,4 +190,6 @@ Multi-context layout — `CONTEXT-MAP.md` at the root points to per-context file
 
 ### Execution and reproducibility → See `docs/agents/execution-reproducibility.md`.
 
+### Gemini hprcc deployment → See `docs/agents/gemini-hprcc-deployment.md`.
+
 ### Contributor workflow → See `docs/agents/contributor-workflow.md`.

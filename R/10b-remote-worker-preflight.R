@@ -140,7 +140,10 @@ preflight_future_workers <- function(
             function(package) requireNamespace(package, quietly = TRUE),
             logical(1L)
         )
-        versions <- setNames(rep(NA_character_, length(packages)), packages)
+        versions <- stats::setNames(
+            rep(NA_character_, length(packages)),
+            packages
+        )
         versions[installed] <- vapply(
             packages[installed],
             function(package) as.character(utils::packageVersion(package)),

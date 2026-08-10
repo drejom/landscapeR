@@ -318,6 +318,13 @@ hidden disjoint acceptance seeds in a content-addressed protocol.
 **Status:** complete on merge of the phase-A protocol PR; no acceptance seed was
 executed while choosing or freezing the protocol.
 
+**Phase-B1 execution seam:** on merge of the runner PR, the deterministic seed
+manifest, generic and negative-control branches, complete-denominator summary,
+content-addressed publication, Gemini hprcc custom-controller profile, and
+native resource-metrics workflow are ready. The next action remains the frozen
+generic/negative run itself; production seeds are first derived only from the
+reviewed runner installation.
+
 ### 7. Independent AML-shaped acceptance — #67 acceptance lane
 
 Run the frozen #67 cases without tuning. Preserve all metrics and valid
@@ -455,6 +462,9 @@ These items do not reorder the scientific path unless their trigger is met:
   APIs and claim gates stabilize.
 - #5 — consolidate or unexport deferred Stage 0.5/0.75 stubs when the public API
   cleanup lane is opened or the first real implementation begins.
+- #170 — split the K=1 acceptance runner along manifest, execution, artifact,
+  and orchestration seams after the governed acceptance run, without changing
+  its scientific or artifact contracts.
 
 These capabilities must not become alternate scientific implementations or
 bypass Stage 0 gates.
@@ -475,7 +485,7 @@ bodies may state dependencies but do not change this ordering.
 | [#24](https://github.com/drejom/landscapeR/issues/24) | AML robustness projection | queued |
 | [#41](https://github.com/drejom/landscapeR/issues/41) | Conditional infrastructure | conditional |
 | [#49](https://github.com/drejom/landscapeR/issues/49) | K≥2/islet-diabetes | queued |
-| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — next; phase A complete on merge, generic execution follows |
+| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — next; phase A complete, phase-B1 runner lands before frozen generic execution |
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
 | [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete |
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
@@ -538,6 +548,7 @@ bodies may state dependencies but do not change this ordering.
 | [#158](https://github.com/drejom/landscapeR/issues/158) | Candidate decomposition method — rhoPCA | parked — research question |
 | [#159](https://github.com/drejom/landscapeR/issues/159) | Candidate temporal biological dataset — snake brumation | parked — research question |
 | [#168](https://github.com/drejom/landscapeR/issues/168) | Exploratory AML Stage 1 — asynchronous-onset robustness | active — blocked by #51 and #67 |
+| [#170](https://github.com/drejom/landscapeR/issues/170) | Maintenance — K=1 acceptance runner module seams | queued after governed #51 execution |
 <!-- issue-map:end -->
 
 ---

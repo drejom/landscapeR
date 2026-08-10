@@ -4,7 +4,8 @@
 # thresholds or classify scientific support; calibration remains owned by #67.
 
 utils::globalVariables(c(
-    "evidence_index", "focal", "series", "surface", "value"
+    "absolute_similarity", "evidence_index", "focal", "label", "series",
+    "surface", "value", "xmax", "xmin"
 ))
 
 .finite_loading_matrix <- function(x, name) {
@@ -1025,6 +1026,10 @@ utils::globalVariables(c(
 #' @param non_analytical_fields metadata fields excluded from association
 #' @param n_resamples positive number of evidence bootstrap replicates
 #' @param seed deterministic resampling seed
+#' @param sequential_internal force resampling to execute in the current R
+#'   process when this assessment already runs inside an outer future
+#' @param future_scheduling optional future.apply scheduling value; `NULL`
+#'   leaves scheduling to future.apply and the user-selected backend
 #'
 #' @return the proposal with digest-bound identifiability evidence
 #' @export
@@ -1034,7 +1039,9 @@ assess_component_identifiability <- function(
     config,
     non_analytical_fields = character(),
     n_resamples,
-    seed = 1L
+    seed = 1L,
+    sequential_internal = FALSE,
+    future_scheduling = NULL
 ) {
     if (!is(data, "StateTransitionData")) {
         .stop_landscapeR_validation(
@@ -1058,6 +1065,21 @@ assess_component_identifiability <- function(
     if (length(seed) != 1L || is.na(seed) ||
         seed != as.integer(seed)) {
         .stop_landscapeR_validation("seed must be one integer")
+    }
+    if (!is.logical(sequential_internal) ||
+            length(sequential_internal) != 1L ||
+            is.na(sequential_internal)) {
+        .stop_landscapeR_validation(
+            "sequential_internal must be TRUE or FALSE"
+        )
+    }
+    if (!is.null(future_scheduling) &&
+            (!is.numeric(future_scheduling) ||
+                length(future_scheduling) != 1L ||
+                is.na(future_scheduling) || future_scheduling < 0)) {
+        .stop_landscapeR_validation(
+            "future_scheduling must be NULL or one non-negative number"
+        )
     }
     if (!identical(
         canonical_digest(config@analysis),
@@ -1099,9 +1121,7 @@ assess_component_identifiability <- function(
     )
     run_replicate <- .run_identifiability_replicate
     failed_replicate <- .failed_identifiability_replicate
-    replicates <- future.apply::future_lapply(
-        seq_len(n_resamples),
-        function(index) {
+    run_one <- function(index) {
             tryCatch(
                 run_replicate(
                     index = index,
@@ -1124,9 +1144,20 @@ assess_component_identifiability <- function(
                     )
                 }
             )
-        },
-        future.seed = TRUE
-    )
+    }
+    if (isTRUE(sequential_internal)) {
+        replicates <- lapply(seq_len(n_resamples), run_one)
+    } else {
+        future_args <- list(
+            X = seq_len(n_resamples),
+            FUN = run_one,
+            future.seed = TRUE
+        )
+        if (!is.null(future_scheduling)) {
+            future_args$future.scheduling <- future_scheduling
+        }
+        replicates <- do.call(future.apply::future_lapply, future_args)
+    }
     evidence <- .new_identifiability_evidence(
         proposal,
         config,
@@ -2040,7 +2071,10 @@ plot_component_identifiability <- function(
             "Assignment margin",
             levels = levels(surface_data$surface)
         ),
-        evidence_index = median(surface_data$evidence_index, na.rm = TRUE),
+        evidence_index = stats::median(
+            surface_data$evidence_index,
+            na.rm = TRUE
+        ),
         value = 0.5,
         label = "Not applicable\nNo competing axis"
     )
