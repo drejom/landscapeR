@@ -113,6 +113,17 @@ test_that("acceptance summary rejects malformed typed metrics", {
     )
 })
 
+test_that("acceptance summary translates malformed public inputs", {
+    expect_error(
+        summarize_k1_acceptance(
+            list(list()),
+            data.frame(task_id = "x"),
+            k1_acceptance_protocol()
+        ),
+        class = "k1_acceptance_runner_error"
+    )
+})
+
 test_that("acceptance summary plots carry threshold lines and captions", {
     fixture <- acceptance_summary_fixture()
     summary <- summarize_k1_acceptance(
@@ -129,6 +140,10 @@ test_that("acceptance summary plots carry threshold lines and captions", {
     expect_match(scientific_caption(pass_rate), "incomplete")
     expect_match(scientific_caption(false_positive), "5%")
     expect_match(scientific_caption(false_positive), "(A)", fixed = TRUE)
+    expect_error(
+        plot_k1_acceptance_summary(summary, "not-a-surface"),
+        class = "k1_acceptance_runner_error"
+    )
     false_positive_build <- ggplot2::ggplot_build(false_positive)
     expect_true(all(
         false_positive_build$data[[3L]]$fill ==

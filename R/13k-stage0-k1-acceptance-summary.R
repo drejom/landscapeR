@@ -156,6 +156,13 @@ summarize_k1_acceptance <- function(
     tasks,
     protocol = k1_acceptance_protocol()
 ) {
+    .k1_acceptance_public_boundary(
+        .summarize_k1_acceptance_impl(results, tasks, protocol),
+        "could not summarize K=1 acceptance results"
+    )
+}
+
+.summarize_k1_acceptance_impl <- function(results, tasks, protocol) {
     validate_k1_acceptance_protocol(protocol)
     results <- .k1_acceptance_collect(results, tasks, protocol)
     cells <- .k1_acceptance_cell_summary(results, tasks, protocol)
@@ -324,12 +331,19 @@ plot_k1_acceptance_summary <- function(
     summary,
     surface = c("pass_rate", "false_positive")
 ) {
+    .k1_acceptance_public_boundary(
+        .plot_k1_acceptance_summary_impl(summary, surface),
+        "could not plot K=1 acceptance summary"
+    )
+}
+
+.plot_k1_acceptance_summary_impl <- function(summary, surface) {
     if (!inherits(summary, "K1AcceptanceSummary")) {
         .k1_acceptance_runner_abort(
             "summary must inherit from K1AcceptanceSummary"
         )
     }
-    surface <- match.arg(surface)
+    surface <- match.arg(surface, c("pass_rate", "false_positive"))
     cells <- summary$cells
     palette <- landscapeR_palette("semantic")
     if (identical(surface, "pass_rate")) {

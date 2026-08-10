@@ -11,6 +11,20 @@
     ))
 }
 
+.k1_acceptance_public_boundary <- function(expression, context) {
+    tryCatch(
+        force(expression),
+        k1_acceptance_runner_error = function(error) stop(error),
+        error = function(error) {
+            .k1_acceptance_runner_abort(sprintf(
+                "%s: %s",
+                context,
+                conditionMessage(error)
+            ))
+        }
+    )
+}
+
 .k1_acceptance_validate_merge_commit <- function(commit) {
     if (!is.character(commit) || length(commit) != 1L || is.na(commit) ||
             !grepl("^[0-9a-f]{40}$", commit)) {
@@ -809,12 +823,20 @@ print.K1AcceptanceManifest <- function(x, ...) {
 }
 
 .k1_acceptance_collect <- function(results, tasks, protocol = NULL) {
+    if (!is.data.frame(tasks) || !nrow(tasks) ||
+            !"task_id" %in% names(tasks) ||
+            !is.character(tasks$task_id) || anyNA(tasks$task_id) ||
+            any(!nzchar(tasks$task_id)) || anyDuplicated(tasks$task_id)) {
+        .k1_acceptance_runner_abort(
+            "acceptance tasks must have unique non-empty task identities"
+        )
+    }
     if (!is.list(results) || length(results) != nrow(tasks)) {
         .k1_acceptance_runner_abort(
             "acceptance results must retain every requested task"
         )
     }
-    ids <- vapply(results, `[[`, character(1L), "task_id")
+    ids <- .k1_acceptance_result_ids(results)
     if (!identical(ids, tasks$task_id)) {
         .k1_acceptance_runner_abort(
             "acceptance result order or task identity is incomplete"
@@ -830,6 +852,25 @@ print.K1AcceptanceManifest <- function(x, ...) {
         }
     }
     results
+}
+
+.k1_acceptance_result_ids <- function(results) {
+    valid <- is.list(results) && length(results) && all(vapply(
+        results,
+        function(result) {
+            is.list(result) && "task_id" %in% names(result) &&
+                is.character(result[["task_id"]]) &&
+                length(result[["task_id"]]) == 1L &&
+                !is.na(result[["task_id"]]) && nzchar(result[["task_id"]])
+        },
+        logical(1L)
+    ))
+    if (!valid) {
+        .k1_acceptance_runner_abort(
+            "acceptance results must retain scalar task identities"
+        )
+    }
+    vapply(results, `[[`, character(1L), "task_id")
 }
 
 .k1_acceptance_flatten_results <- function(results) {
@@ -1060,7 +1101,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
     if (!is.list(results) || !length(results)) {
         .k1_acceptance_runner_abort("acceptance artifact has no replicates")
     }
-    task_ids <- vapply(results, `[[`, character(1L), "task_id")
+    task_ids <- .k1_acceptance_result_ids(results)
     task_index <- match(task_ids, manifest$tasks$task_id)
     if (anyNA(task_index) || anyDuplicated(task_ids)) {
         .k1_acceptance_runner_abort(
@@ -1112,7 +1153,10 @@ print.K1AcceptanceManifest <- function(x, ...) {
 #' @return Invisibly `TRUE`, or throws `k1_acceptance_runner_error`.
 #' @export
 verify_k1_acceptance_artifact <- function(artifact) {
-    .k1_acceptance_verify_artifact(artifact)
+    .k1_acceptance_public_boundary(
+        .k1_acceptance_verify_artifact(artifact),
+        "could not verify K=1 acceptance artifact"
+    )
 }
 
 .k1_acceptance_target_resources <- function(controller) {

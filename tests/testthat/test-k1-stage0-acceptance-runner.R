@@ -59,6 +59,35 @@ test_that("acceptance manifest rejects invalid commits and mutation", {
     )
 })
 
+test_that("artifact verification translates malformed serialized input", {
+    artifact <- tempfile("malformed-k1-artifact-")
+    dir.create(artifact)
+    governed <- landscapeR:::.k1_acceptance_governed_files()
+    paths <- file.path(artifact, governed)
+    invisible(vapply(paths, file.create, logical(1L)))
+    files <- data.frame(
+        file = governed,
+        sha256 = vapply(
+            paths,
+            landscapeR:::.k1_acceptance_file_digest,
+            character(1L)
+        ),
+        stringsAsFactors = FALSE
+    )
+    utils::write.table(
+        files,
+        file.path(artifact, "MANIFEST.tsv"),
+        sep = "\t",
+        quote = FALSE,
+        row.names = FALSE
+    )
+
+    expect_error(
+        verify_k1_acceptance_artifact(artifact),
+        class = "k1_acceptance_runner_error"
+    )
+})
+
 test_that("acceptance targets graph has one scheduler-owned parallel layer", {
     skip_if_not_installed("targets")
 
