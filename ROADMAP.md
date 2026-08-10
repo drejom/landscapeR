@@ -582,10 +582,10 @@ bodies may state dependencies but do not change this ordering.
 | [#159](https://github.com/drejom/landscapeR/issues/159) | Candidate temporal biological dataset — snake brumation | parked — research question |
 | [#168](https://github.com/drejom/landscapeR/issues/168) | Exploratory AML Stage 1 — asynchronous-onset robustness | active — blocked by #51 and #67 |
 | [#170](https://github.com/drejom/landscapeR/issues/170) | Maintenance — K=1 acceptance runner module seams | queued after governed #51 execution |
-| [#172](https://github.com/drejom/landscapeR/issues/172) | Cross-cutting documentation clarity — standard and audit | active — parallel human decision lane |
-| [#173](https://github.com/drejom/landscapeR/issues/173) | Cross-cutting documentation clarity — K=1 pilot | queued — blocked by #172; before #51 phase B publication |
-| [#174](https://github.com/drejom/landscapeR/issues/174) | Productisation — contributor module path | queued — blocked by #172; pre-v1 gate |
-| [#175](https://github.com/drejom/landscapeR/issues/175) | Cross-cutting documentation clarity — mechanical enforcement | queued — blocked by #172 and #173; pre-v1 gate |
+| [#172](https://github.com/drejom/landscapeR/issues/172) | Cross-cutting documentation clarity: standard and audit | active; parallel human decision lane |
+| [#173](https://github.com/drejom/landscapeR/issues/173) | Cross-cutting documentation clarity: K=1 pilot | queued; blocked by #172; before #51 phase B publication |
+| [#174](https://github.com/drejom/landscapeR/issues/174) | Productisation: contributor module path | queued; blocked by #172; pre-v1 gate |
+| [#175](https://github.com/drejom/landscapeR/issues/175) | Cross-cutting documentation clarity: mechanical enforcement | queued; blocked by #172 and #173; pre-v1 gate |
 <!-- issue-map:end -->
 
 ---
