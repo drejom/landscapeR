@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#51 — freeze the independent K=1
-acceptance protocol and seeds (phase A)**.
+**Next task after this change lands:** **#51 — execute generic recovery,
+thinness, and negative controls on the frozen acceptance set (phase B1)**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -64,7 +64,8 @@ There is no calendar promise. Scientific gates, not dates, advance milestones.
 
 ### Current limitations
 
-- No K=1 acceptance thresholds or supported sample range are final.
+- K=1 acceptance thresholds are frozen by #51 phase A; the supported sample
+  range remains unresolved until independent execution and aggregation.
 - Cross-sectional component interpretation supports binary, continuous, ordered,
   unordered-descriptive, nuisance-adjusted, resampled, and search-aware
   permutation evidence. Independent destructive and repeated-subject
@@ -112,6 +113,9 @@ The milestone is complete only when:
                                                          │
                                                          v
                                              #51 phase A: freeze protocol + seeds
+                                                         │
+                                                         v
+                                             #51 phase B1: generic + negatives
                                                          │
                                                          v
                                              #67 independent acceptance execution
@@ -213,9 +217,10 @@ interpretation lane lands.
 The [2026-07-31 whole-codebase technical-debt audit](docs/archive/technical-debt-audit-2026-07-31.md)
 and follow-up architecture and HPC reviews are fully represented by issues.
 The maintenance lane is deliberately active until the audited backlog is clean.
-Issue #67 remains the current scientific lane, but its independent acceptance
-execution is blocked until #51 phase A freezes the protocol and seeds; issue
-labels do not independently change this schedule.
+The K=1 acceptance ladder remains the current scientific lane. Its next task is
+#51 phase B1 generic/negative execution; #67 independent acceptance remains
+blocked until that execution completes. Issue labels do not independently
+change this schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -299,6 +304,9 @@ component alignment, and typed cross-sectional Stage 2 ineligibility.
 **Calibration only:** develop and diagnose on disclosed seeds. Do not consume
 the independent acceptance seeds.
 
+**Status:** calibration implementation complete; independent acceptance remains
+blocked until #51 phase B1 generic/negative execution completes.
+
 ### 6. Freeze K=1 acceptance — #51 phase A
 
 **Deliverable:** predeclare generic recovery/thinness/negative controls, #67
@@ -306,6 +314,9 @@ metrics, false-positive limits, pass-rate rules, supported-range rule, and
 hidden disjoint acceptance seeds in a content-addressed protocol.
 
 **Exit:** protocol identity is immutable before any acceptance aggregation.
+
+**Status:** complete on merge of the phase-A protocol PR; no acceptance seed was
+executed while choosing or freezing the protocol.
 
 ### 7. Independent AML-shaped acceptance — #67 acceptance lane
 
@@ -464,7 +475,7 @@ bodies may state dependencies but do not change this ordering.
 | [#24](https://github.com/drejom/landscapeR/issues/24) | AML robustness projection | queued |
 | [#41](https://github.com/drejom/landscapeR/issues/41) | Conditional infrastructure | conditional |
 | [#49](https://github.com/drejom/landscapeR/issues/49) | K≥2/islet-diabetes | queued |
-| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — next |
+| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — next; phase A complete on merge, generic execution follows |
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
 | [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete |
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
@@ -480,7 +491,7 @@ bodies may state dependencies but do not change this ordering.
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
 | [#65](https://github.com/drejom/landscapeR/issues/65) | Longitudinal extensions | parked |
 | [#66](https://github.com/drejom/landscapeR/issues/66) | Longitudinal observation design | queued |
-| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — calibration completes on merge; acceptance blocked by #51 phase A |
+| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — blocked by #51 phase B1 |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
