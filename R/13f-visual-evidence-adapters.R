@@ -389,10 +389,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     partial_resampling <- display_state$partial_resampling
     facet_labels <- if (!has_trajectories) {
         stats::setNames(
-            paste0(
-                summaries$component_label,
-                "\ninteraction not estimated"
-            ),
+            summaries$component_label,
             summaries$component_label
         )
     } else if (!is.null(ranking) && nrow(ranking)) {
@@ -527,11 +524,18 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     } else {
         "uncalibrated"
     }
-    resampling_account <- paste(
-        "Facet labels report stored interaction intervals and",
-        "resampling recurrence.",
-        .association_multiplicity_caption(provenance)
-    )
+    resampling_account <- if (!has_trajectories) {
+        paste(
+            "No interaction interval or resampling recurrence is available.",
+            .association_multiplicity_caption(provenance)
+        )
+    } else {
+        paste(
+            "Facet labels report stored interaction intervals and",
+            "resampling recurrence.",
+            .association_multiplicity_caption(provenance)
+        )
+    }
     if (partial_resampling) {
         resampling_account <- paste0(
             resampling_account,

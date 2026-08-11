@@ -136,7 +136,7 @@ writeLines(
 development_task <- data.frame(
     task_id = "issue-177-shared-baseline-development-proof",
     control = "shared_baseline_missing_cells",
-    seed_root = 177000L,
+    seed_root = 177001L,
     stringsAsFactors = FALSE
 )
 development_task$stream_seeds <- list(c(

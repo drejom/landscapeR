@@ -510,6 +510,17 @@ plot_k1_acceptance_summary <- function(
         observed,
         c("control", "endpoint", "p")
     )
+    threshold <- summary$display_thresholds$
+        maximum_negative_false_positive_rate
+    finite_rates <- observed$rate[is.finite(observed$rate)]
+    rate_upper <- min(
+        1,
+        max(
+            0.10,
+            2 * threshold,
+            if (length(finite_rates)) 1.1 * max(finite_rates) else 0
+        )
+    )
     plot <- ggplot2::ggplot(
         display,
         ggplot2::aes(
@@ -521,8 +532,7 @@ plot_k1_acceptance_summary <- function(
         )
     ) +
         ggplot2::geom_hline(
-            yintercept = summary$display_thresholds$
-                maximum_negative_false_positive_rate,
+            yintercept = threshold,
             colour = unname(palette[["focal"]]),
             linewidth = 0.4,
             linetype = 2
@@ -549,8 +559,8 @@ plot_k1_acceptance_summary <- function(
         ) +
         ggplot2::scale_shape_manual(values = c(21, 24, 22, 23)) +
         ggplot2::scale_y_continuous(
-            limits = c(0, 1),
-            breaks = seq(0, 1, 0.25),
+            limits = c(0, rate_upper),
+            breaks = seq(0, rate_upper, length.out = 5L),
             labels = function(value) paste0(round(100 * value), "%")
         ) +
         ggplot2::labs(

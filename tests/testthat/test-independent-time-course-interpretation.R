@@ -418,6 +418,16 @@ test_that("a singly replicated overlapping cell causes design abstention", {
         tolower(caption),
         fixed = TRUE
     ))
+    expect_false(grepl(
+        "facet labels report stored interaction intervals",
+        tolower(caption),
+        fixed = TRUE
+    ))
+    view <- visual_evidence(atlas)
+    expect_identical(
+        unname(visual_evidence_display(view, "facet_labels")),
+        names(visual_evidence_display(view, "facet_labels"))
+    )
     expect_s4_class(propose_component(atlas), "ComponentAbstention")
 })
 

@@ -196,4 +196,16 @@ test_that("acceptance summary plots carry threshold lines and captions", {
         false_positive_build$data[[3L]]$fill ==
             unname(landscapeR_palette("semantic")[["paper"]])
     ))
+
+    decision_summary <- summary
+    decision_summary$cells$false_double_well_rate <- 0.02
+    decision_summary$cells$false_target_selection_rate <- 0.03
+    decision_plot <- plot_k1_acceptance_summary(
+        decision_summary,
+        "false_positive"
+    )
+    expect_identical(
+        decision_plot$scales$get_scales("y")$limits,
+        c(0, 0.1)
+    )
 })

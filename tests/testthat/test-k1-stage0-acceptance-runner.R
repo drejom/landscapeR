@@ -130,6 +130,10 @@ test_that("shared-baseline safety control retains missing cells and abstains", {
         step@params$rng$streams,
         task$stream_seeds[[1L]]
     )
+    expect_identical(
+        step@params$rng$run_seed,
+        task$stream_seeds[[1L]][["generation"]]
+    )
 })
 
 test_that("protocol and manifest identities cannot be mixed across versions", {
