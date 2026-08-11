@@ -494,7 +494,11 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
             c(provenance$reference_level, provenance$comparison_level)
         )
         cells$label_y <- score_range[[1L]] + offsets[cells$condition]
-        cells$label <- paste0("n=", cells$count)
+        cells$label <- ifelse(
+            cells$count == 0L,
+            "",
+            paste0("n=", cells$count)
+        )
         display$cells <- cells
         missing_keys <- provenance$time_course_missing_cells
         display$missing_cells <- cells[

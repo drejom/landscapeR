@@ -426,3 +426,17 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         class = "k1_acceptance_runner_error"
     )
 })
+
+test_that("runtime revision binding preserves the version 1 replay contract", {
+    version_1 <- k1_acceptance_protocol("1")
+    manifest <- k1_acceptance_manifest(
+        fake_phase_a_merge(),
+        protocol = version_1
+    )
+    replay_identity <- list(source_revision = strrep("2", 40L))
+
+    expect_true(landscapeR:::.k1_validate_runtime_revision(
+        replay_identity,
+        manifest
+    ))
+})

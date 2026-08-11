@@ -245,10 +245,10 @@ summarize_k1_acceptance <- function(
 }
 
 .k1_acceptance_control_labels <- c(
-    generic_double_well = "(A) Double-well recovery",
+    generic_double_well = "(A) Double-well\nrecovery",
     pure_noise = "(B) Pure noise",
     single_well = "(C) Single well",
-    shared_baseline_missing_cells = "(D) Shared baseline safety"
+    shared_baseline_missing_cells = "(D) Shared-baseline\nsafety"
 )
 
 .k1_acceptance_percent <- function(value) {
@@ -458,6 +458,10 @@ plot_k1_acceptance_summary <- function(
                 guide = "none"
             ) +
             ggplot2::scale_shape_manual(values = c(21, 24, 22, 23)) +
+            ggplot2::scale_x_continuous(
+                breaks = c(8, 24, 48, 96, 192),
+                expand = ggplot2::expansion(mult = c(0.03, 0.03))
+            ) +
             ggplot2::scale_y_continuous(
                 limits = c(0, 1),
                 breaks = seq(0, 1, 0.25),
@@ -470,7 +474,14 @@ plot_k1_acceptance_summary <- function(
                 linetype = "Features (p)"
             ) +
             theme_landscapeR(square = FALSE) +
-            ggplot2::theme(aspect.ratio = 0.85)
+            ggplot2::theme(
+                aspect.ratio = 0.85,
+                panel.spacing.x = grid::unit(5, "mm"),
+                strip.text.x = ggplot2::element_text(
+                    size = 7.5,
+                    lineheight = 0.95
+                )
+            )
         return(.with_scientific_caption(
             plot,
             .k1_acceptance_pass_caption(summary)
@@ -501,10 +512,14 @@ plot_k1_acceptance_summary <- function(
     }
     panel_key <- paste(display$control, display$endpoint, sep = "|")
     labels <- c(
-        "pure_noise|False double-well topology" = "(A) Pure noise: topology",
-        "pure_noise|False target selection" = "(B) Pure noise: target",
-        "single_well|False double-well topology" = "(C) Single well: topology",
-        "single_well|False target selection" = "(D) Single well: target"
+        "pure_noise|False double-well topology" =
+            "(A) Pure noise\nTopology",
+        "pure_noise|False target selection" =
+            "(B) Pure noise\nTarget selection",
+        "single_well|False double-well topology" =
+            "(C) Single well\nTopology",
+        "single_well|False target selection" =
+            "(D) Single well\nTarget selection"
     )
     display$panel <- factor(unname(labels[panel_key]), levels = unname(labels))
     observed <- display[is.finite(display$n) & is.finite(display$rate), ]
@@ -560,6 +575,10 @@ plot_k1_acceptance_summary <- function(
             guide = "none"
         ) +
         ggplot2::scale_shape_manual(values = c(21, 24, 22, 23)) +
+        ggplot2::scale_x_continuous(
+            breaks = c(8, 24, 48, 96, 192),
+            expand = ggplot2::expansion(mult = c(0.03, 0.03))
+        ) +
         ggplot2::scale_y_continuous(
             limits = c(0, rate_upper),
             breaks = seq(0, rate_upper, length.out = 5L),
@@ -576,7 +595,14 @@ plot_k1_acceptance_summary <- function(
             linetype = "Features (p)"
         ) +
         theme_landscapeR(square = FALSE) +
-        ggplot2::theme(aspect.ratio = 0.85)
+        ggplot2::theme(
+            aspect.ratio = 0.85,
+            panel.spacing.x = grid::unit(5, "mm"),
+            strip.text.x = ggplot2::element_text(
+                size = 7.5,
+                lineheight = 0.95
+            )
+        )
     .with_scientific_caption(
         plot,
         .k1_acceptance_false_positive_caption(summary)

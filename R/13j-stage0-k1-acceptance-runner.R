@@ -1094,6 +1094,9 @@ print.K1AcceptanceManifest <- function(x, ...) {
 }
 
 .k1_validate_runtime_revision <- function(identity, manifest) {
+    if (!identical(manifest$artifact_version, "2")) {
+        return(invisible(TRUE))
+    }
     if (!identical(
         identity$source_revision,
         manifest$phase_a_merge_commit
