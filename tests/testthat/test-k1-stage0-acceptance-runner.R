@@ -134,6 +134,17 @@ test_that("shared-baseline safety control retains missing cells and abstains", {
         step@params$rng$run_seed,
         task$stream_seeds[[1L]][["generation"]]
     )
+
+    mismatched_task <- task
+    mismatched_task$seed_root <- task$seed_root + 1L
+    expect_error(
+        landscapeR:::.k1_acceptance_shared_baseline_source(
+            mismatched_task,
+            protocol
+        ),
+        "seed root must equal its generation stream",
+        class = "k1_acceptance_runner_error"
+    )
 })
 
 test_that("protocol and manifest identities cannot be mixed across versions", {

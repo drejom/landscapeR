@@ -181,12 +181,30 @@ test_that("acceptance summary plots carry threshold lines and captions", {
 
     pass_rate <- plot_k1_acceptance_summary(summary, "pass_rate")
     false_positive <- plot_k1_acceptance_summary(summary, "false_positive")
+    pass_caption <- gsub("[[:space:]]+", " ", scientific_caption(pass_rate))
+    false_positive_caption <- gsub(
+        "[[:space:]]+",
+        " ",
+        scientific_caption(false_positive)
+    )
     expect_s3_class(pass_rate, "ggplot")
     expect_s3_class(false_positive, "ggplot")
-    expect_match(scientific_caption(pass_rate), "90%")
-    expect_match(scientific_caption(pass_rate), "incomplete")
-    expect_match(scientific_caption(false_positive), "5%")
-    expect_match(scientific_caption(false_positive), "(A)", fixed = TRUE)
+    expect_match(pass_caption, "90%")
+    expect_match(pass_caption, "incomplete")
+    expect_match(false_positive_caption, "5%")
+    expect_match(false_positive_caption, "(A)", fixed = TRUE)
+    expect_match(
+        pass_caption,
+        "The estimand is the fraction of all requested replicates"
+    )
+    expect_false(grepl("..", pass_caption, fixed = TRUE))
+    expect_false(grepl("; Open|; The", pass_caption))
+    expect_match(
+        false_positive_caption,
+        "The estimand is the false-positive fraction"
+    )
+    expect_false(grepl("..", false_positive_caption, fixed = TRUE))
+    expect_false(grepl("; Open|; The", false_positive_caption))
     expect_error(
         plot_k1_acceptance_summary(summary, "not-a-surface"),
         class = "k1_acceptance_runner_error"
@@ -207,5 +225,19 @@ test_that("acceptance summary plots carry threshold lines and captions", {
     expect_identical(
         decision_plot$scales$get_scales("y")$limits,
         c(0, 0.1)
+    )
+    expect_identical(
+        decision_plot$scales$get_scales("y")$get_labels(),
+        c("0%", "2.5%", "5%", "7.5%", "10%")
+    )
+
+    decision_summary$cells$false_double_well_rate <- 0.2
+    expanded_plot <- plot_k1_acceptance_summary(
+        decision_summary,
+        "false_positive"
+    )
+    expect_equal(
+        expanded_plot$scales$get_scales("y")$limits,
+        c(0, 0.22)
     )
 })

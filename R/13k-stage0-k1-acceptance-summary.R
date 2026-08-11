@@ -291,15 +291,15 @@ summarize_k1_acceptance <- function(
         panels = panels,
         encodings = c(
             "Black points show replicate pass rates for each feature count.",
-            "Open points identify incomplete frozen cells.",
+            "open points identify incomplete frozen cells.",
             paste(
-                "The red horizontal line marks the frozen",
+                "the red horizontal line marks the frozen",
                 pass_gate, "pass-rate gate."
             )
         ),
         estimand = paste(
-            "Pass rate uses every requested replicate as its denominator;",
-            "execution failures are failures."
+            "the fraction of all requested replicates that pass;",
+            "execution failures count as failures"
         ),
         uncertainty = paste(
             "Cell adjudication additionally requires a Wilson 95% lower",
@@ -346,15 +346,15 @@ summarize_k1_acceptance <- function(
         ),
         encodings = c(
             "Black points show per-cell false-positive rates by feature count.",
+            "open points identify incomplete frozen cells.",
             paste(
-                "Open points identify incomplete frozen cells; the red",
-                "horizontal line marks the frozen", false_positive_gate,
-                "maximum."
+                "the red horizontal line marks the frozen",
+                false_positive_gate, "maximum."
             )
         ),
         estimand = paste(
-            "Each rate uses all requested replicates in its control and grid",
-            "cell, including failed executions in the denominator."
+            "the false-positive fraction among all requested replicates in",
+            "each control and grid cell, including failed executions"
         ),
         uncertainty = paste(
             "Rates remain descriptive until every frozen replicate is present",
@@ -561,7 +561,11 @@ plot_k1_acceptance_summary <- function(
         ggplot2::scale_y_continuous(
             limits = c(0, rate_upper),
             breaks = seq(0, rate_upper, length.out = 5L),
-            labels = function(value) paste0(round(100 * value), "%")
+            labels = function(value) vapply(
+                value,
+                .k1_acceptance_percent,
+                character(1L)
+            )
         ) +
         ggplot2::labs(
             x = "Independent biological observations (n)",

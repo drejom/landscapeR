@@ -691,6 +691,15 @@ print.K1AcceptanceManifest <- function(x, ...) {
 
 .k1_acceptance_shared_baseline_source <- function(task, protocol) {
     fixed <- protocol$grids$shared_baseline_missing_cells$fixed
+    streams <- task$stream_seeds[[1L]]
+    if (!identical(
+        as.integer(task$seed_root[[1L]]),
+        as.integer(streams[["generation"]])
+    )) {
+        .k1_acceptance_runner_abort(
+            "shared-baseline seed root must equal its generation stream"
+        )
+    }
     replicates <- fixed$replicates_per_observed_cell
     times <- seq.int(0L, fixed$time_points - 1L)
     condition <- c(
@@ -702,7 +711,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
         rep(times, each = replicates)
     )
     sample_ids <- sprintf("sample_%02d", seq_along(condition))
-    setup_rng(task$stream_seeds[[1L]][["generation"]])
+    setup_rng(streams[["generation"]])
     expression <- matrix(
         stats::rnorm(fixed$p * length(condition)),
         nrow = fixed$p,
@@ -747,9 +756,9 @@ print.K1AcceptanceManifest <- function(x, ...) {
             shared_baseline_missing_cells$id,
         params = md$k1_shared_baseline_control,
         rng = .generator_rng_identity(
-            task$seed_root[[1L]],
+            streams[["generation"]],
             paste0("k1-acceptance-", task$task_id[[1L]]),
-            task$stream_seeds[[1L]]
+            streams
         ),
         input_hashes = c(protocol = protocol$digest)
     )
