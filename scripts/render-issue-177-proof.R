@@ -112,7 +112,7 @@ ggplot2::ggsave(
     width = 100,
     height = 100,
     units = "mm",
-    dpi = 180,
+    dpi = 450,
     bg = "white"
 )
 ggplot2::ggsave(
@@ -121,7 +121,7 @@ ggplot2::ggsave(
     width = 100,
     height = 100,
     units = "mm",
-    dpi = 180,
+    dpi = 450,
     bg = "white"
 )
 writeLines(
@@ -171,6 +171,10 @@ atlas <- associate_metadata(
     seed = 177002L,
     sequential_internal = TRUE
 )
+atlas <- landscapeR:::.k1_label_baseline_atlas(
+    atlas,
+    source
+)
 proposal <- propose_component(atlas)
 stopifnot(
     is(proposal, "ComponentAbstention"),
@@ -181,9 +185,9 @@ ggplot2::ggsave(
     file.path(proof_dir, "shared-baseline-missing-cell-design.png"),
     design_plot,
     width = 100,
-    height = 115,
+    height = 100,
     units = "mm",
-    dpi = 180,
+    dpi = 450,
     bg = "white"
 )
 writeLines(

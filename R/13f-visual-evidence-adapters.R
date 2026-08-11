@@ -577,8 +577,12 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     )
     caption_view <- .new_scientific_caption_view(
         title = title,
-        experiment_label = provenance$dataset_id,
-        molecular_layer = provenance$layer,
+        experiment_label = if (
+            .is_scalar_nonempty_text(provenance$dataset_label)
+        ) provenance$dataset_label else provenance$dataset_id,
+        molecular_layer = if (
+            .is_scalar_nonempty_text(provenance$layer_label)
+        ) provenance$layer_label else provenance$layer,
         target_field = provenance$target_field,
         oriented_levels = oriented,
         sampling_unit = if (repeated) {
@@ -602,10 +606,10 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         } else {
             c(
                 "Points show independent biological observations.",
-                "Labels give biological sample counts per design cell.",
-                "Crosses mark unobserved condition-by-time cells.",
+                "labels give biological sample counts per design cell.",
+                "crosses mark unobserved condition-by-time cells.",
                 if (has_trajectories) {
-                    "Lines show stored population trajectories."
+                    "lines show stored population trajectories."
                 }
             )
         },

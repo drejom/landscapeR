@@ -747,6 +747,10 @@ print.K1AcceptanceManifest <- function(x, ...) {
         duplicated_controls = FALSE,
         expected_outcome = "non-identifiable-design"
     )
+    md$scientific_labels <- list(
+        experiment = "K=1 shared-baseline safety control",
+        layers = c(layer1 = "simulated molecular features")
+    )
     metadata(std) <- md
     record_provenance(
         std,
@@ -762,6 +766,14 @@ print.K1AcceptanceManifest <- function(x, ...) {
         ),
         input_hashes = c(protocol = protocol$digest)
     )
+}
+
+.k1_label_baseline_atlas <- function(atlas, source) {
+    labels <- metadata(source)$scientific_labels
+    layer_id <- atlas@provenance$layer
+    atlas@provenance$dataset_label <- labels$experiment
+    atlas@provenance$layer_label <- unname(labels$layers[[layer_id]])
+    atlas
 }
 
 .k1_acceptance_run_shared_baseline <- function(task, protocol) {
@@ -803,6 +815,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
             metrics = list()
         ))
     }
+    atlas <- .k1_label_baseline_atlas(atlas, source)
     proposal <- propose_component(atlas)
     if (!is(proposal, "ComponentAbstention")) {
         return(list(
@@ -1080,6 +1093,21 @@ print.K1AcceptanceManifest <- function(x, ...) {
     invisible(TRUE)
 }
 
+.k1_validate_runtime_revision <- function(identity, manifest) {
+    if (!identical(
+        identity$source_revision,
+        manifest$phase_a_merge_commit
+    )) {
+        .k1_acceptance_runner_abort(
+            paste(
+                "acceptance runtime revision must equal the reviewed",
+                "protocol merge revision"
+            )
+        )
+    }
+    invisible(TRUE)
+}
+
 .k1_acceptance_collect <- function(results, tasks, protocol = NULL) {
     if (!is.data.frame(tasks) || !nrow(tasks) ||
             !"task_id" %in% names(tasks) ||
@@ -1244,6 +1272,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
     validate_k1_acceptance_manifest(manifest)
     .k1_acceptance_validate_protocol_manifest_identity(protocol, manifest)
     .k1_acceptance_validate_identity(identity)
+    .k1_validate_runtime_revision(identity, manifest)
     results <- .k1_acceptance_collect(results, tasks, protocol)
     if (!all(tasks$task_id %in% manifest$tasks$task_id)) {
         .k1_acceptance_runner_abort(
@@ -1285,19 +1314,19 @@ print.K1AcceptanceManifest <- function(x, ...) {
     ggplot2::ggsave(
         file.path(staging, "pass-rate.png"),
         pass_rate_plot,
-        width = 180,
-        height = 75,
+        width = 100,
+        height = 100,
         units = "mm",
-        dpi = 300,
+        dpi = 450,
         bg = "white"
     )
     ggplot2::ggsave(
         file.path(staging, "false-positive.png"),
         false_positive_plot,
-        width = 150,
-        height = 120,
+        width = 100,
+        height = 100,
         units = "mm",
-        dpi = 300,
+        dpi = 450,
         bg = "white"
     )
     writeLines(
@@ -1383,6 +1412,10 @@ print.K1AcceptanceManifest <- function(x, ...) {
     validate_k1_acceptance_manifest(manifest)
     .k1_acceptance_validate_protocol_manifest_identity(protocol, manifest)
     .k1_acceptance_validate_identity(environment$runtime_identity)
+    .k1_validate_runtime_revision(
+        environment$runtime_identity,
+        manifest
+    )
     if (!is.list(results) || !length(results)) {
         .k1_acceptance_runner_abort("acceptance artifact has no replicates")
     }

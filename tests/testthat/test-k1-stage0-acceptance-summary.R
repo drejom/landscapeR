@@ -199,12 +199,32 @@ test_that("acceptance summary plots carry threshold lines and captions", {
     )
     expect_false(grepl("..", pass_caption, fixed = TRUE))
     expect_false(grepl("; Open|; The", pass_caption))
+    pass_words <- tolower(unlist(strsplit(
+        pass_caption,
+        "[^[:alnum:]-]+"
+    )))
+    expect_false(any(c("typed", "frozen") %in% pass_words))
+    expect_false(grepl(
+        "development fixture|execution failures",
+        pass_caption,
+        ignore.case = TRUE
+    ))
     expect_match(
         false_positive_caption,
         "The estimand is the false-positive fraction"
     )
     expect_false(grepl("..", false_positive_caption, fixed = TRUE))
     expect_false(grepl("; Open|; The", false_positive_caption))
+    false_positive_words <- tolower(unlist(strsplit(
+        false_positive_caption,
+        "[^[:alnum:]-]+"
+    )))
+    expect_false("frozen" %in% false_positive_words)
+    expect_false(grepl(
+        "development fixture|failed executions",
+        false_positive_caption,
+        ignore.case = TRUE
+    ))
     expect_error(
         plot_k1_acceptance_summary(summary, "not-a-surface"),
         class = "k1_acceptance_runner_error"

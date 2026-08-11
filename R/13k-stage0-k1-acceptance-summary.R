@@ -276,8 +276,9 @@ summarize_k1_acceptance <- function(
         panels <- c(
             panels,
             D = paste(
-                "Shared-baseline missing-cell design; a pass is the required",
-                "typed non-identifiable-design abstention."
+                "Shared-baseline missing-cell design; a pass indicates that",
+                "the condition-by-time interaction was correctly reported",
+                "as non-estimable."
             )
         )
     }
@@ -287,19 +288,19 @@ summarize_k1_acceptance <- function(
     )
     view <- .new_scientific_caption_view(
         title = "K=1 independent acceptance pass rates.",
-        experiment_label = summary$protocol_id,
+        experiment_label = "K=1 synthetic acceptance",
         panels = panels,
         encodings = c(
             "Black points show replicate pass rates for each feature count.",
-            "open points identify incomplete frozen cells.",
+            "open points identify cells with incomplete simulation results.",
             paste(
-                "the red horizontal line marks the frozen",
+                "the red horizontal line marks the prespecified",
                 pass_gate, "pass-rate gate."
             )
         ),
         estimand = paste(
             "the fraction of all requested replicates that pass;",
-            "execution failures count as failures"
+            "replicates without a valid result count as unsuccessful"
         ),
         uncertainty = paste(
             "Cell adjudication additionally requires a Wilson 95% lower",
@@ -317,12 +318,12 @@ summarize_k1_acceptance <- function(
         },
         claim_boundary = if (development_fixture) {
             paste(
-                "Values are an explicitly fabricated development fixture for",
-                "visual inspection and are not acceptance evidence."
+                "Values are simulated solely to demonstrate the figure",
+                "structure and do not support a scientific acceptance claim."
             )
         } else {
             paste(
-                "This figure summarizes frozen known-truth controls and does",
+                "This figure summarizes prespecified known-truth controls and does",
                 "not by itself establish biological validity."
             )
         },
@@ -337,7 +338,7 @@ summarize_k1_acceptance <- function(
     )
     view <- .new_scientific_caption_view(
         title = "K=1 negative-control false-positive rates.",
-        experiment_label = summary$protocol_id,
+        experiment_label = "K=1 synthetic acceptance",
         panels = c(
             A = "False double-well topology in pure noise.",
             B = "False target selection in pure noise.",
@@ -346,19 +347,20 @@ summarize_k1_acceptance <- function(
         ),
         encodings = c(
             "Black points show per-cell false-positive rates by feature count.",
-            "open points identify incomplete frozen cells.",
+            "open points identify cells with incomplete simulation results.",
             paste(
-                "the red horizontal line marks the frozen",
+                "the red horizontal line marks the prespecified",
                 false_positive_gate, "maximum."
             )
         ),
         estimand = paste(
             "the false-positive fraction among all requested replicates in",
-            "each control and grid cell, including failed executions"
+            "each control and grid cell; replicates without a valid result",
+            "remain in the denominator"
         ),
         uncertainty = paste(
-            "Rates remain descriptive until every frozen replicate is present",
-            "and the complete-cell acceptance rules are applied."
+            "Rates remain descriptive until every prespecified replicate is",
+            "present and the prespecified cell-level criteria are applied."
         ),
         threshold = paste(
             "Both negative-control false-positive rates must not exceed",
@@ -374,8 +376,8 @@ summarize_k1_acceptance <- function(
             "development_only_visual_fixture"
         )) {
             paste(
-                "Values are an explicitly fabricated development fixture for",
-                "visual inspection and are not acceptance evidence."
+                "Values are simulated solely to demonstrate the figure",
+                "structure and do not support a scientific acceptance claim."
             )
         } else {
             paste(

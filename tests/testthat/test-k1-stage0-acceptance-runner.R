@@ -325,7 +325,7 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         runner_contract = protocol$execution_contracts$version
     ), class = c("K1AcceptanceReplicate", "list"))
     identity <- list(
-        source_revision = strrep("2", 40L),
+        source_revision = fake_phase_a_merge(),
         r_version = paste(R.version$major, R.version$minor, sep = "."),
         package_versions = c(
             landscapeR = as.character(utils::packageVersion("landscapeR"))
@@ -351,6 +351,35 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         manifest_path,
         stringsAsFactors = FALSE
     )
+    environment_path <- file.path(artifact, "environment.rds")
+    altered_environment <- environment
+    altered_environment$runtime_identity$source_revision <- strrep("2", 40L)
+    saveRDS(altered_environment, environment_path)
+    revision_manifest <- complete_file_manifest
+    environment_row <- revision_manifest$file == "environment.rds"
+    revision_manifest$sha256[environment_row] <-
+        landscapeR:::.k1_acceptance_file_digest(environment_path)
+    utils::write.table(
+        revision_manifest,
+        manifest_path,
+        sep = "\t",
+        quote = FALSE,
+        row.names = FALSE
+    )
+    expect_error(
+        verify_k1_acceptance_artifact(artifact),
+        "runtime revision must equal",
+        class = "k1_acceptance_runner_error"
+    )
+    saveRDS(environment, environment_path)
+    utils::write.table(
+        complete_file_manifest,
+        manifest_path,
+        sep = "\t",
+        quote = FALSE,
+        row.names = FALSE
+    )
+
     utils::write.table(
         complete_file_manifest[
             complete_file_manifest$file != "pass-rate.png",
