@@ -586,17 +586,23 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         subject_field = if (repeated) provenance$subject_field else NA_character_,
         nuisance_fields = provenance$nuisance_fields,
         encodings = if (repeated) {
-            paste(
-                "Thin lines connect repeated observations from each subject;",
-                "bold lines show stored population trajectories from the",
-                "rank-scale model with subject-specific random intercepts and",
-                "time slopes; red crosses mark recorded early endpoints"
+            c(
+                "Thin lines connect repeated observations from each subject.",
+                if (has_trajectories) paste(
+                    "Bold lines show stored population trajectories from the",
+                    "rank-scale model with subject-specific random intercepts",
+                    "and time slopes."
+                ),
+                "Red crosses mark recorded early endpoints."
             )
         } else {
-            paste(
-                "Points show independent observations; labels give biological",
-                "sample counts per design cell; crosses mark unobserved cells;",
-                "lines show stored population trajectories"
+            c(
+                "Points show independent biological observations.",
+                "Labels give biological sample counts per design cell.",
+                "Crosses mark unobserved condition-by-time cells.",
+                if (has_trajectories) {
+                    "Lines show stored population trajectories."
+                }
             )
         },
         estimand = "condition-by-time interaction on the rank scale",

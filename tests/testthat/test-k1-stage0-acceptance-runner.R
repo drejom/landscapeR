@@ -37,10 +37,10 @@ test_that("acceptance seed derivation follows the frozen canonical contract", {
     )
     expect_identical(first$replicate_index, 1L)
     expect_identical(first$task_ordinal, 1L)
-    expect_identical(first$seed_root, 1873862853L)
+    expect_identical(first$seed_root, 627208489L)
     expect_identical(first$stream_seeds[[1L]], c(
-        state_coordinates = 1873862853L,
-        expression = 1873862854L
+        state_coordinates = 627208489L,
+        expression = 627208490L
     ))
     expect_identical(
         manifest,
@@ -114,6 +114,35 @@ test_that("shared-baseline safety control retains missing cells and abstains", {
     expect_identical(audit_row$missing_control_time_cells, 3L)
     expect_identical(audit_row$unique_control_observations, 3L)
     expect_identical(audit_row$total_observations, 15L)
+
+    source <- landscapeR:::.k1_acceptance_shared_baseline_source(
+        task,
+        protocol
+    )
+    expect_length(source@provenance, 1L)
+    step <- source@provenance[[1L]]
+    expect_identical(
+        step@implementation,
+        protocol$generators$shared_baseline_missing_cells$id
+    )
+    expect_identical(step@input_hashes[["protocol"]], protocol$digest)
+    expect_identical(
+        step@params$rng$streams,
+        task$stream_seeds[[1L]]
+    )
+})
+
+test_that("protocol and manifest identities cannot be mixed across versions", {
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_protocol_manifest_identity(
+            k1_acceptance_protocol("2"),
+            k1_acceptance_manifest(
+                fake_phase_a_merge(),
+                k1_acceptance_protocol("1")
+            )
+        ),
+        class = "k1_acceptance_runner_error"
+    )
 })
 
 test_that("artifact verification translates malformed serialized input", {

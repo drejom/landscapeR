@@ -1,5 +1,5 @@
-acceptance_summary_fixture <- function() {
-    protocol <- k1_acceptance_protocol()
+acceptance_summary_fixture <- function(version = "2") {
+    protocol <- k1_acceptance_protocol(version)
     tasks <- data.frame(
         task_id = c("g1", "g2", "n1", "n2"),
         control = c(
@@ -122,6 +122,28 @@ test_that("shared-baseline safety cells pass only through typed abstention", {
     expect_equal(summary$cells$replicate_pass_rate, 1)
     expect_false(summary$cells$complete_cell)
     expect_false(summary$complete_execution)
+
+    wrong_total <- result
+    wrong_total$metrics$total_observations <- 14L
+    wrong_summary <- summarize_k1_acceptance(
+        list(wrong_total),
+        task,
+        protocol
+    )
+    expect_identical(wrong_summary$cells$n_passed, 0L)
+})
+
+test_that("historical v1 captions do not acquire version 2 panels", {
+    fixture <- acceptance_summary_fixture("1")
+    summary <- summarize_k1_acceptance(
+        fixture$results,
+        fixture$tasks,
+        fixture$protocol
+    )
+    caption <- scientific_caption(plot_k1_acceptance_summary(summary))
+
+    expect_false(grepl("Panel D", caption, fixed = TRUE))
+    expect_false(grepl("shared-baseline", caption, ignore.case = TRUE))
 })
 
 test_that("acceptance summary rejects malformed typed metrics", {

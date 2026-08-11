@@ -355,7 +355,8 @@
     payload$thresholds$shared_baseline_missing_cells <- list(
         required_abstention_reason = "non-identifiable-design",
         required_missing_control_time_cells = 3L,
-        required_unique_control_observations = 3L
+        required_unique_control_observations = 3L,
+        required_total_observations = 15L
     )
     payload$pass_rules$supported_minimum_n <- paste(
         "smallest n in the shared positive/negative candidate set",

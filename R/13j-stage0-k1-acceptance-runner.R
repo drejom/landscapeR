@@ -732,13 +732,27 @@ print.K1AcceptanceManifest <- function(x, ...) {
         generator = protocol$generators$shared_baseline_missing_cells$id,
         task_id = task$task_id[[1L]],
         protocol_digest = protocol$digest,
+        runner_contract = protocol$execution_contracts$version,
         independent_biological_observations = length(condition),
         unique_baseline_controls = replicates,
         duplicated_controls = FALSE,
         expected_outcome = "non-identifiable-design"
     )
     metadata(std) <- md
-    std
+    record_provenance(
+        std,
+        stage = "generate_control",
+        contract = "SyntheticControlGenerator",
+        implementation = protocol$generators$
+            shared_baseline_missing_cells$id,
+        params = md$k1_shared_baseline_control,
+        rng = .generator_rng_identity(
+            task$seed_root[[1L]],
+            paste0("k1-acceptance-", task$task_id[[1L]]),
+            task$stream_seeds[[1L]]
+        ),
+        input_hashes = c(protocol = protocol$digest)
+    )
 }
 
 .k1_acceptance_run_shared_baseline <- function(task, protocol) {
@@ -1190,6 +1204,25 @@ print.K1AcceptanceManifest <- function(x, ...) {
     )
 }
 
+.k1_acceptance_validate_protocol_manifest_identity <- function(
+    protocol,
+    manifest
+) {
+    expected <- list(
+        artifact_version = protocol$artifact_version,
+        protocol_id = protocol$protocol_id,
+        protocol_digest = protocol$digest,
+        runner_contract = protocol$execution_contracts$version
+    )
+    observed <- unclass(manifest)[names(expected)]
+    if (!identical(observed, expected)) {
+        .k1_acceptance_runner_abort(
+            "acceptance protocol and seed manifest identities do not match"
+        )
+    }
+    invisible(TRUE)
+}
+
 .k1_acceptance_publish <- function(
     artifact_root,
     protocol,
@@ -1200,6 +1233,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
 ) {
     validate_k1_acceptance_protocol(protocol)
     validate_k1_acceptance_manifest(manifest)
+    .k1_acceptance_validate_protocol_manifest_identity(protocol, manifest)
     .k1_acceptance_validate_identity(identity)
     results <- .k1_acceptance_collect(results, tasks, protocol)
     if (!all(tasks$task_id %in% manifest$tasks$task_id)) {
@@ -1338,6 +1372,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
     environment <- readRDS(file.path(artifact, "environment.rds"))
     validate_k1_acceptance_protocol(protocol)
     validate_k1_acceptance_manifest(manifest)
+    .k1_acceptance_validate_protocol_manifest_identity(protocol, manifest)
     .k1_acceptance_validate_identity(environment$runtime_identity)
     if (!is.list(results) || !length(results)) {
         .k1_acceptance_runner_abort("acceptance artifact has no replicates")

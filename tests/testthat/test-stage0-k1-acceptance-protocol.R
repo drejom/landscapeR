@@ -45,6 +45,11 @@ test_that("K=1 acceptance protocol v2 extends the lower tail and preserves v1", 
         )
     )
     expect_identical(
+        current$thresholds$shared_baseline_missing_cells$
+            required_total_observations,
+        15L
+    )
+    expect_identical(
         current$seed_plan$control,
         c(
             "generic_double_well", "pure_noise", "single_well",

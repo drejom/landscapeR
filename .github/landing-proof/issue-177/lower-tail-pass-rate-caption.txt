@@ -4,7 +4,7 @@ Shared-baseline missing-cell design; a pass is the required typed non-identifiab
 abstention. Black points show replicate pass rates for each feature count; Open points identify
 incomplete frozen cells; The red horizontal line marks the frozen 90% pass-rate gate. The
 estimand is Pass rate uses every requested replicate as its denominator; execution failures are
-failures.. Cell adjudication additionally requires a Wilson 95% lower bound of at least 80%.
-The displayed execution is incomplete and cannot establish acceptance. A complete cell passes
-only at 90% or greater with a Wilson 95% lower bound of at least 80%. This figure summarizes
-frozen known-truth controls and does not by itself establish biological validity.
+failures.. Cell adjudication additionally requires a Wilson 95% lower bound of at least 80%. A
+complete cell passes only at 90% or greater with a Wilson 95% lower bound of at least 80%.
+Values are an explicitly fabricated development fixture for visual inspection and are not
+acceptance evidence.

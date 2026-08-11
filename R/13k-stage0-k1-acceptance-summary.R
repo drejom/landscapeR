@@ -54,6 +54,10 @@ utils::globalVariables(c(
             identical(
                 metrics$unique_control_observations,
                 thresholds$required_unique_control_observations
+            ) &&
+            identical(
+                metrics$total_observations,
+                thresholds$required_total_observations
             )
         )
     }
@@ -263,18 +267,28 @@ summarize_k1_acceptance <- function(
     wilson_gate <- .k1_acceptance_percent(
         summary$display_thresholds$minimum_cell_wilson_95_lower_bound
     )
-    view <- .new_scientific_caption_view(
-        title = "K=1 independent acceptance pass rates.",
-        experiment_label = summary$protocol_id,
-        panels = c(
-            A = "Double-well recovery.",
-            B = "Pure-noise negative control.",
-            C = "Single-well negative control.",
+    panels <- c(
+        A = "Double-well recovery.",
+        B = "Pure-noise negative control.",
+        C = "Single-well negative control."
+    )
+    if ("shared_baseline_missing_cells" %in% summary$cells$control) {
+        panels <- c(
+            panels,
             D = paste(
                 "Shared-baseline missing-cell design; a pass is the required",
                 "typed non-identifiable-design abstention."
             )
-        ),
+        )
+    }
+    development_fixture <- identical(
+        summary$claim_status,
+        "development_only_visual_fixture"
+    )
+    view <- .new_scientific_caption_view(
+        title = "K=1 independent acceptance pass rates.",
+        experiment_label = summary$protocol_id,
+        panels = panels,
         encodings = c(
             "Black points show replicate pass rates for each feature count.",
             "Open points identify incomplete frozen cells.",
@@ -301,10 +315,17 @@ summarize_k1_acceptance <- function(
         } else {
             "The displayed execution is incomplete and cannot establish acceptance."
         },
-        claim_boundary = paste(
-            "This figure summarizes frozen known-truth controls and does not",
-            "by itself establish biological validity."
-        ),
+        claim_boundary = if (development_fixture) {
+            paste(
+                "Values are an explicitly fabricated development fixture for",
+                "visual inspection and are not acceptance evidence."
+            )
+        } else {
+            paste(
+                "This figure summarizes frozen known-truth controls and does",
+                "not by itself establish biological validity."
+            )
+        },
         state = if (summary$complete_execution) "complete" else "partial"
     )
     .build_scientific_caption(view)
@@ -348,10 +369,20 @@ summarize_k1_acceptance <- function(
         } else {
             "The displayed execution is incomplete and cannot establish acceptance."
         },
-        claim_boundary = paste(
-            "Negative controls measure false topology and false target",
-            "selection; pure noise has no planted subspace recovery target."
-        ),
+        claim_boundary = if (identical(
+            summary$claim_status,
+            "development_only_visual_fixture"
+        )) {
+            paste(
+                "Values are an explicitly fabricated development fixture for",
+                "visual inspection and are not acceptance evidence."
+            )
+        } else {
+            paste(
+                "Negative controls measure false topology and false target",
+                "selection; pure noise has no planted subspace recovery target."
+            )
+        },
         state = if (summary$complete_execution) "complete" else "partial"
     )
     .build_scientific_caption(view)
@@ -416,7 +447,7 @@ plot_k1_acceptance_summary <- function(
                 size = 1.8,
                 stroke = 0.35
             ) +
-            ggplot2::facet_wrap(~panel, nrow = 1L) +
+            ggplot2::facet_wrap(~panel, nrow = 2L) +
             ggplot2::scale_fill_manual(
                 values = c(
                     `TRUE` = unname(palette[["ink"]]),

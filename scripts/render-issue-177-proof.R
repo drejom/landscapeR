@@ -100,7 +100,7 @@ summary_fixture <- structure(list(
                 maximum_false_double_well_rate_per_control_cell
     ),
     supported_minimum_n = NA_integer_,
-    complete_execution = FALSE,
+    complete_execution = TRUE,
     digest = "development-only-not-an-acceptance-digest"
 ), class = c("K1AcceptanceSummary", "list"))
 
@@ -109,8 +109,8 @@ false_plot <- plot_k1_acceptance_summary(summary_fixture, "false_positive")
 ggplot2::ggsave(
     file.path(proof_dir, "lower-tail-pass-rate-surface.png"),
     pass_plot,
-    width = 180,
-    height = 95,
+    width = 100,
+    height = 100,
     units = "mm",
     dpi = 180,
     bg = "white"
@@ -118,8 +118,8 @@ ggplot2::ggsave(
 ggplot2::ggsave(
     file.path(proof_dir, "lower-tail-false-positive-surface.png"),
     false_plot,
-    width = 150,
-    height = 120,
+    width = 100,
+    height = 100,
     units = "mm",
     dpi = 180,
     bg = "white"
@@ -136,6 +136,7 @@ writeLines(
 development_task <- data.frame(
     task_id = "issue-177-shared-baseline-development-proof",
     control = "shared_baseline_missing_cells",
+    seed_root = 177000L,
     stringsAsFactors = FALSE
 )
 development_task$stream_seeds <- list(c(
@@ -179,8 +180,8 @@ design_plot <- plot(atlas)
 ggplot2::ggsave(
     file.path(proof_dir, "shared-baseline-missing-cell-design.png"),
     design_plot,
-    width = 180,
-    height = 100,
+    width = 100,
+    height = 115,
     units = "mm",
     dpi = 180,
     bg = "white"
