@@ -5,6 +5,21 @@ longitudinal control exercises the intended package contracts. They do not
 freeze acceptance thresholds, consume the independent acceptance seeds from
 issue #51, or close issue #67.
 
+## Independent-acceptance summary surfaces
+
+| Cell pass rates | Geometric recovery and recurrence |
+|---|---|
+| ![Representative AML acceptance pass-rate surface](aml_acceptance_pass_rate.png) | ![Representative AML recovery surface](aml_acceptance_recovery.png) |
+
+These two plots are implementation proof generated from an explicitly
+fabricated 900-row display fixture. They show the public surfaces that the
+post-merge Gemini run will populate without deriving or consuming its hidden
+seeds. The left plot exposes the fraction of replicates passing every frozen
+AML gate across mice-per-condition and feature-count cells. The right plot
+keeps target-loading recovery, reference-index recurrence, and completed
+bootstrap refits visually distinct. Red lines are labelled frozen thresholds;
+the adjacent `*-caption.txt` files contain the exact separate captions.
+
 ## Recovered components
 
 | Condition encoding | Collection-time encoding |

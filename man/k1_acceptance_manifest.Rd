@@ -6,7 +6,8 @@
 \usage{
 k1_acceptance_manifest(
   phase_a_merge_commit,
-  protocol = k1_acceptance_protocol()
+  protocol = k1_acceptance_protocol(),
+  runner_revision = NULL
 )
 }
 \arguments{
@@ -16,6 +17,11 @@ version 1 manifests remain reproducible.}
 
 \item{protocol}{the unmodified object returned by
 \code{\link[=k1_acceptance_protocol]{k1_acceptance_protocol()}}.}
+
+\item{runner_revision}{optional lowercase 40-character SHA-1 of the reviewed
+execution revision. It is retained as provenance but never enters seed
+derivation. Omit it to reproduce historical manifests whose runner and
+protocol revisions were the same.}
 }
 \value{
 A digest-bound \code{K1AcceptanceManifest}.

@@ -1,4 +1,14 @@
 fake_phase_a_merge <- function() strrep("1", 40L)
+fake_runner_merge <- function() strrep("2", 40L)
+fake_aml_acceptance_provenance <- function() list(
+    version = "1.0.0",
+    evidence_status = "independent_acceptance",
+    generator_and_decomposition = list(fixture = TRUE),
+    atlas = list(fixture = TRUE),
+    proposal = list(fixture = TRUE),
+    identifiability = list(fixture = TRUE),
+    stage2 = list(fixture = TRUE)
+)
 
 test_that("acceptance manifest expands every frozen cell and replicate", {
     manifest <- k1_acceptance_manifest(fake_phase_a_merge())
@@ -24,6 +34,31 @@ test_that("acceptance manifest expands every frozen cell and replicate", {
     expect_identical(
         anyDuplicated(unlist(manifest$tasks$stream_seeds)),
         0L
+    )
+})
+
+test_that("runner provenance does not alter frozen manifest tasks or seeds", {
+    historical <- k1_acceptance_manifest(fake_phase_a_merge())
+    reviewed_runner <- k1_acceptance_manifest(
+        fake_phase_a_merge(),
+        runner_revision = fake_runner_merge()
+    )
+
+    expect_null(historical$runner_revision)
+    expect_identical(reviewed_runner$runner_revision, fake_runner_merge())
+    expect_identical(reviewed_runner$tasks, historical$tasks)
+    expect_false(identical(reviewed_runner$digest, historical$digest))
+    expect_true(validate_k1_acceptance_manifest(reviewed_runner))
+    expect_true(landscapeR:::.k1_validate_runtime_revision(
+        list(source_revision = fake_runner_merge()),
+        reviewed_runner
+    ))
+    expect_error(
+        landscapeR:::.k1_validate_runtime_revision(
+            list(source_revision = fake_phase_a_merge()),
+            reviewed_runner
+        ),
+        "reviewed runner revision"
     )
 })
 
@@ -147,6 +182,69 @@ test_that("shared-baseline safety control retains missing cells and abstains", {
     )
 })
 
+test_that("frozen AML acceptance task returns typed longitudinal metrics", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(fake_phase_a_merge())
+    task <- manifest$tasks[
+        manifest$tasks$control == "aml_synchronized" &
+            manifest$tasks$subjects_per_condition == 4L &
+            manifest$tasks$p == 100L,
+        ,
+        drop = FALSE
+    ][1L, , drop = FALSE]
+
+    result <- suppressWarnings(landscapeR:::.k1_acceptance_run_task(
+        task,
+        protocol,
+        expected_identity = NULL,
+        sequential_internal = TRUE
+    ))
+
+    expect_identical(result$status, "success")
+    expect_identical(names(result$metrics), c(
+        "target_loading_cosine", "target_subspace_angle_deg",
+        "mean_bootstrap_subspace_angle_deg",
+        "q95_bootstrap_subspace_angle_deg",
+        "target_component", "nuisance_component",
+        "target_proposal_rank", "nuisance_proposal_rank",
+        "target_unadjusted_estimate", "target_adjusted_estimate",
+        "nuisance_unadjusted_estimate", "nuisance_adjusted_estimate",
+        "target_unadjusted_status", "target_adjusted_status",
+        "nuisance_unadjusted_status", "nuisance_adjusted_status",
+        "target_index_recurrence", "mean_matched_loading_cosine",
+        "identifiability_completion_rate", "stage2_ineligible",
+        "orientation_recurrence", "rank_one_fraction", "matched_fraction",
+        "acceptance_evidence_status", "acceptance_provenance",
+        "acceptance_provenance_digest"
+    ))
+    expect_identical(result$metrics$target_component, 2L)
+    expect_identical(result$metrics$nuisance_component, 1L)
+    expect_identical(
+        result$metrics$acceptance_evidence_status,
+        "independent_acceptance"
+    )
+    expect_match(
+        result$metrics$acceptance_provenance_digest,
+        "^[0-9a-f]{64}$"
+    )
+    changed <- result
+    changed$metrics$acceptance_provenance$stage2$reason <- "changed"
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(changed, task, protocol),
+        "AML acceptance metrics violate"
+    )
+    expect_true(result$metrics$stage2_ineligible)
+    expect_true(is.finite(result$metrics$target_unadjusted_estimate))
+    expect_true(is.finite(result$metrics$target_adjusted_estimate))
+    expect_true(is.finite(result$metrics$mean_bootstrap_subspace_angle_deg) ||
+        is.na(result$metrics$mean_bootstrap_subspace_angle_deg))
+    expect_true(nzchar(result$metrics$target_adjusted_status))
+    expect_type(
+        landscapeR:::.k1_acceptance_replicate_pass(result, protocol),
+        "logical"
+    )
+})
+
 test_that("protocol and manifest identities cannot be mixed across versions", {
     expect_error(
         landscapeR:::.k1_acceptance_validate_protocol_manifest_identity(
@@ -198,7 +296,8 @@ test_that("acceptance targets graph has one scheduler-owned parallel layer", {
         controller = "medium"
     )
     expected <- c(
-        "k1_protocol", "k1_manifest", "k1_identity", "k1_tasks", "k1_task",
+        "k1_protocol", "k1_manifest", "k1_identity", "k1_preflight",
+        "k1_tasks", "k1_task",
         "k1_result", "k1_results", "k1_artifact",
         "k1_artifact_verified", "k1_evidence"
     )
@@ -227,9 +326,68 @@ test_that("acceptance targets graph has one scheduler-owned parallel layer", {
         "sequential_internal = TRUE",
         fixed = TRUE
     )
+    expect_match(
+        by_name$k1_tasks$command$string,
+        "k1_preflight",
+        fixed = TRUE
+    )
     expect_identical(
         as.list.environment(by_name$k1_artifact$settings)$deployment,
         "main"
+    )
+})
+
+test_that("acceptance targets graph can select the frozen AML phase alone", {
+    skip_if_not_installed("targets")
+
+    pipeline <- k1_acceptance_targets(
+        phase_a_merge_commit = fake_phase_a_merge(),
+        artifact_root = tempfile("k1-aml-acceptance-artifacts-"),
+        controller = "medium",
+        controls = "aml_synchronized",
+        runner_revision = fake_runner_merge()
+    )
+    by_name <- stats::setNames(
+        pipeline,
+        vapply(pipeline, `[[`, character(1L), "name")
+    )
+
+    expect_match(
+        by_name$k1_tasks$command$string,
+        "aml_synchronized",
+        fixed = TRUE
+    )
+    expect_false(grepl(
+        "generic_double_well",
+        by_name$k1_tasks$command$string,
+        fixed = TRUE
+    ))
+    expect_match(
+        by_name$k1_manifest$command$string,
+        fake_runner_merge(),
+        fixed = TRUE
+    )
+})
+
+test_that("AML targets require a distinct reviewed runner revision", {
+    skip_if_not_installed("targets")
+
+    expect_error(
+        k1_acceptance_targets(
+            phase_a_merge_commit = fake_phase_a_merge(),
+            artifact_root = tempfile("k1-aml-missing-runner-"),
+            controls = "aml_synchronized"
+        ),
+        "requires the reviewed runner_revision"
+    )
+    expect_error(
+        k1_acceptance_targets(
+            phase_a_merge_commit = fake_phase_a_merge(),
+            artifact_root = tempfile("k1-aml-same-runner-"),
+            controls = "aml_synchronized",
+            runner_revision = fake_phase_a_merge()
+        ),
+        "must differ"
     )
 })
 
@@ -296,6 +454,95 @@ test_that("generic acceptance generation is acceptance-native", {
     expect_false(step@params$calibration_only)
     expect_identical(step@input_hashes[["protocol"]], protocol$digest)
     expect_length(generated@provenance, 1L)
+})
+
+test_that("AML acceptance generation is acceptance-native", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(fake_phase_a_merge())
+    task <- manifest$tasks[
+        manifest$tasks$control == "aml_synchronized",
+        ,
+        drop = FALSE
+    ][1L, , drop = FALSE]
+
+    generated <- landscapeR:::.k1_acceptance_generate_aml(task, protocol)
+    control <- metadata(generated)$aml_k1_control
+    step <- generated@provenance[[1L]]
+
+    expect_false(control$calibration_only)
+    expect_identical(control$evidence_status, "independent_acceptance")
+    expect_identical(
+        control$claim_status,
+        "independent_acceptance_pending_aggregation"
+    )
+    expect_identical(step@implementation, protocol$generators$aml_synchronized)
+    expect_false(step@params$calibration_only)
+    expect_identical(step@input_hashes[["protocol"]], protocol$digest)
+    expect_length(generated@provenance, 1L)
+})
+
+test_that("AML resource-pilot generation is explicitly non-evidentiary", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(fake_phase_a_merge())
+    task <- manifest$tasks[
+        manifest$tasks$control == "aml_synchronized",
+        ,
+        drop = FALSE
+    ][1L, , drop = FALSE]
+
+    generated <- landscapeR:::.k1_aml_generate_governed(
+        task,
+        protocol,
+        calibration_only = TRUE,
+        evidence_status = "non_evidentiary_resource_pilot",
+        claim_status = "non_evidentiary_resource_pilot",
+        seed_derivation = "disclosed-development-seed-v1"
+    )
+    control <- metadata(generated)$aml_k1_control
+    rng <- generated@provenance[[1L]]@params$rng
+
+    expect_true(control$calibration_only)
+    expect_identical(
+        control$evidence_status,
+        "non_evidentiary_resource_pilot"
+    )
+    expect_identical(
+        control$claim_status,
+        "non_evidentiary_resource_pilot"
+    )
+    expect_identical(rng$seed_derivation, "disclosed-development-seed-v1")
+
+    testthat::local_mocked_bindings(
+        .aml_k1_assess_control = function(
+            std,
+            config,
+            n_resamples,
+            n_permutations,
+            seed,
+            evidence_status,
+            claim_status,
+            sequential_internal
+        ) {
+            list(
+                control = std,
+                evidence_status = evidence_status,
+                recovery = list(claim_status = claim_status),
+                n_resamples = n_resamples,
+                n_permutations = n_permutations,
+                sequential_internal = sequential_internal
+            )
+        },
+        .package = "landscapeR"
+    )
+    pilot <- landscapeR:::.k1_aml_resource_pilot(task, protocol, NULL)
+    expect_identical(pilot$evidence_status, "non_evidentiary_resource_pilot")
+    expect_identical(
+        pilot$recovery$claim_status,
+        "non_evidentiary_resource_pilot"
+    )
+    expect_identical(pilot$n_resamples, 99L)
+    expect_identical(pilot$n_permutations, 99L)
+    expect_true(pilot$sequential_internal)
 })
 
 test_that("published artifacts bind runtime identity and semantic contents", {
@@ -473,6 +720,157 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         verify_k1_acceptance_artifact(artifact),
         class = "k1_acceptance_runner_error"
     )
+})
+
+test_that("AML-only artifacts publish their governed acceptance surfaces", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(
+        fake_phase_a_merge(),
+        runner_revision = fake_runner_merge()
+    )
+    tasks <- manifest$tasks[
+        manifest$tasks$control == "aml_synchronized",
+        ,
+        drop = FALSE
+    ]
+    results <- lapply(seq_len(nrow(tasks)), function(index) {
+        structure(list(
+            artifact_version = protocol$artifact_version,
+            task_id = tasks$task_id[[index]],
+            control = "aml_synchronized",
+            canonical_cell = tasks$canonical_cell[[index]],
+            replicate_index = tasks$replicate_index[[index]],
+            status = "success",
+            reason = "",
+            metrics = list(
+                target_loading_cosine = 0.95,
+                target_subspace_angle_deg = 10,
+                mean_bootstrap_subspace_angle_deg = 8,
+                q95_bootstrap_subspace_angle_deg = 12,
+                target_component = 2L,
+                nuisance_component = 1L,
+                target_proposal_rank = 1L,
+                nuisance_proposal_rank = 2L,
+                target_unadjusted_estimate = -1.2,
+                target_adjusted_estimate = -1.1,
+                nuisance_unadjusted_estimate = 0.2,
+                nuisance_adjusted_estimate = 0.1,
+                target_unadjusted_status = "estimable-exploratory-only",
+                target_adjusted_status = "estimable-exploratory-only",
+                nuisance_unadjusted_status = "estimable-exploratory-only",
+                nuisance_adjusted_status = "estimable-exploratory-only",
+                target_index_recurrence = 0.90,
+                mean_matched_loading_cosine = 0.90,
+                identifiability_completion_rate = 0.95,
+                stage2_ineligible = TRUE,
+                orientation_recurrence = 0.80,
+                rank_one_fraction = 0.90,
+                matched_fraction = 0.95,
+                acceptance_evidence_status = "independent_acceptance",
+                acceptance_provenance = fake_aml_acceptance_provenance(),
+                acceptance_provenance_digest = digest::digest(
+                    fake_aml_acceptance_provenance(),
+                    algo = "sha256"
+                )
+            ),
+            protocol_digest = protocol$digest,
+            runner_contract = protocol$execution_contracts$version
+        ), class = c("K1AcceptanceReplicate", "list"))
+    })
+    identity <- list(
+        source_revision = fake_runner_merge(),
+        r_version = paste(R.version$major, R.version$minor, sep = "."),
+        package_versions = c(
+            landscapeR = as.character(utils::packageVersion("landscapeR"))
+        )
+    )
+
+    artifact <- landscapeR:::.k1_acceptance_publish(
+        tempfile("k1-aml-artifact-test-"),
+        protocol,
+        manifest,
+        tasks,
+        results,
+        identity
+    )
+
+    expect_true(verify_k1_acceptance_artifact(artifact))
+    stored_manifest <- readRDS(file.path(artifact, "seed-manifest.rds"))
+    expect_identical(stored_manifest$phase_a_merge_commit, fake_phase_a_merge())
+    expect_identical(stored_manifest$runner_revision, fake_runner_merge())
+    files <- utils::read.delim(
+        file.path(artifact, "MANIFEST.tsv"),
+        stringsAsFactors = FALSE
+    )$file
+    expect_identical(
+        files,
+        landscapeR:::.k1_acceptance_governed_files(
+            "independent_aml_acceptance_summary"
+        )
+    )
+    expect_true(all(c(
+        "aml-pass-rate.png", "aml-pass-rate-caption.txt",
+        "aml-recovery.png", "aml-recovery-caption.txt"
+    ) %in% files))
+    expect_false(any(c("pass-rate.png", "false-positive.png") %in% files))
+})
+
+test_that("acceptance targets reject mixed publication phases", {
+    skip_if_not_installed("targets")
+
+    expect_error(
+        k1_acceptance_targets(
+            phase_a_merge_commit = fake_phase_a_merge(),
+            artifact_root = tempfile("k1-mixed-acceptance-artifacts-"),
+            controls = c("generic_double_well", "aml_synchronized"),
+            runner_revision = fake_runner_merge()
+        ),
+        "complete phase-B1.*or aml_synchronized alone"
+    )
+})
+
+test_that("artifact publication rejects mixed phases directly", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(fake_phase_a_merge())
+    tasks <- rbind(
+        manifest$tasks[manifest$tasks$control == "generic_double_well", ][1L, ],
+        manifest$tasks[manifest$tasks$control == "aml_synchronized", ][1L, ]
+    )
+    identity <- list(
+        source_revision = fake_phase_a_merge(),
+        r_version = paste(R.version$major, R.version$minor, sep = "."),
+        package_versions = c(landscapeR = "0.3.0")
+    )
+
+    expect_error(
+        landscapeR:::.k1_acceptance_publish(
+            tempfile("k1-mixed-publication-"),
+            protocol,
+            manifest,
+            tasks,
+            list(),
+            identity
+        ),
+        "require separate governed artifacts"
+    )
+})
+
+test_that("runner revision preserves the version 1 manifest schema", {
+    protocol <- k1_acceptance_protocol("1")
+    expect_error(
+        k1_acceptance_manifest(
+            fake_phase_a_merge(),
+            protocol,
+            runner_revision = fake_runner_merge()
+        ),
+        "only by artifact version 2"
+    )
+    normalized <- k1_acceptance_manifest(
+        fake_phase_a_merge(),
+        runner_revision = fake_phase_a_merge()
+    )
+    expect_null(normalized$runner_revision)
+    expect_identical(normalized, k1_acceptance_manifest(fake_phase_a_merge()))
 })
 
 test_that("runtime revision binding preserves the version 1 replay contract", {

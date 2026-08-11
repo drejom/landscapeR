@@ -1,0 +1,13 @@
+Synchronized AML target-axis recovery and recurrence. The AML-shaped synthetic acceptance
+experiment to assess the declared condition target contrasts CM with CTL. (A) Expression
+feature count 100. (B) Expression feature count 1,000. (C) Expression feature count 10,000.
+Horizontal position is mean absolute loading cosine with the planted condition-by-time target
+axis (PC2); vertical position is mean recurrence at reference component index 2; labels give
+mice per condition; point area is the mean fraction of requested complete-mouse bootstrap
+refits that completed. The analysis unit is complete synthetic mouse trajectory; time is
+recorded as collection time in weeks; adjustment uses batch. Bootstrap enclosing-subspace
+angles and raw and adjusted association effects remain in the cell audit table. Red lines mark
+the prespecified loading-cosine and index-recurrence criteria of 90% and 80%, respectively.
+Values are fabricated solely to demonstrate the figure structure and do not support a
+scientific acceptance claim. Orientation, proposal-rank, matching, and Stage 2 ineligibility
+evidence are reported separately and do not substitute for the displayed criteria.

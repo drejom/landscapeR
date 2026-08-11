@@ -143,7 +143,11 @@
     paste(c(paste0("control=", control), values), collapse = ";")
 }
 
-.k1_acceptance_manifest_payload <- function(protocol, merge_commit) {
+.k1_acceptance_manifest_payload <- function(
+    protocol,
+    merge_commit,
+    runner_revision = NULL
+) {
     controls <- protocol$seed_plan$control
     task_counts <- vapply(controls, function(control) {
         grid <- .k1_acceptance_grid(protocol, control)
@@ -239,15 +243,19 @@
     })
     tasks <- do.call(rbind, task_groups)
     rownames(tasks) <- NULL
-    list(
+    payload <- list(
         artifact_version = protocol$artifact_version,
         protocol_id = protocol$protocol_id,
         protocol_digest = protocol$digest,
         runner_contract = protocol$execution_contracts$version,
-        phase_a_merge_commit = merge_commit,
-        seed_derivation = protocol$seed_derivation$algorithm,
-        tasks = tasks
+        phase_a_merge_commit = merge_commit
     )
+    if (!is.null(runner_revision)) {
+        payload$runner_revision <- runner_revision
+    }
+    payload$seed_derivation <- protocol$seed_derivation$algorithm
+    payload$tasks <- tasks
+    payload
 }
 
 #' Reveal the frozen K=1 independent acceptance seed manifest
@@ -261,15 +269,37 @@
 #'   version 1 manifests remain reproducible.
 #' @param protocol the unmodified object returned by
 #'   [k1_acceptance_protocol()].
+#' @param runner_revision optional lowercase 40-character SHA-1 of the reviewed
+#'   execution revision. It is retained as provenance but never enters seed
+#'   derivation. Omit it to reproduce historical manifests whose runner and
+#'   protocol revisions were the same.
 #' @return A digest-bound `K1AcceptanceManifest`.
 #' @export
 k1_acceptance_manifest <- function(
     phase_a_merge_commit,
-    protocol = k1_acceptance_protocol()
+    protocol = k1_acceptance_protocol(),
+    runner_revision = NULL
 ) {
     validate_k1_acceptance_protocol(protocol)
     merge_commit <- .k1_acceptance_validate_merge_commit(phase_a_merge_commit)
-    payload <- .k1_acceptance_manifest_payload(protocol, merge_commit)
+    if (!is.null(runner_revision)) {
+        runner_revision <- .k1_acceptance_validate_merge_commit(
+            runner_revision
+        )
+        if (!identical(protocol$artifact_version, "2")) {
+            .k1_acceptance_runner_abort(
+                "runner_revision is supported only by artifact version 2"
+            )
+        }
+        if (identical(runner_revision, merge_commit)) {
+            runner_revision <- NULL
+        }
+    }
+    payload <- .k1_acceptance_manifest_payload(
+        protocol,
+        merge_commit,
+        runner_revision
+    )
     streams <- unlist(payload$tasks$stream_seeds, use.names = FALSE)
     reserved <- protocol$separation$reserved_calibration_rng_streams
     if (any(streams %in% reserved)) {
@@ -310,7 +340,8 @@ validate_k1_acceptance_manifest <- function(manifest) {
     )
     expected <- k1_acceptance_manifest(
         manifest$phase_a_merge_commit,
-        protocol = k1_acceptance_protocol(version)
+        protocol = k1_acceptance_protocol(version),
+        runner_revision = manifest$runner_revision
     )
     if (!identical(manifest, expected)) {
         .k1_acceptance_runner_abort(
@@ -327,6 +358,9 @@ print.K1AcceptanceManifest <- function(x, ...) {
     cat("  protocol:", x$protocol_id, "\n")
     cat("  tasks:", nrow(x$tasks), "\n")
     cat("  protocol merge:", x$phase_a_merge_commit, "\n")
+    if (!is.null(x$runner_revision)) {
+        cat("  runner revision:", x$runner_revision, "\n")
+    }
     cat("  digest:", x$digest, "\n")
     invisible(x)
 }
@@ -413,6 +447,281 @@ print.K1AcceptanceManifest <- function(x, ...) {
         orientation = orientation
     )
     metrics$subspace_angle_deg <- acos(abs(cosine)) * 180 / pi
+    list(status = "success", reason = "", metrics = metrics)
+}
+
+.k1_aml_generate_governed <- function(
+    task,
+    protocol,
+    calibration_only,
+    evidence_status,
+    claim_status,
+    seed_derivation
+) {
+    fixed <- protocol$grids$aml_synchronized$fixed
+    streams <- task$stream_seeds[[1L]]
+    expected_streams <- streams[["generator"]] + 0:3
+    if (!identical(
+        unname(streams[c("generator", "association", "permutations",
+            "identifiability")]),
+        unname(expected_streams)
+    )) {
+        .k1_acceptance_runner_abort(
+            "AML acceptance streams do not match the frozen execution offsets"
+        )
+    }
+    std <- synthetic_k1_aml_longitudinal_control(
+        subjects_per_condition = task$subjects_per_condition[[1L]],
+        times = fixed$times,
+        p = task$p[[1L]],
+        noise_sd = fixed$noise_sd,
+        time_signal = fixed$time_signal,
+        disease_signal = fixed$disease_signal,
+        dropout_subjects = protocol$execution_contracts$aml$dropout_subjects,
+        seed = streams[["generator"]]
+    )
+    md <- metadata(std)
+    md$aml_k1_control$calibration_only <- calibration_only
+    md$aml_k1_control$evidence_status <- evidence_status
+    md$aml_k1_control$claim_status <- claim_status
+    md$aml_k1_control$task_id <- task$task_id[[1L]]
+    md$aml_k1_control$protocol_digest <- protocol$digest
+    md$aml_k1_control$runner_contract <-
+        protocol$execution_contracts$version
+    metadata(std) <- md
+    std@provenance <- list()
+    record_provenance(
+        std,
+        stage = "generate_control",
+        contract = "SyntheticControlGenerator",
+        implementation = protocol$generators$aml_synchronized,
+        params = md$aml_k1_control,
+        rng = list(
+            run_seed = as.integer(streams[["generator"]]),
+            rng_kind = "L'Ecuyer-CMRG",
+            seed_derivation = seed_derivation,
+            task_id = task$task_id[[1L]],
+            streams = stats::setNames(as.integer(streams), names(streams))
+        ),
+        input_hashes = c(protocol = protocol$digest)
+    )
+}
+
+.k1_acceptance_generate_aml <- function(task, protocol) {
+    .k1_aml_generate_governed(
+        task = task,
+        protocol = protocol,
+        calibration_only = FALSE,
+        evidence_status = "independent_acceptance",
+        claim_status = "independent_acceptance_pending_aggregation",
+        seed_derivation = protocol$seed_derivation$algorithm
+    )
+}
+
+.k1_aml_resource_pilot <- function(task, protocol, expected_identity) {
+    validate_k1_acceptance_protocol(protocol)
+    .k1_acceptance_check_identity(expected_identity)
+    source <- .k1_aml_generate_governed(
+        task = task,
+        protocol = protocol,
+        calibration_only = TRUE,
+        evidence_status = "non_evidentiary_resource_pilot",
+        claim_status = "non_evidentiary_resource_pilot",
+        seed_derivation = "disclosed-development-seed-v1"
+    )
+    .aml_k1_assess_control(
+        std = source,
+        config = .aml_k1_calibration_config(),
+        n_resamples = protocol$resampling$aml_identifiability_resamples,
+        n_permutations = protocol$resampling$aml_permutations,
+        seed = task$stream_seeds[[1L]][["generator"]],
+        evidence_status = "non_evidentiary_resource_pilot",
+        claim_status = "non_evidentiary_resource_pilot",
+        sequential_internal = TRUE
+    )
+}
+
+.k1_acceptance_aml_provenance <- function(calibration) {
+    evidence <- calibration$identifiability_evidence
+    proposal <- calibration$proposal
+    proposal_payload <- if (is(proposal, "ComponentProposal")) {
+        list(
+            type = "proposal",
+            digest = proposal_digest(proposal),
+            provenance = proposal_provenance(proposal),
+            evidence_status = proposal@evidence_status,
+            permutation_evidence = proposal_permutation_evidence(proposal)
+        )
+    } else if (is(proposal, "ComponentAbstention")) {
+        list(
+            type = "abstention",
+            digest = abstention_digest(proposal),
+            provenance = abstention_provenance(proposal),
+            evidence_status = proposal@evidence_status,
+            reason = proposal@reason,
+            permutation_evidence = abstention_permutation_evidence(proposal)
+        )
+    } else {
+        .k1_acceptance_runner_abort(
+            "AML acceptance returned unsupported proposal evidence"
+        )
+    }
+    list(
+        version = "1.0.0",
+        evidence_status = calibration$evidence_status,
+        generator_and_decomposition = calibration$provenance,
+        atlas = atlas_provenance(calibration$atlas),
+        proposal = proposal_payload,
+        identifiability = list(
+            status = if (is.null(evidence)) "not_assessed" else "assessed",
+            evidence = evidence
+        ),
+        stage2 = list(
+            class = class(calibration$stage2),
+            status = calibration$stage2@status,
+            reason = calibration$stage2@reason
+        )
+    )
+}
+
+.k1_acceptance_run_aml <- function(task, protocol) {
+    streams <- task$stream_seeds[[1L]]
+    source <- .k1_acceptance_generate_aml(task, protocol)
+    calibration <- suppressWarnings(.aml_k1_assess_control(
+        std = source,
+        config = .aml_k1_calibration_config(),
+        n_resamples = protocol$resampling$aml_identifiability_resamples,
+        n_permutations = protocol$resampling$aml_permutations,
+        seed = streams[["generator"]],
+        evidence_status = "independent_acceptance",
+        claim_status = "independent_acceptance_pending_aggregation",
+        sequential_internal = TRUE
+    ))
+    if (!identical(calibration$status, "success")) {
+        return(list(
+            status = "failure",
+            reason = calibration$reason,
+            metrics = list()
+        ))
+    }
+    target <- calibration$target_component
+    nuisance <- calibration$nuisance_component
+    ranking <- calibration$proposal@ranking
+    rank_for <- function(component) {
+        row <- ranking[ranking$component == component, , drop = FALSE]
+        if (nrow(row) != 1L || !is.finite(row$proposal_rank[[1L]])) {
+            return(NA_integer_)
+        }
+        as.integer(row$proposal_rank[[1L]])
+    }
+    evidence <- calibration$identifiability_evidence
+    recurrence <- if (is.null(evidence)) NULL else evidence$target_recurrence
+    recurrence_value <- function(field) {
+        if (is.null(recurrence) || !field %in% names(recurrence) ||
+                nrow(recurrence) != 1L) {
+            return(NA_real_)
+        }
+        as.numeric(recurrence[[field]][[1L]])
+    }
+    subspace_angles <- if (is.null(evidence)) {
+        numeric()
+    } else {
+        rows <- evidence$subspace_angle_summary$dimension == target
+        evidence$subspace_angle_summary$maximum_angle_degrees[rows]
+    }
+    subspace_angles <- subspace_angles[is.finite(subspace_angles)]
+    bootstrap_subspace <- function(summary) {
+        if (!length(subspace_angles)) return(NA_real_)
+        as.numeric(summary(subspace_angles))
+    }
+    associations <- calibration$atlas@associations
+    association_value <- function(component, variant, field) {
+        row <- associations[
+            associations$metadata_field ==
+                protocol$execution_contracts$aml$target_field &
+                associations$component == component &
+                associations$evidence_variant == variant,
+            ,
+            drop = FALSE
+        ]
+        if (nrow(row) != 1L) {
+            .k1_acceptance_runner_abort(
+                "AML atlas does not contain the frozen association evidence"
+            )
+        }
+        row[[field]][[1L]]
+    }
+    unadjusted <- "repeated-time-course-unadjusted"
+    adjusted <- "repeated-time-course-adjusted"
+    recovery_index <- match(target, calibration$recovery$component)
+    if (length(recovery_index) != 1L || is.na(recovery_index)) {
+        .k1_acceptance_runner_abort(
+            "AML recovery does not contain the frozen target component"
+        )
+    }
+    stage2_ineligible <- is(calibration$stage2, "StageResult") &&
+        identical(calibration$stage2@status, "failure") &&
+        grepl(
+            "sampling design 'longitudinal' is not supported",
+            calibration$stage2@reason,
+            fixed = TRUE
+        )
+    acceptance_provenance <- .k1_acceptance_aml_provenance(calibration)
+    metrics <- list(
+        target_loading_cosine = calibration$recovery$
+            absolute_loading_cosine[[recovery_index]],
+        target_subspace_angle_deg = max(
+            calibration$recovery$subspace_principal_angle_degrees
+        ),
+        mean_bootstrap_subspace_angle_deg = bootstrap_subspace(mean),
+        q95_bootstrap_subspace_angle_deg = bootstrap_subspace(
+            function(value) stats::quantile(value, 0.95, names = FALSE)
+        ),
+        target_component = as.integer(target),
+        nuisance_component = as.integer(nuisance),
+        target_proposal_rank = rank_for(target),
+        nuisance_proposal_rank = rank_for(nuisance),
+        target_unadjusted_estimate = association_value(
+            target, unadjusted, "estimate"
+        ),
+        target_adjusted_estimate = association_value(
+            target, adjusted, "estimate"
+        ),
+        nuisance_unadjusted_estimate = association_value(
+            nuisance, unadjusted, "estimate"
+        ),
+        nuisance_adjusted_estimate = association_value(
+            nuisance, adjusted, "estimate"
+        ),
+        target_unadjusted_status = association_value(
+            target, unadjusted, "evidence_status"
+        ),
+        target_adjusted_status = association_value(
+            target, adjusted, "evidence_status"
+        ),
+        nuisance_unadjusted_status = association_value(
+            nuisance, unadjusted, "evidence_status"
+        ),
+        nuisance_adjusted_status = association_value(
+            nuisance, adjusted, "evidence_status"
+        ),
+        target_index_recurrence = recurrence_value("index_recurrence"),
+        mean_matched_loading_cosine = recurrence_value(
+            "mean_absolute_similarity"
+        ),
+        identifiability_completion_rate = if (is.null(evidence)) 0 else
+            evidence$n_completed / evidence$n_requested,
+        stage2_ineligible = stage2_ineligible,
+        orientation_recurrence = recurrence_value("orientation_recurrence"),
+        rank_one_fraction = recurrence_value("rank_one_fraction"),
+        matched_fraction = recurrence_value("matched_fraction"),
+        acceptance_evidence_status = calibration$evidence_status,
+        acceptance_provenance = acceptance_provenance,
+        acceptance_provenance_digest = digest::digest(
+            acceptance_provenance,
+            algo = "sha256"
+        )
+    )
     list(status = "success", reason = "", metrics = metrics)
 }
 
@@ -843,7 +1152,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
 .k1_acceptance_worker_identity <- function() {
     packages <- c(
         "landscapeR", "digest", "future", "future.apply", "targets", "crew",
-        "ggplot2"
+        "ggplot2", "lme4", "clue"
     )
     versions <- vapply(packages, function(package) {
         if (!requireNamespace(package, quietly = TRUE)) return(NA_character_)
@@ -905,6 +1214,8 @@ print.K1AcceptanceManifest <- function(x, ...) {
     observed <- tryCatch(
         if (identical(control, "generic_double_well")) {
             .k1_acceptance_run_generic(task, protocol)
+        } else if (identical(control, "aml_synchronized")) {
+            .k1_acceptance_run_aml(task, protocol)
         } else if (control %in% c("pure_noise", "single_well")) {
             .k1_acceptance_run_negative(
                 task,
@@ -1083,6 +1394,113 @@ print.K1AcceptanceManifest <- function(x, ...) {
         }
         return(invisible(TRUE))
     }
+    if (identical(control, "aml_synchronized")) {
+        expected <- c(
+            "target_loading_cosine", "target_subspace_angle_deg",
+            "mean_bootstrap_subspace_angle_deg",
+            "q95_bootstrap_subspace_angle_deg",
+            "target_component", "nuisance_component",
+            "target_proposal_rank", "nuisance_proposal_rank",
+            "target_unadjusted_estimate", "target_adjusted_estimate",
+            "nuisance_unadjusted_estimate", "nuisance_adjusted_estimate",
+            "target_unadjusted_status", "target_adjusted_status",
+            "nuisance_unadjusted_status", "nuisance_adjusted_status",
+            "target_index_recurrence", "mean_matched_loading_cosine",
+            "identifiability_completion_rate", "stage2_ineligible",
+            "orientation_recurrence", "rank_one_fraction", "matched_fraction",
+            "acceptance_evidence_status", "acceptance_provenance",
+            "acceptance_provenance_digest"
+        )
+        bounded_or_missing <- function(value) {
+            is.numeric(value) && length(value) == 1L &&
+                (is.na(value) || (is.finite(value) && value >= 0 && value <= 1))
+        }
+        rank_or_missing <- function(value) {
+            is.numeric(value) && length(value) == 1L &&
+                (is.na(value) || (is.finite(value) && value >= 1L &&
+                    value == as.integer(value)))
+        }
+        angle_or_missing <- function(value) {
+            is.numeric(value) && length(value) == 1L &&
+                (is.na(value) ||
+                    (is.finite(value) && value >= 0 && value <= 90))
+        }
+        scalar_text <- function(value) {
+            is.character(value) && length(value) == 1L && !is.na(value) &&
+                nzchar(value)
+        }
+        if (!identical(names(metrics), expected) ||
+                any(!vapply(metrics[c(
+                    "target_loading_cosine", "target_index_recurrence",
+                    "mean_matched_loading_cosine",
+                    "identifiability_completion_rate",
+                    "orientation_recurrence", "rank_one_fraction",
+                    "matched_fraction"
+                )], bounded_or_missing, logical(1L))) ||
+                !is.numeric(metrics$target_subspace_angle_deg) ||
+                length(metrics$target_subspace_angle_deg) != 1L ||
+                !is.finite(metrics$target_subspace_angle_deg) ||
+                metrics$target_subspace_angle_deg < 0 ||
+                metrics$target_subspace_angle_deg > 90 ||
+                any(!vapply(metrics[c(
+                    "mean_bootstrap_subspace_angle_deg",
+                    "q95_bootstrap_subspace_angle_deg"
+                )], angle_or_missing, logical(1L))) ||
+                any(!vapply(metrics[c(
+                    "target_unadjusted_estimate", "target_adjusted_estimate",
+                    "nuisance_unadjusted_estimate",
+                    "nuisance_adjusted_estimate"
+                )], function(value) {
+                    is.numeric(value) && length(value) == 1L &&
+                        is.finite(value)
+                }, logical(1L))) ||
+                any(!vapply(metrics[c(
+                    "target_unadjusted_status", "target_adjusted_status",
+                    "nuisance_unadjusted_status", "nuisance_adjusted_status"
+                )], scalar_text, logical(1L))) ||
+                any(!vapply(metrics[c(
+                    "target_component", "nuisance_component",
+                    "target_proposal_rank", "nuisance_proposal_rank"
+                )], rank_or_missing, logical(1L))) ||
+                !is.logical(metrics$stage2_ineligible) ||
+                length(metrics$stage2_ineligible) != 1L ||
+                is.na(metrics$stage2_ineligible) ||
+                !identical(
+                    metrics$acceptance_evidence_status,
+                    "independent_acceptance"
+                ) ||
+                !is.list(metrics$acceptance_provenance) ||
+                !identical(
+                    names(metrics$acceptance_provenance),
+                    c(
+                        "version", "evidence_status",
+                        "generator_and_decomposition", "atlas", "proposal",
+                        "identifiability", "stage2"
+                    )
+                ) ||
+                !identical(
+                    metrics$acceptance_provenance$evidence_status,
+                    "independent_acceptance"
+                ) ||
+                !is.character(metrics$acceptance_provenance_digest) ||
+                length(metrics$acceptance_provenance_digest) != 1L ||
+                !grepl(
+                    "^[0-9a-f]{64}$",
+                    metrics$acceptance_provenance_digest
+                ) ||
+                !identical(
+                    metrics$acceptance_provenance_digest,
+                    digest::digest(
+                        metrics$acceptance_provenance,
+                        algo = "sha256"
+                    )
+                )) {
+            .k1_acceptance_runner_abort(
+                "AML acceptance metrics violate the frozen contract"
+            )
+        }
+        return(invisible(TRUE))
+    }
     .k1_acceptance_runner_abort(
         "acceptance result names an unsupported control"
     )
@@ -1154,14 +1572,16 @@ print.K1AcceptanceManifest <- function(x, ...) {
     if (!identical(manifest$artifact_version, "2")) {
         return(invisible(TRUE))
     }
-    if (!identical(
-        identity$source_revision,
+    reviewed_revision <- if (is.null(manifest$runner_revision)) {
         manifest$phase_a_merge_commit
-    )) {
+    } else {
+        manifest$runner_revision
+    }
+    if (!identical(identity$source_revision, reviewed_revision)) {
         .k1_acceptance_runner_abort(
             paste(
                 "acceptance runtime revision must equal the reviewed",
-                "protocol merge revision"
+                "runner revision recorded by the manifest"
             )
         )
     }
@@ -1245,6 +1665,45 @@ print.K1AcceptanceManifest <- function(x, ...) {
             identifiability_completion_rate =
                 metrics$identifiability_completion_rate %||% NA_real_,
             nominated_component = metrics$nominated_component %||% NA_integer_,
+            target_loading_cosine =
+                metrics$target_loading_cosine %||% NA_real_,
+            target_subspace_angle_deg =
+                metrics$target_subspace_angle_deg %||% NA_real_,
+            mean_bootstrap_subspace_angle_deg =
+                metrics$mean_bootstrap_subspace_angle_deg %||% NA_real_,
+            q95_bootstrap_subspace_angle_deg =
+                metrics$q95_bootstrap_subspace_angle_deg %||% NA_real_,
+            target_component = metrics$target_component %||% NA_integer_,
+            nuisance_component = metrics$nuisance_component %||% NA_integer_,
+            target_proposal_rank =
+                metrics$target_proposal_rank %||% NA_integer_,
+            nuisance_proposal_rank =
+                metrics$nuisance_proposal_rank %||% NA_integer_,
+            target_unadjusted_estimate =
+                metrics$target_unadjusted_estimate %||% NA_real_,
+            target_adjusted_estimate =
+                metrics$target_adjusted_estimate %||% NA_real_,
+            nuisance_unadjusted_estimate =
+                metrics$nuisance_unadjusted_estimate %||% NA_real_,
+            nuisance_adjusted_estimate =
+                metrics$nuisance_adjusted_estimate %||% NA_real_,
+            target_unadjusted_status =
+                metrics$target_unadjusted_status %||% NA_character_,
+            target_adjusted_status =
+                metrics$target_adjusted_status %||% NA_character_,
+            nuisance_unadjusted_status =
+                metrics$nuisance_unadjusted_status %||% NA_character_,
+            nuisance_adjusted_status =
+                metrics$nuisance_adjusted_status %||% NA_character_,
+            stage2_ineligible = metrics$stage2_ineligible %||% NA,
+            orientation_recurrence =
+                metrics$orientation_recurrence %||% NA_real_,
+            rank_one_fraction = metrics$rank_one_fraction %||% NA_real_,
+            matched_fraction = metrics$matched_fraction %||% NA_real_,
+            acceptance_evidence_status =
+                metrics$acceptance_evidence_status %||% NA_character_,
+            acceptance_provenance_digest =
+                metrics$acceptance_provenance_digest %||% NA_character_,
             abstention_reason = metrics$abstention_reason %||% NA_character_,
             missing_control_time_cells =
                 metrics$missing_control_time_cells %||% NA_integer_,
@@ -1261,13 +1720,25 @@ print.K1AcceptanceManifest <- function(x, ...) {
     digest::digest(file = path, algo = "sha256", serialize = FALSE)
 }
 
-.k1_acceptance_governed_files <- function() {
-    c(
+.k1_acceptance_governed_files <- function(claim_status = NULL) {
+    core <- c(
         "protocol.rds", "seed-manifest.rds", "replicates.rds", "summary.rds",
-        "replicates.csv", "cell-summary.csv", "pass-rate.png",
-        "pass-rate-caption.txt", "false-positive.png",
-        "false-positive-caption.txt", "environment.rds"
+        "replicates.csv", "cell-summary.csv"
     )
+    figures <- if (identical(
+        claim_status,
+        "independent_aml_acceptance_summary"
+    )) {
+        c(
+            "aml-pass-rate.png", "aml-pass-rate-caption.txt",
+            "aml-recovery.png", "aml-recovery-caption.txt"
+        )
+    } else {
+        c("pass-rate.png",
+        "pass-rate-caption.txt", "false-positive.png",
+        "false-positive-caption.txt")
+    }
+    c(core, figures, "environment.rds")
 }
 
 .k1_acceptance_artifact_digest <- function(file_manifest) {
@@ -1337,6 +1808,13 @@ print.K1AcceptanceManifest <- function(x, ...) {
     .k1_acceptance_validate_identity(identity)
     .k1_acceptance_validate_collector_identity(collector_identity)
     .k1_validate_runtime_revision(identity, manifest)
+    published_controls <- unique(tasks$control)
+    if ("aml_synchronized" %in% published_controls &&
+            length(published_controls) > 1L) {
+        .k1_acceptance_runner_abort(
+            "AML and phase-B1 controls require separate governed artifacts"
+        )
+    }
     results <- .k1_acceptance_collect(results, tasks, protocol)
     if (!all(tasks$task_id %in% manifest$tasks$task_id)) {
         .k1_acceptance_runner_abort(
@@ -1374,10 +1852,20 @@ print.K1AcceptanceManifest <- function(x, ...) {
         file.path(staging, "cell-summary.csv"),
         row.names = FALSE
     )
-    pass_rate_plot <- plot_k1_acceptance_summary(summary, "pass_rate")
-    false_positive_plot <- plot_k1_acceptance_summary(summary, "false_positive")
+    aml_only <- identical(
+        summary$claim_status,
+        "independent_aml_acceptance_summary"
+    )
+    pass_rate_plot <- if (aml_only) {
+        plot_k1_aml_acceptance_summary(summary, "pass_rate")
+    } else plot_k1_acceptance_summary(summary, "pass_rate")
+    second_plot <- if (aml_only) {
+        plot_k1_aml_acceptance_summary(summary, "recovery")
+    } else plot_k1_acceptance_summary(summary, "false_positive")
+    pass_name <- if (aml_only) "aml-pass-rate" else "pass-rate"
+    second_name <- if (aml_only) "aml-recovery" else "false-positive"
     ggplot2::ggsave(
-        file.path(staging, "pass-rate.png"),
+        file.path(staging, paste0(pass_name, ".png")),
         pass_rate_plot,
         width = 100,
         height = 100,
@@ -1386,8 +1874,8 @@ print.K1AcceptanceManifest <- function(x, ...) {
         bg = "white"
     )
     ggplot2::ggsave(
-        file.path(staging, "false-positive.png"),
-        false_positive_plot,
+        file.path(staging, paste0(second_name, ".png")),
+        second_plot,
         width = 100,
         height = 100,
         units = "mm",
@@ -1396,11 +1884,11 @@ print.K1AcceptanceManifest <- function(x, ...) {
     )
     writeLines(
         scientific_caption(pass_rate_plot),
-        file.path(staging, "pass-rate-caption.txt")
+        file.path(staging, paste0(pass_name, "-caption.txt"))
     )
     writeLines(
-        scientific_caption(false_positive_plot),
-        file.path(staging, "false-positive-caption.txt")
+        scientific_caption(second_plot),
+        file.path(staging, paste0(second_name, "-caption.txt"))
     )
     environment <- list(
         artifact_version = protocol$artifact_version,
@@ -1413,7 +1901,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
         collector_identity = collector_identity
     )
     saveRDS(environment, file.path(staging, "environment.rds"))
-    governed <- .k1_acceptance_governed_files()
+    governed <- .k1_acceptance_governed_files(summary$claim_status)
     file_manifest <- data.frame(
         file = governed,
         sha256 = vapply(
@@ -1455,9 +1943,13 @@ print.K1AcceptanceManifest <- function(x, ...) {
         .k1_acceptance_runner_abort("acceptance artifact has no MANIFEST.tsv")
     }
     files <- utils::read.delim(manifest_path, stringsAsFactors = FALSE)
+    allowed_files <- list(
+        .k1_acceptance_governed_files(),
+        .k1_acceptance_governed_files("independent_aml_acceptance_summary")
+    )
     if (!identical(names(files), c("file", "sha256")) || !nrow(files) ||
             anyNA(files) || anyDuplicated(files$file) ||
-            !identical(files$file, .k1_acceptance_governed_files()) ||
+            !any(vapply(allowed_files, identical, logical(1L), files$file)) ||
             any(grepl("(^|/)\\.\\.(/|$)|^/", files$file))) {
         .k1_acceptance_runner_abort("acceptance file manifest is invalid")
     }
@@ -1474,6 +1966,14 @@ print.K1AcceptanceManifest <- function(x, ...) {
     results <- readRDS(file.path(artifact, "replicates.rds"))
     summary <- readRDS(file.path(artifact, "summary.rds"))
     environment <- readRDS(file.path(artifact, "environment.rds"))
+    if (!identical(
+        files$file,
+        .k1_acceptance_governed_files(summary$claim_status)
+    )) {
+        .k1_acceptance_runner_abort(
+            "acceptance figures do not match the summary phase"
+        )
+    }
     validate_k1_acceptance_protocol(protocol)
     validate_k1_acceptance_manifest(manifest)
     .k1_acceptance_validate_protocol_manifest_identity(protocol, manifest)
@@ -1600,6 +2100,10 @@ verify_k1_acceptance_artifact <- function(artifact) {
 #'   phase includes double-well recovery, both negative-control families, and
 #'   the shared-baseline missing-cell safety control. AML execution remains a
 #'   separately governed phase.
+#' @param runner_revision reviewed execution SHA-1. It is mandatory for the
+#'   AML phase and must differ from `phase_a_merge_commit`; other phases may
+#'   omit it to reproduce the historical manifest. It is provenance only and
+#'   does not alter deterministic seed derivation.
 #' @return A list of `targets` target objects.
 #' @export
 k1_acceptance_targets <- function(
@@ -1609,7 +2113,8 @@ k1_acceptance_targets <- function(
     controls = c(
         "generic_double_well", "pure_noise", "single_well",
         "shared_baseline_missing_cells"
-    )
+    ),
+    runner_revision = NULL
 ) {
     if (!requireNamespace("targets", quietly = TRUE)) {
         .k1_acceptance_runner_abort(
@@ -1617,6 +2122,9 @@ k1_acceptance_targets <- function(
         )
     }
     .k1_acceptance_validate_merge_commit(phase_a_merge_commit)
+    if (!is.null(runner_revision)) {
+        .k1_acceptance_validate_merge_commit(runner_revision)
+    }
     if (!is.character(artifact_root) || length(artifact_root) != 1L ||
             is.na(artifact_root) || !nzchar(artifact_root) ||
             !grepl("^/", path.expand(artifact_root))) {
@@ -1627,15 +2135,41 @@ k1_acceptance_targets <- function(
     }
     supported <- c(
         "generic_double_well", "pure_noise", "single_well",
-        "shared_baseline_missing_cells"
+        "shared_baseline_missing_cells", "aml_synchronized"
     )
     if (!is.character(controls) || !length(controls) || anyNA(controls) ||
             any(!controls %in% supported) || anyDuplicated(controls)) {
         .k1_acceptance_runner_abort(
             paste(
-                "controls must be unique implemented phase-B1 acceptance",
+                "controls must be unique implemented K=1 acceptance",
                 "controls"
             )
+        )
+    }
+    phase_b1_controls <- c(
+        "generic_double_well", "pure_noise", "single_well",
+        "shared_baseline_missing_cells"
+    )
+    supported_phase <- setequal(controls, phase_b1_controls) ||
+        identical(controls, "aml_synchronized")
+    if (!supported_phase) {
+        .k1_acceptance_runner_abort(
+            paste(
+                "controls must select either the complete phase-B1 control",
+                "set or aml_synchronized alone"
+            )
+        )
+    }
+    if (identical(controls, "aml_synchronized") &&
+            is.null(runner_revision)) {
+        .k1_acceptance_runner_abort(
+            "AML acceptance requires the reviewed runner_revision"
+        )
+    }
+    if (identical(controls, "aml_synchronized") &&
+            identical(runner_revision, phase_a_merge_commit)) {
+        .k1_acceptance_runner_abort(
+            "AML runner_revision must differ from the protocol merge revision"
         )
     }
     artifact_root <- path.expand(artifact_root)
@@ -1647,8 +2181,15 @@ k1_acceptance_targets <- function(
         .k1_acceptance_target(
             "k1_manifest",
             substitute(
-                landscapeR::k1_acceptance_manifest(COMMIT, k1_protocol),
-                list(COMMIT = phase_a_merge_commit)
+                landscapeR::k1_acceptance_manifest(
+                    COMMIT,
+                    k1_protocol,
+                    runner_revision = RUNNER
+                ),
+                list(
+                    COMMIT = phase_a_merge_commit,
+                    RUNNER = runner_revision
+                )
             )
         ),
         .k1_acceptance_target(
@@ -1656,10 +2197,26 @@ k1_acceptance_targets <- function(
             quote(landscapeR:::.k1_acceptance_worker_identity())
         ),
         .k1_acceptance_target(
+            "k1_preflight",
+            quote({
+                landscapeR:::.k1_validate_runtime_revision(
+                    k1_identity,
+                    k1_manifest
+                )
+                TRUE
+            })
+        ),
+        .k1_acceptance_target(
             "k1_tasks",
             substitute(
-                k1_manifest$tasks[k1_manifest$tasks$control %in% CONTROLS, ,
-                    drop = FALSE],
+                {
+                    k1_preflight
+                    k1_manifest$tasks[
+                        k1_manifest$tasks$control %in% CONTROLS,
+                        ,
+                        drop = FALSE
+                    ]
+                },
                 list(CONTROLS = controls)
             )
         ),

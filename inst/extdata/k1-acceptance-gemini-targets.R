@@ -8,12 +8,56 @@ if (!grepl("^[0-9a-f]{40}$", protocol_merge)) {
         "40-character protocol merge SHA-1"
     )
 }
+runner_merge <- Sys.getenv("LANDSCAPER_K1_RUNNER_MERGE")
+
+phase_b1_controls <- c(
+    "generic_double_well", "pure_noise", "single_well",
+    "shared_baseline_missing_cells"
+)
+controls_value <- Sys.getenv(
+    "LANDSCAPER_K1_CONTROLS",
+    paste(phase_b1_controls, collapse = ",")
+)
+controls <- trimws(strsplit(controls_value, ",", fixed = TRUE)[[1L]])
+supported_controls <- c(phase_b1_controls, "aml_synchronized")
+if (!length(controls) || any(!nzchar(controls)) ||
+        any(!controls %in% supported_controls) || anyDuplicated(controls)) {
+    stop(
+        "LANDSCAPER_K1_CONTROLS must be a comma-separated unique subset of: ",
+        paste(supported_controls, collapse = ", ")
+    )
+}
+run_name <- if (identical(controls, "aml_synchronized")) {
+    "k1-aml-acceptance"
+} else if (setequal(controls, phase_b1_controls)) {
+    "k1-independent-acceptance"
+} else {
+    stop(
+        "the Gemini profile supports only the complete phase-B1 control set ",
+        "or aml_synchronized alone"
+    )
+}
+if (identical(controls, "aml_synchronized") &&
+        !grepl("^[0-9a-f]{40}$", runner_merge)) {
+    stop(
+        "LANDSCAPER_K1_RUNNER_MERGE must be the reviewed 40-character ",
+        "AML runner merge SHA-1"
+    )
+}
+if (!nzchar(runner_merge)) runner_merge <- NULL
+if (identical(controls, "aml_synchronized")) {
+    stop(
+        "AML production is blocked until the disclosed-seed largest-cell ",
+        "resource pilot is recorded and this profile is reviewed with its ",
+        "measured resource settings"
+    )
+}
 
 scratch_root <- file.path(
     "/scratch",
     Sys.info()[["user"]],
     "landscapeR",
-    "k1-independent-acceptance"
+    run_name
 )
 shared_library_host <-
     "/packages/singularity/shared_cache/rbioc/rlibs/bioc-3.22"
@@ -70,5 +114,7 @@ hprcc::add_controller(
 k1_acceptance_targets(
     phase_a_merge_commit = protocol_merge,
     artifact_root = file.path(scratch_root, "artifacts"),
-    controller = "k1-acceptance"
+    controller = "k1-acceptance",
+    controls = controls,
+    runner_revision = runner_merge
 )

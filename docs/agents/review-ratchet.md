@@ -29,28 +29,23 @@ No entries yet; add one only after a concrete incident demonstrates a context-sp
 
 ## Earned defect checklist
 
-### RR-001 — Wait for asynchronous reviewers
-
-Do not treat a newly opened, green pull request as review-complete. Wait for the actual GitHub Copilot review and inspect all threads before merge.
-**Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137) received two actionable findings after internal review.
+### RR-001 — Wait for and monitor asynchronous reviewers
+Do not treat a newly opened, green pull request as review-complete. Keep an
+active monitor on every requested asynchronous reviewer, then inspect all
+threads before merge rather than leaving polling to the user.
+**Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137)
+received two actionable findings after internal review; [PR #139](https://github.com/drejom/landscapeR/pull/139)
+required repeated manual prompts while Copilot reviews were pending.
 
 ### RR-002 — Send Markdown API bodies from files
-
 Do not interpolate Markdown containing backticks into shell command arguments; use a file-backed request body.
 **Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137) had a review reply corrupted by shell interpolation.
 
 ### RR-003 — Validate Markdown meaning, not template spelling
-
 Repository policy parsers must accept equivalent Markdown forms; test semantic variants, not one exact spelling.
 **Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) initially rejected valid checkbox variants.
 
-### RR-004 — Monitor asynchronous review gates
-
-After requesting an asynchronous reviewer, keep an active monitor on the pull request; do not leave polling to the user.
-**Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) required repeated manual prompts while Copilot reviews were pending.
-
 ### RR-005 — Make governed identity behavioral and transactional
-
 When a callable implementation's governed identity authorizes registration or
 replacement, include behavior-relevant captured state across the full lexical
 environment chain. More generally, validate and prepare the complete
@@ -63,7 +58,6 @@ assign-before-record ordering could hide behavior changes or leave an
 unprovenanced registry mutation.
 
 ### RR-006 — Verify that visual encodings carry independent meaning
-
 Before accepting a diagnostic relationship, verify that its plotted quantities
 are not deterministic transforms of one another. Also verify that semantic
 highlight colours retain their declared role rather than marking
@@ -75,7 +69,6 @@ plotted one-dimensional principal angle against its exact absolute-cosine
 transform and used the focal red for the three largest observed rotations.
 
 ### RR-007 — Keep transient roots outside package builds
-
 A repo-root scratch directory must be excluded from both Git tracking and the R
 source-package build. Before trusting a local package check, verify that its
 generated site, bundles, and prior check directories were not copied into the
@@ -84,7 +77,6 @@ tarball. The mechanical rule belongs in `.gitignore` and `.Rbuildignore`.
 **Incident:** [Issue #117](https://github.com/drejom/landscapeR/issues/117) found `.scratch/` entered `R CMD build` and exhausted file handles.
 
 ### RR-008 — Preserve orthogonal typed state during adaptation
-
 When an adapter adds request-specific presentation or caption facts, it must
 not overwrite an independent state dimension such as availability. Test the
 typed state as well as the rendered prose: a caption can describe partial
@@ -93,7 +85,6 @@ evidence correctly while its enclosing object silently claims otherwise.
 **Incident:** issue #118 review found surface-caption adaptation replaced `partial` with `uncalibrated`.
 
 ### RR-009 — Observe governed identity independently
-
 Never verify an installed artifact by asking it to echo the expected identity.
 Read identity from installation or build metadata that the job cannot redefine;
 if that evidence is absent, report it as unavailable or stop at a boundary that
@@ -102,7 +93,6 @@ requires exact identity.
 **Incident:** issue #134 review found remote workers could echo the expected SHA while running different installed code.
 
 ### RR-010 — Prove parallelism boundaries behaviorally
-
 Do not infer that nested parallelism is disabled from a scheduling or chunking
 argument. Exercise the declared inner-sequential path under an ambient parallel
 backend and prove that work remains in the current worker.
@@ -110,7 +100,6 @@ backend and prove that work remains in the current worker.
 **Incident:** issue #135 found `future.scheduling = 0` still creates one future and violates ADR 0018's single-layer policy.
 
 ### RR-011 — Keep backend-dependent measurements out of scientific decisions
-
 Runtime and resource measurements may be retained for operational diagnostics,
 but they must not affect candidate selection or the scientific evidence digest
 when ADR 0018 promises backend-invariant evidence. Test that changing timing
@@ -120,7 +109,6 @@ alone leaves the scientific decision unchanged.
 execution backend and was also used as a candidate-selection gate.
 
 ### RR-012 — Build and inspect pull-request bodies from the repository template
-
 Read `.github/pull_request_template.md`, populate it from committed evidence,
 and inspect the rendered GitHub body before review. Required proof must exist,
 and every repository-hosted image path must resolve to its committed file.
@@ -128,6 +116,17 @@ and every repository-hosted image path must resolve to its committed file.
 **Incident:** [PR #167](https://github.com/drejom/landscapeR/pull/167) claimed
 proof in a malformed body while none was visible. In [PR #182](https://github.com/drejom/landscapeR/pull/182),
 two committed PNGs rendered as 404s because the body omitted `-surface`.
+
+### RR-013 — Replay governed artifacts after schema extensions
+When a typed result or summary gains phase-specific fields, replay every
+committed governed artifact through its semantic verifier before merge. New
+fields must not change the reconstructed payload, field order, digest, or
+caption contract of an earlier artifact unless a declared migration governs
+that change.
+
+**Incident:** issue #67 added AML-only summary fields that passed focused tests
+but initially made the committed phase-B1 acceptance artifact fail semantic
+reproduction during vignette rebuilding.
 
 ## Verify, never assume
 

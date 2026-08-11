@@ -9,7 +9,8 @@ k1_acceptance_targets(
   artifact_root,
   controller = "k1-acceptance",
   controls = c("generic_double_well", "pure_noise", "single_well",
-    "shared_baseline_missing_cells")
+    "shared_baseline_missing_cells"),
+  runner_revision = NULL
 )
 }
 \arguments{
@@ -23,6 +24,11 @@ k1_acceptance_targets(
 phase includes double-well recovery, both negative-control families, and
 the shared-baseline missing-cell safety control. AML execution remains a
 separately governed phase.}
+
+\item{runner_revision}{reviewed execution SHA-1. It is mandatory for the
+AML phase and must differ from \code{phase_a_merge_commit}; other phases may
+omit it to reproduce the historical manifest. It is provenance only and
+does not alter deterministic seed derivation.}
 }
 \value{
 A list of \code{targets} target objects.

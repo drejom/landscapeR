@@ -39,7 +39,7 @@ before its production graph is started.
 
 ## Dedicated execution directory
 
-Use one run directory under Gemini scratch:
+Use one run directory under Gemini's cluster-visible scratch. Phase B1 uses:
 
 ```sh
 RUN_ROOT="/scratch/$USER/landscapeR/k1-independent-acceptance"
@@ -53,6 +53,21 @@ essential because a user-level targets configuration may otherwise point
 workers at an unrelated project's store. The profile also enables persistent
 hprcc job scripts and autometric worker logs under the run's `_targets`
 directory.
+
+The independent AML-shaped phase uses a separate store and artifact root so
+it cannot overwrite or resume phase-B1 branches:
+
+```sh
+export LANDSCAPER_K1_CONTROLS=aml_synchronized
+RUN_ROOT="/scratch/$USER/landscapeR/k1-aml-acceptance"
+mkdir -p "$RUN_ROOT"
+cd "$RUN_ROOT"
+cp "$(Rscript -e 'cat(system.file("extdata", "k1-acceptance-gemini-targets.R", package = "landscapeR"))')" _targets.R
+```
+
+Do not combine the two phases in one targets store. The selected control set
+changes orchestration only; all AML grid values, thresholds, repetitions, and
+RNG streams still come from the immutable protocol and manifest.
 
 ## Custom controller and native metrics
 
@@ -119,6 +134,41 @@ Only after the runner revision is reviewed, merged, installed, and preflighted:
 export LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-v2-merge-SHA-1>
 Rscript -e 'targets::tar_make(use_crew = TRUE)'
 ```
+
+For the 900-task independent AML-shaped run, also export
+`LANDSCAPER_K1_CONTROLS=aml_synchronized` and
+`LANDSCAPER_K1_RUNNER_MERGE=<reviewed-AML-runner-merge-SHA-1>`, then launch
+from the dedicated `k1-aml-acceptance` directory above. The protocol merge is
+the sole input to deterministic seed derivation. The separate runner merge is
+retained in the manifest and must match the installed runtime revision. This
+command may be run only after that runner revision is reviewed, merged,
+installed, and preflighted.
+
+The generic pilot above does not authorize these materially heavier AML tasks.
+Before the frozen 900-task launch, run one disclosed-seed development pilot for
+the largest AML cell (`12` mice per condition and `10,000` features) with all
+`99` permutations and `99` complete-trajectory refits. Record hprcc's peak
+memory, CPU, wall time, and recommendation here, then revise `slurm_mem_gigabytes`,
+`slurm_walltime_minutes`, and `tasks_max` in a reviewed change. Production AML
+execution remains blocked until that evidence is recorded.
+
+The pilot has its own packaged targets profile, isolated store, and disclosed
+root `867530900`; it never constructs an acceptance manifest. On Gemini:
+
+```sh
+PILOT_ROOT="/scratch/$USER/landscapeR/k1-aml-resource-pilot"
+mkdir -p "$PILOT_ROOT"
+cd "$PILOT_ROOT"
+cp "$(Rscript -e 'cat(system.file("extdata", "k1-aml-resource-pilot-gemini-targets.R", package = "landscapeR"))')" _targets.R
+Rscript -e 'targets::tar_make(use_crew = TRUE)'
+Rscript -e 'stopifnot(identical(targets::tar_read(aml_largest_cell_resource_pilot)$status, "success"))'
+Rscript -e 'hprcc::summarize_resource_usage(path = file.path(Sys.getenv("HPRCC_TARGETS_STORE_BASE", unset = file.path(getwd(), "_targets")), "logs"), targets_file = "_targets.R")'
+```
+
+Retain the hprcc summary with the reviewed resource-setting change. Do not set
+`LANDSCAPER_K1_PROTOCOL_MERGE` or `LANDSCAPER_K1_RUNNER_MERGE` for this pilot.
+The packaged production profile deliberately fails closed for AML until that
+follow-up change records the measurements and removes the executable block.
 
 The first production make reveals the deterministic post-merge seed manifest.
 Do not run this command during runner development. If an operational branch

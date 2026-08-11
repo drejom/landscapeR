@@ -224,6 +224,136 @@ writeLines(
     file.path(output_dir, "calibration-recovery-map-caption.txt")
 )
 
+# Representative rendering fixture only. It exercises the AML acceptance
+# summary surfaces without deriving or consuming any governed acceptance seed.
+protocol <- k1_acceptance_protocol()
+display_cells <- expand.grid(
+    subjects_per_condition = c(4L, 7L, 12L),
+    p = c(100L, 1000L, 10000L),
+    replicate_index = seq_len(100L),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+)
+display_cells$n <- 2L * display_cells$subjects_per_condition * 11L
+display_cells$control <- "aml_synchronized"
+display_cells$canonical_cell <- sprintf(
+    "control=aml_synchronized;subjects_per_condition=%d;p=%d",
+    display_cells$subjects_per_condition,
+    display_cells$p
+)
+display_cells$task_id <- sprintf("display-%04d", seq_len(nrow(display_cells)))
+display_cells$seed_root <- NA_integer_
+display_cells$stream_seeds <- replicate(
+    nrow(display_cells),
+    NA_integer_,
+    simplify = FALSE
+)
+display_pass_rate <- with(
+    display_cells,
+    pmin(0.97, 0.42 + 0.035 * subjects_per_condition - 0.04 * log10(p / 100))
+)
+display_pass <- display_cells$replicate_index <=
+    floor(100 * display_pass_rate)
+display_results <- lapply(seq_len(nrow(display_cells)), function(index) {
+    passes <- display_pass[[index]]
+    subjects <- display_cells$subjects_per_condition[[index]]
+    features <- display_cells$p[[index]]
+    loading_cosine <- min(
+        0.99,
+        0.82 + 0.012 * subjects - 0.015 * log10(features / 100)
+    )
+    acceptance_provenance <- list(
+        version = "1.0.0",
+        evidence_status = "independent_acceptance",
+        generator_and_decomposition = list(fixture = "fabricated"),
+        atlas = list(fixture = "fabricated"),
+        proposal = list(fixture = "fabricated"),
+        identifiability = list(fixture = "fabricated"),
+        stage2 = list(fixture = "fabricated")
+    )
+    structure(list(
+        artifact_version = protocol$artifact_version,
+        task_id = display_cells$task_id[[index]],
+        control = "aml_synchronized",
+        canonical_cell = display_cells$canonical_cell[[index]],
+        replicate_index = display_cells$replicate_index[[index]],
+        status = "success",
+        reason = "",
+        metrics = list(
+            target_loading_cosine = if (passes) {
+                max(0.91, loading_cosine)
+            } else {
+                min(0.89, loading_cosine)
+            },
+            target_subspace_angle_deg = if (passes) 12 else 25,
+            mean_bootstrap_subspace_angle_deg = if (passes) 8 else 18,
+            q95_bootstrap_subspace_angle_deg = if (passes) 12 else 28,
+            target_component = 2L,
+            nuisance_component = 1L,
+            target_proposal_rank = if (passes) 1L else 2L,
+            nuisance_proposal_rank = if (passes) 2L else 1L,
+            target_unadjusted_estimate = -1.2,
+            target_adjusted_estimate = -1.1,
+            nuisance_unadjusted_estimate = 0.2,
+            nuisance_adjusted_estimate = 0.1,
+            target_unadjusted_status = "estimable-exploratory-only",
+            target_adjusted_status = "estimable-exploratory-only",
+            nuisance_unadjusted_status = "estimable-exploratory-only",
+            nuisance_adjusted_status = "estimable-exploratory-only",
+            target_index_recurrence = if (passes) {
+                min(0.98, 0.76 + 0.018 * subjects)
+            } else {
+                0.72
+            },
+            mean_matched_loading_cosine = if (passes) 0.92 else 0.82,
+            identifiability_completion_rate = if (passes) 0.96 else 0.84,
+            stage2_ineligible = TRUE,
+            orientation_recurrence = 0.55,
+            rank_one_fraction = if (passes) 0.88 else 0.60,
+            matched_fraction = if (passes) 0.95 else 0.78,
+            acceptance_evidence_status = "independent_acceptance",
+            acceptance_provenance = acceptance_provenance,
+            acceptance_provenance_digest = digest::digest(
+                acceptance_provenance,
+                algo = "sha256"
+            )
+        ),
+        protocol_digest = protocol$digest,
+        runner_contract = protocol$execution_contracts$version
+    ), class = c("K1AcceptanceReplicate", "list"))
+})
+display_summary <- summarize_k1_acceptance(
+    display_results,
+    display_cells,
+    protocol
+)
+display_summary$claim_status <- "development_only_visual_fixture"
+display_payload <- unclass(display_summary)
+display_payload$digest <- NULL
+display_summary$digest <- digest::digest(display_payload, algo = "sha256")
+acceptance_plots <- list(
+    aml_acceptance_pass_rate = plot_k1_aml_acceptance_summary(
+        display_summary,
+        "pass_rate"
+    ),
+    aml_acceptance_recovery = plot_k1_aml_acceptance_summary(
+        display_summary,
+        "recovery"
+    )
+)
+for (name in names(acceptance_plots)) {
+    save_landscapeR_plot(
+        acceptance_plots[[name]],
+        file.path(output_dir, paste0(name, ".png")),
+        width_mm = 100,
+        height_mm = 100
+    )
+    writeLines(
+        scientific_caption(acceptance_plots[[name]]),
+        file.path(output_dir, paste0(name, "-caption.txt"))
+    )
+}
+
 coordinates <- dr_coords_k(stage_artifact(fitted, "stage1"))[[1L]]
 design <- as.data.frame(colData(fitted))
 trajectory_data <- rbind(
