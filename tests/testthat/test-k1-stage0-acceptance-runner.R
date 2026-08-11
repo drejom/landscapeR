@@ -5,17 +5,19 @@ test_that("acceptance manifest expands every frozen cell and replicate", {
 
     expect_s3_class(manifest, "K1AcceptanceManifest")
     expect_true(validate_k1_acceptance_manifest(manifest))
-    expect_identical(nrow(manifest$tasks), 9300L)
+    expect_identical(nrow(manifest$tasks), 17000L)
     expect_identical(
         as.integer(table(manifest$tasks$control)),
         unname(c(
             aml_synchronized = 900L,
-            generic_double_well = 2000L,
-            pure_noise = 3200L,
-            single_well = 3200L
+            generic_double_well = 3200L,
+            pure_noise = 6400L,
+            shared_baseline_missing_cells = 100L,
+            single_well = 6400L
         ))
     )
     expect_identical(manifest$phase_a_merge_commit, fake_phase_a_merge())
+    expect_identical(manifest$artifact_version, "2")
     expect_match(manifest$digest, "^[0-9a-f]{64}$")
     expect_false(any(manifest$tasks$seed_root %in%
         k1_acceptance_protocol()$separation$reserved_calibration_rng_streams))
@@ -31,18 +33,38 @@ test_that("acceptance seed derivation follows the frozen canonical contract", {
 
     expect_identical(
         first$canonical_cell,
-        "control=generic_double_well;n=24;p=100"
+        "control=generic_double_well;n=8;p=100"
     )
     expect_identical(first$replicate_index, 1L)
-    expect_identical(first$seed_root, 1773915921L)
+    expect_identical(first$task_ordinal, 1L)
+    expect_identical(first$seed_root, 627208489L)
     expect_identical(first$stream_seeds[[1L]], c(
-        state_coordinates = 1773915921L,
-        expression = 1773915922L
+        state_coordinates = 627208489L,
+        expression = 627208490L
     ))
     expect_identical(
         manifest,
         k1_acceptance_manifest(fake_phase_a_merge())
     )
+
+    legacy_protocol <- k1_acceptance_protocol("1")
+    legacy <- k1_acceptance_manifest(
+        fake_phase_a_merge(),
+        protocol = legacy_protocol
+    )
+    expect_true(validate_k1_acceptance_manifest(legacy))
+    expect_identical(nrow(legacy$tasks), 9300L)
+    expect_identical(legacy$artifact_version, "1")
+    legacy_first <- legacy$tasks[
+        legacy$tasks$control == "generic_double_well",
+        ,
+        drop = FALSE
+    ][1L, ]
+    expect_identical(
+        legacy_first$canonical_cell,
+        "control=generic_double_well;n=24;p=100"
+    )
+    expect_identical(legacy_first$seed_root, 1773915921L)
 })
 
 test_that("acceptance manifest rejects invalid commits and mutation", {
@@ -55,6 +77,85 @@ test_that("acceptance manifest rejects invalid commits and mutation", {
     changed$tasks$seed_root[[1L]] <- changed$tasks$seed_root[[1L]] + 1L
     expect_error(
         validate_k1_acceptance_manifest(changed),
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("shared-baseline safety control retains missing cells and abstains", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(fake_phase_a_merge())
+    task <- manifest$tasks[
+        manifest$tasks$control == "shared_baseline_missing_cells",
+        ,
+        drop = FALSE
+    ][1L, , drop = FALSE]
+
+    result <- landscapeR:::.k1_acceptance_run_task(
+        task,
+        protocol,
+        expected_identity = NULL,
+        sequential_internal = TRUE
+    )
+
+    expect_identical(result$status, "success")
+    expect_identical(
+        result$metrics$abstention_reason,
+        "non-identifiable-design"
+    )
+    expect_identical(result$metrics$missing_control_time_cells, 3L)
+    expect_identical(result$metrics$unique_control_observations, 3L)
+    expect_identical(result$metrics$total_observations, 15L)
+
+    audit_row <- landscapeR:::.k1_acceptance_flatten_results(list(result))
+    expect_identical(
+        audit_row$abstention_reason,
+        "non-identifiable-design"
+    )
+    expect_identical(audit_row$missing_control_time_cells, 3L)
+    expect_identical(audit_row$unique_control_observations, 3L)
+    expect_identical(audit_row$total_observations, 15L)
+
+    source <- landscapeR:::.k1_acceptance_shared_baseline_source(
+        task,
+        protocol
+    )
+    expect_length(source@provenance, 1L)
+    step <- source@provenance[[1L]]
+    expect_identical(
+        step@implementation,
+        protocol$generators$shared_baseline_missing_cells$id
+    )
+    expect_identical(step@input_hashes[["protocol"]], protocol$digest)
+    expect_identical(
+        step@params$rng$streams,
+        task$stream_seeds[[1L]]
+    )
+    expect_identical(
+        step@params$rng$run_seed,
+        task$stream_seeds[[1L]][["generation"]]
+    )
+
+    mismatched_task <- task
+    mismatched_task$seed_root <- task$seed_root + 1L
+    expect_error(
+        landscapeR:::.k1_acceptance_shared_baseline_source(
+            mismatched_task,
+            protocol
+        ),
+        "seed root must equal its generation stream",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("protocol and manifest identities cannot be mixed across versions", {
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_protocol_manifest_identity(
+            k1_acceptance_protocol("2"),
+            k1_acceptance_manifest(
+                fake_phase_a_merge(),
+                k1_acceptance_protocol("1")
+            )
+        ),
         class = "k1_acceptance_runner_error"
     )
 })
@@ -107,6 +208,16 @@ test_that("acceptance targets graph has one scheduler-owned parallel layer", {
     )
 
     by_name <- stats::setNames(pipeline, expected)
+    expect_match(
+        by_name$k1_tasks$command$string,
+        "shared_baseline_missing_cells",
+        fixed = TRUE
+    )
+    expect_false(grepl(
+        "aml_synchronized",
+        by_name$k1_tasks$command$string,
+        fixed = TRUE
+    ))
     worker <- as.list.environment(by_name$k1_result$settings)
     expect_identical(worker$deployment, "worker")
     expect_identical(worker$resources$crew$controller, "medium")
@@ -153,7 +264,7 @@ test_that("generic development task returns typed frozen metrics", {
         "subspace_angle_deg", "well_error", "barrier_error",
         "barrier_height_error", "n_wells_found", "n_barriers_found"
     ) %in% names(result$metrics)))
-    expect_identical(result$runner_contract, "k1-stage0-acceptance-runner-v1")
+    expect_identical(result$runner_contract, "k1-stage0-acceptance-runner-v2")
 })
 
 test_that("generic acceptance generation is acceptance-native", {
@@ -195,7 +306,7 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         drop = FALSE
     ][1L, , drop = FALSE]
     result <- structure(list(
-        artifact_version = "1",
+        artifact_version = protocol$artifact_version,
         task_id = tasks$task_id[[1L]],
         control = tasks$control[[1L]],
         canonical_cell = tasks$canonical_cell[[1L]],
@@ -214,7 +325,7 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         runner_contract = protocol$execution_contracts$version
     ), class = c("K1AcceptanceReplicate", "list"))
     identity <- list(
-        source_revision = strrep("2", 40L),
+        source_revision = fake_phase_a_merge(),
         r_version = paste(R.version$major, R.version$minor, sep = "."),
         package_versions = c(
             landscapeR = as.character(utils::packageVersion("landscapeR"))
@@ -240,6 +351,35 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         manifest_path,
         stringsAsFactors = FALSE
     )
+    environment_path <- file.path(artifact, "environment.rds")
+    altered_environment <- environment
+    altered_environment$runtime_identity$source_revision <- strrep("2", 40L)
+    saveRDS(altered_environment, environment_path)
+    revision_manifest <- complete_file_manifest
+    environment_row <- revision_manifest$file == "environment.rds"
+    revision_manifest$sha256[environment_row] <-
+        landscapeR:::.k1_acceptance_file_digest(environment_path)
+    utils::write.table(
+        revision_manifest,
+        manifest_path,
+        sep = "\t",
+        quote = FALSE,
+        row.names = FALSE
+    )
+    expect_error(
+        verify_k1_acceptance_artifact(artifact),
+        "runtime revision must equal",
+        class = "k1_acceptance_runner_error"
+    )
+    saveRDS(environment, environment_path)
+    utils::write.table(
+        complete_file_manifest,
+        manifest_path,
+        sep = "\t",
+        quote = FALSE,
+        row.names = FALSE
+    )
+
     utils::write.table(
         complete_file_manifest[
             complete_file_manifest$file != "pass-rate.png",
@@ -285,4 +425,18 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         verify_k1_acceptance_artifact(artifact),
         class = "k1_acceptance_runner_error"
     )
+})
+
+test_that("runtime revision binding preserves the version 1 replay contract", {
+    version_1 <- k1_acceptance_protocol("1")
+    manifest <- k1_acceptance_manifest(
+        fake_phase_a_merge(),
+        protocol = version_1
+    )
+    replay_identity <- list(source_revision = strrep("2", 40L))
+
+    expect_true(landscapeR:::.k1_validate_runtime_revision(
+        replay_identity,
+        manifest
+    ))
 })

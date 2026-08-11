@@ -334,15 +334,14 @@ AML-grounded target/confounder control is [#67](https://github.com/drejom/landsc
 
 ### Frozen K=1 acceptance protocol and independent runner (#51)
 
-The independent acceptance protocol is now inspectable before any acceptance
-replicate is run. Its digest covers the positive, negative, thinness, and
-synchronized AML grids; all metric thresholds and aggregate pass rules; and the
-normalized SVD, KDE, association, dropout, and resampling settings; plus the
-delayed seed-derivation contract. Package defaults cannot silently change an
-acceptance run: evidence must record the protocol digest, runner-contract
-version, package version, and source revision. Phase B1 now provides the
-independent executor, typed aggregation, publication, verification, and
-summary plots without changing the phase-A protocol.
+The current version 2 acceptance protocol is inspectable before any acceptance
+replicate is run. Its digest covers the lower-tail positive and negative grids,
+the shared-baseline missing-cell safety control, the synchronized AML grid, all
+metric thresholds and aggregate pass rules, and the normalized execution
+settings. Package defaults cannot silently change an acceptance run: evidence
+records the protocol version and digest, runner contract, package version, and
+source revision. Version 1 remains readable historical evidence and is never
+silently relabelled as version 2.
 
 ```{r k1-acceptance-protocol}
 k1_protocol <- k1_acceptance_protocol()
@@ -373,7 +372,8 @@ knitr::kable(data.frame(
 
 This table is protocol-definition proof, not acceptance evidence. The exported
 `k1_acceptance_manifest()` reveals the deterministic seed manifest only when
-supplied the reviewed phase-A merge commit. `k1_acceptance_targets()` then
+supplied the reviewed merge commit that froze the selected protocol. The legacy
+argument name remains for version 1 reproducibility. `k1_acceptance_targets()` then
 delegates one complete replicate per worker, retains failures in the requested
 denominator, and blocks publication until all requested branches return.
 `summarize_k1_acceptance()`, `plot_k1_acceptance_summary()`, and
@@ -381,9 +381,10 @@ denominator, and blocks publication until all requested branches return.
 captions, and semantic artifact verification. None of those functions has run
 the frozen acceptance set in this vignette. Only independently executed,
 verified evidence can amend ADR 0002 with observed pass rates and a supported
-sample range. The minimum is evaluated over the shared positive/negative `n`
-grid beginning at 48; the positive-only `n = 24` cell remains a thinness stress
-test.
+sample range. Version 2 evaluates the supported minimum across the complete
+shared positive and negative grid `n = 8, 12, 16, 24, 48, 96, 132, 192` and
+`p = 100, 1,000, 10,000, 20,000`. It also requires the shared-baseline design
+to abstain rather than invent unobserved control-time cells.
 
 ```{r k1-calibration-table}
 k1_calibration <- suppressWarnings(k1_double_well_calibration(

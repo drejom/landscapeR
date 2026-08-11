@@ -1,5 +1,9 @@
 # K=1 Stage 0 acceptance protocol v1
 
+> Historical protocol. Version 1 remains readable and reproducible evidence,
+> but version 2 supersedes it for new acceptance runs. No version 1 result may
+> be relabelled as version 2 evidence.
+
 ## Problem Statement
 
 The K=1 implementation has disclosed calibration results, but real AML analysis

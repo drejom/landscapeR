@@ -18,17 +18,65 @@ test_that("K=1 acceptance protocol is deterministic and content addressed", {
     expect_true(validate_k1_acceptance_protocol(restored))
 })
 
-test_that("K=1 acceptance seeds remain hidden until the phase-A merge", {
+test_that("K=1 acceptance protocol v2 extends the lower tail and preserves v1", {
+    current <- k1_acceptance_protocol()
+    legacy <- k1_acceptance_protocol("1")
+
+    expect_identical(current$protocol_id, "k1-stage0-acceptance-v2")
+    expect_identical(legacy$protocol_id, "k1-stage0-acceptance-v1")
+    expect_false(identical(current$digest, legacy$digest))
+    expect_true(validate_k1_acceptance_protocol(current))
+    expect_true(validate_k1_acceptance_protocol(legacy))
+    expect_identical(
+        current$grids$generic_double_well$varying$n,
+        c(8L, 12L, 16L, 24L, 48L, 96L, 132L, 192L)
+    )
+    expect_identical(
+        current$grids$negative_controls$varying$n,
+        current$grids$generic_double_well$varying$n
+    )
+    expect_identical(
+        current$grids$shared_baseline_missing_cells$fixed,
+        list(
+            conditions = 2L,
+            time_points = 4L,
+            replicates_per_observed_cell = 3L,
+            p = 1000L
+        )
+    )
+    expect_identical(
+        current$thresholds$shared_baseline_missing_cells$
+            required_total_observations,
+        15L
+    )
+    expect_identical(
+        current$seed_plan$control,
+        c(
+            "generic_double_well", "pure_noise", "single_well",
+            "aml_synchronized", "shared_baseline_missing_cells"
+        )
+    )
+    expect_error(
+        k1_acceptance_protocol("3"),
+        class = "k1_acceptance_protocol_error"
+    )
+})
+
+test_that("K=1 acceptance seeds remain hidden until their protocol merge", {
     protocol <- k1_acceptance_protocol()
     plan <- protocol$seed_plan
 
     expect_identical(
         plan$replicates_per_grid_cell,
-        c(100L, 200L, 200L, 100L)
+        c(100L, 200L, 200L, 100L, 100L)
     )
     expect_false("seed" %in% names(plan))
     expect_identical(
         protocol$seed_derivation$reveal_value,
+        "reviewed version 2 protocol pull-request merge commit SHA-1"
+    )
+    expect_identical(
+        k1_acceptance_protocol("1")$seed_derivation$reveal_value,
         "phase-A pull-request merge commit SHA-1"
     )
     expect_identical(
@@ -38,6 +86,11 @@ test_that("K=1 acceptance seeds remain hidden until the phase-A merge", {
     expect_false(protocol$provenance$acceptance_results_inspected)
     expect_match(
         protocol$seed_derivation$integer_mapping,
+        "task ordinal",
+        fixed = TRUE
+    )
+    expect_match(
+        k1_acceptance_protocol("1")$seed_derivation$integer_mapping,
         "modulo 2147483644",
         fixed = TRUE
     )
@@ -116,7 +169,10 @@ test_that("K=1 acceptance protocol freezes metrics and pass rules", {
             dropout_subjects,
         character()
     )
-    expect_match(protocol$pass_rules$supported_minimum_n, "48,96,132,192")
+    expect_match(
+        protocol$pass_rules$supported_minimum_n,
+        "8,12,16,24,48,96,132,192"
+    )
 })
 
 test_that("K=1 acceptance protocol rejects mutation and forged digests", {

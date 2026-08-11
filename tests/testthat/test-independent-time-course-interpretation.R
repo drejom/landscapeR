@@ -408,9 +408,25 @@ test_that("a singly replicated overlapping cell causes design abstention", {
     )
     expect_match(design_plot$labels$subtitle, "not estimable")
     expect_null(design_plot$labels$caption)
+    caption <- scientific_caption(design_plot)
     expect_match(
-        scientific_caption(design_plot),
+        caption,
         "interaction is not estimable"
+    )
+    expect_false(grepl(
+        "lines show stored population trajectories",
+        tolower(caption),
+        fixed = TRUE
+    ))
+    expect_false(grepl(
+        "facet labels report stored interaction intervals",
+        tolower(caption),
+        fixed = TRUE
+    ))
+    view <- visual_evidence(atlas)
+    expect_identical(
+        unname(visual_evidence_display(view, "facet_labels")),
+        names(visual_evidence_display(view, "facet_labels"))
     )
     expect_s4_class(propose_component(atlas), "ComponentAbstention")
 })

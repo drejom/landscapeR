@@ -1,0 +1,11 @@
+Observed destructive-time-course design. The K=1 shared-baseline safety control experiment uses
+the simulated molecular features layer to assess the declared condition target contrasts
+treated with control. Points show independent biological observations; labels give biological
+sample counts per design cell; crosses mark unobserved condition-by-time cells. The analysis
+unit is independent biological observation; the design is independent_time_course; the estimand
+is condition-by-time interaction on the rank scale; time is recorded as observed_time. No
+interaction interval or resampling recurrence is available. Raw p-values are retained; q-values
+use Holm correction across declared components within each metadata field and evidence variant.
+3 unobserved condition-by-time cells are marked with crosses. The declared condition-by-time
+interaction is not estimable. No acceptance threshold is applied. No unique biological
+coordinate is identified.

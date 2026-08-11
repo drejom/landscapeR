@@ -1,5 +1,5 @@
-acceptance_summary_fixture <- function() {
-    protocol <- k1_acceptance_protocol()
+acceptance_summary_fixture <- function(version = "2") {
+    protocol <- k1_acceptance_protocol(version)
     tasks <- data.frame(
         task_id = c("g1", "g2", "n1", "n2"),
         control = c(
@@ -20,7 +20,7 @@ acceptance_summary_fixture <- function() {
     tasks$stream_seeds <- replicate(4L, 1L, simplify = FALSE)
     results <- list(
         structure(list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = "g1", control = "generic_double_well",
             canonical_cell = tasks$canonical_cell[[1L]], replicate_index = 1L,
             status = "success", reason = "", metrics = list(
@@ -32,7 +32,7 @@ acceptance_summary_fixture <- function() {
             runner_contract = protocol$execution_contracts$version
         ), class = c("K1AcceptanceReplicate", "list")),
         structure(list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = "g2", control = "generic_double_well",
             canonical_cell = tasks$canonical_cell[[2L]], replicate_index = 2L,
             status = "failure", reason = "deliberate fixture failure",
@@ -41,7 +41,7 @@ acceptance_summary_fixture <- function() {
             runner_contract = protocol$execution_contracts$version
         ), class = c("K1AcceptanceReplicate", "list")),
         structure(list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = "n1", control = "pure_noise",
             canonical_cell = tasks$canonical_cell[[3L]], replicate_index = 1L,
             status = "success", reason = "", metrics = list(
@@ -57,7 +57,7 @@ acceptance_summary_fixture <- function() {
             runner_contract = protocol$execution_contracts$version
         ), class = c("K1AcceptanceReplicate", "list")),
         structure(list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = "n2", control = "pure_noise",
             canonical_cell = tasks$canonical_cell[[4L]], replicate_index = 2L,
             status = "success", reason = "", metrics = list(
@@ -99,6 +99,53 @@ test_that("acceptance summary keeps failures and incomplete cells visible", {
     expect_identical(summary$claim_status, "incomplete_execution_summary")
 })
 
+test_that("shared-baseline safety cells pass only through typed abstention", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(strrep("1", 40L))
+    task <- manifest$tasks[
+        manifest$tasks$control == "shared_baseline_missing_cells",
+        ,
+        drop = FALSE
+    ][1L, , drop = FALSE]
+    result <- landscapeR:::.k1_acceptance_run_task(
+        task,
+        protocol,
+        expected_identity = NULL,
+        sequential_internal = TRUE
+    )
+
+    summary <- summarize_k1_acceptance(list(result), task, protocol)
+
+    expect_identical(summary$cells$control, "shared_baseline_missing_cells")
+    expect_identical(summary$cells$n_completed, 1L)
+    expect_identical(summary$cells$n_passed, 1L)
+    expect_equal(summary$cells$replicate_pass_rate, 1)
+    expect_false(summary$cells$complete_cell)
+    expect_false(summary$complete_execution)
+
+    wrong_total <- result
+    wrong_total$metrics$total_observations <- 14L
+    wrong_summary <- summarize_k1_acceptance(
+        list(wrong_total),
+        task,
+        protocol
+    )
+    expect_identical(wrong_summary$cells$n_passed, 0L)
+})
+
+test_that("historical v1 captions do not acquire version 2 panels", {
+    fixture <- acceptance_summary_fixture("1")
+    summary <- summarize_k1_acceptance(
+        fixture$results,
+        fixture$tasks,
+        fixture$protocol
+    )
+    caption <- scientific_caption(plot_k1_acceptance_summary(summary))
+
+    expect_false(grepl("Panel D", caption, fixed = TRUE))
+    expect_false(grepl("shared-baseline", caption, ignore.case = TRUE))
+})
+
 test_that("acceptance summary rejects malformed typed metrics", {
     fixture <- acceptance_summary_fixture()
     fixture$results[[1L]]$metrics$well_error <- -1
@@ -134,12 +181,50 @@ test_that("acceptance summary plots carry threshold lines and captions", {
 
     pass_rate <- plot_k1_acceptance_summary(summary, "pass_rate")
     false_positive <- plot_k1_acceptance_summary(summary, "false_positive")
+    pass_caption <- gsub("[[:space:]]+", " ", scientific_caption(pass_rate))
+    false_positive_caption <- gsub(
+        "[[:space:]]+",
+        " ",
+        scientific_caption(false_positive)
+    )
     expect_s3_class(pass_rate, "ggplot")
     expect_s3_class(false_positive, "ggplot")
-    expect_match(scientific_caption(pass_rate), "90%")
-    expect_match(scientific_caption(pass_rate), "incomplete")
-    expect_match(scientific_caption(false_positive), "5%")
-    expect_match(scientific_caption(false_positive), "(A)", fixed = TRUE)
+    expect_match(pass_caption, "90%")
+    expect_match(pass_caption, "incomplete")
+    expect_match(false_positive_caption, "5%")
+    expect_match(false_positive_caption, "(A)", fixed = TRUE)
+    expect_match(
+        pass_caption,
+        "The estimand is the fraction of all requested replicates"
+    )
+    expect_false(grepl("..", pass_caption, fixed = TRUE))
+    expect_false(grepl("; Open|; The", pass_caption))
+    pass_words <- tolower(unlist(strsplit(
+        pass_caption,
+        "[^[:alnum:]-]+"
+    )))
+    expect_false(any(c("typed", "frozen") %in% pass_words))
+    expect_false(grepl(
+        "development fixture|execution failures",
+        pass_caption,
+        ignore.case = TRUE
+    ))
+    expect_match(
+        false_positive_caption,
+        "The estimand is the false-positive fraction"
+    )
+    expect_false(grepl("..", false_positive_caption, fixed = TRUE))
+    expect_false(grepl("; Open|; The", false_positive_caption))
+    false_positive_words <- tolower(unlist(strsplit(
+        false_positive_caption,
+        "[^[:alnum:]-]+"
+    )))
+    expect_false("frozen" %in% false_positive_words)
+    expect_false(grepl(
+        "development fixture|failed executions",
+        false_positive_caption,
+        ignore.case = TRUE
+    ))
     expect_error(
         plot_k1_acceptance_summary(summary, "not-a-surface"),
         class = "k1_acceptance_runner_error"
@@ -149,4 +234,30 @@ test_that("acceptance summary plots carry threshold lines and captions", {
         false_positive_build$data[[3L]]$fill ==
             unname(landscapeR_palette("semantic")[["paper"]])
     ))
+
+    decision_summary <- summary
+    decision_summary$cells$false_double_well_rate <- 0.02
+    decision_summary$cells$false_target_selection_rate <- 0.03
+    decision_plot <- plot_k1_acceptance_summary(
+        decision_summary,
+        "false_positive"
+    )
+    expect_identical(
+        decision_plot$scales$get_scales("y")$limits,
+        c(0, 0.1)
+    )
+    expect_identical(
+        decision_plot$scales$get_scales("y")$get_labels(),
+        c("0%", "2.5%", "5%", "7.5%", "10%")
+    )
+
+    decision_summary$cells$false_double_well_rate <- 0.2
+    expanded_plot <- plot_k1_acceptance_summary(
+        decision_summary,
+        "false_positive"
+    )
+    expect_equal(
+        expanded_plot$scales$get_scales("y")$limits,
+        c(0, 0.22)
+    )
 })

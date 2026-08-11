@@ -1,0 +1,11 @@
+K=1 independent acceptance pass rates. The K=1 synthetic acceptance experiment. (A) Double-well
+recovery. (B) Pure-noise negative control. (C) Single-well negative control. (D)
+Shared-baseline missing-cell design; a pass indicates that the condition-by-time interaction
+was correctly reported as non-estimable. Black points show replicate pass rates for each
+feature count; open points identify cells with incomplete simulation results; the red
+horizontal line marks the prespecified 90% pass-rate gate. The estimand is the fraction of all
+requested replicates that pass; replicates without a valid result count as unsuccessful. Cell
+adjudication additionally requires a Wilson 95% lower bound of at least 80%. A complete cell
+passes only at 90% or greater with a Wilson 95% lower bound of at least 80%. Values are
+simulated solely to demonstrate the figure structure and do not support a scientific acceptance
+claim.

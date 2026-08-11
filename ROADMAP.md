@@ -8,8 +8,9 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#177: revise and refreeze the K=1
-acceptance protocol before any production seed is derived or executed**.
+**Next task after this change lands:** **#51 phase B1: derive the governed v2
+manifest from the reviewed #177 merge and execute the generic positive and
+negative controls on Gemini**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -65,9 +66,9 @@ There is no calendar promise. Scientific gates, not dates, advance milestones.
 ### Current limitations
 
 - K=1 acceptance protocol v1 is retained as predeclared historical evidence,
-  but #177 must supersede its sample-size grids with protocol v2 before any
-  production seed is derived. The supported sample range remains unresolved
-  until the reviewed v2 protocol is executed and aggregated independently.
+  and #177 supersedes it with reviewed protocol v2 on merge. The supported
+  sample range remains unresolved until governed phase B1 execution and later
+  aggregation use the post-merge v2 manifest.
 - Cross-sectional component interpretation supports binary, continuous, ordered,
   unordered-descriptive, nuisance-adjusted, resampled, and search-aware
   permutation evidence. Independent destructive and repeated-subject
@@ -224,11 +225,12 @@ interpretation lane lands.
 The [2026-07-31 whole-codebase technical-debt audit](docs/archive/technical-debt-audit-2026-07-31.md)
 and follow-up architecture and HPC reviews are fully represented by issues.
 The maintenance lane is deliberately active until the audited backlog is clean.
-The K=1 acceptance ladder remains the current scientific lane. Its next task is
-#177, which refreezes the protocol with matching low-sample positive and
-negative grids plus a shared-baseline missing-cell safety control. #51 phase B1
-execution and #67 independent acceptance remain blocked until #177 lands. Issue
-labels do not independently change this schedule.
+The K=1 acceptance ladder remains the current scientific lane. #177 refreezes
+the protocol with matching low-sample positive and negative grids plus a
+shared-baseline missing-cell safety control on merge. The next task is #51
+phase B1 governed execution; #67 independent acceptance remains blocked until
+that execution completes. Issue labels do not independently change this
+schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -313,8 +315,8 @@ component alignment, and typed cross-sectional Stage 2 ineligibility.
 the independent acceptance seeds.
 
 **Status:** calibration implementation complete; independent acceptance remains
-blocked until #177 refreezes protocol v2 and #51 phase B1 generic/negative
-execution completes.
+blocked until #51 phase B1 generic/negative execution completes under the
+reviewed v2 protocol.
 
 ### 6. Refreeze K=1 acceptance before execution: #51 phase A and #177
 
@@ -325,19 +327,19 @@ hidden disjoint acceptance seeds in a content-addressed protocol.
 **Exit:** protocol identity is immutable before any acceptance aggregation.
 
 **Status:** protocol v1 completed phase A without executing an acceptance seed.
-Before production execution, #177 must retain v1 as historical evidence and
-publish protocol v2 with matching generic positive and negative grids over
+On merge, #177 retains v1 as historical evidence and publishes protocol v2 with
+matching generic positive and negative grids over
 `n = 8, 12, 16, 24, 48, 96, 132, 192`, the existing omics-scale feature grid,
 and a shared-baseline missing-cell safety control whose expected result is typed
-abstention. No v1 or v2 production seed may be derived before the reviewed v2
-merge commit.
+abstention. No v1 or v2 production seed is derived before the reviewed v2 merge
+commit; #51 phase B1 is the next governed production action after that merge.
 
 **Phase-B1 execution seam:** on merge of the runner PR, the deterministic seed
 manifest, generic and negative-control branches, complete-denominator summary,
 content-addressed publication, Gemini hprcc custom-controller profile, and
-native resource-metrics workflow are ready. #177 must update that seam and
-Gemini workload profile for protocol v2. Only then may production seeds be
-derived from the reviewed v2 protocol and runner installation.
+native resource-metrics workflow are ready. #177 updates that seam and Gemini
+workload profile for protocol v2 on merge. Production seeds are then derived
+only from the reviewed v2 merge and executed with that exact installed revision.
 
 ### 7. Independent AML-shaped acceptance — #67 acceptance lane
 
@@ -538,7 +540,7 @@ bodies may state dependencies but do not change this ordering.
 | [#24](https://github.com/drejom/landscapeR/issues/24) | AML robustness projection | queued |
 | [#41](https://github.com/drejom/landscapeR/issues/41) | Conditional infrastructure | conditional |
 | [#49](https://github.com/drejom/landscapeR/issues/49) | K≥2/islet-diabetes | queued |
-| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active; phase B1 blocked by #177 protocol v2 |
+| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — next; phase B1 after #177 merge |
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
 | [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete |
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
@@ -606,8 +608,9 @@ bodies may state dependencies but do not change this ordering.
 | [#173](https://github.com/drejom/landscapeR/issues/173) | Cross-cutting documentation clarity: K=1 pilot | queued; blocked by #172; before #51 phase B publication |
 | [#174](https://github.com/drejom/landscapeR/issues/174) | Productisation: contributor module path | queued; blocked by #172; pre-v1 gate |
 | [#175](https://github.com/drejom/landscapeR/issues/175) | Cross-cutting documentation clarity: mechanical enforcement | queued; blocked by #172 and #173; pre-v1 gate |
-| [#177](https://github.com/drejom/landscapeR/issues/177) | Exploratory AML Stage 1 gate: K=1 protocol v2 | active — next; blocks #51 phase B1 |
+| [#177](https://github.com/drejom/landscapeR/issues/177) | Exploratory AML Stage 1 gate: K=1 protocol v2 | complete on merge; then #51 phase B1 |
 | [#178](https://github.com/drejom/landscapeR/issues/178) | Independent time-course extension: shared baseline controls | parked; human method decision; non-blocking |
+| [#181](https://github.com/drejom/landscapeR/issues/181) | Maintenance — R lint baseline and ratcheting enforcement | queued; standalone maintenance lane |
 <!-- issue-map:end -->
 
 ---

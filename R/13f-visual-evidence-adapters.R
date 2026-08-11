@@ -389,10 +389,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     partial_resampling <- display_state$partial_resampling
     facet_labels <- if (!has_trajectories) {
         stats::setNames(
-            paste0(
-                summaries$component_label,
-                "\ninteraction not estimated"
-            ),
+            summaries$component_label,
             summaries$component_label
         )
     } else if (!is.null(ranking) && nrow(ranking)) {
@@ -497,7 +494,11 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
             c(provenance$reference_level, provenance$comparison_level)
         )
         cells$label_y <- score_range[[1L]] + offsets[cells$condition]
-        cells$label <- paste0("n=", cells$count)
+        cells$label <- ifelse(
+            cells$count == 0L,
+            "",
+            paste0("n=", cells$count)
+        )
         display$cells <- cells
         missing_keys <- provenance$time_course_missing_cells
         display$missing_cells <- cells[
@@ -527,11 +528,18 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     } else {
         "uncalibrated"
     }
-    resampling_account <- paste(
-        "Facet labels report stored interaction intervals and",
-        "resampling recurrence.",
-        .association_multiplicity_caption(provenance)
-    )
+    resampling_account <- if (!has_trajectories) {
+        paste(
+            "No interaction interval or resampling recurrence is available.",
+            .association_multiplicity_caption(provenance)
+        )
+    } else {
+        paste(
+            "Facet labels report stored interaction intervals and",
+            "resampling recurrence.",
+            .association_multiplicity_caption(provenance)
+        )
+    }
     if (partial_resampling) {
         resampling_account <- paste0(
             resampling_account,
@@ -573,8 +581,12 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     )
     caption_view <- .new_scientific_caption_view(
         title = title,
-        experiment_label = provenance$dataset_id,
-        molecular_layer = provenance$layer,
+        experiment_label = if (
+            .is_scalar_nonempty_text(provenance$dataset_label)
+        ) provenance$dataset_label else provenance$dataset_id,
+        molecular_layer = if (
+            .is_scalar_nonempty_text(provenance$layer_label)
+        ) provenance$layer_label else provenance$layer,
         target_field = provenance$target_field,
         oriented_levels = oriented,
         sampling_unit = if (repeated) {
@@ -586,17 +598,23 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         subject_field = if (repeated) provenance$subject_field else NA_character_,
         nuisance_fields = provenance$nuisance_fields,
         encodings = if (repeated) {
-            paste(
-                "Thin lines connect repeated observations from each subject;",
-                "bold lines show stored population trajectories from the",
-                "rank-scale model with subject-specific random intercepts and",
-                "time slopes; red crosses mark recorded early endpoints"
+            c(
+                "Thin lines connect repeated observations from each subject.",
+                if (has_trajectories) paste(
+                    "Bold lines show stored population trajectories from the",
+                    "rank-scale model with subject-specific random intercepts",
+                    "and time slopes."
+                ),
+                "Red crosses mark recorded early endpoints."
             )
         } else {
-            paste(
-                "Points show independent observations; labels give biological",
-                "sample counts per design cell; crosses mark unobserved cells;",
-                "lines show stored population trajectories"
+            c(
+                "Points show independent biological observations.",
+                "labels give biological sample counts per design cell.",
+                "crosses mark unobserved condition-by-time cells.",
+                if (has_trajectories) {
+                    "lines show stored population trajectories."
+                }
             )
         },
         estimand = "condition-by-time interaction on the rank scale",

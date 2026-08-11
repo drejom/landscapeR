@@ -1,0 +1,16 @@
+field	value
+date	2026-08-10
+development_revision	d98824c8795a55ffdfc08703322e47b31db4156bd
+stamped_source_sha256	1c9250c58562e651205d00ba81842ec647e6c3f7d37fe06c0cc42bca78baaa79
+tasks_requested	5
+tasks_succeeded	5
+tasks_failed	0
+peak_memory_gb	1.57
+peak_cpu_percent	5.3
+duration_minutes	5.5
+hprcc_recommendation	tiny
+production_cpus_per_worker	2
+production_memory_gb_per_worker	8
+production_walltime_minutes_per_worker	60
+protocol_v2_phase_b1_tasks	16100
+production_seeds_derived	false

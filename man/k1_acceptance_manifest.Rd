@@ -10,8 +10,9 @@ k1_acceptance_manifest(
 )
 }
 \arguments{
-\item{phase_a_merge_commit}{lowercase 40-character SHA-1 of the phase-A
-protocol merge commit.}
+\item{phase_a_merge_commit}{lowercase 40-character SHA-1 of the reviewed
+merge that froze \code{protocol}. The legacy argument name is retained so that
+version 1 manifests remain reproducible.}
 
 \item{protocol}{the unmodified object returned by
 \code{\link[=k1_acceptance_protocol]{k1_acceptance_protocol()}}.}
@@ -20,7 +21,7 @@ protocol merge commit.}
 A digest-bound \code{K1AcceptanceManifest}.
 }
 \description{
-Seed roots become deterministic only after the reviewed phase-A protocol
+Seed roots become deterministic only after the reviewed protocol
 merge. This function expands every frozen cell and replicate and rejects any
 collision with calibration or another acceptance stream.
 }

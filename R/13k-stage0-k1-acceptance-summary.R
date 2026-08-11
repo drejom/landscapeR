@@ -40,6 +40,27 @@ utils::globalVariables(c(
             identical(metrics$false_target_selection, FALSE)
         )
     }
+    if (identical(result$control, "shared_baseline_missing_cells")) {
+        thresholds <- protocol$thresholds$shared_baseline_missing_cells
+        return(
+            identical(
+                metrics$abstention_reason,
+                thresholds$required_abstention_reason
+            ) &&
+            identical(
+                metrics$missing_control_time_cells,
+                thresholds$required_missing_control_time_cells
+            ) &&
+            identical(
+                metrics$unique_control_observations,
+                thresholds$required_unique_control_observations
+            ) &&
+            identical(
+                metrics$total_observations,
+                thresholds$required_total_observations
+            )
+        )
+    }
     FALSE
 }
 
@@ -115,8 +136,16 @@ utils::globalVariables(c(
 .k1_acceptance_expected_cell_count <- function(protocol) {
     generic <- protocol$grids$generic_double_well$varying
     negative <- protocol$grids$negative_controls$varying
+    shared <- if (is.null(protocol$grids$shared_baseline_missing_cells)) {
+        0L
+    } else {
+        length(
+            protocol$grids$shared_baseline_missing_cells$varying$design_cell
+        )
+    }
     length(generic$n) * length(generic$p) +
-        2L * length(negative$n) * length(negative$p)
+        2L * length(negative$n) * length(negative$p) +
+        shared
 }
 
 .k1_acceptance_supported_minimum <- function(cells, protocol) {
@@ -166,16 +195,23 @@ summarize_k1_acceptance <- function(
     validate_k1_acceptance_protocol(protocol)
     results <- .k1_acceptance_collect(results, tasks, protocol)
     cells <- .k1_acceptance_cell_summary(results, tasks, protocol)
+    required_controls <- c(
+        "generic_double_well", "pure_noise", "single_well"
+    )
+    if (!is.null(protocol$grids$shared_baseline_missing_cells)) {
+        required_controls <- c(
+            required_controls,
+            "shared_baseline_missing_cells"
+        )
+    }
     complete_execution <- all(cells$complete_cell) &&
-        all(c(
-            "generic_double_well", "pure_noise", "single_well"
-        ) %in% cells$control) &&
+        all(required_controls %in% cells$control) &&
         nrow(cells) == .k1_acceptance_expected_cell_count(protocol)
     supported <- if (complete_execution) {
         .k1_acceptance_supported_minimum(cells, protocol)
     } else NA_integer_
     payload <- list(
-        artifact_version = "1",
+        artifact_version = protocol$artifact_version,
         protocol_id = protocol$protocol_id,
         protocol_digest = protocol$digest,
         runner_contract = protocol$execution_contracts$version,
@@ -209,9 +245,10 @@ summarize_k1_acceptance <- function(
 }
 
 .k1_acceptance_control_labels <- c(
-    generic_double_well = "(A) Double-well recovery",
+    generic_double_well = "(A) Double-well\nrecovery",
     pure_noise = "(B) Pure noise",
-    single_well = "(C) Single well"
+    single_well = "(C) Single well",
+    shared_baseline_missing_cells = "(D) Shared-baseline\nsafety"
 )
 
 .k1_acceptance_percent <- function(value) {
@@ -230,25 +267,40 @@ summarize_k1_acceptance <- function(
     wilson_gate <- .k1_acceptance_percent(
         summary$display_thresholds$minimum_cell_wilson_95_lower_bound
     )
+    panels <- c(
+        A = "Double-well recovery.",
+        B = "Pure-noise negative control.",
+        C = "Single-well negative control."
+    )
+    if ("shared_baseline_missing_cells" %in% summary$cells$control) {
+        panels <- c(
+            panels,
+            D = paste(
+                "Shared-baseline missing-cell design; a pass indicates that",
+                "the condition-by-time interaction was correctly reported",
+                "as non-estimable."
+            )
+        )
+    }
+    development_fixture <- identical(
+        summary$claim_status,
+        "development_only_visual_fixture"
+    )
     view <- .new_scientific_caption_view(
         title = "K=1 independent acceptance pass rates.",
-        experiment_label = summary$protocol_id,
-        panels = c(
-            A = "Double-well recovery.",
-            B = "Pure-noise negative control.",
-            C = "Single-well negative control."
-        ),
+        experiment_label = "K=1 synthetic acceptance",
+        panels = panels,
         encodings = c(
             "Black points show replicate pass rates for each feature count.",
-            "Open points identify incomplete frozen cells.",
+            "open points identify cells with incomplete simulation results.",
             paste(
-                "The red horizontal line marks the frozen",
+                "the red horizontal line marks the prespecified",
                 pass_gate, "pass-rate gate."
             )
         ),
         estimand = paste(
-            "Pass rate uses every requested replicate as its denominator;",
-            "execution failures are failures."
+            "the fraction of all requested replicates that pass;",
+            "replicates without a valid result count as unsuccessful"
         ),
         uncertainty = paste(
             "Cell adjudication additionally requires a Wilson 95% lower",
@@ -264,10 +316,17 @@ summarize_k1_acceptance <- function(
         } else {
             "The displayed execution is incomplete and cannot establish acceptance."
         },
-        claim_boundary = paste(
-            "This figure summarizes frozen known-truth controls and does not",
-            "by itself establish biological validity."
-        ),
+        claim_boundary = if (development_fixture) {
+            paste(
+                "Values are simulated solely to demonstrate the figure",
+                "structure and do not support a scientific acceptance claim."
+            )
+        } else {
+            paste(
+                "This figure summarizes prespecified known-truth controls and does",
+                "not by itself establish biological validity."
+            )
+        },
         state = if (summary$complete_execution) "complete" else "partial"
     )
     .build_scientific_caption(view)
@@ -279,7 +338,7 @@ summarize_k1_acceptance <- function(
     )
     view <- .new_scientific_caption_view(
         title = "K=1 negative-control false-positive rates.",
-        experiment_label = summary$protocol_id,
+        experiment_label = "K=1 synthetic acceptance",
         panels = c(
             A = "False double-well topology in pure noise.",
             B = "False target selection in pure noise.",
@@ -288,19 +347,20 @@ summarize_k1_acceptance <- function(
         ),
         encodings = c(
             "Black points show per-cell false-positive rates by feature count.",
+            "open points identify cells with incomplete simulation results.",
             paste(
-                "Open points identify incomplete frozen cells; the red",
-                "horizontal line marks the frozen", false_positive_gate,
-                "maximum."
+                "the red horizontal line marks the prespecified",
+                false_positive_gate, "maximum."
             )
         ),
         estimand = paste(
-            "Each rate uses all requested replicates in its control and grid",
-            "cell, including failed executions in the denominator."
+            "the false-positive fraction among all requested replicates in",
+            "each control and grid cell; replicates without a valid result",
+            "remain in the denominator"
         ),
         uncertainty = paste(
-            "Rates remain descriptive until every frozen replicate is present",
-            "and the complete-cell acceptance rules are applied."
+            "Rates remain descriptive until every prespecified replicate is",
+            "present and the prespecified cell-level criteria are applied."
         ),
         threshold = paste(
             "Both negative-control false-positive rates must not exceed",
@@ -311,10 +371,20 @@ summarize_k1_acceptance <- function(
         } else {
             "The displayed execution is incomplete and cannot establish acceptance."
         },
-        claim_boundary = paste(
-            "Negative controls measure false topology and false target",
-            "selection; pure noise has no planted subspace recovery target."
-        ),
+        claim_boundary = if (identical(
+            summary$claim_status,
+            "development_only_visual_fixture"
+        )) {
+            paste(
+                "Values are simulated solely to demonstrate the figure",
+                "structure and do not support a scientific acceptance claim."
+            )
+        } else {
+            paste(
+                "Negative controls measure false topology and false target",
+                "selection; pure noise has no planted subspace recovery target."
+            )
+        },
         state = if (summary$complete_execution) "complete" else "partial"
     )
     .build_scientific_caption(view)
@@ -379,7 +449,7 @@ plot_k1_acceptance_summary <- function(
                 size = 1.8,
                 stroke = 0.35
             ) +
-            ggplot2::facet_wrap(~panel, nrow = 1L) +
+            ggplot2::facet_wrap(~panel, nrow = 2L) +
             ggplot2::scale_fill_manual(
                 values = c(
                     `TRUE` = unname(palette[["ink"]]),
@@ -388,6 +458,10 @@ plot_k1_acceptance_summary <- function(
                 guide = "none"
             ) +
             ggplot2::scale_shape_manual(values = c(21, 24, 22, 23)) +
+            ggplot2::scale_x_continuous(
+                breaks = c(8, 24, 48, 96, 192),
+                expand = ggplot2::expansion(mult = c(0.03, 0.03))
+            ) +
             ggplot2::scale_y_continuous(
                 limits = c(0, 1),
                 breaks = seq(0, 1, 0.25),
@@ -400,7 +474,14 @@ plot_k1_acceptance_summary <- function(
                 linetype = "Features (p)"
             ) +
             theme_landscapeR(square = FALSE) +
-            ggplot2::theme(aspect.ratio = 0.85)
+            ggplot2::theme(
+                aspect.ratio = 0.85,
+                panel.spacing.x = grid::unit(5, "mm"),
+                strip.text.x = ggplot2::element_text(
+                    size = 7.5,
+                    lineheight = 0.95
+                )
+            )
         return(.with_scientific_caption(
             plot,
             .k1_acceptance_pass_caption(summary)
@@ -431,16 +512,31 @@ plot_k1_acceptance_summary <- function(
     }
     panel_key <- paste(display$control, display$endpoint, sep = "|")
     labels <- c(
-        "pure_noise|False double-well topology" = "(A) Pure noise: topology",
-        "pure_noise|False target selection" = "(B) Pure noise: target",
-        "single_well|False double-well topology" = "(C) Single well: topology",
-        "single_well|False target selection" = "(D) Single well: target"
+        "pure_noise|False double-well topology" =
+            "(A) Pure noise\nTopology",
+        "pure_noise|False target selection" =
+            "(B) Pure noise\nTarget selection",
+        "single_well|False double-well topology" =
+            "(C) Single well\nTopology",
+        "single_well|False target selection" =
+            "(D) Single well\nTarget selection"
     )
     display$panel <- factor(unname(labels[panel_key]), levels = unname(labels))
     observed <- display[is.finite(display$n) & is.finite(display$rate), ]
     line_data <- .k1_acceptance_line_data(
         observed,
         c("control", "endpoint", "p")
+    )
+    threshold <- summary$display_thresholds$
+        maximum_negative_false_positive_rate
+    finite_rates <- observed$rate[is.finite(observed$rate)]
+    rate_upper <- min(
+        1,
+        max(
+            0.10,
+            2 * threshold,
+            if (length(finite_rates)) 1.1 * max(finite_rates) else 0
+        )
     )
     plot <- ggplot2::ggplot(
         display,
@@ -453,8 +549,7 @@ plot_k1_acceptance_summary <- function(
         )
     ) +
         ggplot2::geom_hline(
-            yintercept = summary$display_thresholds$
-                maximum_negative_false_positive_rate,
+            yintercept = threshold,
             colour = unname(palette[["focal"]]),
             linewidth = 0.4,
             linetype = 2
@@ -480,10 +575,18 @@ plot_k1_acceptance_summary <- function(
             guide = "none"
         ) +
         ggplot2::scale_shape_manual(values = c(21, 24, 22, 23)) +
+        ggplot2::scale_x_continuous(
+            breaks = c(8, 24, 48, 96, 192),
+            expand = ggplot2::expansion(mult = c(0.03, 0.03))
+        ) +
         ggplot2::scale_y_continuous(
-            limits = c(0, 1),
-            breaks = seq(0, 1, 0.25),
-            labels = function(value) paste0(round(100 * value), "%")
+            limits = c(0, rate_upper),
+            breaks = seq(0, rate_upper, length.out = 5L),
+            labels = function(value) vapply(
+                value,
+                .k1_acceptance_percent,
+                character(1L)
+            )
         ) +
         ggplot2::labs(
             x = "Independent biological observations (n)",
@@ -492,7 +595,14 @@ plot_k1_acceptance_summary <- function(
             linetype = "Features (p)"
         ) +
         theme_landscapeR(square = FALSE) +
-        ggplot2::theme(aspect.ratio = 0.85)
+        ggplot2::theme(
+            aspect.ratio = 0.85,
+            panel.spacing.x = grid::unit(5, "mm"),
+            strip.text.x = ggplot2::element_text(
+                size = 7.5,
+                lineheight = 0.95
+            )
+        )
     .with_scientific_caption(
         plot,
         .k1_acceptance_false_positive_caption(summary)
