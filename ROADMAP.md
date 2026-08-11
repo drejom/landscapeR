@@ -8,9 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#51 phase B1: derive the governed v2
-manifest from the reviewed #177 merge and execute the generic positive and
-negative controls on Gemini**.
+**Next task after this change lands:** **#67 independent AML-shaped
+acceptance**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -225,12 +224,11 @@ interpretation lane lands.
 The [2026-07-31 whole-codebase technical-debt audit](docs/archive/technical-debt-audit-2026-07-31.md)
 and follow-up architecture and HPC reviews are fully represented by issues.
 The maintenance lane is deliberately active until the audited backlog is clean.
-The K=1 acceptance ladder remains the current scientific lane. #177 refreezes
-the protocol with matching low-sample positive and negative grids plus a
-shared-baseline missing-cell safety control on merge. The next task is #51
-phase B1 governed execution; #67 independent acceptance remains blocked until
-that execution completes. Issue labels do not independently change this
-schedule.
+The K=1 acceptance ladder remains the current scientific lane. #51 phase B1
+has executed all 16,100 frozen generic, negative-control, and shared-baseline
+tasks. No tested sample count passed the complete recovery and false-topology
+gates, so no supported minimum is claimed. The next task is #67 independent
+AML-shaped acceptance. Issue labels do not independently change this schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -314,9 +312,8 @@ component alignment, and typed cross-sectional Stage 2 ineligibility.
 **Calibration only:** develop and diagnose on disclosed seeds. Do not consume
 the independent acceptance seeds.
 
-**Status:** calibration implementation complete; independent acceptance remains
-blocked until #51 phase B1 generic/negative execution completes under the
-reviewed v2 protocol.
+**Status:** calibration implementation complete; #51 phase B1 is complete and
+the independent acceptance lane is now unblocked.
 
 ### 6. Refreeze K=1 acceptance before execution: #51 phase A and #177
 
@@ -332,14 +329,15 @@ matching generic positive and negative grids over
 `n = 8, 12, 16, 24, 48, 96, 132, 192`, the existing omics-scale feature grid,
 and a shared-baseline missing-cell safety control whose expected result is typed
 abstention. No v1 or v2 production seed is derived before the reviewed v2 merge
-commit; #51 phase B1 is the next governed production action after that merge.
+commit. Phase B1 subsequently executed from that reviewed merge.
 
-**Phase-B1 execution seam:** on merge of the runner PR, the deterministic seed
-manifest, generic and negative-control branches, complete-denominator summary,
-content-addressed publication, Gemini hprcc custom-controller profile, and
-native resource-metrics workflow are ready. #177 updates that seam and Gemini
-workload profile for protocol v2 on merge. Production seeds are then derived
-only from the reviewed v2 merge and executed with that exact installed revision.
+**Phase-B1 result:** all 16,100 requested tasks are present in verified artifact
+`k1-stage0-acceptance-v2-780f4b10ea21923a`. No generic cell reached the frozen
+90% pass-rate gate, and false double-well topology exceeded the frozen 5%
+maximum in both negative controls. False target selection stayed within the
+limit, and the shared-baseline safety control passed. The supported minimum is
+therefore `NA`. Final adjudication still requires #67 and the phase-B aggregate;
+ADR 0002 is not amended from this partial result.
 
 ### 7. Independent AML-shaped acceptance — #67 acceptance lane
 
@@ -540,7 +538,7 @@ bodies may state dependencies but do not change this ordering.
 | [#24](https://github.com/drejom/landscapeR/issues/24) | AML robustness projection | queued |
 | [#41](https://github.com/drejom/landscapeR/issues/41) | Conditional infrastructure | conditional |
 | [#49](https://github.com/drejom/landscapeR/issues/49) | K≥2/islet-diabetes | queued |
-| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — next; phase B1 after #177 merge |
+| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — phase B1 complete; final aggregate after #67 |
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
 | [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete |
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
@@ -556,7 +554,7 @@ bodies may state dependencies but do not change this ordering.
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
 | [#65](https://github.com/drejom/landscapeR/issues/65) | Longitudinal extensions | parked |
 | [#66](https://github.com/drejom/landscapeR/issues/66) | Longitudinal observation design | queued |
-| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — blocked by #51 phase B1 |
+| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — next; unblocked by #51 phase B1 |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |

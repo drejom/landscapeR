@@ -100,8 +100,8 @@ hprcc's native resource summary reported:
 | Duration | 5.5 minutes |
 | hprcc recommendation | `tiny` |
 
-The package profile therefore requests 2 CPUs, 8 GB, and 60 minutes for one
-complete replicate per worker. This retains more than five times the observed
+The package profile therefore requests 2 CPUs, 8 GB, and 60 minutes and handles
+up to eight complete tasks per worker. This retains more than five times the observed
 peak memory and more than ten times the observed duration while following
 hprcc's named recommendation. Protocol v2 phase B1 contains 16,100 scheduler
 branches: 3,200 generic, 6,400 pure-noise, 6,400 single-well, and 100
@@ -131,6 +131,31 @@ readers. A green scheduler state is insufficient on its own. The final
 content-addressed artifact must pass
 `landscapeR::verify_k1_acceptance_artifact()` before any acceptance claim is
 made.
+
+### Protocol-v2 phase-B1 production result
+
+The 2026-08-11 production run used reviewed merge
+`7772baef1f7a69db107721487b20456a45f53bfe`, source-bundle SHA-256
+`725bd6f0a00382a711602969f53c1083ec5be39ca1510f36084eb7e752ace921`,
+and the shared Bioconductor library mounted at `/opt/coh-r-library` inside the
+container. Increasing `tasks_max` from one to eight changed only Slurm packing;
+the existing targets store resumed completed work and retained the same task
+identities and RNG streams.
+
+All worker branches completed. Collection then exposed three defects that the
+preproduction tests had missed: the dynamic target used vector iteration and
+flattened each typed result, and the validator rejected `NA` landmark errors
+when the method had not recovered the landmark. A Linux/macOS difference of
+approximately `1.1e-16` in the Wilson bound also prevented portable exact
+verification. The production branch objects were not modified or rerun. The
+permanent fixes use list iteration, permit a missing error only when its well or
+barrier is non-estimable, and round the derived Wilson bound to 15 decimal
+places before hashing. Artifact recovery loaded targets metadata once and ran
+the normal publisher and semantic verifier. Its governed procedure is
+`scripts/recover-issue-51-phase-b1-artifact.R`. The artifact binds separate
+worker and collector identities, including hashes of that procedure and both
+patched source files. The user explicitly approved that recovery. The verified artifact is
+`k1-stage0-acceptance-v2-780f4b10ea21923a`.
 
 ## Boundaries
 

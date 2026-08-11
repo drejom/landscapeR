@@ -220,6 +220,7 @@ test_that("acceptance targets graph has one scheduler-owned parallel layer", {
     ))
     worker <- as.list.environment(by_name$k1_result$settings)
     expect_identical(worker$deployment, "worker")
+    expect_identical(worker$iteration, "list")
     expect_identical(worker$resources$crew$controller, "medium")
     expect_match(
         by_name$k1_result$command$string,
@@ -298,6 +299,16 @@ test_that("generic acceptance generation is acceptance-native", {
 })
 
 test_that("published artifacts bind runtime identity and semantic contents", {
+    expect_identical(
+        landscapeR:::.k1_acceptance_wilson_lower(78L, 100L),
+        round(landscapeR:::.k1_acceptance_wilson_lower(78L, 100L), 15L)
+    )
+    legacy_wilson <- landscapeR:::.k1_acceptance_wilson_lower(
+        78L,
+        100L,
+        artifact_version = "1"
+    )
+    expect_false(identical(legacy_wilson, round(legacy_wilson, 15L)))
     protocol <- k1_acceptance_protocol()
     manifest <- k1_acceptance_manifest(fake_phase_a_merge())
     tasks <- manifest$tasks[
@@ -324,12 +335,48 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         protocol_digest = protocol$digest,
         runner_contract = protocol$execution_contracts$version
     ), class = c("K1AcceptanceReplicate", "list"))
+    unresolved_landmarks <- result
+    unresolved_landmarks$metrics <- list(
+        well_error = NA_real_,
+        barrier_error = NA_real_,
+        barrier_height_error = NA_real_,
+        n_wells_found = 1L,
+        n_barriers_found = 0L,
+        subspace_angle_deg = 5
+    )
+    expect_invisible(landscapeR:::.k1_acceptance_validate_result(
+        unresolved_landmarks,
+        tasks,
+        protocol
+    ))
     identity <- list(
         source_revision = fake_phase_a_merge(),
         r_version = paste(R.version$major, R.version$minor, sep = "."),
         package_versions = c(
             landscapeR = as.character(utils::packageVersion("landscapeR"))
         )
+    )
+    recovery_identity <- identity
+    recovery_identity$recovery <- list(
+        mode = "approved_collection_only_patch",
+        worker_results_modified = FALSE,
+        corrections = "retain typed results",
+        source_sha256 = c(procedure = strrep("a", 64L)),
+        approved_by = "Denis O'Meally",
+        approved_on = "2026-08-11"
+    )
+    expect_invisible(
+        landscapeR:::.k1_acceptance_validate_collector_identity(
+            recovery_identity
+        )
+    )
+    invalid_recovery <- recovery_identity
+    invalid_recovery$recovery$worker_results_modified <- TRUE
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_collector_identity(
+            invalid_recovery
+        ),
+        "recovery provenance is invalid"
     )
     root <- tempfile("k1-artifact-test-")
     artifact <- landscapeR:::.k1_acceptance_publish(
@@ -344,6 +391,7 @@ test_that("published artifacts bind runtime identity and semantic contents", {
     expect_true(verify_k1_acceptance_artifact(artifact))
     environment <- readRDS(file.path(artifact, "environment.rds"))
     expect_identical(environment$runtime_identity, identity)
+    expect_identical(environment$collector_identity, identity)
     expect_match(environment$scientific_payload_digest, "^[0-9a-f]{64}$")
 
     manifest_path <- file.path(artifact, "MANIFEST.tsv")
@@ -439,4 +487,88 @@ test_that("runtime revision binding preserves the version 1 replay contract", {
         replay_identity,
         manifest
     ))
+
+    task <- manifest$tasks[
+        manifest$tasks$control == "generic_double_well",
+        ,
+        drop = FALSE
+    ][1L, , drop = FALSE]
+    result <- structure(list(
+        artifact_version = version_1$artifact_version,
+        task_id = task$task_id[[1L]],
+        control = task$control[[1L]],
+        canonical_cell = task$canonical_cell[[1L]],
+        replicate_index = task$replicate_index[[1L]],
+        status = "success",
+        reason = "",
+        metrics = list(
+            well_error = 0.05,
+            barrier_error = 0.05,
+            barrier_height_error = 0.1,
+            n_wells_found = 2L,
+            n_barriers_found = 1L,
+            subspace_angle_deg = 5
+        ),
+        protocol_digest = version_1$digest,
+        runner_contract = version_1$execution_contracts$version
+    ), class = c("K1AcceptanceReplicate", "list"))
+    identity <- list(
+        source_revision = fake_phase_a_merge(),
+        r_version = paste(R.version$major, R.version$minor, sep = "."),
+        package_versions = c(
+            landscapeR = as.character(utils::packageVersion("landscapeR"))
+        )
+    )
+    root <- tempfile("k1-v1-artifact-test-")
+    artifact <- landscapeR:::.k1_acceptance_publish(
+        root,
+        version_1,
+        manifest,
+        task,
+        list(result),
+        identity
+    )
+    environment_path <- file.path(artifact, "environment.rds")
+    environment <- readRDS(environment_path)
+    environment$collector_identity <- NULL
+    summary <- readRDS(file.path(artifact, "summary.rds"))
+    environment$scientific_payload_digest <-
+        landscapeR:::.k1_acceptance_payload_digest(
+            version_1,
+            manifest,
+            task,
+            list(result),
+            summary,
+            identity,
+            NULL
+        )
+    saveRDS(environment, environment_path)
+    files <- utils::read.delim(
+        file.path(artifact, "MANIFEST.tsv"),
+        stringsAsFactors = FALSE
+    )
+    environment_row <- files$file == "environment.rds"
+    files$sha256[environment_row] <-
+        landscapeR:::.k1_acceptance_file_digest(environment_path)
+    utils::write.table(
+        files,
+        file.path(artifact, "MANIFEST.tsv"),
+        sep = "\t",
+        quote = FALSE,
+        row.names = FALSE
+    )
+    legacy_artifact <- file.path(
+        dirname(artifact),
+        paste0(
+            version_1$protocol_id,
+            "-",
+            substr(
+                landscapeR:::.k1_acceptance_artifact_digest(files),
+                1L,
+                16L
+            )
+        )
+    )
+    expect_true(file.rename(artifact, legacy_artifact))
+    expect_true(verify_k1_acceptance_artifact(legacy_artifact))
 })

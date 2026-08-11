@@ -15,6 +15,9 @@ scratch_root <- file.path(
     "landscapeR",
     "k1-independent-acceptance"
 )
+shared_library_host <-
+    "/packages/singularity/shared_cache/rbioc/rlibs/bioc-3.22"
+shared_library_container <- "/opt/coh-r-library"
 dir.create(scratch_root, recursive = TRUE, showWarnings = FALSE)
 if (!identical(
     normalizePath(getwd(), mustWork = TRUE),
@@ -34,7 +37,17 @@ Sys.setenv(
 options(
     hprcc.slurm_jobs = TRUE,
     hprcc.slurm_logs = TRUE,
-    hprcc.default_partition = "compute"
+    hprcc.default_partition = "compute",
+    hprcc.r_libs_user = shared_library_container,
+    hprcc.r_libs_site = shared_library_container,
+    hprcc.singularity_bind_dirs = paste(
+        paste0(shared_library_host, ":", shared_library_container),
+        "/scratch",
+        "/run",
+        sep = ","
+    ),
+    hprcc.singularity_container =
+        "/packages/singularity/shared_cache/rbioc/rbiocverse_3.22.sif"
 )
 
 library(targets)
@@ -51,7 +64,7 @@ hprcc::add_controller(
     slurm_mem_gigabytes = 8L,
     slurm_walltime_minutes = 60L,
     slurm_partition = "compute",
-    tasks_max = 1L
+    tasks_max = 8L
 )
 
 k1_acceptance_targets(

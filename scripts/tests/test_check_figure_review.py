@@ -263,6 +263,22 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("inspectable artifact", result.stderr)
 
+    def test_rejects_repository_image_link_to_missing_proof_file(self) -> None:
+        self._commit_change(current_docs=True)
+        image = (
+            "![Recovery surface](https://raw.githubusercontent.com/example/repo/"
+            "feature/.github/landing-proof/issue-1/missing-surface.png)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.",
+            image,
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("proof images that do not exist", result.stderr)
+        self.assertIn("missing-surface.png", result.stderr)
+
     def test_required_proof_accepts_internal_r_refactor_with_docs_unaffected(self) -> None:
         self._commit_path(
             "R/private-helper.R",

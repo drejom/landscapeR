@@ -378,10 +378,17 @@ delegates one complete replicate per worker, retains failures in the requested
 denominator, and blocks publication until all requested branches return.
 `summarize_k1_acceptance()`, `plot_k1_acceptance_summary()`, and
 `verify_k1_acceptance_artifact()` provide typed aggregation, separate dynamic
-captions, and semantic artifact verification. None of those functions has run
-the frozen acceptance set in this vignette. Only independently executed,
-verified evidence can amend ADR 0002 with observed pass rates and a supported
-sample range. Version 2 evaluates the supported minimum across the complete
+captions, and semantic artifact verification.
+
+Phase B1 has now executed all 16,100 frozen generic, negative-control, and
+shared-baseline tasks. Verified artifact
+`k1-stage0-acceptance-v2-780f4b10ea21923a` reports no supported minimum: no
+generic cell reached the 90% pass-rate gate, and false double-well topology
+exceeded the 5% limit in both negative controls. False target selection stayed
+within the limit, and every shared-baseline replicate correctly abstained. See
+the `K=1 Stage 0 phase-B1 evidence` article for the complete interpretation and
+claim boundary. ADR 0002 remains unchanged until #67 and the final phase-B
+aggregate are complete. Version 2 evaluates the supported minimum across the complete
 shared positive and negative grid `n = 8, 12, 16, 24, 48, 96, 132, 192` and
 `p = 100, 1,000, 10,000, 20,000`. It also requires the shared-baseline design
 to abstain rather than invent unobserved control-time cells.

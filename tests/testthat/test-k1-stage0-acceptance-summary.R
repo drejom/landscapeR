@@ -248,7 +248,7 @@ test_that("acceptance summary plots carry threshold lines and captions", {
     )
     expect_identical(
         decision_plot$scales$get_scales("y")$get_labels(),
-        c("0%", "2.5%", "5%", "7.5%", "10%")
+        c("0%", "2%", "4%", "6%", "8%", "10%")
     )
 
     decision_summary$cells$false_double_well_rate <- 0.2
@@ -258,6 +258,6 @@ test_that("acceptance summary plots carry threshold lines and captions", {
     )
     expect_equal(
         expanded_plot$scales$get_scales("y")$limits,
-        c(0, 0.22)
+        c(0, 0.25)
     )
 })

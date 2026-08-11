@@ -4,7 +4,12 @@ utils::globalVariables(c(
     "complete_cell", "n", "p", "rate", "replicate_pass_rate"
 ))
 
-.k1_acceptance_wilson_lower <- function(successes, trials, confidence = 0.95) {
+.k1_acceptance_wilson_lower <- function(
+    successes,
+    trials,
+    confidence = 0.95,
+    artifact_version = "2"
+) {
     if (trials < 1L) return(NA_real_)
     z <- stats::qnorm(1 - (1 - confidence) / 2)
     estimate <- successes / trials
@@ -13,7 +18,8 @@ utils::globalVariables(c(
     radius <- z * sqrt(
         estimate * (1 - estimate) / trials + z^2 / (4 * trials^2)
     )
-    (centre - radius) / denominator
+    value <- (centre - radius) / denominator
+    if (identical(artifact_version, "1")) value else round(value, digits = 15L)
 }
 
 .k1_acceptance_replicate_pass <- function(result, protocol) {
@@ -89,7 +95,11 @@ utils::globalVariables(c(
             protocol = protocol
         ))
         pass_rate <- passed / requested
-        wilson_lower <- .k1_acceptance_wilson_lower(passed, requested)
+        wilson_lower <- .k1_acceptance_wilson_lower(
+            passed,
+            requested,
+            artifact_version = protocol$artifact_version
+        )
         false_well <- if (control %in% c("pure_noise", "single_well")) {
             sum(vapply(cell_results, function(result) {
                 identical(result$metrics$false_double_well, TRUE)
@@ -538,6 +548,11 @@ plot_k1_acceptance_summary <- function(
             if (length(finite_rates)) 1.1 * max(finite_rates) else 0
         )
     )
+    rate_breaks <- pretty(c(0, rate_upper), n = 5L)
+    rate_upper <- min(1, max(rate_breaks))
+    rate_breaks <- rate_breaks[
+        rate_breaks >= 0 & rate_breaks <= rate_upper
+    ]
     plot <- ggplot2::ggplot(
         display,
         ggplot2::aes(
@@ -581,7 +596,7 @@ plot_k1_acceptance_summary <- function(
         ) +
         ggplot2::scale_y_continuous(
             limits = c(0, rate_upper),
-            breaks = seq(0, rate_upper, length.out = 5L),
+            breaks = rate_breaks,
             labels = function(value) vapply(
                 value,
                 .k1_acceptance_percent,

@@ -16,6 +16,8 @@
 ^\.claude$
 ^\.pi-subagents$
 ^\.scratch$
+^\.scratch($|/)
+^.*\.Rcheck($|/)
 ^hooks$
 ^install-hooks\.sh$
 ^scripts$
