@@ -1002,12 +1002,28 @@ print.K1AcceptanceManifest <- function(x, ...) {
             "well_error", "barrier_error", "barrier_height_error",
             "n_wells_found", "n_barriers_found", "subspace_angle_deg"
         )
+        nonnegative_or_missing <- function(value, estimable) {
+            is.numeric(value) && length(value) == 1L &&
+                if (estimable) {
+                    is.finite(value) && value >= 0
+                } else {
+                    is.na(value)
+                }
+        }
         if (!identical(names(metrics), expected) ||
-                any(!vapply(metrics[expected[1:3]], function(value) {
-                    is.numeric(value) && length(value) == 1L &&
-                        is.finite(value) && value >= 0
-                }, logical(1L))) ||
                 !counts_are_valid(unlist(metrics[expected[4:5]])) ||
+                !nonnegative_or_missing(
+                    metrics$well_error,
+                    metrics$n_wells_found >= 2L
+                ) ||
+                !nonnegative_or_missing(
+                    metrics$barrier_error,
+                    metrics$n_barriers_found >= 1L
+                ) ||
+                !nonnegative_or_missing(
+                    metrics$barrier_height_error,
+                    metrics$n_barriers_found >= 1L
+                ) ||
                 !is.numeric(metrics$subspace_angle_deg) ||
                 length(metrics$subspace_angle_deg) != 1L ||
                 !is.finite(metrics$subspace_angle_deg) ||
@@ -1088,6 +1104,47 @@ print.K1AcceptanceManifest <- function(x, ...) {
             anyDuplicated(names(identity$package_versions))) {
         .k1_acceptance_runner_abort(
             "acceptance runtime identity must be exact installed metadata"
+        )
+    }
+    invisible(TRUE)
+}
+
+.k1_acceptance_validate_collector_identity <- function(identity) {
+    required <- c("source_revision", "r_version", "package_versions")
+    if (!is.list(identity) ||
+            any(!names(identity) %in% c(required, "recovery")) ||
+            anyDuplicated(names(identity)) ||
+            !all(required %in% names(identity))) {
+        .k1_acceptance_runner_abort(
+            "acceptance collector identity has an invalid schema"
+        )
+    }
+    .k1_acceptance_validate_identity(identity[required])
+    if (!"recovery" %in% names(identity)) return(invisible(TRUE))
+    recovery <- identity$recovery
+    recovery_names <- c(
+        "mode", "worker_results_modified", "corrections",
+        "source_sha256", "approved_by", "approved_on"
+    )
+    if (!is.list(recovery) || !identical(names(recovery), recovery_names) ||
+            !identical(recovery$mode, "approved_collection_only_patch") ||
+            !identical(recovery$worker_results_modified, FALSE) ||
+            !is.character(recovery$corrections) ||
+            !length(recovery$corrections) || anyNA(recovery$corrections) ||
+            any(!nzchar(recovery$corrections)) ||
+            !is.character(recovery$source_sha256) ||
+            !length(recovery$source_sha256) ||
+            is.null(names(recovery$source_sha256)) ||
+            anyNA(recovery$source_sha256) ||
+            any(!grepl("^[0-9a-f]{64}$", recovery$source_sha256)) ||
+            any(!nzchar(names(recovery$source_sha256))) ||
+            anyDuplicated(names(recovery$source_sha256)) ||
+            !.is_scalar_nonempty_text(recovery$approved_by) ||
+            !is.character(recovery$approved_on) ||
+            length(recovery$approved_on) != 1L ||
+            !grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", recovery$approved_on)) {
+        .k1_acceptance_runner_abort(
+            "acceptance collector recovery provenance is invalid"
         )
     }
     invisible(TRUE)
@@ -1229,19 +1286,21 @@ print.K1AcceptanceManifest <- function(x, ...) {
     tasks,
     results,
     summary,
-    identity
+    identity,
+    collector_identity
 ) {
-    digest::digest(
-        list(
-            protocol_digest = protocol$digest,
-            manifest_digest = manifest$digest,
-            task_ids = tasks$task_id,
-            results = results,
-            summary_digest = summary$digest,
-            runtime_identity = identity
-        ),
-        algo = "sha256"
+    payload <- list(
+        protocol_digest = protocol$digest,
+        manifest_digest = manifest$digest,
+        task_ids = tasks$task_id,
+        results = results,
+        summary_digest = summary$digest,
+        runtime_identity = identity
     )
+    if (!is.null(collector_identity)) {
+        payload$collector_identity <- collector_identity
+    }
+    digest::digest(payload, algo = "sha256")
 }
 
 .k1_acceptance_validate_protocol_manifest_identity <- function(
@@ -1269,12 +1328,14 @@ print.K1AcceptanceManifest <- function(x, ...) {
     manifest,
     tasks,
     results,
-    identity
+    identity,
+    collector_identity = identity
 ) {
     validate_k1_acceptance_protocol(protocol)
     validate_k1_acceptance_manifest(manifest)
     .k1_acceptance_validate_protocol_manifest_identity(protocol, manifest)
     .k1_acceptance_validate_identity(identity)
+    .k1_acceptance_validate_collector_identity(collector_identity)
     .k1_validate_runtime_revision(identity, manifest)
     results <- .k1_acceptance_collect(results, tasks, protocol)
     if (!all(tasks$task_id %in% manifest$tasks$task_id)) {
@@ -1289,7 +1350,8 @@ print.K1AcceptanceManifest <- function(x, ...) {
         tasks,
         results,
         summary,
-        identity
+        identity,
+        collector_identity
     )
     artifact_root <- path.expand(artifact_root)
     dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
@@ -1347,7 +1409,8 @@ print.K1AcceptanceManifest <- function(x, ...) {
         manifest_digest = manifest$digest,
         scientific_payload_digest = scientific_payload_digest,
         runner_contract = protocol$execution_contracts$version,
-        runtime_identity = identity
+        runtime_identity = identity,
+        collector_identity = collector_identity
     )
     saveRDS(environment, file.path(staging, "environment.rds"))
     governed <- .k1_acceptance_governed_files()
@@ -1415,6 +1478,13 @@ print.K1AcceptanceManifest <- function(x, ...) {
     validate_k1_acceptance_manifest(manifest)
     .k1_acceptance_validate_protocol_manifest_identity(protocol, manifest)
     .k1_acceptance_validate_identity(environment$runtime_identity)
+    legacy_environment <- identical(protocol$artifact_version, "1") &&
+        is.null(environment$collector_identity)
+    if (!legacy_environment) {
+        .k1_acceptance_validate_collector_identity(
+            environment$collector_identity
+        )
+    }
     .k1_validate_runtime_revision(
         environment$runtime_identity,
         manifest
@@ -1444,7 +1514,8 @@ print.K1AcceptanceManifest <- function(x, ...) {
         tasks,
         results,
         summary,
-        environment$runtime_identity
+        environment$runtime_identity,
+        if (legacy_environment) NULL else environment$collector_identity
     )
     artifact_digest <- .k1_acceptance_artifact_digest(files)
     expected_name <- paste0(
@@ -1459,6 +1530,10 @@ print.K1AcceptanceManifest <- function(x, ...) {
         runner_contract = protocol$execution_contracts$version,
         runtime_identity = environment$runtime_identity
     )
+    if (!legacy_environment) {
+        expected_environment$collector_identity <-
+            environment$collector_identity
+    }
     if (!identical(environment, expected_environment) ||
             !identical(basename(artifact), expected_name)) {
         .k1_acceptance_runner_abort(
@@ -1605,6 +1680,7 @@ k1_acceptance_targets <- function(
             pattern = quote(map(k1_task)),
             controller = controller,
             packages = "landscapeR",
+            iteration = "list",
             error = "continue"
         ),
         .k1_acceptance_target(

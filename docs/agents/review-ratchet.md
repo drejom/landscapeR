@@ -121,13 +121,13 @@ execution backend and was also used as a candidate-selection gate.
 
 ### RR-012 — Build and inspect pull-request bodies from the repository template
 
-Before opening or updating a pull request, read `.github/pull_request_template.md`,
-populate it from committed evidence, and inspect the rendered GitHub body. Do
-not substitute a body from memory, claim unlinked proof, or defer an obvious
-missing-proof failure to CI. Required proof must exist before review begins.
+Read `.github/pull_request_template.md`, populate it from committed evidence,
+and inspect the rendered GitHub body before review. Required proof must exist,
+and every repository-hosted image path must resolve to its committed file.
 
 **Incident:** [PR #167](https://github.com/drejom/landscapeR/pull/167) claimed
-rendered proof in a malformed free-form body while no proof was visible.
+proof in a malformed body while none was visible. In [PR #182](https://github.com/drejom/landscapeR/pull/182),
+two committed PNGs rendered as 404s because the body omitted `-surface`.
 
 ## Verify, never assume
 

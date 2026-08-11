@@ -1,63 +1,66 @@
-# Issue #51 phase-B1 landing proof: independent acceptance runner
+# Issue #51 phase-B1 landing proof: independent acceptance result
 
 ## Claim boundary
 
-This is implementation proof only. The plotted values are an explicitly
-fabricated visual fixture used to inspect the publication surface. No frozen
-acceptance seed has been derived or executed, no pass rate has been observed,
-and no supported sample range has been claimed.
+This is the verified result of the frozen protocol-v2 phase-B1 experiment. The
+content-addressed artifact is
+`k1-stage0-acceptance-v2-780f4b10ea21923a`. It contains all 16,100 requested
+tasks and passes semantic artifact verification. The result does not establish
+a supported operating range.
 
 ## Cold-reader conclusion
 
-The runner now expands the complete frozen 9,300-task manifest after the phase-A
-merge identity is supplied. Phase B1 selects 8,400 generic recovery and negative
-control tasks, assigns one complete replicate to each scheduler branch, forces
-all resampling inside that branch to remain sequential, retains failed tasks in
-the denominator, and publishes only a semantically verified content-addressed
-artifact. The later 900-task synchronized AML lane remains blocked on issue
-#67 acceptance.
+The generic recovery control did not reach the prespecified 90% replicate pass
+rate in any tested sample-size and feature-count cell. Its best observed rate
+was 78% at `n = 192`, `p = 100`, with a Wilson 95% lower bound of 68.9%.
+Recovery was 0% at 10,000 and 20,000 features throughout the tested sample-size
+range. False double-well topology reached 43.5% in pure noise and 45% in
+single-well data, exceeding the prespecified 5% maximum. False target selection
+remained at or below 2.5%, and all 100 shared-baseline missing-cell replicates
+correctly abstained. The frozen aggregate therefore reports no supported
+minimum sample size.
 
 ## Recovery and thinness surface
 
-![Development-only pass-rate surface across sample and feature counts](pass-rate-surface.png)
+![Observed pass-rate surface across sample and feature counts](pass-rate-surface.png)
 
-The red line is read from the frozen protocol, not a plotting default. Each
-panel exposes the sample-count and feature-count grid. Open points demonstrate
-how an incomplete frozen cell remains visible and cannot pass. The scientific
-caption used by downstream documents is stored separately in
+The red line is the frozen 90% pass-rate gate. Each panel exposes the complete
+sample-count and feature-count grid. The scientific caption is stored in
 [`pass-rate-caption.txt`](pass-rate-caption.txt).
 
 ## Negative-control surface
 
-![Development-only false-positive surface for pure-noise and single-well controls](false-positive-surface.png)
+![Observed false-positive surface for pure-noise and single-well controls](false-positive-surface.png)
 
 The four panels separate false topology from false metadata-target selection in
-each negative control. The red maximum and open-cell encoding are derived from
-the same typed summary as the graphic. The separate publication caption is in
+each negative control. The red line is the frozen 5% maximum. The separate
+publication caption is in
 [`false-positive-caption.txt`](false-positive-caption.txt).
 
 ## Frozen workload and supported-range boundary
 
-| Lane | Grid cells | Replicates per cell | Tasks | Current status |
+| Lane | Grid cells | Replicates per cell | Tasks | Observed status |
 |---|---:|---:|---:|---|
-| Double-well recovery | 20 | 100 | 2,000 | runner implemented; not executed |
-| Pure noise | 16 | 200 | 3,200 | runner implemented; not executed |
-| Single well | 16 | 200 | 3,200 | runner implemented; not executed |
-| Synchronized AML | 9 | 100 | 900 | blocked until issue #67 acceptance |
+| Double-well recovery | 32 | 100 | 3,200 | no cell passed |
+| Pure noise | 32 | 200 | 6,400 | false topology exceeded 5% |
+| Single well | 32 | 200 | 6,400 | false topology exceeded 5% |
+| Shared-baseline safety | 1 | 100 | 100 | all replicates correctly abstained |
+| Synchronized AML | 9 | 100 | 900 | remains issue #67 |
 
-The supported minimum can be emitted only after all 52 phase-B1 grid cells are
-complete and the positive and negative gates pass at the same sample count.
-Until then it is structurally `NA`, not inferred from partial execution.
+All 97 phase-B1 cells are complete. The supported minimum is `NA` because no
+sample count passed the positive and negative gates across the complete feature
+grid. The complete cell table is retained in
+[`cell-summary.csv`](cell-summary.csv).
 
 ## Execution and verification flow
 
 ```text
-reviewed phase-A merge
+reviewed protocol-v2 merge
         |
         v
-9,300-task deterministic manifest
+17,000-task deterministic manifest
         |
-        +--> 8,400 phase-B1 scheduler branches
+        +--> 16,100 phase-B1 scheduler branches
                   |
                   v
           sequential work within each branch
@@ -77,14 +80,22 @@ verification. The verifier reconstructs task membership from the frozen
 manifest, validates every typed replicate, recomputes the summary and payload
 address, and cross-checks runtime revision provenance.
 
-## Gemini operations
+## Execution provenance
 
-The supplied Gemini profile creates a dedicated hprcc controller. A
-development-only largest-cell pilot measured 1.5 GB peak memory, 6.8% peak CPU,
-and 2.9 minutes with `hprcc::summarize_resource_usage()`, which recommended its
-`tiny` tier. The resulting profile requests 2 CPUs, 8 GB, and 60 minutes for
-one complete replicate per worker. These operational measurements cannot enter
-the scientific digest or change the frozen protocol.
+Workers ran on Gemini from reviewed merge
+`7772baef1f7a69db107721487b20456a45f53bfe`. The source bundle SHA-256 was
+`725bd6f0a00382a711602969f53c1083ec5be39ca1510f36084eb7e752ace921`.
+After all worker branches completed, three collector defects were found: targets
+had flattened each typed replicate, and the metric validator rejected
+legitimate missing landmark errors when a well or barrier was not recovered;
+the Wilson bound also differed across platforms at the sixteenth decimal place.
+The worker results were not changed or rerun. Tested collection-only fixes
+preserved list iteration and accepted `NA` only where the corresponding
+landmark was not estimable, then rounded the Wilson bound to 15 decimal places
+before hashing. The artifact binds separate worker and collector identities,
+including the exact recovery script and patch-file hashes. The user explicitly
+approved this recovery, and the permanent fixes and regression tests are part
+of this pull request.
 
 ## Reproduction
 
@@ -92,3 +103,6 @@ the scientific digest or change the frozen protocol.
 Rscript scripts/render-issue-51-phase-b1-proof.R
 Rscript -e 'devtools::test(filter = "k1-stage0-acceptance")'
 ```
+
+The governed collection procedure is
+[`scripts/recover-issue-51-phase-b1-artifact.R`](../../../scripts/recover-issue-51-phase-b1-artifact.R).

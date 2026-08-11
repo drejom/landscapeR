@@ -5,7 +5,7 @@
 #' @importFrom S4Vectors DataFrame metadata
 #' @importFrom digest digest
 #' @importFrom future plan
-#' @importFrom utils packageVersion modifyList
+#' @importFrom utils packageVersion modifyList head
 #' @importFrom stats approx rnorm var cor ave
 #' @importFrom rlang .data
 "_PACKAGE"

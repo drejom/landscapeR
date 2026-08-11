@@ -1,0 +1,125 @@
+---
+title: "K=1 Stage 0 phase-B1 evidence"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{K=1 Stage 0 phase-B1 evidence}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 7, dpi = 120)
+library(landscapeR)
+
+artifact_name <- "k1-stage0-acceptance-v2-780f4b10ea21923a"
+artifact_candidates <- c(
+  file.path("inst", "benchmarks", artifact_name),
+  file.path("..", "inst", "benchmarks", artifact_name),
+  system.file("benchmarks", artifact_name, package = "landscapeR")
+)
+artifact_dir <- artifact_candidates[dir.exists(artifact_candidates)][1L]
+stopifnot(length(artifact_dir) == 1L, !is.na(artifact_dir))
+stopifnot(verify_k1_acceptance_artifact(artifact_dir))
+summary <- readRDS(file.path(artifact_dir, "summary.rds"))
+cells <- summary$cells
+
+embed_artifact_figure <- function(filename, alt_text, caption_filename) {
+  caption <- paste(
+    readLines(file.path(artifact_dir, caption_filename), warn = FALSE),
+    collapse = " "
+  )
+  cat(sprintf(
+    '<figure><img src="%s" style="width:100%%" alt="%s"><figcaption>%s</figcaption></figure>',
+    knitr::image_uri(file.path(artifact_dir, filename)),
+    alt_text,
+    caption
+  ))
+}
+```
+
+This article reports the frozen generic and negative-control phase of the K=1
+Stage 0 acceptance experiment. It reads the committed, content-addressed
+artifact and does not rerun simulations or change thresholds. The result is
+negative but informative: landscapeR has not yet demonstrated a supported K=1
+operating range under the complete frozen grid.
+
+## What was tested
+
+The experiment requested 16,100 independent tasks across double-well recovery,
+pure-noise and single-well negative controls, and a shared-baseline missing-cell
+safety design. It covered `n = 8, 12, 16, 24, 48, 96, 132, 192` independent
+biological observations and `p = 100, 1,000, 10,000, 20,000` features. Every
+requested task is retained in the artifact. Computational or model abstentions
+remain in the denominator.
+
+```{r execution-summary}
+knitr::kable(data.frame(
+  measure = c(
+    "Requested tasks",
+    "Successful result objects",
+    "Complete execution",
+    "Supported minimum n"
+  ),
+  value = c(
+    summary$n_requested,
+    summary$n_completed,
+    summary$complete_execution,
+    if (is.na(summary$supported_minimum_n)) "None" else summary$supported_minimum_n
+  )
+))
+```
+
+## Recovery and safety result
+
+```{r pass-rate-figure, echo=FALSE, results="asis"}
+embed_artifact_figure(
+  "pass-rate.png",
+  "K=1 independent acceptance pass rates across recovery and safety controls.",
+  "pass-rate-caption.txt"
+)
+```
+
+No double-well recovery cell passed. The best observed replicate pass rate was
+78% at `n = 192`, `p = 100`, below both the 90% point-estimate gate and its
+required 80% Wilson lower bound. Recovery was 0% at 10,000 and 20,000 features
+for every tested sample size. All 100 shared-baseline replicates correctly
+reported the interaction as non-estimable.
+
+```{r false-positive-figure, echo=FALSE, results="asis"}
+embed_artifact_figure(
+  "false-positive.png",
+  "K=1 negative-control false topology and target-selection rates.",
+  "false-positive-caption.txt"
+)
+```
+
+False target selection remained within the frozen limit: 0% in pure noise and
+at most 2.5% in single-well data. False double-well topology did not. It reached
+43.5% in pure noise and 45% in single-well data, so both negative controls fail
+the prespecified 5% maximum.
+
+## Interpretation and next step
+
+The result does not justify a sample-size recommendation. Increasing sample
+size improved some low-dimensional recovery cells, but did not make the method
+safe across the frozen feature grid, and the topology estimator frequently
+invented a second well in negative controls. These are algorithmic findings,
+not evidence that more samples alone will solve the problem.
+
+Issue #67 now runs the separately frozen AML-shaped acceptance control. Only
+after that lane is incorporated can issue #51 make its final phase-B judgement
+and amend ADR 0002. This article makes no biological-validity claim.
+
+## Recovery provenance
+
+Workers ran from reviewed merge
+`7772baef1f7a69db107721487b20456a45f53bfe`. Collection exposed three contract
+defects: vector iteration flattened typed target results, the validator
+rejected legitimate missing errors when a well or barrier was not recovered,
+and a sixteenth-decimal Wilson-bound difference prevented portable exact
+verification. The 16,100 worker results were not changed or rerun. Tested
+collection-only fixes preserved list results, accepted `NA` only for
+non-estimable landmarks, and rounded Wilson bounds to 15 decimal places before
+hashing. The artifact binds separate worker and collector identities, including
+the governed recovery procedure and patch-file hashes. The recovery was
+explicitly approved, and the permanent fixes are covered by regression tests.

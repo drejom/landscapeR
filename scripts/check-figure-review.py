@@ -174,6 +174,22 @@ def visual_review_has_artifact(body: str) -> bool:
     return has_image or has_table or has_rendered_output
 
 
+def missing_repository_image_paths(body: str) -> list[str]:
+    """Return repository-hosted proof images that do not exist in the checkout."""
+    marker = ".github/landing-proof/"
+    missing: list[str] = []
+    for target in re.findall(r"!\[[^\]]+\]\(([^)]+)\)", body):
+        target = target.strip().split()[0].strip("<>")
+        if marker not in target:
+            continue
+        repository_path = marker + target.split(marker, maxsplit=1)[1]
+        repository_path = repository_path.split("?", maxsplit=1)[0]
+        repository_path = repository_path.split("#", maxsplit=1)[0]
+        if not Path(repository_path).is_file():
+            missing.append(repository_path)
+    return missing
+
+
 def validate_required_proof(body: str, files: list[str]) -> int:
     required_fields = (
         "Proof type",
@@ -220,6 +236,12 @@ def validate_required_proof(body: str, files: list[str]) -> int:
         return fail(
             "The Visual review section must contain an inspectable artifact: "
             "a Markdown image, table, or fenced rendered output."
+        )
+    missing_images = missing_repository_image_paths(body)
+    if missing_images:
+        return fail(
+            "Visual review references repository proof images that do not exist: "
+            + ", ".join(missing_images)
         )
 
     print("Visual landing proof packet accepted.")
