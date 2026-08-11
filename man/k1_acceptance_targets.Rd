@@ -8,7 +8,8 @@ k1_acceptance_targets(
   phase_a_merge_commit,
   artifact_root,
   controller = "k1-acceptance",
-  controls = c("generic_double_well", "pure_noise", "single_well")
+  controls = c("generic_double_well", "pure_noise", "single_well",
+    "shared_baseline_missing_cells")
 )
 }
 \arguments{
@@ -19,7 +20,9 @@ k1_acceptance_targets(
 \item{controller}{named crew controller configured by the caller.}
 
 \item{controls}{frozen controls to execute in this phase. The current generic
-phase includes double-well recovery and both negative-control families.}
+phase includes double-well recovery, both negative-control families, and
+the shared-baseline missing-cell safety control. AML execution remains a
+separately governed phase.}
 }
 \value{
 A list of \code{targets} target objects.

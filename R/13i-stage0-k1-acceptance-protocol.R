@@ -11,16 +11,27 @@
     ))
 }
 
-.k1_acceptance_seed_plan <- function() {
-    data.frame(
+.k1_acceptance_seed_plan <- function(version = "1") {
+    plan <- data.frame(
         control = c("generic_double_well", "pure_noise", "single_well",
                     "aml_synchronized"),
         replicates_per_grid_cell = c(100L, 200L, 200L, 100L),
         stringsAsFactors = FALSE
     )
+    if (identical(version, "2")) {
+        plan <- rbind(
+            plan,
+            data.frame(
+                control = "shared_baseline_missing_cells",
+                replicates_per_grid_cell = 100L,
+                stringsAsFactors = FALSE
+            )
+        )
+    }
+    plan
 }
 
-.k1_acceptance_protocol_payload <- function() {
+.k1_acceptance_protocol_v1_payload <- function() {
     list(
         artifact_version = "1",
         protocol_id = "k1-stage0-acceptance-v1",
@@ -302,16 +313,133 @@
     )
 }
 
+.k1_acceptance_protocol_v2_payload <- function() {
+    payload <- .k1_acceptance_protocol_v1_payload()
+    lower_tail <- c(8L, 12L, 16L, 24L, 48L, 96L, 132L, 192L)
+    payload$artifact_version <- "2"
+    payload$protocol_id <- "k1-stage0-acceptance-v2"
+    payload$execution_contracts$version <-
+        "k1-stage0-acceptance-runner-v2"
+    payload$execution_contracts$shared_baseline_missing_cells_analysis <- list(
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treated",
+        time_field = "observed_time",
+        expected_outcome = "non-identifiable-design",
+        claim_intent = "exploratory"
+    )
+    payload$generators$shared_baseline_missing_cells <- list(
+        id = "shared_baseline_missing_cells_v1",
+        design = paste(
+            "two conditions and four times; three independent biological",
+            "units per observed cell; control observed only at the first",
+            "time and treated observed at all four times"
+        ),
+        expected_outcome = paste(
+            "typed non-identifiable-design abstention without duplicated",
+            "controls or fabricated condition-by-time cells"
+        )
+    )
+    payload$grids$generic_double_well$varying$n <- lower_tail
+    payload$grids$negative_controls$varying$n <- lower_tail
+    payload$grids$shared_baseline_missing_cells <- list(
+        varying = list(design_cell = 1L),
+        fixed = list(
+            conditions = 2L,
+            time_points = 4L,
+            replicates_per_observed_cell = 3L,
+            p = 1000L
+        )
+    )
+    payload$thresholds$shared_baseline_missing_cells <- list(
+        required_abstention_reason = "non-identifiable-design",
+        required_missing_control_time_cells = 3L,
+        required_unique_control_observations = 3L
+    )
+    payload$pass_rules$supported_minimum_n <- paste(
+        "smallest n in the shared positive/negative candidate set",
+        "8,12,16,24,48,96,132,192 that passes every declared p cell for",
+        "the generic positive and both negative controls"
+    )
+    payload$pass_rules$shared_baseline_missing_cells <- paste(
+        "every requested replicate returns typed non-identifiable-design,",
+        "retains three unique baseline controls exactly once, and exposes",
+        "the three unobserved later control cells"
+    )
+    payload$seed_plan <- .k1_acceptance_seed_plan("2")
+    payload$seed_derivation$canonical_cell_schemas$
+        shared_baseline_missing_cells <- "design_cell"
+    payload$seed_derivation$acceptance_stream_offsets$
+        shared_baseline_missing_cells <- c(generation = 0L, association = 1L)
+    payload$seed_derivation$algorithm <-
+        "sha256-merge-commit-indexed-block-v2"
+    payload$seed_derivation$reveal_value <-
+        "reviewed version 2 protocol pull-request merge commit SHA-1"
+    payload$seed_derivation$hidden_until <-
+        "version 2 protocol merge"
+    payload$seed_derivation$input <- paste0(
+        "protocol_id|protocol_digest|merge_commit|seed-block; canonical ",
+        "task ordinal follows frozen control, grid, and replicate order"
+    )
+    payload$seed_derivation$task_order <- paste(
+        "seed-plan control order, then expand.grid varying-field order,",
+        "then ascending replicate index"
+    )
+    payload$seed_derivation$block_stride <- 4L
+    payload$seed_derivation$minimum_seed_root <- 100000L
+    payload$seed_derivation$integer_mapping <- paste(
+        "derive one merge-specific block start from the first 13",
+        "hexadecimal digest digits; assign each canonical task one",
+        "four-integer block by task ordinal; every stream remains within",
+        "1..2147483644 and above all reserved calibration streams"
+    )
+    payload$seed_derivation$collision_rule <- paste(
+        "indexed blocks guarantee disjoint acceptance streams; any",
+        "duplicate or reserved stream remains a protocol failure"
+    )
+    payload$provenance$implementation <- "k1_stage0_acceptance_v2"
+    payload$provenance$source_issue <- 177L
+    payload$provenance$source_specification <-
+        "docs/specs/k1-stage0-acceptance-protocol-v2.md"
+    payload$provenance$evidence_inputs <- c(
+        payload$provenance$evidence_inputs,
+        "pre-execution lower-tail and shared-baseline design review"
+    )
+    payload$separation$rule <- paste(
+        "version 2 acceptance seeds are unknowable until its reviewed merge",
+        "commit exists and may not be derived or executed before then;",
+        "the runner rejects every reserved-stream collision"
+    )
+    payload
+}
+
+.k1_acceptance_protocol_payload <- function(version = "2") {
+    if (!is.character(version) || length(version) != 1L || is.na(version) ||
+            !version %in% c("1", "2")) {
+        .k1_acceptance_protocol_abort(
+            "version must identify readable K=1 acceptance protocol 1 or 2"
+        )
+    }
+    if (identical(version, "1")) {
+        .k1_acceptance_protocol_v1_payload()
+    } else {
+        .k1_acceptance_protocol_v2_payload()
+    }
+}
+
 #' Return the frozen K=1 Stage 0 acceptance protocol
 #'
-#' This function exposes the complete phase-A protocol required by ADR 0016.
+#' This function exposes a complete reviewed protocol required by ADR 0016.
 #' Constructing or validating it does not execute any acceptance replicate.
 #'
+#' @param version readable protocol version. Version 2 is the current protocol;
+#'   version 1 remains available as superseded historical evidence.
 #' @return A digest-bound `K1AcceptanceProtocol` list containing the frozen
 #'   grids, metrics, thresholds, pass rules, and delayed seed-derivation plan.
 #' @export
-k1_acceptance_protocol <- function() {
-    payload <- .k1_acceptance_protocol_payload()
+k1_acceptance_protocol <- function(version = "2") {
+    payload <- .k1_acceptance_protocol_payload(version)
     out <- c(payload, list(
         digest = digest::digest(payload, algo = "sha256")
     ))
@@ -331,10 +459,18 @@ validate_k1_acceptance_protocol <- function(
         .k1_acceptance_protocol_abort(
             "protocol must inherit from K1AcceptanceProtocol"
         )
-    frozen <- .k1_acceptance_protocol_payload()
     observed <- unclass(protocol)
     digest_value <- observed$digest
     observed$digest <- NULL
+    version <- switch(
+        observed$protocol_id,
+        `k1-stage0-acceptance-v1` = "1",
+        `k1-stage0-acceptance-v2` = "2",
+        .k1_acceptance_protocol_abort(
+            "protocol does not identify a readable frozen definition"
+        )
+    )
+    frozen <- .k1_acceptance_protocol_payload(version)
     if (!identical(observed, frozen))
         .k1_acceptance_protocol_abort(
             "protocol differs from the frozen K=1 acceptance definition"

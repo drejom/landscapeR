@@ -20,7 +20,7 @@ acceptance_summary_fixture <- function() {
     tasks$stream_seeds <- replicate(4L, 1L, simplify = FALSE)
     results <- list(
         structure(list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = "g1", control = "generic_double_well",
             canonical_cell = tasks$canonical_cell[[1L]], replicate_index = 1L,
             status = "success", reason = "", metrics = list(
@@ -32,7 +32,7 @@ acceptance_summary_fixture <- function() {
             runner_contract = protocol$execution_contracts$version
         ), class = c("K1AcceptanceReplicate", "list")),
         structure(list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = "g2", control = "generic_double_well",
             canonical_cell = tasks$canonical_cell[[2L]], replicate_index = 2L,
             status = "failure", reason = "deliberate fixture failure",
@@ -41,7 +41,7 @@ acceptance_summary_fixture <- function() {
             runner_contract = protocol$execution_contracts$version
         ), class = c("K1AcceptanceReplicate", "list")),
         structure(list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = "n1", control = "pure_noise",
             canonical_cell = tasks$canonical_cell[[3L]], replicate_index = 1L,
             status = "success", reason = "", metrics = list(
@@ -57,7 +57,7 @@ acceptance_summary_fixture <- function() {
             runner_contract = protocol$execution_contracts$version
         ), class = c("K1AcceptanceReplicate", "list")),
         structure(list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = "n2", control = "pure_noise",
             canonical_cell = tasks$canonical_cell[[4L]], replicate_index = 2L,
             status = "success", reason = "", metrics = list(
@@ -97,6 +97,31 @@ test_that("acceptance summary keeps failures and incomplete cells visible", {
     expect_equal(negative$false_target_selection_rate, 0)
     expect_true(is.na(summary$supported_minimum_n))
     expect_identical(summary$claim_status, "incomplete_execution_summary")
+})
+
+test_that("shared-baseline safety cells pass only through typed abstention", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(strrep("1", 40L))
+    task <- manifest$tasks[
+        manifest$tasks$control == "shared_baseline_missing_cells",
+        ,
+        drop = FALSE
+    ][1L, , drop = FALSE]
+    result <- landscapeR:::.k1_acceptance_run_task(
+        task,
+        protocol,
+        expected_identity = NULL,
+        sequential_internal = TRUE
+    )
+
+    summary <- summarize_k1_acceptance(list(result), task, protocol)
+
+    expect_identical(summary$cells$control, "shared_baseline_missing_cells")
+    expect_identical(summary$cells$n_completed, 1L)
+    expect_identical(summary$cells$n_passed, 1L)
+    expect_equal(summary$cells$replicate_pass_rate, 1)
+    expect_false(summary$cells$complete_cell)
+    expect_false(summary$complete_execution)
 })
 
 test_that("acceptance summary rejects malformed typed metrics", {

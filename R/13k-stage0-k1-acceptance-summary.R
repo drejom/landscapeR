@@ -40,6 +40,23 @@ utils::globalVariables(c(
             identical(metrics$false_target_selection, FALSE)
         )
     }
+    if (identical(result$control, "shared_baseline_missing_cells")) {
+        thresholds <- protocol$thresholds$shared_baseline_missing_cells
+        return(
+            identical(
+                metrics$abstention_reason,
+                thresholds$required_abstention_reason
+            ) &&
+            identical(
+                metrics$missing_control_time_cells,
+                thresholds$required_missing_control_time_cells
+            ) &&
+            identical(
+                metrics$unique_control_observations,
+                thresholds$required_unique_control_observations
+            )
+        )
+    }
     FALSE
 }
 
@@ -115,8 +132,16 @@ utils::globalVariables(c(
 .k1_acceptance_expected_cell_count <- function(protocol) {
     generic <- protocol$grids$generic_double_well$varying
     negative <- protocol$grids$negative_controls$varying
+    shared <- if (is.null(protocol$grids$shared_baseline_missing_cells)) {
+        0L
+    } else {
+        length(
+            protocol$grids$shared_baseline_missing_cells$varying$design_cell
+        )
+    }
     length(generic$n) * length(generic$p) +
-        2L * length(negative$n) * length(negative$p)
+        2L * length(negative$n) * length(negative$p) +
+        shared
 }
 
 .k1_acceptance_supported_minimum <- function(cells, protocol) {
@@ -166,16 +191,23 @@ summarize_k1_acceptance <- function(
     validate_k1_acceptance_protocol(protocol)
     results <- .k1_acceptance_collect(results, tasks, protocol)
     cells <- .k1_acceptance_cell_summary(results, tasks, protocol)
+    required_controls <- c(
+        "generic_double_well", "pure_noise", "single_well"
+    )
+    if (!is.null(protocol$grids$shared_baseline_missing_cells)) {
+        required_controls <- c(
+            required_controls,
+            "shared_baseline_missing_cells"
+        )
+    }
     complete_execution <- all(cells$complete_cell) &&
-        all(c(
-            "generic_double_well", "pure_noise", "single_well"
-        ) %in% cells$control) &&
+        all(required_controls %in% cells$control) &&
         nrow(cells) == .k1_acceptance_expected_cell_count(protocol)
     supported <- if (complete_execution) {
         .k1_acceptance_supported_minimum(cells, protocol)
     } else NA_integer_
     payload <- list(
-        artifact_version = "1",
+        artifact_version = protocol$artifact_version,
         protocol_id = protocol$protocol_id,
         protocol_digest = protocol$digest,
         runner_contract = protocol$execution_contracts$version,
@@ -211,7 +243,8 @@ summarize_k1_acceptance <- function(
 .k1_acceptance_control_labels <- c(
     generic_double_well = "(A) Double-well recovery",
     pure_noise = "(B) Pure noise",
-    single_well = "(C) Single well"
+    single_well = "(C) Single well",
+    shared_baseline_missing_cells = "(D) Shared baseline safety"
 )
 
 .k1_acceptance_percent <- function(value) {
@@ -236,7 +269,11 @@ summarize_k1_acceptance <- function(
         panels = c(
             A = "Double-well recovery.",
             B = "Pure-noise negative control.",
-            C = "Single-well negative control."
+            C = "Single-well negative control.",
+            D = paste(
+                "Shared-baseline missing-cell design; a pass is the required",
+                "typed non-identifiable-design abstention."
+            )
         ),
         encodings = c(
             "Black points show replicate pass rates for each feature count.",

@@ -4,13 +4,17 @@
 \alias{k1_acceptance_protocol}
 \title{Return the frozen K=1 Stage 0 acceptance protocol}
 \usage{
-k1_acceptance_protocol()
+k1_acceptance_protocol(version = "2")
+}
+\arguments{
+\item{version}{readable protocol version. Version 2 is the current protocol;
+version 1 remains available as superseded historical evidence.}
 }
 \value{
 A digest-bound \code{K1AcceptanceProtocol} list containing the frozen
 grids, metrics, thresholds, pass rules, and delayed seed-derivation plan.
 }
 \description{
-This function exposes the complete phase-A protocol required by ADR 0016.
+This function exposes a complete reviewed protocol required by ADR 0016.
 Constructing or validating it does not execute any acceptance replicate.
 }

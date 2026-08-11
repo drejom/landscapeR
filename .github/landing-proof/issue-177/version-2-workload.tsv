@@ -1,0 +1,6 @@
+control	grid_cells	replicates_per_cell	tasks	execution_status
+Double-well recovery	32	100	3200	defined; production seeds not derived
+Pure noise	32	200	6400	defined; production seeds not derived
+Single well	32	200	6400	defined; production seeds not derived
+Shared-baseline safety	1	100	100	defined; production seeds not derived
+Synchronized AML	9	100	900	defined; production seeds not derived

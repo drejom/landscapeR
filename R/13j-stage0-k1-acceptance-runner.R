@@ -29,7 +29,10 @@
     if (!is.character(commit) || length(commit) != 1L || is.na(commit) ||
             !grepl("^[0-9a-f]{40}$", commit)) {
         .k1_acceptance_runner_abort(
-            "phase_a_merge_commit must be one lowercase 40-character SHA-1"
+            paste(
+                "phase_a_merge_commit must identify the reviewed protocol",
+                "merge with one lowercase 40-character SHA-1"
+            )
         )
     }
     commit
@@ -49,8 +52,48 @@
     protocol,
     merge_commit,
     canonical_cell,
-    replicate_index
+    replicate_index,
+    task_ordinal = NULL,
+    total_tasks = NULL
 ) {
+    if (identical(
+        protocol$seed_derivation$algorithm,
+        "sha256-merge-commit-indexed-block-v2"
+    )) {
+        if (!is.numeric(task_ordinal) || length(task_ordinal) != 1L ||
+                is.na(task_ordinal) || task_ordinal < 1L ||
+                task_ordinal != as.integer(task_ordinal) ||
+                !is.numeric(total_tasks) || length(total_tasks) != 1L ||
+                is.na(total_tasks) || total_tasks < task_ordinal ||
+                total_tasks != as.integer(total_tasks)) {
+            .k1_acceptance_runner_abort(
+                "v2 seed derivation requires a valid canonical task ordinal"
+            )
+        }
+        stride <- protocol$seed_derivation$block_stride
+        minimum <- protocol$seed_derivation$minimum_seed_root
+        maximum <- 2147483644
+        maximum_start <- maximum -
+            (as.integer(total_tasks) - 1L) * stride - (stride - 1L)
+        if (maximum_start < minimum) {
+            .k1_acceptance_runner_abort(
+                "v2 acceptance workload exceeds the indexed seed space"
+            )
+        }
+        input <- paste(
+            protocol$protocol_id,
+            protocol$digest,
+            merge_commit,
+            "seed-block",
+            sep = "|"
+        )
+        hexadecimal <- digest::digest(input, algo = "sha256", serialize = FALSE)
+        base <- minimum + .k1_acceptance_hex_modulo(
+            substr(hexadecimal, 1L, 13L),
+            maximum_start - minimum + 1
+        )
+        return(as.integer(base + (as.integer(task_ordinal) - 1L) * stride))
+    }
     input <- paste(
         protocol$protocol_id,
         protocol$digest,
@@ -73,6 +116,8 @@
         protocol$grids$negative_controls$varying
     } else if (identical(control, "aml_synchronized")) {
         protocol$grids$aml_synchronized$varying
+    } else if (identical(control, "shared_baseline_missing_cells")) {
+        protocol$grids$shared_baseline_missing_cells$varying
     } else {
         .k1_acceptance_runner_abort(sprintf(
             "unknown K=1 acceptance control '%s'", control
@@ -100,7 +145,17 @@
 
 .k1_acceptance_manifest_payload <- function(protocol, merge_commit) {
     controls <- protocol$seed_plan$control
-    task_groups <- lapply(controls, function(control) {
+    task_counts <- vapply(controls, function(control) {
+        grid <- .k1_acceptance_grid(protocol, control)
+        replicate_count <- protocol$seed_plan$replicates_per_grid_cell[
+            protocol$seed_plan$control == control
+        ][[1L]]
+        nrow(grid) * replicate_count
+    }, integer(1L))
+    task_offsets <- c(0L, head(cumsum(task_counts), -1L))
+    total_tasks <- sum(task_counts)
+    task_groups <- lapply(seq_along(controls), function(control_index) {
+        control <- controls[[control_index]]
         grid <- .k1_acceptance_grid(protocol, control)
         schema <- protocol$seed_derivation$canonical_cell_schemas[[control]]
         replicate_count <- protocol$seed_plan$replicates_per_grid_cell[
@@ -120,23 +175,43 @@
                     protocol,
                     merge_commit,
                     cell,
-                    replicate_index
+                    replicate_index,
+                    task_ordinal = task_offsets[[control_index]] + index,
+                    total_tasks = total_tasks
                 )
                 offsets <- protocol$seed_derivation$acceptance_stream_offsets[[control]]
                 streams <- stats::setNames(
                     as.integer(root + unname(offsets)),
                     names(offsets)
                 )
-                rows[[index]] <- data.frame(
+                row <- data.frame(
                     task_id = substr(digest::digest(
                         paste(cell, replicate_index, sep = "|"),
                         algo = "sha256",
                         serialize = FALSE
                     ), 1L, 20L),
                     control = control,
-                    n = if ("n" %in% names(grid))
-                        as.integer(grid$n[[grid_index]]) else NA_integer_,
-                    p = as.integer(grid$p[[grid_index]]),
+                    n = if ("n" %in% names(grid)) {
+                        as.integer(grid$n[[grid_index]])
+                    } else if (identical(
+                        control,
+                        "shared_baseline_missing_cells"
+                    )) {
+                        fixed <- protocol$grids$
+                            shared_baseline_missing_cells$fixed
+                        as.integer(
+                            fixed$replicates_per_observed_cell *
+                                (1L + fixed$time_points)
+                        )
+                    } else {
+                        NA_integer_
+                    },
+                    p = if ("p" %in% names(grid)) {
+                        as.integer(grid$p[[grid_index]])
+                    } else {
+                        as.integer(protocol$grids$
+                            shared_baseline_missing_cells$fixed$p)
+                    },
                     subjects_per_condition = if (
                         "subjects_per_condition" %in% names(grid)
                     ) as.integer(grid$subjects_per_condition[[grid_index]])
@@ -146,6 +221,17 @@
                     canonical_cell = cell,
                     stringsAsFactors = FALSE
                 )
+                if (identical(protocol$artifact_version, "2")) {
+                    row$design_cell <- if ("design_cell" %in% names(grid)) {
+                        as.integer(grid$design_cell[[grid_index]])
+                    } else {
+                        NA_integer_
+                    }
+                    row$task_ordinal <- as.integer(
+                        task_offsets[[control_index]] + index
+                    )
+                }
+                rows[[index]] <- row
                 rows[[index]]$stream_seeds <- list(streams)
             }
         }
@@ -154,7 +240,7 @@
     tasks <- do.call(rbind, task_groups)
     rownames(tasks) <- NULL
     list(
-        artifact_version = "1",
+        artifact_version = protocol$artifact_version,
         protocol_id = protocol$protocol_id,
         protocol_digest = protocol$digest,
         runner_contract = protocol$execution_contracts$version,
@@ -166,12 +252,13 @@
 
 #' Reveal the frozen K=1 independent acceptance seed manifest
 #'
-#' Seed roots become deterministic only after the reviewed phase-A protocol
+#' Seed roots become deterministic only after the reviewed protocol
 #' merge. This function expands every frozen cell and replicate and rejects any
 #' collision with calibration or another acceptance stream.
 #'
-#' @param phase_a_merge_commit lowercase 40-character SHA-1 of the phase-A
-#'   protocol merge commit.
+#' @param phase_a_merge_commit lowercase 40-character SHA-1 of the reviewed
+#'   merge that froze `protocol`. The legacy argument name is retained so that
+#'   version 1 manifests remain reproducible.
 #' @param protocol the unmodified object returned by
 #'   [k1_acceptance_protocol()].
 #' @return A digest-bound `K1AcceptanceManifest`.
@@ -213,7 +300,18 @@ validate_k1_acceptance_manifest <- function(manifest) {
             "manifest must inherit from K1AcceptanceManifest"
         )
     }
-    expected <- k1_acceptance_manifest(manifest$phase_a_merge_commit)
+    version <- switch(
+        manifest$protocol_id,
+        `k1-stage0-acceptance-v1` = "1",
+        `k1-stage0-acceptance-v2` = "2",
+        .k1_acceptance_runner_abort(
+            "manifest does not identify a readable K=1 protocol"
+        )
+    )
+    expected <- k1_acceptance_manifest(
+        manifest$phase_a_merge_commit,
+        protocol = k1_acceptance_protocol(version)
+    )
     if (!identical(manifest, expected)) {
         .k1_acceptance_runner_abort(
             "manifest differs from the frozen post-merge seed derivation"
@@ -228,7 +326,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
     cat("<K1AcceptanceManifest>\n")
     cat("  protocol:", x$protocol_id, "\n")
     cat("  tasks:", nrow(x$tasks), "\n")
-    cat("  phase-A merge:", x$phase_a_merge_commit, "\n")
+    cat("  protocol merge:", x$phase_a_merge_commit, "\n")
     cat("  digest:", x$digest, "\n")
     invisible(x)
 }
@@ -591,6 +689,121 @@ print.K1AcceptanceManifest <- function(x, ...) {
     list(status = "success", reason = "", metrics = metrics)
 }
 
+.k1_acceptance_shared_baseline_source <- function(task, protocol) {
+    fixed <- protocol$grids$shared_baseline_missing_cells$fixed
+    replicates <- fixed$replicates_per_observed_cell
+    times <- seq.int(0L, fixed$time_points - 1L)
+    condition <- c(
+        rep("control", replicates),
+        rep("treated", replicates * fixed$time_points)
+    )
+    observed_time <- c(
+        rep(times[[1L]], replicates),
+        rep(times, each = replicates)
+    )
+    sample_ids <- sprintf("sample_%02d", seq_along(condition))
+    setup_rng(task$stream_seeds[[1L]][["generation"]])
+    expression <- matrix(
+        stats::rnorm(fixed$p * length(condition)),
+        nrow = fixed$p,
+        dimnames = list(paste0("g", seq_len(fixed$p)), sample_ids)
+    )
+    std <- StateTransitionData(
+        experiments = list(
+            layer1 = SummarizedExperiment::SummarizedExperiment(
+                assays = list(expression = expression)
+            )
+        ),
+        colData = S4Vectors::DataFrame(
+            condition = factor(condition, levels = c("control", "treated")),
+            observed_time = observed_time,
+            row.names = sample_ids
+        ),
+        sampling_design = independent_time_course(
+            time = "observed_time",
+            time_unit = "arbitrary time units"
+        )
+    )
+    md <- metadata(std)
+    md$dataset_id <- paste0(
+        "k1-independent-acceptance-", task$control[[1L]]
+    )
+    md$k1_shared_baseline_control <- list(
+        generator = protocol$generators$shared_baseline_missing_cells$id,
+        task_id = task$task_id[[1L]],
+        protocol_digest = protocol$digest,
+        independent_biological_observations = length(condition),
+        unique_baseline_controls = replicates,
+        duplicated_controls = FALSE,
+        expected_outcome = "non-identifiable-design"
+    )
+    metadata(std) <- md
+    std
+}
+
+.k1_acceptance_run_shared_baseline <- function(task, protocol) {
+    source <- .k1_acceptance_shared_baseline_source(task, protocol)
+    analysis <- protocol$execution_contracts$
+        shared_baseline_missing_cells_analysis
+    specification <- analysis_specification(
+        id = paste0("k1-acceptance-", task$task_id[[1L]]),
+        target_field = analysis$target_field,
+        target_type = analysis$target_type,
+        reference_level = analysis$reference_level,
+        comparison_level = analysis$comparison_level,
+        claim_intent = analysis$claim_intent
+    )
+    config <- PipelineConfig(
+        strategies = list(Decomposer = protocol$strategies$decomposer),
+        params = list(svd = protocol$execution_contracts$svd),
+        dataset = metadata(source)$dataset_id,
+        analysis = specification
+    )
+    discovery <- run_pipeline(source, config)
+    if (!is(discovery, "StageResult") || discovery@status != "success") {
+        reason <- if (is(discovery, "StageResult")) discovery@reason else
+            "shared-baseline discovery did not return a StageResult"
+        return(list(status = "failure", reason = reason, metrics = list()))
+    }
+    atlas <- associate_metadata(
+        discovery@value,
+        specification = specification,
+        dataset_id = config@dataset,
+        n_resamples = 0L,
+        seed = task$stream_seeds[[1L]][["association"]],
+        sequential_internal = TRUE
+    )
+    if (!is(atlas, "MetadataAssociationAtlas")) {
+        return(list(
+            status = "failure",
+            reason = "shared-baseline association did not retain an atlas",
+            metrics = list()
+        ))
+    }
+    proposal <- propose_component(atlas)
+    if (!is(proposal, "ComponentAbstention")) {
+        return(list(
+            status = "failure",
+            reason = paste(
+                "shared-baseline design did not produce the required typed",
+                "abstention"
+            ),
+            metrics = list()
+        ))
+    }
+    provenance <- atlas_provenance(atlas)
+    condition <- as.character(colData(source)$condition)
+    metrics <- list(
+        abstention_reason = proposal@reason,
+        missing_control_time_cells = as.integer(
+            provenance$time_course_missing_cell_count
+        ),
+        unique_control_observations = as.integer(sum(condition == "control")),
+        total_observations = as.integer(length(condition))
+    )
+    list(status = "success", reason = "", metrics = metrics)
+}
+
 .k1_acceptance_worker_identity <- function() {
     packages <- c(
         "landscapeR", "digest", "future", "future.apply", "targets", "crew",
@@ -621,7 +834,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
 .k1_acceptance_failure <- function(task, protocol, reason) {
     structure(
         list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = task$task_id[[1L]],
             control = task$control[[1L]],
             canonical_cell = task$canonical_cell[[1L]],
@@ -662,6 +875,8 @@ print.K1AcceptanceManifest <- function(x, ...) {
                 protocol,
                 sequential_internal = sequential_internal
             )
+        } else if (identical(control, "shared_baseline_missing_cells")) {
+            .k1_acceptance_run_shared_baseline(task, protocol)
         } else {
             list(
                 status = "failure",
@@ -680,7 +895,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
     }
     structure(
         list(
-            artifact_version = "1",
+            artifact_version = protocol$artifact_version,
             task_id = task$task_id[[1L]],
             control = control,
             canonical_cell = task$canonical_cell[[1L]],
@@ -707,7 +922,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
     )
     if (!inherits(result, "K1AcceptanceReplicate") ||
             !identical(names(result), required) ||
-            !identical(result$artifact_version, "1") ||
+            !identical(result$artifact_version, protocol$artifact_version) ||
             !identical(result$task_id, task$task_id[[1L]]) ||
             !identical(result$control, task$control[[1L]]) ||
             !identical(result$canonical_cell, task$canonical_cell[[1L]]) ||
@@ -792,6 +1007,26 @@ print.K1AcceptanceManifest <- function(x, ...) {
                         nominated == as.integer(nominated)))) {
             .k1_acceptance_runner_abort(
                 "negative-control metrics violate the frozen contract"
+            )
+        }
+        return(invisible(TRUE))
+    }
+    if (identical(control, "shared_baseline_missing_cells")) {
+        expected <- c(
+            "abstention_reason", "missing_control_time_cells",
+            "unique_control_observations", "total_observations"
+        )
+        counts <- unlist(metrics[expected[2:4]], use.names = FALSE)
+        if (!identical(names(metrics), expected) ||
+                !.is_scalar_nonempty_text(metrics$abstention_reason) ||
+                !is.numeric(counts) || anyNA(counts) ||
+                any(!is.finite(counts)) || any(counts < 0) ||
+                !identical(
+                    as.numeric(as.integer(counts)),
+                    as.numeric(counts)
+                )) {
+            .k1_acceptance_runner_abort(
+                "shared-baseline metrics violate the frozen contract"
             )
         }
         return(invisible(TRUE))
@@ -899,6 +1134,12 @@ print.K1AcceptanceManifest <- function(x, ...) {
             identifiability_completion_rate =
                 metrics$identifiability_completion_rate %||% NA_real_,
             nominated_component = metrics$nominated_component %||% NA_integer_,
+            abstention_reason = metrics$abstention_reason %||% NA_character_,
+            missing_control_time_cells =
+                metrics$missing_control_time_cells %||% NA_integer_,
+            unique_control_observations =
+                metrics$unique_control_observations %||% NA_integer_,
+            total_observations = metrics$total_observations %||% NA_integer_,
             stringsAsFactors = FALSE
         )
     })
@@ -1025,7 +1266,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
         file.path(staging, "false-positive-caption.txt")
     )
     environment <- list(
-        artifact_version = "1",
+        artifact_version = protocol$artifact_version,
         claim_status = summary$claim_status,
         protocol_digest = protocol$digest,
         manifest_digest = manifest$digest,
@@ -1130,7 +1371,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
         protocol$protocol_id, "-", substr(artifact_digest, 1L, 16L)
     )
     expected_environment <- list(
-        artifact_version = "1",
+        artifact_version = protocol$artifact_version,
         claim_status = summary$claim_status,
         protocol_digest = protocol$digest,
         manifest_digest = manifest$digest,
@@ -1201,14 +1442,19 @@ verify_k1_acceptance_artifact <- function(artifact) {
 #' @param artifact_root absolute directory for immutable evidence publication.
 #' @param controller named crew controller configured by the caller.
 #' @param controls frozen controls to execute in this phase. The current generic
-#'   phase includes double-well recovery and both negative-control families.
+#'   phase includes double-well recovery, both negative-control families, and
+#'   the shared-baseline missing-cell safety control. AML execution remains a
+#'   separately governed phase.
 #' @return A list of `targets` target objects.
 #' @export
 k1_acceptance_targets <- function(
     phase_a_merge_commit,
     artifact_root,
     controller = "k1-acceptance",
-    controls = c("generic_double_well", "pure_noise", "single_well")
+    controls = c(
+        "generic_double_well", "pure_noise", "single_well",
+        "shared_baseline_missing_cells"
+    )
 ) {
     if (!requireNamespace("targets", quietly = TRUE)) {
         .k1_acceptance_runner_abort(
@@ -1224,11 +1470,17 @@ k1_acceptance_targets <- function(
     if (!.is_scalar_nonempty_text(controller)) {
         .k1_acceptance_runner_abort("controller must be one non-empty name")
     }
-    supported <- c("generic_double_well", "pure_noise", "single_well")
+    supported <- c(
+        "generic_double_well", "pure_noise", "single_well",
+        "shared_baseline_missing_cells"
+    )
     if (!is.character(controls) || !length(controls) || anyNA(controls) ||
             any(!controls %in% supported) || anyDuplicated(controls)) {
         .k1_acceptance_runner_abort(
-            "controls must be unique implemented generic acceptance controls"
+            paste(
+                "controls must be unique implemented phase-B1 acceptance",
+                "controls"
+            )
         )
     }
     artifact_root <- path.expand(artifact_root)

@@ -1,0 +1,3 @@
+observed_design	independent_biological_units	duplicated_controls	proposal_class	outcome
+control at time 0 only	3	FALSE	ComponentAbstention	non-identifiable-design
+treated at times 0, 1, 2, and 3	12	FALSE	ComponentAbstention	non-identifiable-design

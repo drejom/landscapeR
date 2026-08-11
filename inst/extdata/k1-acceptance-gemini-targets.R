@@ -1,9 +1,12 @@
 # Gemini _targets.R profile for the frozen K=1 independent acceptance run.
 # Copy this file into a dedicated execution directory before use.
 
-phase_a_merge <- Sys.getenv("LANDSCAPER_K1_PHASE_A_MERGE")
-if (!grepl("^[0-9a-f]{40}$", phase_a_merge)) {
-    stop("LANDSCAPER_K1_PHASE_A_MERGE must be the reviewed 40-character SHA-1")
+protocol_merge <- Sys.getenv("LANDSCAPER_K1_PROTOCOL_MERGE")
+if (!grepl("^[0-9a-f]{40}$", protocol_merge)) {
+    stop(
+        "LANDSCAPER_K1_PROTOCOL_MERGE must be the reviewed ",
+        "40-character protocol merge SHA-1"
+    )
 }
 
 scratch_root <- file.path(
@@ -52,7 +55,7 @@ hprcc::add_controller(
 )
 
 k1_acceptance_targets(
-    phase_a_merge_commit = phase_a_merge,
+    phase_a_merge_commit = protocol_merge,
     artifact_root = file.path(scratch_root, "artifacts"),
     controller = "k1-acceptance"
 )

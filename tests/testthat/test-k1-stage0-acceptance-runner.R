@@ -5,17 +5,19 @@ test_that("acceptance manifest expands every frozen cell and replicate", {
 
     expect_s3_class(manifest, "K1AcceptanceManifest")
     expect_true(validate_k1_acceptance_manifest(manifest))
-    expect_identical(nrow(manifest$tasks), 9300L)
+    expect_identical(nrow(manifest$tasks), 17000L)
     expect_identical(
         as.integer(table(manifest$tasks$control)),
         unname(c(
             aml_synchronized = 900L,
-            generic_double_well = 2000L,
-            pure_noise = 3200L,
-            single_well = 3200L
+            generic_double_well = 3200L,
+            pure_noise = 6400L,
+            shared_baseline_missing_cells = 100L,
+            single_well = 6400L
         ))
     )
     expect_identical(manifest$phase_a_merge_commit, fake_phase_a_merge())
+    expect_identical(manifest$artifact_version, "2")
     expect_match(manifest$digest, "^[0-9a-f]{64}$")
     expect_false(any(manifest$tasks$seed_root %in%
         k1_acceptance_protocol()$separation$reserved_calibration_rng_streams))
@@ -31,18 +33,38 @@ test_that("acceptance seed derivation follows the frozen canonical contract", {
 
     expect_identical(
         first$canonical_cell,
-        "control=generic_double_well;n=24;p=100"
+        "control=generic_double_well;n=8;p=100"
     )
     expect_identical(first$replicate_index, 1L)
-    expect_identical(first$seed_root, 1773915921L)
+    expect_identical(first$task_ordinal, 1L)
+    expect_identical(first$seed_root, 1873862853L)
     expect_identical(first$stream_seeds[[1L]], c(
-        state_coordinates = 1773915921L,
-        expression = 1773915922L
+        state_coordinates = 1873862853L,
+        expression = 1873862854L
     ))
     expect_identical(
         manifest,
         k1_acceptance_manifest(fake_phase_a_merge())
     )
+
+    legacy_protocol <- k1_acceptance_protocol("1")
+    legacy <- k1_acceptance_manifest(
+        fake_phase_a_merge(),
+        protocol = legacy_protocol
+    )
+    expect_true(validate_k1_acceptance_manifest(legacy))
+    expect_identical(nrow(legacy$tasks), 9300L)
+    expect_identical(legacy$artifact_version, "1")
+    legacy_first <- legacy$tasks[
+        legacy$tasks$control == "generic_double_well",
+        ,
+        drop = FALSE
+    ][1L, ]
+    expect_identical(
+        legacy_first$canonical_cell,
+        "control=generic_double_well;n=24;p=100"
+    )
+    expect_identical(legacy_first$seed_root, 1773915921L)
 })
 
 test_that("acceptance manifest rejects invalid commits and mutation", {
@@ -57,6 +79,41 @@ test_that("acceptance manifest rejects invalid commits and mutation", {
         validate_k1_acceptance_manifest(changed),
         class = "k1_acceptance_runner_error"
     )
+})
+
+test_that("shared-baseline safety control retains missing cells and abstains", {
+    protocol <- k1_acceptance_protocol()
+    manifest <- k1_acceptance_manifest(fake_phase_a_merge())
+    task <- manifest$tasks[
+        manifest$tasks$control == "shared_baseline_missing_cells",
+        ,
+        drop = FALSE
+    ][1L, , drop = FALSE]
+
+    result <- landscapeR:::.k1_acceptance_run_task(
+        task,
+        protocol,
+        expected_identity = NULL,
+        sequential_internal = TRUE
+    )
+
+    expect_identical(result$status, "success")
+    expect_identical(
+        result$metrics$abstention_reason,
+        "non-identifiable-design"
+    )
+    expect_identical(result$metrics$missing_control_time_cells, 3L)
+    expect_identical(result$metrics$unique_control_observations, 3L)
+    expect_identical(result$metrics$total_observations, 15L)
+
+    audit_row <- landscapeR:::.k1_acceptance_flatten_results(list(result))
+    expect_identical(
+        audit_row$abstention_reason,
+        "non-identifiable-design"
+    )
+    expect_identical(audit_row$missing_control_time_cells, 3L)
+    expect_identical(audit_row$unique_control_observations, 3L)
+    expect_identical(audit_row$total_observations, 15L)
 })
 
 test_that("artifact verification translates malformed serialized input", {
@@ -107,6 +164,16 @@ test_that("acceptance targets graph has one scheduler-owned parallel layer", {
     )
 
     by_name <- stats::setNames(pipeline, expected)
+    expect_match(
+        by_name$k1_tasks$command$string,
+        "shared_baseline_missing_cells",
+        fixed = TRUE
+    )
+    expect_false(grepl(
+        "aml_synchronized",
+        by_name$k1_tasks$command$string,
+        fixed = TRUE
+    ))
     worker <- as.list.environment(by_name$k1_result$settings)
     expect_identical(worker$deployment, "worker")
     expect_identical(worker$resources$crew$controller, "medium")
@@ -153,7 +220,7 @@ test_that("generic development task returns typed frozen metrics", {
         "subspace_angle_deg", "well_error", "barrier_error",
         "barrier_height_error", "n_wells_found", "n_barriers_found"
     ) %in% names(result$metrics)))
-    expect_identical(result$runner_contract, "k1-stage0-acceptance-runner-v1")
+    expect_identical(result$runner_contract, "k1-stage0-acceptance-runner-v2")
 })
 
 test_that("generic acceptance generation is acceptance-native", {
@@ -195,7 +262,7 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         drop = FALSE
     ][1L, , drop = FALSE]
     result <- structure(list(
-        artifact_version = "1",
+        artifact_version = protocol$artifact_version,
         task_id = tasks$task_id[[1L]],
         control = tasks$control[[1L]],
         canonical_cell = tasks$canonical_cell[[1L]],

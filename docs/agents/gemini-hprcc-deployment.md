@@ -33,8 +33,9 @@ shared Bioconductor 3.22 library. The controller and every worker must report
 that same full revision. Do not run a scientific graph from a mutable checkout
 or overwrite the shared installation with an unreviewed branch.
 
-The current phase-A protocol revision is installed only to verify the platform.
-Install the reviewed runner merge before its production graph is started.
+Development snapshots are installed only in isolated scratch libraries to
+verify the platform and size workers. Install the reviewed protocol v2 merge
+before its production graph is started.
 
 ## Dedicated execution directory
 
@@ -78,34 +79,44 @@ thresholds in response to the pilot.
 
 ### Development pilot evidence
 
-On 2026-08-09, exact development revision
-`868a87b407db74dc8d21bb909c1c940270fac67f` ran one largest-cell replicate for
-each implemented phase-B1 control at `n = 192` and `p = 20,000`. The three
-tasks used fixed development-only roots that were not derived from the frozen
-acceptance manifest. All three workers completed. Their scientific values are
-not acceptance evidence and are not retained by the package.
+On 2026-08-10, revision-stamped development snapshot
+`d98824c8795a55ffdfc08703322e47b31db4156bd` ran five representative protocol
+v2 tasks: generic recovery at `n = 8` and `n = 192` with `p = 20,000`, both
+negative controls at `n = 192` and `p = 20,000`, and the 15-observation,
+1,000-feature shared-baseline safety control. The stamped source bundle SHA-256
+was `1c9250c58562e651205d00ba81842ec647e6c3f7d37fe06c0cc42bca78baaa79`.
+Every task used a fixed disclosed development root outside the governed
+manifest, and all five completed successfully. Three tasks emitted expected
+BBP signal-strength diagnostics. No scheduler or numerical failure occurred.
+The scientific values are not acceptance evidence and are not retained by the
+package.
 
 hprcc's native resource summary reported:
 
 | Measurement | Observed value |
 |---|---:|
-| Peak memory | 1.5 GB |
-| Peak CPU | 6.8% |
-| Duration | 2.9 minutes |
+| Peak memory | 1.57 GB |
+| Peak CPU | 5.3% |
+| Duration | 5.5 minutes |
 | hprcc recommendation | `tiny` |
 
 The package profile therefore requests 2 CPUs, 8 GB, and 60 minutes for one
 complete replicate per worker. This retains more than five times the observed
-peak memory and more than twenty times the observed duration while following
-hprcc's named recommendation. Native resource logs remain operational evidence
-outside the scientific artifact digest.
+peak memory and more than ten times the observed duration while following
+hprcc's named recommendation. Protocol v2 phase B1 contains 16,100 scheduler
+branches: 3,200 generic, 6,400 pure-noise, 6,400 single-well, and 100
+shared-baseline safety tasks. This is 91.7% more branches than protocol v1 phase
+B1, so production planning must provide adequate concurrency and scheduler
+throughput; it does not require a larger per-worker resource class. Native
+resource logs remain operational evidence outside the scientific artifact
+digest.
 
 ## Production launch
 
 Only after the runner revision is reviewed, merged, installed, and preflighted:
 
 ```sh
-export LANDSCAPER_K1_PHASE_A_MERGE=<reviewed-phase-A-merge-SHA-1>
+export LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-v2-merge-SHA-1>
 Rscript -e 'targets::tar_make(use_crew = TRUE)'
 ```
 
@@ -123,7 +134,7 @@ made.
 
 ## Boundaries
 
-- Never derive or execute the production seed manifest during runner review.
+- Never derive or execute the production seed manifest during protocol review.
 - Never use calibration output to change frozen acceptance thresholds.
 - Never place credentials, SSH configuration, or private host material in the
   package.
