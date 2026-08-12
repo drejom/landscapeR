@@ -9,12 +9,67 @@ utils::globalVariables(c(
     "recovered_and_estimable",
     "recovered_downstream_nonestimable",
     "recovery_below_threshold",
+    "recovery_not_evaluable",
     "execution_failure"
 )
 
 .k1_calibration_semantics_version <- "k1-calibration-outcomes-v1"
 
+.k1_calibration_scientific_context <- function() {
+    list(
+        experiment_label = "AML-shaped synthetic longitudinal calibration",
+        target_field = "condition",
+        oriented_levels = c("control", "disease"),
+        sampling_unit = "complete synthetic mouse trajectory",
+        time_field = "collection time",
+        time_unit = "weeks",
+        nuisance_fields = "batch"
+    )
+}
+
 setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
+
+.k1_calibration_runtime_identity <- function() {
+    identity <- tryCatch(
+        .k1_acceptance_worker_identity(),
+        landscapeR_worker_preflight_error = function(condition) NULL
+    )
+    if (!is.null(identity)) return(identity)
+    revision <- tryCatch(
+        system2(
+            "git",
+            c("rev-parse", "HEAD"),
+            stdout = TRUE,
+            stderr = FALSE
+        ),
+        error = function(condition) character()
+    )
+    if (length(revision) != 1L ||
+            !grepl("^[0-9a-f]{40}$", revision)) {
+        .k1_acceptance_runner_abort(
+            paste(
+                "calibration publication requires either revision-stamped",
+                "package metadata or a Git source revision"
+            )
+        )
+    }
+    packages <- c(
+        "landscapeR", "digest", "ggplot2", "lme4", "clue",
+        "future", "future.apply"
+    )
+    versions <- vapply(packages, function(package) {
+        if (identical(package, "landscapeR")) {
+            description <- utils::packageDescription("landscapeR")
+            return(as.character(description$Version))
+        }
+        as.character(utils::packageVersion(package))
+    }, character(1L))
+    list(
+        source_revision = revision,
+        r_version = paste(R.version$major, R.version$minor, sep = "."),
+        package_versions = versions
+    )
+}
 
 .k1_calibration_model_states <- function(metrics, component) {
     provenance <- metrics$acceptance_provenance
@@ -60,12 +115,12 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
     if (!base$execution_completed) return(base)
 
     metrics <- result$metrics
-    recovery_evaluable <- is.finite(metrics$target_loading_cosine) &&
+    recovery_evaluable <- is.finite(metrics$target_loading_cosine)
+    recovery_met <- recovery_evaluable &&
         identical(metrics$target_component,
             threshold$required_target_component) &&
         identical(metrics$nuisance_component,
-            threshold$required_nuisance_component)
-    recovery_met <- recovery_evaluable &&
+            threshold$required_nuisance_component) &&
         metrics$target_loading_cosine >=
             threshold$minimum_target_loading_cosine
     model_states <- .k1_calibration_model_states(
@@ -99,7 +154,10 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
             "required downstream model or identifiability evidence unavailable"
         }
     }
-    outcome <- if (!recovery_evaluable || !recovery_met) {
+    outcome <- if (!recovery_evaluable) {
+        diagnostic <- "canonical target-loading cosine unavailable"
+        "recovery_not_evaluable"
+    } else if (!recovery_met) {
         "recovery_below_threshold"
     } else if (!downstream_estimable) {
         "recovered_downstream_nonestimable"
@@ -156,6 +214,9 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
             n_recovered = n_recovered,
             n_recovery_below_threshold = sum(
                 data$outcome == "recovery_below_threshold"
+            ),
+            n_recovery_not_evaluable = sum(
+                data$outcome == "recovery_not_evaluable"
             ),
             n_downstream_evaluable = n_downstream_evaluable,
             n_recovered_and_estimable = n_recovered_and_estimable,
@@ -252,6 +313,7 @@ assess_k1_calibration_outcomes <- function(
                     "replicates whose target axis was recovered",
                 execution_completion_rate = "all requested replicates"
             ),
+            scientific_context = .k1_calibration_scientific_context(),
             replicates = replicates,
             cells = .k1_calibration_cell_rows(replicates)
         )
@@ -284,22 +346,72 @@ assess_k1_calibration_outcomes <- function(
         "claim_status", "canonical_recovery_criterion",
         "canonical_recovery_threshold", "descriptive_recovery_fields",
         "gating_fields", "outcome_levels", "denominator_contract",
-        "replicates", "cells"
+        "scientific_context", "replicates", "cells"
     )
+    expected_denominators <- list(
+        recovery_rate =
+            "replicates with evaluable decomposition recovery",
+        downstream_estimability_rate =
+            "replicates whose target axis was recovered",
+        execution_completion_rate = "all requested replicates"
+    )
+    context_fields <- c(
+        "experiment_label", "target_field", "oriented_levels",
+        "sampling_unit", "time_field", "time_unit", "nuisance_fields"
+    )
+    frozen_protocol <- k1_acceptance_protocol()
+    frozen_threshold <-
+        frozen_protocol$thresholds$aml_synchronized$
+            minimum_target_loading_cosine
     if (!identical(names(payload), required) ||
             !identical(payload$semantics_version,
                 .k1_calibration_semantics_version) ||
             !identical(payload$claim_status,
                 "retrospective_diagnostic_only") ||
+            !identical(payload$source_protocol_id,
+                frozen_protocol$protocol_id) ||
+            !identical(payload$source_protocol_digest,
+                frozen_protocol$digest) ||
             !identical(payload$outcome_levels,
                 .k1_calibration_outcome_levels) ||
+            !identical(payload$canonical_recovery_criterion,
+                "minimum_target_loading_cosine") ||
+            !identical(payload$canonical_recovery_threshold,
+                frozen_threshold) ||
+            !identical(payload$descriptive_recovery_fields,
+                "target_subspace_angle_deg") ||
+            !identical(payload$gating_fields, c(
+                "target_loading_cosine", "target_component",
+                "nuisance_component"
+            )) ||
+            !identical(payload$denominator_contract,
+                expected_denominators) ||
+            !is.list(payload$scientific_context) ||
+            !identical(names(payload$scientific_context), context_fields) ||
+            !identical(payload$scientific_context,
+                .k1_calibration_scientific_context()) ||
+            any(!vapply(payload$scientific_context,
+                is.character, logical(1L))) ||
+            any(!nzchar(unlist(payload$scientific_context,
+                use.names = FALSE))) ||
+            any(!vapply(payload[c(
+                "source_protocol_digest", "source_results_digest",
+                "source_tasks_digest"
+            )], function(value) {
+                is.character(value) && length(value) == 1L &&
+                    grepl("^[0-9a-f]{64}$", value)
+            }, logical(1L))) ||
             !is.data.frame(payload$replicates) ||
             !is.data.frame(payload$cells) || !nrow(payload$replicates) ||
             anyDuplicated(payload$source_task_ids) ||
             !identical(payload$source_task_ids,
                 payload$replicates$task_id) ||
             !all(as.character(payload$replicates$outcome) %in%
-                .k1_calibration_outcome_levels)) {
+                .k1_calibration_outcome_levels) ||
+            !identical(levels(payload$replicates$outcome),
+                .k1_calibration_outcome_levels) ||
+            !identical(payload$cells,
+                .k1_calibration_cell_rows(payload$replicates))) {
         .stop_landscapeR_validation(
             "calibration outcome assessment contract is invalid"
         )
@@ -316,10 +428,11 @@ plot_k1_calibration_outcomes <- function(assessment) {
     .validate_k1_calibration_outcomes(assessment)
     display <- assessment$replicates
     labels <- c(
-        recovered_and_estimable = "Recovered and estimable",
+        recovered_and_estimable = "Recovered, estimable",
         recovered_downstream_nonestimable =
-            "Recovered; downstream not estimable",
-        recovery_below_threshold = "Axis not recovered",
+            "Recovered, not estimable",
+        recovery_below_threshold = "Not recovered",
+        recovery_not_evaluable = "Recovery unavailable",
         execution_failure = "Execution failed"
     )
     display$outcome_label <- factor(
@@ -327,14 +440,14 @@ plot_k1_calibration_outcomes <- function(assessment) {
         levels = unname(labels)
     )
     caption_view <- .new_scientific_caption_view(
-        title = "K=1 disclosed-calibration recovery and estimability.",
-        experiment_label = "AML-shaped synthetic calibration",
-        target_field = "condition",
-        oriented_levels = c("CTL", "CM"),
-        sampling_unit = "complete synthetic mouse trajectory",
-        time_field = "collection time",
-        time_unit = "weeks",
-        nuisance_fields = "batch",
+        title = "K=1 synthetic longitudinal recovery and estimability.",
+        experiment_label = assessment$scientific_context$experiment_label,
+        target_field = assessment$scientific_context$target_field,
+        oriented_levels = assessment$scientific_context$oriented_levels,
+        sampling_unit = assessment$scientific_context$sampling_unit,
+        time_field = assessment$scientific_context$time_field,
+        time_unit = assessment$scientific_context$time_unit,
+        nuisance_fields = assessment$scientific_context$nuisance_fields,
         encodings = c(
             paste(
                 "Each symbol is one requested replicate positioned by",
@@ -342,8 +455,8 @@ plot_k1_calibration_outcomes <- function(assessment) {
             ),
             paste(
                 "Shape identifies recovered and estimable, recovered but",
-                "downstream non-estimable, recovery below threshold, or",
-                "execution failure outcomes."
+                "downstream non-estimable, recovery below threshold,",
+                "non-evaluable recovery, or execution failure outcomes."
             )
         ),
         estimand = paste(
@@ -353,17 +466,18 @@ plot_k1_calibration_outcomes <- function(assessment) {
         missingness = paste(
             "Missing downstream rates indicate no recovered axis;",
             "recovered but downstream interpretation was not estimable is",
-            "retained separately from replicates that did not recover the planted axis."
+            "retained separately from replicates that did not recover the",
+            "planted axis or lacked evaluable recovery evidence."
         ),
         threshold = paste0(
-            "Axis recovery uses one canonical rule: loading cosine ≥ ",
+            "Axis recovery uses one canonical rule: loading cosine at least ",
             format(assessment$canonical_recovery_threshold, trim = TRUE),
             "; its equivalent angle is descriptive."
         ),
         claim_boundary = paste(
-            "This is retrospective diagnostic evidence from consumed",
-            "acceptance results and cannot revise their historical claim or",
-            "validate a new protocol."
+            "These known-truth synthetic results describe recovery under the",
+            "tested settings only; they do not establish performance for",
+            "biological data."
         ),
         state = "uncalibrated"
     )
@@ -383,7 +497,7 @@ plot_k1_calibration_outcomes <- function(assessment) {
             )
         ) +
         ggplot2::scale_shape_manual(
-            values = c(16, 1, 4, 3),
+            values = c(16, 1, 4, 0, 3),
             drop = FALSE
         ) +
         ggplot2::scale_x_continuous(
@@ -392,10 +506,17 @@ plot_k1_calibration_outcomes <- function(assessment) {
         ggplot2::labs(
             x = "Synthetic mice per condition",
             y = "Expression features",
-            shape = "Calibration outcome"
+            shape = NULL
         ) +
         theme_landscapeR(square = FALSE) +
-        ggplot2::theme(legend.position = "bottom")
+        ggplot2::guides(shape = ggplot2::guide_legend(
+            ncol = 2L,
+            byrow = TRUE
+        )) +
+        ggplot2::theme(
+            legend.position = "bottom",
+            legend.text = ggplot2::element_text(size = 7)
+        )
     .with_scientific_caption(
         plot,
         .build_scientific_caption(caption_view)
@@ -428,6 +549,18 @@ plot_k1_calibration_outcomes <- function(assessment) {
         )
     }
     paths <- file.path(artifact, files$file)
+    actual_files <- list.files(
+        artifact,
+        recursive = TRUE,
+        all.files = TRUE,
+        no.. = TRUE,
+        include.dirs = FALSE
+    )
+    if (!setequal(actual_files, c("MANIFEST.tsv", files$file))) {
+        .k1_acceptance_runner_abort(
+            "calibration artifact contains undeclared files"
+        )
+    }
     if (any(!file.exists(paths))) {
         .k1_acceptance_runner_abort("calibration artifact is incomplete")
     }
@@ -446,6 +579,7 @@ plot_k1_calibration_outcomes <- function(assessment) {
     tasks <- readRDS(file.path(artifact, "source-tasks.rds"))
     assessment <- readRDS(file.path(artifact, "assessment.rds"))
     environment <- readRDS(file.path(artifact, "environment.rds"))
+    .k1_acceptance_validate_identity(environment$runtime_identity)
     reproduced <- assess_k1_calibration_outcomes(results, tasks, protocol)
     if (!identical(assessment, reproduced)) {
         .k1_acceptance_runner_abort(
@@ -458,7 +592,8 @@ plot_k1_calibration_outcomes <- function(assessment) {
         source_protocol_digest = assessment$source_protocol_digest,
         source_results_digest = assessment$source_results_digest,
         source_tasks_digest = assessment$source_tasks_digest,
-        assessment_digest = assessment$digest
+        assessment_digest = assessment$digest,
+        runtime_identity = environment$runtime_identity
     )
     artifact_digest <- .k1_acceptance_artifact_digest(files)
     expected_name <- paste0(
@@ -501,6 +636,8 @@ publish_k1_calibration_outcomes <- function(
             protocol
         )
         plot <- plot_k1_calibration_outcomes(assessment)
+        runtime_identity <- .k1_calibration_runtime_identity()
+        .k1_acceptance_validate_identity(runtime_identity)
         artifact_root <- path.expand(artifact_root)
         dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
         staging <- tempfile(
@@ -525,7 +662,7 @@ publish_k1_calibration_outcomes <- function(
         ggplot2::ggsave(
             file.path(staging, "outcome-map.png"),
             plot,
-            width = 140,
+            width = 100,
             height = 100,
             units = "mm",
             dpi = 450,
@@ -541,7 +678,8 @@ publish_k1_calibration_outcomes <- function(
             source_protocol_digest = assessment$source_protocol_digest,
             source_results_digest = assessment$source_results_digest,
             source_tasks_digest = assessment$source_tasks_digest,
-            assessment_digest = assessment$digest
+            assessment_digest = assessment$digest,
+            runtime_identity = runtime_identity
         )
         saveRDS(environment, file.path(staging, "environment.rds"))
         governed <- .k1_calibration_governed_files()

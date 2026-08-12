@@ -1,6 +1,7 @@
 # Issue #188 visual landing proof
 
-`typed-calibration-outcomes.png` renders the public
+`typed-calibration-outcomes.png` renders the public at the package's canonical
+100 mm figure size using
 `plot_k1_calibration_outcomes()` surface. Each point is one requested synthetic
 replicate. Shape separates recovery of the planted axis from availability of
 downstream interpretation, so a model abstention cannot be mistaken for a
@@ -8,7 +9,8 @@ decomposition failure. The black-and-white display remains legible without
 colour and the scientific caption is stored separately in
 `typed-calibration-outcomes-caption.txt`.
 
-The proof fixture deliberately includes all four typed outcomes. Its exact
+The proof fixture deliberately includes the four required outcomes plus a
+completed replicate whose recovery evidence is not evaluable. Its exact
 plot data are in `typed-calibration-outcomes.csv`. Reproduce the proof by
 loading the development package, sourcing
 `tests/testthat/test-k1-calibration-outcomes.R`, creating

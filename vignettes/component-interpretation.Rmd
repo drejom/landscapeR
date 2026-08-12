@@ -334,6 +334,27 @@ whole-cell pass rates separate rather than replacing them with one score.
 `plot_k1_aml_acceptance_summary()` renders the synchronized cell and recovery
 views; `scientific_caption()` returns their separate figure captions.
 
+When a disclosed calibration run has finished, classify each requested
+replicate before interpreting cell-level rates. This keeps failure to recover
+the planted axis separate from a downstream model abstention and from missing
+recovery evidence. The figure caption remains separate from the ggplot object,
+and the published directory can be verified by replaying the assessment from
+its stored source evidence.
+
+```{r k1-calibration-outcomes, eval=FALSE}
+assessment <- assess_k1_calibration_outcomes(results, tasks, protocol)
+outcome_plot <- plot_k1_calibration_outcomes(assessment)
+scientific_caption(outcome_plot)
+
+artifact <- publish_k1_calibration_outcomes(
+  artifact_root,
+  results,
+  tasks,
+  protocol
+)
+verify_k1_calibration_outcomes(artifact)
+```
+
 Independent assessment is separated from calibration. Its seeds and criteria
 are fixed before the outcomes are inspected and cannot be retuned from those
 outcomes. All requested replicates contribute to the assessment, including

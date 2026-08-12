@@ -1,12 +1,13 @@
-K=1 disclosed-calibration recovery and estimability. The AML-shaped synthetic calibration
-experiment to assess the declared condition target contrasts CM with CTL. Each symbol is one
-requested replicate positioned by mice per condition and expression feature count; Shape
-identifies recovered and estimable, recovered but downstream non-estimable, recovery below
-threshold, or execution failure outcomes. The analysis unit is complete synthetic mouse
-trajectory; the estimand is axis recovery and downstream estimability use separate declared
-denominators; time is recorded as collection time in weeks; adjustment uses batch. Missing
-downstream rates indicate no recovered axis; recovered but downstream interpretation was not
-estimable is retained separately from replicates that did not recover the planted axis. Axis
-recovery uses one canonical rule: loading cosine ≥ 0.9; its equivalent angle is descriptive.
-This is retrospective diagnostic evidence from consumed acceptance results and cannot revise
-their historical claim or validate a new protocol.
+K=1 synthetic longitudinal recovery and estimability. The AML-shaped synthetic longitudinal
+calibration experiment to assess the declared condition target contrasts disease with control.
+Each symbol is one requested replicate positioned by mice per condition and expression feature
+count; Shape identifies recovered and estimable, recovered but downstream non-estimable,
+recovery below threshold, non-evaluable recovery, or execution failure outcomes. The analysis
+unit is complete synthetic mouse trajectory; the estimand is axis recovery and downstream
+estimability use separate declared denominators; time is recorded as collection time in weeks;
+adjustment uses batch. Missing downstream rates indicate no recovered axis; recovered but
+downstream interpretation was not estimable is retained separately from replicates that did not
+recover the planted axis or lacked evaluable recovery evidence. Axis recovery uses one
+canonical rule: loading cosine at least 0.9; its equivalent angle is descriptive. These
+known-truth synthetic results describe recovery under the tested settings only; they do not
+establish performance for biological data.

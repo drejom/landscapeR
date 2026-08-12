@@ -4,14 +4,15 @@ calibration_outcome_fixture <- function() {
         "control=aml_synchronized;subjects_per_condition=4;p=100",
         "control=aml_synchronized;subjects_per_condition=7;p=100",
         "control=aml_synchronized;subjects_per_condition=12;p=10000",
-        "control=aml_synchronized;subjects_per_condition=12;p=100"
+        "control=aml_synchronized;subjects_per_condition=12;p=100",
+        "control=aml_synchronized;subjects_per_condition=7;p=10000"
     )
     tasks <- data.frame(
         task_id = paste0("outcome-", seq_along(cells)),
         control = "aml_synchronized",
         n = NA_integer_,
-        p = c(100L, 100L, 10000L, 100L),
-        subjects_per_condition = c(4L, 7L, 12L, 12L),
+        p = c(100L, 100L, 10000L, 100L, 10000L),
+        subjects_per_condition = c(4L, 7L, 12L, 12L, 7L),
         replicate_index = 1L,
         seed_root = seq_along(cells),
         canonical_cell = cells,
@@ -39,7 +40,11 @@ calibration_outcome_fixture <- function() {
         evidence <- provenance(model_status, diagnostic)
         metrics <- if (status == "success") list(
             target_loading_cosine = cosine,
-            target_subspace_angle_deg = acos(cosine) * 180 / pi,
+            target_subspace_angle_deg = if (is.finite(cosine)) {
+                acos(cosine) * 180 / pi
+            } else {
+                90
+            },
             mean_bootstrap_subspace_angle_deg = if (
                 is.finite(recurrence)
             ) 8 else NA_real_,
@@ -107,7 +112,8 @@ calibration_outcome_fixture <- function() {
             ),
             result(2L, 0.98),
             result(3L, 0.70),
-            result(4L, 0.98, status = "failure")
+            result(4L, 0.98, status = "failure"),
+            result(5L, NA_real_)
         )
     )
 }
@@ -127,7 +133,8 @@ test_that("calibration outcomes separate recovery from downstream estimability",
             "recovered_downstream_nonestimable",
             "recovered_and_estimable",
             "recovery_below_threshold",
-            "execution_failure"
+            "execution_failure",
+            "recovery_not_evaluable"
         )
     )
     expect_true(assessment$replicates$recovery_met[[1L]])
@@ -142,6 +149,8 @@ test_that("calibration outcomes separate recovery from downstream estimability",
     expect_true(assessment$replicates$stage2_ineligible[[2L]])
     expect_false(assessment$replicates$recovery_met[[3L]])
     expect_true(is.na(assessment$replicates$recovery_met[[4L]]))
+    expect_false(assessment$replicates$recovery_evaluable[[5L]])
+    expect_true(is.na(assessment$replicates$downstream_estimable[[5L]]))
     expect_identical(
         assessment$canonical_recovery_criterion,
         "minimum_target_loading_cosine"
@@ -165,6 +174,7 @@ test_that("calibration cell denominators preserve typed outcomes", {
     expect_true(all(assessment$cells$n_requested == 1L))
     expect_identical(sum(assessment$cells$n_execution_failure), 1L)
     expect_identical(sum(assessment$cells$n_recovery_evaluable), 3L)
+    expect_identical(sum(assessment$cells$n_recovery_not_evaluable), 1L)
     expect_identical(sum(assessment$cells$n_recovered), 2L)
     expect_identical(sum(assessment$cells$n_downstream_evaluable), 2L)
     expect_identical(sum(assessment$cells$n_recovered_and_estimable), 1L)
@@ -190,19 +200,20 @@ test_that("calibration outcome plot exposes both scientific failure modes", {
     expect_s3_class(plot, "ggplot")
     expect_match(
         scientific_caption(plot),
-        "recovered but downstream interpretation was not\\s+estimable"
+        "recovered but\\s+downstream interpretation was not"
     )
-    expect_match(scientific_caption(plot), "did not recover the planted axis")
-    expect_match(scientific_caption(plot), "retrospective\\s+diagnostic")
+    expect_match(scientific_caption(plot), "recover the planted axis")
+    expect_match(scientific_caption(plot), "known-truth synthetic")
+    expect_match(scientific_caption(plot), "lacked evaluable recovery")
     expect_setequal(
         as.character(unique(assessment$replicates$outcome)),
         assessment$outcome_levels
     )
     expect_identical(
         plot$labels$shape,
-        "Calibration outcome"
+        NULL
     )
-    expect_length(plot$scales$get_scales("shape")$palette(4L), 4L)
+    expect_length(plot$scales$get_scales("shape")$palette(5L), 5L)
 })
 
 test_that("historical acceptance summaries remain reproducible", {
@@ -230,6 +241,10 @@ test_that("calibration artifacts replay their typed assessment", {
     expect_true(dir.exists(artifact))
     expect_true(file.exists(file.path(artifact, "MANIFEST.tsv")))
     expect_true(verify_k1_calibration_outcomes(artifact))
+    environment <- readRDS(file.path(artifact, "environment.rds"))
+    expect_match(environment$runtime_identity$source_revision,
+        "^[0-9a-f]{40}$")
+    expect_true(length(environment$runtime_identity$package_versions) >= 1L)
     stored <- readRDS(file.path(artifact, "assessment.rds"))
     expect_identical(
         stored,
@@ -257,6 +272,22 @@ test_that("calibration artifact verification detects tampering", {
     )
 })
 
+test_that("calibration artifact verification rejects undeclared files", {
+    fixture <- calibration_outcome_fixture()
+    artifact <- publish_k1_calibration_outcomes(
+        tempfile("k1-calibration-artifacts-"),
+        fixture$results,
+        fixture$tasks,
+        fixture$protocol
+    )
+    writeLines("undeclared", file.path(artifact, "extra.txt"))
+
+    expect_error(
+        verify_k1_calibration_outcomes(artifact),
+        class = "k1_acceptance_runner_error"
+    )
+})
+
 test_that("calibration outcome assessment rejects malformed public inputs", {
     fixture <- calibration_outcome_fixture()
     expect_error(
@@ -273,6 +304,19 @@ test_that("calibration outcome assessment rejects malformed public inputs", {
         fixture$protocol
     )
     assessment$digest <- strrep("0", 64L)
+    expect_error(
+        plot_k1_calibration_outcomes(assessment),
+        class = "landscapeR_validation_error"
+    )
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results,
+        fixture$tasks,
+        fixture$protocol
+    )
+    assessment$canonical_recovery_threshold <- 0
+    payload <- unclass(assessment)
+    payload$digest <- NULL
+    assessment$digest <- digest::digest(payload, algo = "sha256")
     expect_error(
         plot_k1_calibration_outcomes(assessment),
         class = "landscapeR_validation_error"
