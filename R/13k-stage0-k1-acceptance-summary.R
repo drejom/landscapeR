@@ -1,8 +1,13 @@
 # Stage 0 K=1 independent acceptance aggregation and figures
 
 utils::globalVariables(c(
-    "complete_cell", "n", "p", "rate", "replicate_pass_rate"
+    "complete_cell", "n", "p", "rate", "replicate_pass_rate",
+    "subjects_per_condition", "mean_target_loading_cosine",
+    "mean_target_index_recurrence", "mean_identifiability_completion_rate",
+    "p_label"
 ))
+
+setOldClass(c("K1AcceptanceSummary", "list"))
 
 .k1_acceptance_wilson_lower <- function(
     successes,
@@ -67,6 +72,29 @@ utils::globalVariables(c(
             )
         )
     }
+    if (identical(result$control, "aml_synchronized")) {
+        thresholds <- protocol$thresholds$aml_synchronized
+        metrics <- result$metrics
+        return(
+            isTRUE(metrics$target_loading_cosine >=
+                thresholds$minimum_target_loading_cosine) &&
+            isTRUE(metrics$target_subspace_angle_deg <=
+                thresholds$maximum_target_subspace_angle_degrees) &&
+            identical(metrics$target_component,
+                thresholds$required_target_component) &&
+            identical(metrics$nuisance_component,
+                thresholds$required_nuisance_component) &&
+            identical(metrics$target_proposal_rank,
+                thresholds$required_proposal_rank) &&
+            isTRUE(metrics$target_index_recurrence >=
+                thresholds$minimum_target_index_recurrence) &&
+            isTRUE(metrics$mean_matched_loading_cosine >=
+                thresholds$minimum_mean_matched_loading_cosine) &&
+            isTRUE(metrics$identifiability_completion_rate >=
+                thresholds$minimum_resample_completion_rate) &&
+            isTRUE(metrics$stage2_ineligible)
+        )
+    }
     FALSE
 }
 
@@ -110,6 +138,20 @@ utils::globalVariables(c(
                 identical(result$metrics$false_target_selection, TRUE)
             }, logical(1L))) / requested
         } else NA_real_
+        metric_mean <- function(name) {
+            values <- vapply(cell_results, function(result) {
+                value <- result$metrics[[name]]
+                if (is.null(value)) NA_real_ else as.numeric(value)
+            }, numeric(1L))
+            if (all(is.na(values))) NA_real_ else mean(values, na.rm = TRUE)
+        }
+        metric_rate <- function(name, predicate) {
+            values <- vapply(cell_results, function(result) {
+                value <- result$metrics[[name]]
+                if (is.null(value) || is.na(value)) NA else predicate(value)
+            }, logical(1L))
+            if (all(is.na(values))) NA_real_ else mean(values, na.rm = TRUE)
+        }
         expected <- .k1_acceptance_expected_replicates(protocol, control)
         complete_cell <- requested == expected &&
             identical(sort(cell_tasks$replicate_index), seq_len(expected))
@@ -121,11 +163,24 @@ utils::globalVariables(c(
             false_target <= protocol$thresholds$negative_controls$
                 maximum_false_target_selection_rate_per_control_cell
         } else TRUE
+        stage2_rate <- if (identical(control, "aml_synchronized")) {
+            sum(vapply(cell_results, function(result) {
+                identical(result$metrics$stage2_ineligible, TRUE)
+            }, logical(1L))) / requested
+        } else {
+            metric_mean("stage2_ineligible")
+        }
+        aml_stage2_gate <- if (identical(control, "aml_synchronized")) {
+            isTRUE(stage2_rate == protocol$thresholds$aml_synchronized$
+                required_stage2_ineligibility_rate)
+        } else TRUE
         data.frame(
             canonical_cell = cell_tasks$canonical_cell[[1L]],
             control = control,
             n = cell_tasks$n[[1L]],
             p = cell_tasks$p[[1L]],
+            subjects_per_condition =
+                cell_tasks$subjects_per_condition[[1L]],
             n_requested = as.integer(requested),
             n_completed = as.integer(completed),
             n_passed = as.integer(passed),
@@ -133,17 +188,76 @@ utils::globalVariables(c(
             wilson_95_lower = wilson_lower,
             false_double_well_rate = false_well,
             false_target_selection_rate = false_target,
+            mean_target_loading_cosine =
+                metric_mean("target_loading_cosine"),
+            mean_target_subspace_angle_deg =
+                metric_mean("target_subspace_angle_deg"),
+            mean_bootstrap_subspace_angle_deg =
+                metric_mean("mean_bootstrap_subspace_angle_deg"),
+            mean_q95_bootstrap_subspace_angle_deg =
+                metric_mean("q95_bootstrap_subspace_angle_deg"),
+            mean_target_unadjusted_estimate =
+                metric_mean("target_unadjusted_estimate"),
+            mean_target_adjusted_estimate =
+                metric_mean("target_adjusted_estimate"),
+            mean_nuisance_unadjusted_estimate =
+                metric_mean("nuisance_unadjusted_estimate"),
+            mean_nuisance_adjusted_estimate =
+                metric_mean("nuisance_adjusted_estimate"),
+            target_rank_one_rate = metric_rate(
+                "target_proposal_rank",
+                function(value) value == 1L
+            ),
+            mean_target_index_recurrence =
+                metric_mean("target_index_recurrence"),
+            mean_matched_loading_cosine =
+                metric_mean("mean_matched_loading_cosine"),
+            mean_identifiability_completion_rate =
+                metric_mean("identifiability_completion_rate"),
+            stage2_ineligibility_rate = stage2_rate,
+            mean_orientation_recurrence =
+                metric_mean("orientation_recurrence"),
+            mean_rank_one_fraction = metric_mean("rank_one_fraction"),
+            mean_matched_fraction = metric_mean("matched_fraction"),
             complete_cell = complete_cell,
-            cell_pass = complete_cell && rate_gate && negative_gate,
+            cell_pass = complete_cell && rate_gate && negative_gate &&
+                aml_stage2_gate,
             stringsAsFactors = FALSE
         )
     })
     cells <- do.call(rbind, rows)
     rownames(cells) <- NULL
-    cells[order(cells$control, cells$n, cells$p), , drop = FALSE]
+    if (!"aml_synchronized" %in% tasks$control) {
+        aml_only_columns <- c(
+            "subjects_per_condition", "mean_target_loading_cosine",
+            "mean_target_subspace_angle_deg", "target_rank_one_rate",
+            "mean_bootstrap_subspace_angle_deg",
+            "mean_q95_bootstrap_subspace_angle_deg",
+            "mean_target_unadjusted_estimate",
+            "mean_target_adjusted_estimate",
+            "mean_nuisance_unadjusted_estimate",
+            "mean_nuisance_adjusted_estimate",
+            "mean_target_index_recurrence", "mean_matched_loading_cosine",
+            "mean_identifiability_completion_rate",
+            "stage2_ineligibility_rate", "mean_orientation_recurrence",
+            "mean_rank_one_fraction", "mean_matched_fraction"
+        )
+        cells <- cells[, !names(cells) %in% aml_only_columns, drop = FALSE]
+    }
+    cells[order(
+        cells$control,
+        if ("subjects_per_condition" %in% names(cells)) {
+            cells$subjects_per_condition
+        } else {
+            rep(NA_integer_, nrow(cells))
+        },
+        cells$n,
+        cells$p,
+        na.last = TRUE
+    ), , drop = FALSE]
 }
 
-.k1_acceptance_expected_cell_count <- function(protocol) {
+.k1_acceptance_expected_cell_count <- function(protocol, controls) {
     generic <- protocol$grids$generic_double_well$varying
     negative <- protocol$grids$negative_controls$varying
     shared <- if (is.null(protocol$grids$shared_baseline_missing_cells)) {
@@ -153,9 +267,18 @@ utils::globalVariables(c(
             protocol$grids$shared_baseline_missing_cells$varying$design_cell
         )
     }
-    length(generic$n) * length(generic$p) +
-        2L * length(negative$n) * length(negative$p) +
-        shared
+    aml <- protocol$grids$aml_synchronized$varying
+    sum(c(
+        if ("generic_double_well" %in% controls)
+            length(generic$n) * length(generic$p) else 0L,
+        if ("pure_noise" %in% controls)
+            length(negative$n) * length(negative$p) else 0L,
+        if ("single_well" %in% controls)
+            length(negative$n) * length(negative$p) else 0L,
+        if ("shared_baseline_missing_cells" %in% controls) shared else 0L,
+        if ("aml_synchronized" %in% controls)
+            length(aml$subjects_per_condition) * length(aml$p) else 0L
+    ))
 }
 
 .k1_acceptance_supported_minimum <- function(cells, protocol) {
@@ -205,27 +328,80 @@ summarize_k1_acceptance <- function(
     validate_k1_acceptance_protocol(protocol)
     results <- .k1_acceptance_collect(results, tasks, protocol)
     cells <- .k1_acceptance_cell_summary(results, tasks, protocol)
-    required_controls <- c(
+    phase_b1_controls <- c(
         "generic_double_well", "pure_noise", "single_well"
     )
     if (!is.null(protocol$grids$shared_baseline_missing_cells)) {
-        required_controls <- c(
-            required_controls,
+        phase_b1_controls <- c(
+            phase_b1_controls,
             "shared_baseline_missing_cells"
         )
     }
-    complete_execution <- all(cells$complete_cell) &&
-        all(required_controls %in% cells$control) &&
-        nrow(cells) == .k1_acceptance_expected_cell_count(protocol)
-    supported <- if (complete_execution) {
+    observed_controls <- unique(tasks$control)
+    aml_controls <- "aml_synchronized"
+    exact_controls <- function(expected) {
+        length(observed_controls) == length(expected) &&
+            setequal(observed_controls, expected)
+    }
+    recognized_phase <- exact_controls(phase_b1_controls) ||
+        exact_controls(aml_controls)
+    complete_execution <- recognized_phase && all(cells$complete_cell) &&
+        nrow(cells) == .k1_acceptance_expected_cell_count(
+            protocol,
+            observed_controls
+        )
+    supported <- if (complete_execution &&
+            all(phase_b1_controls %in% observed_controls)) {
         .k1_acceptance_supported_minimum(cells, protocol)
     } else NA_integer_
+    display_thresholds <- list(
+        minimum_cell_pass_rate =
+            protocol$pass_rules$minimum_cell_pass_rate,
+        minimum_cell_wilson_95_lower_bound =
+            protocol$pass_rules$minimum_cell_wilson_95_lower_bound,
+        maximum_negative_false_positive_rate =
+            protocol$thresholds$negative_controls$
+                maximum_false_double_well_rate_per_control_cell
+    )
+    display_context <- NULL
+    if ("aml_synchronized" %in% observed_controls) {
+        aml_thresholds <- protocol$thresholds$aml_synchronized
+        display_thresholds$minimum_target_loading_cosine <-
+            aml_thresholds$minimum_target_loading_cosine
+        display_thresholds$minimum_target_index_recurrence <-
+            aml_thresholds$minimum_target_index_recurrence
+        display_thresholds$minimum_resample_completion_rate <-
+            aml_thresholds$minimum_resample_completion_rate
+        display_thresholds$required_stage2_ineligibility_rate <-
+            aml_thresholds$required_stage2_ineligibility_rate
+        display_context <- list(
+            experiment_label = "AML-shaped synthetic acceptance",
+            target_field = protocol$execution_contracts$aml$target_field,
+            reference_level =
+                protocol$execution_contracts$aml$reference_level,
+            comparison_level =
+                protocol$execution_contracts$aml$comparison_level,
+            nuisance_fields =
+                protocol$execution_contracts$aml$nuisance_fields,
+            sampling_unit = "complete synthetic mouse trajectory",
+            time_field = "collection time",
+            time_unit = "weeks",
+            target_axis_label = "planted condition-by-time target axis",
+            target_component = aml_thresholds$required_target_component,
+            target_component_label = paste0(
+                "PC", aml_thresholds$required_target_component
+            )
+        )
+    }
     payload <- list(
         artifact_version = protocol$artifact_version,
         protocol_id = protocol$protocol_id,
         protocol_digest = protocol$digest,
         runner_contract = protocol$execution_contracts$version,
-        claim_status = if (complete_execution) {
+        claim_status = if (complete_execution &&
+                exact_controls(aml_controls)) {
+            "independent_aml_acceptance_summary"
+        } else if (complete_execution) {
             "independent_acceptance_summary"
         } else {
             "incomplete_execution_summary"
@@ -235,23 +411,333 @@ summarize_k1_acceptance <- function(
             identical(result$status, "success")
         }, logical(1L))),
         cells = cells,
-        display_thresholds = list(
-            minimum_cell_pass_rate =
-                protocol$pass_rules$minimum_cell_pass_rate,
-            minimum_cell_wilson_95_lower_bound =
-                protocol$pass_rules$minimum_cell_wilson_95_lower_bound,
-            maximum_negative_false_positive_rate =
-                protocol$thresholds$negative_controls$
-                    maximum_false_double_well_rate_per_control_cell
-        ),
+        display_thresholds = display_thresholds,
         supported_minimum_n = supported,
         complete_execution = complete_execution
     )
+    if (!is.null(display_context)) {
+        payload$display_context <- display_context
+    }
     summary <- c(payload, list(
         digest = digest::digest(payload, algo = "sha256")
     ))
     class(summary) <- c("K1AcceptanceSummary", "list")
     summary
+}
+
+#' @rdname visual_evidence
+#' @export
+setMethod("visual_evidence", "K1AcceptanceSummary", function(x) {
+    payload <- unclass(x)
+    observed_digest <- payload$digest
+    payload$digest <- NULL
+    if (!is.character(observed_digest) || length(observed_digest) != 1L ||
+            !identical(
+                observed_digest,
+                digest::digest(payload, algo = "sha256")
+            ) ||
+            !isTRUE(x$complete_execution) ||
+            !identical(unique(x$cells$control), "aml_synchronized") ||
+            is.null(x$display_context)) {
+        .stop_landscapeR_validation(
+            "AML acceptance visual evidence requires a valid complete AML summary"
+        )
+    }
+    cells <- x$cells
+    feature_counts <- sort(unique(cells$p))
+    panel_names <- stats::setNames(
+        paste("Expression feature count", format(feature_counts, big.mark = ",")),
+        LETTERS[seq_along(feature_counts)]
+    )
+    panel_labels <- paste0(
+        "(", names(panel_names), ") p = ",
+        format(feature_counts, big.mark = ",")
+    )
+    cells$p_label <- factor(
+        paste0("p = ", format(cells$p, big.mark = ",")),
+        levels = paste0("p = ", format(feature_counts, big.mark = ",")),
+        labels = panel_labels
+    )
+    thresholds <- x$display_thresholds
+    context <- x$display_context
+    percent <- function(value) paste0(format(100 * value, trim = TRUE), "%")
+    development_fixture <- identical(
+        x$claim_status,
+        "development_only_visual_fixture"
+    )
+    claim_boundary <- if (development_fixture) {
+        paste(
+            "Values are fabricated solely to demonstrate the figure",
+            "structure and do not support a scientific acceptance claim."
+        )
+    } else {
+        "Known-truth synthetic acceptance does not establish biological validity."
+    }
+    state <- "complete"
+    pass_caption_view <- .new_scientific_caption_view(
+        title = "Synchronized AML K=1 independent acceptance pass rates.",
+        experiment_label = context$experiment_label,
+        target_field = context$target_field,
+        oriented_levels = c(context$reference_level, context$comparison_level),
+        sampling_unit = context$sampling_unit,
+        time_field = context$time_field,
+        time_unit = context$time_unit,
+        nuisance_fields = context$nuisance_fields,
+        panels = panel_names,
+        encodings = c(
+            "Black points show the fraction of all requested replicates passing every prespecified AML criterion.",
+            paste(
+            "the red horizontal line marks the prespecified",
+                percent(thresholds$minimum_cell_pass_rate),
+                "cell pass-rate criterion."
+            )
+        ),
+        estimand = "the replicate pass fraction within each subjects-per-condition and feature-count cell",
+        uncertainty = paste(
+            "Cell acceptance also requires a Wilson 95% lower bound of at least",
+            paste0(percent(
+                thresholds$minimum_cell_wilson_95_lower_bound
+            ), ".")
+        ),
+        threshold = paste(
+            paste(
+                "Stage 2 must be correctly reported as inapplicable to",
+                "longitudinal sampling in every replicate; the required",
+                "cell rate is"
+            ),
+            paste0(percent(
+                thresholds$required_stage2_ineligibility_rate
+            ), ".")
+        ),
+        claim_boundary = claim_boundary,
+        state = state
+    )
+    recovery_caption_view <- .new_scientific_caption_view(
+        title = "Synchronized AML target-axis recovery and recurrence.",
+        experiment_label = context$experiment_label,
+        target_field = context$target_field,
+        oriented_levels = c(context$reference_level, context$comparison_level),
+        sampling_unit = context$sampling_unit,
+        time_field = context$time_field,
+        time_unit = context$time_unit,
+        nuisance_fields = context$nuisance_fields,
+        panels = panel_names,
+        encodings = c(
+            paste(
+                "Horizontal position is mean absolute loading cosine with the",
+                context$target_axis_label,
+                sprintf("(%s).", context$target_component_label)
+            ),
+            paste(
+                "vertical position is mean recurrence at reference component index",
+                paste0(context$target_component, "; labels give mice per condition.")
+            ),
+            "point area is the mean fraction of requested complete-mouse bootstrap refits that completed."
+        ),
+        threshold = paste(
+            "Red lines mark the prespecified loading-cosine and index-recurrence criteria of",
+            percent(thresholds$minimum_target_loading_cosine),
+            "and",
+            paste0(percent(
+                thresholds$minimum_target_index_recurrence
+            ), ", respectively.")
+        ),
+        uncertainty = "Bootstrap enclosing-subspace angles and raw and adjusted association effects remain in the cell audit table.",
+        claim_boundary = paste(
+            claim_boundary,
+            paste(
+                "Orientation, proposal-rank, matching, and Stage 2",
+                "ineligibility evidence are reported separately and do not",
+                "substitute for the displayed criteria."
+            )
+        ),
+        state = state
+    )
+    .new_visual_evidence_view(
+        surface = "aml_acceptance",
+        state = state,
+        summaries = cells,
+        diagnostics = cells[, c(
+            "canonical_cell", "mean_bootstrap_subspace_angle_deg",
+            "mean_q95_bootstrap_subspace_angle_deg",
+            "mean_target_unadjusted_estimate",
+            "mean_target_adjusted_estimate",
+            "mean_nuisance_unadjusted_estimate",
+            "mean_nuisance_adjusted_estimate", "stage2_ineligibility_rate"
+        ), drop = FALSE],
+        display_data = list(
+            cells = cells,
+            thresholds = thresholds,
+            context = context,
+            pass_rate_caption = .build_scientific_caption(pass_caption_view),
+            recovery_caption = .build_scientific_caption(
+                recovery_caption_view
+            )
+        ),
+        caption_view = pass_caption_view
+    )
+})
+
+#' Plot synchronized AML K=1 acceptance evidence
+#'
+#' @param summary complete AML-only object returned by
+#'   [summarize_k1_acceptance()].
+#' @param surface either `"pass_rate"` or `"recovery"`.
+#' @return A caption-bearing `ggplot2` object.
+#' @export
+plot_k1_aml_acceptance_summary <- function(
+    summary,
+    surface = c("pass_rate", "recovery")
+) {
+    .k1_acceptance_public_boundary(
+        .plot_k1_aml_acceptance_summary_impl(summary, surface),
+        "could not plot AML K=1 acceptance summary"
+    )
+}
+
+.plot_k1_aml_acceptance_summary_impl <- function(summary, surface) {
+    surface <- match.arg(surface, c("pass_rate", "recovery"))
+    view <- visual_evidence(summary)
+    cells <- visual_evidence_display(view, "cells")
+    thresholds <- visual_evidence_display(view, "thresholds")
+    context <- visual_evidence_display(view, "context")
+    palette <- landscapeR_palette("semantic")
+    if (identical(surface, "pass_rate")) {
+        threshold_labels <- unique(cells["p_label"])
+        threshold_labels$x <- max(cells$subjects_per_condition)
+        threshold_labels$y <- thresholds$minimum_cell_pass_rate
+        threshold_labels$label <- paste(
+            "Pass \u2265",
+            .k1_acceptance_percent(thresholds$minimum_cell_pass_rate)
+        )
+        plot <- ggplot2::ggplot(
+            cells,
+            ggplot2::aes(
+                x = subjects_per_condition,
+                y = replicate_pass_rate,
+                group = p_label
+            )
+        ) +
+            ggplot2::geom_hline(
+                yintercept = thresholds$minimum_cell_pass_rate,
+                colour = unname(palette[["focal"]]),
+                linewidth = 0.55
+            ) +
+            ggplot2::geom_line(
+                colour = unname(palette[["ink"]]), linewidth = 0.55
+            ) +
+            ggplot2::geom_point(
+                colour = unname(palette[["ink"]]), size = 1.8
+            ) +
+            ggplot2::geom_text(
+                data = threshold_labels,
+                ggplot2::aes(x = x, y = y, label = label),
+                inherit.aes = FALSE,
+                colour = unname(palette[["focal"]]),
+                hjust = 1,
+                vjust = -0.45,
+                size = 2.3
+            ) +
+            ggplot2::facet_wrap(ggplot2::vars(p_label), nrow = 1L) +
+            ggplot2::scale_x_continuous(
+                breaks = sort(unique(cells$subjects_per_condition))
+            ) +
+            ggplot2::scale_y_continuous(
+                limits = c(0, 1),
+                labels = function(value) paste0(round(100 * value), "%")
+            ) +
+            ggplot2::labs(
+                x = "Synthetic mice per condition",
+                y = "Replicates meeting all prespecified criteria"
+            ) +
+            theme_landscapeR()
+        return(.with_scientific_caption(
+            plot,
+            visual_evidence_display(view, "pass_rate_caption")
+        ))
+    }
+    recovery_labels <- unique(cells["p_label"])
+    loading_labels <- recovery_labels
+    loading_labels$x <- thresholds$minimum_target_loading_cosine
+    loading_labels$y <- 0.03
+    loading_labels$label <- paste(
+        "Loading \u2265",
+        .k1_acceptance_percent(
+            thresholds$minimum_target_loading_cosine
+        )
+    )
+    recurrence_labels <- recovery_labels
+    recurrence_labels$x <- 0.02
+    recurrence_labels$y <- thresholds$minimum_target_index_recurrence
+    recurrence_labels$label <- paste(
+        "Index \u2265",
+        .k1_acceptance_percent(
+            thresholds$minimum_target_index_recurrence
+        )
+    )
+    plot <- ggplot2::ggplot(
+        cells,
+        ggplot2::aes(
+            x = mean_target_loading_cosine,
+            y = mean_target_index_recurrence,
+            size = mean_identifiability_completion_rate,
+            label = subjects_per_condition
+        )
+    ) +
+        ggplot2::geom_vline(
+            xintercept = thresholds$minimum_target_loading_cosine,
+            colour = unname(palette[["focal"]]), linewidth = 0.45
+        ) +
+        ggplot2::geom_hline(
+            yintercept = thresholds$minimum_target_index_recurrence,
+            colour = unname(palette[["focal"]]), linewidth = 0.45
+        ) +
+        ggplot2::geom_point(
+            colour = unname(palette[["ink"]]), alpha = 0.85
+        ) +
+        ggplot2::geom_text(
+            nudge_x = -0.035,
+            hjust = 1,
+            size = 2.6
+        ) +
+        ggplot2::geom_text(
+            data = loading_labels,
+            ggplot2::aes(x = x, y = y, label = label),
+            inherit.aes = FALSE,
+            colour = unname(palette[["focal"]]),
+            angle = 90,
+            hjust = 0,
+            vjust = 1.3,
+            size = 2.2
+        ) +
+        ggplot2::geom_text(
+            data = recurrence_labels,
+            ggplot2::aes(x = x, y = y, label = label),
+            inherit.aes = FALSE,
+            colour = unname(palette[["focal"]]),
+            hjust = 0,
+            vjust = 1.4,
+            size = 2.2
+        ) +
+        ggplot2::facet_wrap(ggplot2::vars(p_label), nrow = 1L) +
+        ggplot2::scale_x_continuous(
+            limits = c(0, 1),
+            breaks = c(0, 0.5, 1)
+        ) +
+        ggplot2::scale_y_continuous(limits = c(0, 1)) +
+        ggplot2::scale_size_continuous(limits = c(0, 1), range = c(1.5, 4)) +
+        ggplot2::labs(
+            x = paste("Mean loading cosine with", context$target_axis_label),
+            y = "Mean target-axis index recurrence",
+            size = "Completed refits",
+            label = "Mice per condition"
+        ) +
+        theme_landscapeR() +
+        ggplot2::theme(panel.spacing.x = grid::unit(8, "pt"))
+    .with_scientific_caption(
+        plot,
+        visual_evidence_display(view, "recovery_caption")
+    )
 }
 
 .k1_acceptance_control_labels <- c(

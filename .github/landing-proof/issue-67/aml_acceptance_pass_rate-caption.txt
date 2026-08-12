@@ -1,0 +1,11 @@
+Synchronized AML K=1 independent acceptance pass rates. The AML-shaped synthetic acceptance
+experiment to assess the declared condition target contrasts CM with CTL. (A) Expression
+feature count 100. (B) Expression feature count 1,000. (C) Expression feature count 10,000.
+Black points show the fraction of all requested replicates passing every prespecified AML
+criterion; the red horizontal line marks the prespecified 90% cell pass-rate criterion. The
+analysis unit is complete synthetic mouse trajectory; the estimand is the replicate pass
+fraction within each subjects-per-condition and feature-count cell; time is recorded as
+collection time in weeks; adjustment uses batch. Cell acceptance also requires a Wilson 95%
+lower bound of at least 80%. Stage 2 must be correctly reported as inapplicable to longitudinal
+sampling in every replicate; the required cell rate is 100%. Values are fabricated solely to
+demonstrate the figure structure and do not support a scientific acceptance claim.

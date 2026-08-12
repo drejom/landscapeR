@@ -317,9 +317,30 @@ aml_control$stage2
 Strategy selection comes from the returned `PipelineConfig`, so the calibration
 uses the same registered plugin boundary as an ordinary analysis. The returned
 loading cosines, orientation, principal angles, adjusted effects, and resampling
-evidence are descriptive. No threshold or pass/fail decision is applied. Issue
-#67 remains open until issue #51 supplies frozen independent acceptance seeds
-and the resulting operating rule is evaluated without retuning.
+evidence are descriptive. No threshold or pass/fail decision is applied.
+
+The independent-acceptance runner extends this calibration into a frozen
+experiment without changing the scientific question. It evaluates 4, 7, and
+12 mice per condition at 100, 1,000, and 10,000 expression features, with 100
+independent replicates in each cell. Every successful replicate retains raw and
+batch-adjusted associations, proposal or abstention evidence, and the typed
+Stage 2 result, together with truth-derived recovery metrics and generator
+provenance. Complete-mouse bootstrap evidence is retained when a component
+proposal is reached; a valid proposal abstention instead records
+identifiability as not assessed. Execution failures retain their reason and
+remain in every requested-replicate denominator. The summary keeps
+target-loading recovery, component-index recurrence, bootstrap completion, and
+whole-cell pass rates separate rather than replacing them with one score.
+`plot_k1_aml_acceptance_summary()` renders the synchronized cell and recovery
+views; `scientific_caption()` returns their separate figure captions.
+
+Independent assessment is separated from calibration. Its seeds and criteria
+are fixed before the outcomes are inspected and cannot be retuned from those
+outcomes. All requested replicates contribute to the assessment, including
+failed runs and valid abstentions. A preliminary resource-use pilot is
+non-evidentiary and cannot contribute to the scientific result. Neither that
+pilot, the calibration example, nor its visual proof supports a biological AML
+claim.
 
 Before a known-truth calibration is frozen, the structured outcome is
 `not-calibrated` and the evidence remains

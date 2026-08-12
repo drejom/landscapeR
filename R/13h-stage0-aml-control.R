@@ -348,7 +348,11 @@ aml_longitudinal_control_truth <- function(x) {
     NULL
 }
 
-.aml_k1_recovery <- function(fitted, truth) {
+.aml_k1_recovery <- function(
+    fitted,
+    truth,
+    claim_status = "non_evidentiary_calibration"
+) {
     loadings <- dr_V_k(stage_artifact(fitted, "stage1"))
     expected <- truth@subspace@shared[, seq_len(2L), drop = FALSE]
     observed <- loadings[, seq_len(2L), drop = FALSE]
@@ -364,7 +368,7 @@ aml_longitudinal_control_truth <- function(x) {
         absolute_loading_cosine = abs(signed_cosines),
         orientation = ifelse(signed_cosines >= 0, "same", "reversed"),
         subspace_principal_angle_degrees = angles,
-        claim_status = "non_evidentiary_calibration"
+        claim_status = claim_status
     )
 }
 
@@ -377,6 +381,92 @@ aml_longitudinal_control_truth <- function(x) {
         algo = "sha256"
     )
     values
+}
+
+.aml_k1_assess_control <- function(
+    std,
+    config,
+    n_resamples,
+    n_permutations,
+    seed,
+    evidence_status,
+    claim_status,
+    sequential_internal = FALSE
+) {
+    decomposition <- decompose(
+        .aml_k1_strategy(config, "Decomposer"), std
+    )
+    if (decomposition@status != "success") {
+        return(.new_k1_aml_calibration_result(list(
+            status = "failure",
+            evidence_status = evidence_status,
+            reason = decomposition@reason,
+            control = std,
+            decomposition = decomposition,
+            provenance = std@provenance
+        )))
+    }
+    fitted <- decomposition@value
+    specification <- config@analysis
+    atlas <- associate_metadata(
+        fitted,
+        specification = specification,
+        non_analytical_fields = c("mouse_id", "batch"),
+        n_resamples = 0L,
+        seed = seed + 1L,
+        sequential_internal = sequential_internal
+    )
+    proposal <- propose_component(
+        atlas,
+        n_permutations = n_permutations,
+        seed = seed + 2L,
+        sequential_internal = sequential_internal
+    )
+    identifiability <- if (n_resamples > 0L &&
+                           is(proposal, "ComponentProposal")) {
+        assess_component_identifiability(
+            data = std,
+            proposal = proposal,
+            config = config,
+            non_analytical_fields = c("mouse_id", "batch"),
+            n_resamples = n_resamples,
+            seed = seed + 3L,
+            sequential_internal = sequential_internal
+        )
+    } else {
+        NULL
+    }
+    stage2 <- estimate_dynamics(
+        .aml_k1_strategy(config, "DynamicsEstimator"), fitted
+    )
+    recovery <- .aml_k1_recovery(
+        fitted,
+        std@ground_truth,
+        claim_status = claim_status
+    )
+    .new_k1_aml_calibration_result(list(
+        status = "success",
+        evidence_status = evidence_status,
+        reason = "",
+        control = std,
+        decomposition = decomposition,
+        atlas = atlas,
+        proposal = proposal,
+        config = config,
+        identifiability = identifiability,
+        identifiability_evidence = if (is(identifiability,
+                                          "ComponentProposal")) {
+            proposal_identifiability(identifiability)
+        } else {
+            NULL
+        },
+        recovery = recovery,
+        stage2 = stage2,
+        target_component = 2L,
+        nuisance_component = 1L,
+        seed = as.integer(seed),
+        provenance = fitted@provenance
+    ))
 }
 
 #' @export
@@ -438,75 +528,13 @@ k1_aml_longitudinal_calibration <- function(
         time_signal = time_signal, disease_signal = disease_signal,
         dropout_subjects = dropout_subjects, seed = seed
     )
-    decomposition <- decompose(
-        .aml_k1_strategy(config, "Decomposer"), std
-    )
-    if (decomposition@status != "success") {
-        return(.new_k1_aml_calibration_result(list(
-            status = "failure",
-            evidence_status = "non_evidentiary_calibration",
-            reason = decomposition@reason,
-            control = std,
-            decomposition = decomposition,
-            provenance = std@provenance
-        )))
-    }
-    fitted <- decomposition@value
-    specification <- config@analysis
-    atlas <- associate_metadata(
-        fitted,
-        specification = specification,
-        non_analytical_fields = c("mouse_id", "batch"),
-        # Association refits and decomposition alignment are separate
-        # evidence layers.  Keep proposal ranking on the complete discovery
-        # atlas; the identifiability assessment below owns decomposition
-        # refits and loading alignment.
-        n_resamples = 0L,
-        seed = seed + 1L
-    )
-    proposal <- propose_component(
-        atlas,
-        n_permutations = n_permutations,
-        seed = seed + 2L
-    )
-    identifiability <- if (n_resamples > 0L &&
-                           is(proposal, "ComponentProposal")) {
-        assess_component_identifiability(
-            data = std,
-            proposal = proposal,
-            config = config,
-            non_analytical_fields = c("mouse_id", "batch"),
-            n_resamples = n_resamples,
-            seed = seed + 3L
-        )
-    } else {
-        NULL
-    }
-    stage2 <- estimate_dynamics(
-        .aml_k1_strategy(config, "DynamicsEstimator"), fitted
-    )
-    recovery <- .aml_k1_recovery(fitted, std@ground_truth)
-    .new_k1_aml_calibration_result(list(
-        status = "success",
-        evidence_status = "non_evidentiary_calibration",
-        reason = "",
-        control = std,
-        decomposition = decomposition,
-        atlas = atlas,
-        proposal = proposal,
+    .aml_k1_assess_control(
+        std = std,
         config = config,
-        identifiability = identifiability,
-        identifiability_evidence = if (is(identifiability,
-                                          "ComponentProposal")) {
-            proposal_identifiability(identifiability)
-        } else {
-            NULL
-        },
-        recovery = recovery,
-        stage2 = stage2,
-        target_component = 2L,
-        nuisance_component = 1L,
-        seed = as.integer(seed),
-        provenance = fitted@provenance
-    ))
+        n_resamples = n_resamples,
+        n_permutations = n_permutations,
+        seed = seed,
+        evidence_status = "non_evidentiary_calibration",
+        claim_status = "non_evidentiary_calibration"
+    )
 }

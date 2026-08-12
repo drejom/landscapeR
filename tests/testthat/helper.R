@@ -1,5 +1,11 @@
 library(landscapeR)
 
+# Keep any implicit base-graphics device created by a test out of the source
+# tree so repository-hygiene checks see no Rplots.pdf residue.
+options(device = function(...) {
+    grDevices::pdf(file = file.path(tempdir(), "landscapeR-tests.pdf"), ...)
+})
+
 # Test-only renderer and exception used to exercise the caption exemption path.
 .plot_caption_contract_diagnostic <- function() {
     ggplot2::ggplot(data.frame(x = 0, y = 0)) +

@@ -7,6 +7,7 @@
     "abstention",
     "independent_time_course",
     "repeated_time_course",
+    "aml_acceptance",
     "stage1",
     "stage2"
 )
