@@ -188,15 +188,18 @@ hprcc's native resource summary reported:
 | Duration | 3.8 minutes |
 | hprcc recommendation | `tiny` |
 
-The retained machine-readable record is
-`.github/landing-proof/issue-67/gemini-resource-pilot.tsv`. The production
-controller therefore requests 2 CPUs, 8 GB, and 60 minutes and handles up to
-eight complete tasks sequentially per worker. This preserves more than 4.8
-times the observed peak memory. Eight observed-duration tasks project to 30.4
-minutes before safety allowance, leaving nearly half the wall-time request for
-startup and runtime variation. Low measured CPU use does not justify changing
-the reviewed two-CPU controller convention. These packing choices affect only
-scheduler throughput, not task identity, RNG streams, or scientific results.
+The retained digest-bound machine record is
+`.github/landing-proof/issue-67/gemini-resource-pilot-record.rds`; it was
+generated directly from the stored typed target and native hprcc summary. The
+adjacent TSV is a cold-readable view whose values are tested against that
+record. The production controller therefore requests 2 CPUs, 8 GB, and 60
+minutes and handles up to eight complete tasks sequentially per worker. This
+preserves more than 4.8 times the observed peak memory. Eight observed-duration
+tasks project to 30.4 minutes before safety allowance, leaving nearly half the
+wall-time request for startup and runtime variation. Low measured CPU use does
+not justify changing the reviewed two-CPU controller convention. These packing
+choices affect only scheduler throughput, not task identity, RNG streams, or
+scientific results.
 
 The first production make reveals the deterministic post-merge seed manifest.
 Do not run this command during runner development. If an operational branch
