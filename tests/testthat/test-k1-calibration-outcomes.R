@@ -201,9 +201,9 @@ test_that("calibration outcome plot exposes both scientific failure modes", {
     expect_s3_class(plot, "ggplot")
     expect_match(
         scientific_caption(plot),
-        "recovered but\\s+downstream interpretation was not"
+        "recovered but downstream\\s+interpretation was not"
     )
-    expect_match(scientific_caption(plot), "recover the planted axis")
+    expect_match(scientific_caption(plot), "recover\\s+the planted axis")
     expect_match(scientific_caption(plot), "known-truth synthetic")
     expect_match(scientific_caption(plot), "lacked evaluable recovery")
     expect_setequal(
@@ -329,6 +329,26 @@ test_that("calibration outcome assessment rejects malformed public inputs", {
     assessment <- assess_k1_calibration_outcomes(
         fixture$results, fixture$tasks, fixture$protocol)
     assessment$replicates$canonical_cell <- NULL
+    payload <- unclass(assessment)
+    payload$digest <- NULL
+    assessment$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_calibration_outcomes(assessment),
+        class = "landscapeR_validation_error"
+    )
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results, fixture$tasks, fixture$protocol)
+    assessment$replicates$recovery_evaluable[[1L]] <- NA
+    payload <- unclass(assessment)
+    payload$digest <- NULL
+    assessment$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_calibration_outcomes(assessment),
+        class = "landscapeR_validation_error"
+    )
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results, fixture$tasks, fixture$protocol)
+    assessment$source_protocol_id <- "invented"
     payload <- unclass(assessment)
     payload$digest <- NULL
     assessment$digest <- digest::digest(payload, algo = "sha256")

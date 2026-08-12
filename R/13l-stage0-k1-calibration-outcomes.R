@@ -139,13 +139,16 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
         is.finite(metrics$nuisance_component)
     recovery_evaluable <- is.finite(metrics$target_loading_cosine) &&
         component_identity_evaluable
-    recovery_met <- recovery_evaluable &&
+    recovery_met <- if (recovery_evaluable) {
         identical(metrics$target_component,
             threshold$required_target_component) &&
-        identical(metrics$nuisance_component,
-            threshold$required_nuisance_component) &&
-        metrics$target_loading_cosine >=
-            threshold$minimum_target_loading_cosine
+            identical(metrics$nuisance_component,
+                threshold$required_nuisance_component) &&
+            metrics$target_loading_cosine >=
+                threshold$minimum_target_loading_cosine
+    } else {
+        NA
+    }
     model_states <- .k1_calibration_model_states(
         metrics,
         threshold$required_target_component
@@ -178,9 +181,13 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
         }
     }
     outcome <- if (!recovery_evaluable) {
-        diagnostic <- "canonical target-loading cosine unavailable"
+        diagnostic <- if (!is.finite(metrics$target_loading_cosine)) {
+            "canonical target-loading cosine unavailable"
+        } else {
+            "target or nuisance component identity unavailable"
+        }
         "recovery_not_evaluable"
-    } else if (!recovery_met) {
+    } else if (!isTRUE(recovery_met)) {
         "recovery_below_threshold"
     } else if (!downstream_estimable) {
         "recovered_downstream_nonestimable"
@@ -189,7 +196,7 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
     }
     base$recovery_evaluable <- recovery_evaluable
     base$recovery_met <- recovery_met
-    base$downstream_estimable <- if (recovery_met) {
+    base$downstream_estimable <- if (isTRUE(recovery_met)) {
         downstream_estimable
     } else {
         NA
@@ -413,6 +420,29 @@ assess_k1_calibration_outcomes <- function(
         replicate_fields,
         c(character_replicates, logical_replicates, "outcome")
     )
+    protocol_version <- switch(
+        payload$source_protocol_id,
+        `k1-stage0-acceptance-v1` = "1",
+        `k1-stage0-acceptance-v2` = "2",
+        NA_character_
+    )
+    source_protocol <- if (!is.na(protocol_version)) {
+        k1_acceptance_protocol(protocol_version)
+    } else {
+        NULL
+    }
+    source_threshold <- if (!is.null(source_protocol)) {
+        source_protocol$thresholds$aml_synchronized$
+            minimum_target_loading_cosine
+    } else {
+        NA_real_
+    }
+    required_logical_complete <- c(
+        "execution_completed", "recovery_evaluable"
+    )
+    design_fields <- c(
+        "subjects_per_condition", "p", "replicate_index"
+    )
     replicate_schema_valid <- is.data.frame(payload$replicates) &&
         identical(names(payload$replicates), replicate_fields) &&
         nrow(payload$replicates) > 0L &&
@@ -422,7 +452,18 @@ assess_k1_calibration_outcomes <- function(
             is.logical, logical(1L))) &&
         all(vapply(payload$replicates[numeric_replicates],
             is.numeric, logical(1L))) &&
-        is.factor(payload$replicates$outcome)
+        is.factor(payload$replicates$outcome) &&
+        !anyNA(payload$replicates[required_logical_complete]) &&
+        all(vapply(payload$replicates[design_fields], function(value) {
+            !anyNA(value) && all(is.finite(value)) && all(value >= 1) &&
+                identical(as.numeric(as.integer(value)), as.numeric(value))
+        }, logical(1L))) &&
+        all(is.na(payload$replicates$recovery_met) ==
+            !payload$replicates$recovery_evaluable) &&
+        all(payload$replicates$recovery_evaluable |
+            is.na(payload$replicates$downstream_estimable)) &&
+        all(payload$replicates$execution_completed |
+            is.na(payload$replicates$stage2_ineligible))
     cell_schema_valid <- is.data.frame(payload$cells) &&
         identical(names(payload$cells), cell_fields)
     if (!identical(names(payload), required) ||
@@ -430,16 +471,15 @@ assess_k1_calibration_outcomes <- function(
                 .k1_calibration_semantics_version) ||
             !identical(payload$claim_status,
                 "retrospective_diagnostic_only") ||
-            !.is_scalar_nonempty_text(payload$source_protocol_id) ||
+            is.null(source_protocol) ||
+            !identical(payload$source_protocol_digest,
+                source_protocol$digest) ||
             !identical(payload$outcome_levels,
                 .k1_calibration_outcome_levels) ||
             !identical(payload$canonical_recovery_criterion,
                 "minimum_target_loading_cosine") ||
-            !is.numeric(payload$canonical_recovery_threshold) ||
-            length(payload$canonical_recovery_threshold) != 1L ||
-            !is.finite(payload$canonical_recovery_threshold) ||
-            payload$canonical_recovery_threshold < 0 ||
-            payload$canonical_recovery_threshold > 1 ||
+            !identical(payload$canonical_recovery_threshold,
+                source_threshold) ||
             !identical(payload$descriptive_recovery_fields,
                 "target_subspace_angle_deg") ||
             !identical(payload$gating_fields, c(
@@ -521,8 +561,8 @@ plot_k1_calibration_outcomes <- function(assessment) {
             )
         ),
         estimand = paste(
-            "axis recovery and downstream estimability use separate",
-            "declared denominators"
+            "separate rates of target-axis recovery and downstream",
+            "estimability"
         ),
         missingness = paste(
             "Missing downstream rates indicate no recovered axis;",
