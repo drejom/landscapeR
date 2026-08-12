@@ -471,8 +471,8 @@ The sequence is:
    audits representative documentation. This work is active now and may run in
    parallel with the #187–#193 calibration lane.
 2. #173 applies the approved standard to the complete K=1 acceptance journey.
-   It must land before #193 publishes a revised acceptance result, so
-   the first major acceptance result uses the agreed explanatory structure.
+   It must land before #51 phase B publishes the revised supported operating
+   range, so the final K=1 conclusion uses the agreed explanatory structure.
 3. #174 establishes the canonical contributor path after #172. It does not
    block #188–#193, #168, or #71, but it must complete before v1 or before the
    project solicits implementation of new modules from external contributors,
