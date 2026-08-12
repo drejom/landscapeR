@@ -1,8 +1,8 @@
 # Issue #188 visual landing proof
 
-`typed-calibration-outcomes.png` renders the public at the package's canonical
-100 mm figure size using
-`plot_k1_calibration_outcomes()` surface. Each point is one requested synthetic
+`typed-calibration-outcomes.png` renders the public
+`plot_k1_calibration_outcomes()` surface at the package's canonical 100 mm
+figure size. Each point is one requested synthetic
 replicate. Shape separates recovery of the planted axis from availability of
 downstream interpretation, so a model abstention cannot be mistaken for a
 decomposition failure. The black-and-white display remains legible without
@@ -17,7 +17,8 @@ loading the development package, sourcing
 `calibration_outcome_fixture()`, and passing its assessment to
 `plot_k1_calibration_outcomes()`.
 
-Cold-reader conclusion: the four outcomes remain visibly distinct. In
-particular, an open circle means the planted axis was recovered but a required
-downstream model or stability result was unavailable; an x means the planted
-axis itself was not recovered.
+Cold-reader conclusion: all five outcomes remain visibly distinct. A filled
+circle means recovered and estimable; an open circle means recovered but a
+required downstream result was unavailable; an x means the planted axis was
+evaluated but not recovered; an open square means recovery itself could not be
+evaluated; and a plus means execution failed.

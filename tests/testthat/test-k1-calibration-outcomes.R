@@ -36,7 +36,8 @@ calibration_outcome_fixture <- function() {
     )
     result <- function(index, cosine, model_status = "estimable",
                        diagnostic = "", recurrence = 0.9,
-                       completion = 0.95, status = "success") {
+                       completion = 0.95, status = "success",
+                       target_component = 2L) {
         evidence <- provenance(model_status, diagnostic)
         metrics <- if (status == "success") list(
             target_loading_cosine = cosine,
@@ -51,7 +52,7 @@ calibration_outcome_fixture <- function() {
             q95_bootstrap_subspace_angle_deg = if (
                 is.finite(recurrence)
             ) 12 else NA_real_,
-            target_component = 2L,
+            target_component = target_component,
             nuisance_component = 1L,
             target_proposal_rank = 1L,
             nuisance_proposal_rank = 2L,
@@ -231,12 +232,17 @@ test_that("historical acceptance summaries remain reproducible", {
 
 test_that("calibration artifacts replay their typed assessment", {
     fixture <- calibration_outcome_fixture()
-    artifact <- publish_k1_calibration_outcomes(
-        tempfile("k1-calibration-artifacts-"),
-        fixture$results,
-        fixture$tasks,
-        fixture$protocol
+    testthat::local_mocked_bindings(
+        .k1_calibration_runtime_identity = function() list(
+            source_revision = strrep("a", 40L),
+            r_version = "4.5.2",
+            package_versions = c(landscapeR = "0.3.0")
+        ),
+        .package = "landscapeR"
     )
+    artifact <- publish_k1_calibration_outcomes(
+        tempfile("k1-calibration-artifacts-"), fixture$results,
+        fixture$tasks, fixture$protocol)
 
     expect_true(dir.exists(artifact))
     expect_true(file.exists(file.path(artifact, "MANIFEST.tsv")))
@@ -258,6 +264,12 @@ test_that("calibration artifacts replay their typed assessment", {
 
 test_that("calibration artifact verification detects tampering", {
     fixture <- calibration_outcome_fixture()
+    testthat::local_mocked_bindings(
+        .k1_calibration_runtime_identity = function() list(
+            source_revision = strrep("a", 40L), r_version = "4.5.2",
+            package_versions = c(landscapeR = "0.3.0")
+        ), .package = "landscapeR"
+    )
     artifact <- publish_k1_calibration_outcomes(
         tempfile("k1-calibration-artifacts-"),
         fixture$results,
@@ -274,6 +286,12 @@ test_that("calibration artifact verification detects tampering", {
 
 test_that("calibration artifact verification rejects undeclared files", {
     fixture <- calibration_outcome_fixture()
+    testthat::local_mocked_bindings(
+        .k1_calibration_runtime_identity = function() list(
+            source_revision = strrep("a", 40L), r_version = "4.5.2",
+            package_versions = c(landscapeR = "0.3.0")
+        ), .package = "landscapeR"
+    )
     artifact <- publish_k1_calibration_outcomes(
         tempfile("k1-calibration-artifacts-"),
         fixture$results,
@@ -309,11 +327,8 @@ test_that("calibration outcome assessment rejects malformed public inputs", {
         class = "landscapeR_validation_error"
     )
     assessment <- assess_k1_calibration_outcomes(
-        fixture$results,
-        fixture$tasks,
-        fixture$protocol
-    )
-    assessment$canonical_recovery_threshold <- 0
+        fixture$results, fixture$tasks, fixture$protocol)
+    assessment$replicates$canonical_cell <- NULL
     payload <- unclass(assessment)
     payload$digest <- NULL
     assessment$digest <- digest::digest(payload, algo = "sha256")

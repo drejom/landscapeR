@@ -35,21 +35,40 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
         landscapeR_worker_preflight_error = function(condition) NULL
     )
     if (!is.null(identity)) return(identity)
-    revision <- tryCatch(
-        system2(
-            "git",
-            c("rev-parse", "HEAD"),
-            stdout = TRUE,
-            stderr = FALSE
-        ),
+    source_root <- tryCatch(
+        getNamespaceInfo(asNamespace("landscapeR"), "path"),
+        error = function(condition) ""
+    )
+    git_root <- tryCatch(
+        system2("git", c("-C", source_root, "rev-parse", "--show-toplevel"),
+            stdout = TRUE, stderr = FALSE),
         error = function(condition) character()
     )
+    status <- if (length(git_root) == 1L &&
+            identical(normalizePath(git_root), normalizePath(source_root))) {
+        tryCatch(
+            system2("git", c("-C", source_root, "status", "--porcelain"),
+                stdout = TRUE, stderr = FALSE),
+            error = function(condition) "unavailable"
+        )
+    } else {
+        "unavailable"
+    }
+    revision <- if (!length(status)) {
+        tryCatch(
+            system2("git", c("-C", source_root, "rev-parse", "HEAD"),
+                stdout = TRUE, stderr = FALSE),
+            error = function(condition) character()
+        )
+    } else {
+        character()
+    }
     if (length(revision) != 1L ||
             !grepl("^[0-9a-f]{40}$", revision)) {
         .k1_acceptance_runner_abort(
             paste(
                 "calibration publication requires either revision-stamped",
-                "package metadata or a Git source revision"
+                "package metadata or a clean landscapeR Git source revision"
             )
         )
     }
@@ -115,7 +134,11 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
     if (!base$execution_completed) return(base)
 
     metrics <- result$metrics
-    recovery_evaluable <- is.finite(metrics$target_loading_cosine)
+    component_identity_evaluable <-
+        is.finite(metrics$target_component) &&
+        is.finite(metrics$nuisance_component)
+    recovery_evaluable <- is.finite(metrics$target_loading_cosine) &&
+        component_identity_evaluable
     recovery_met <- recovery_evaluable &&
         identical(metrics$target_component,
             threshold$required_target_component) &&
@@ -359,25 +382,64 @@ assess_k1_calibration_outcomes <- function(
         "experiment_label", "target_field", "oriented_levels",
         "sampling_unit", "time_field", "time_unit", "nuisance_fields"
     )
-    frozen_protocol <- k1_acceptance_protocol()
-    frozen_threshold <-
-        frozen_protocol$thresholds$aml_synchronized$
-            minimum_target_loading_cosine
+    replicate_fields <- c(
+        "task_id", "canonical_cell", "control", "subjects_per_condition",
+        "p", "replicate_index", "execution_completed",
+        "recovery_evaluable", "recovery_met", "downstream_estimable",
+        "target_loading_cosine", "target_subspace_angle_deg",
+        "target_proposal_rank", "target_index_recurrence",
+        "mean_matched_loading_cosine", "identifiability_completion_rate",
+        "target_unadjusted_estimate", "target_adjusted_estimate",
+        "stage2_ineligible", "model_status", "diagnostic", "outcome"
+    )
+    cell_fields <- c(
+        "canonical_cell", "control", "subjects_per_condition", "p",
+        "n_requested", "n_execution_completed", "n_execution_failure",
+        "n_recovery_evaluable", "n_recovered",
+        "n_recovery_below_threshold", "n_recovery_not_evaluable",
+        "n_downstream_evaluable", "n_recovered_and_estimable",
+        "n_recovered_downstream_nonestimable", "recovery_rate",
+        "downstream_estimability_rate", "recovery_rate_denominator",
+        "estimability_rate_denominator"
+    )
+    character_replicates <- c(
+        "task_id", "canonical_cell", "control", "model_status", "diagnostic"
+    )
+    logical_replicates <- c(
+        "execution_completed", "recovery_evaluable", "recovery_met",
+        "downstream_estimable", "stage2_ineligible"
+    )
+    numeric_replicates <- setdiff(
+        replicate_fields,
+        c(character_replicates, logical_replicates, "outcome")
+    )
+    replicate_schema_valid <- is.data.frame(payload$replicates) &&
+        identical(names(payload$replicates), replicate_fields) &&
+        nrow(payload$replicates) > 0L &&
+        all(vapply(payload$replicates[character_replicates],
+            is.character, logical(1L))) &&
+        all(vapply(payload$replicates[logical_replicates],
+            is.logical, logical(1L))) &&
+        all(vapply(payload$replicates[numeric_replicates],
+            is.numeric, logical(1L))) &&
+        is.factor(payload$replicates$outcome)
+    cell_schema_valid <- is.data.frame(payload$cells) &&
+        identical(names(payload$cells), cell_fields)
     if (!identical(names(payload), required) ||
             !identical(payload$semantics_version,
                 .k1_calibration_semantics_version) ||
             !identical(payload$claim_status,
                 "retrospective_diagnostic_only") ||
-            !identical(payload$source_protocol_id,
-                frozen_protocol$protocol_id) ||
-            !identical(payload$source_protocol_digest,
-                frozen_protocol$digest) ||
+            !.is_scalar_nonempty_text(payload$source_protocol_id) ||
             !identical(payload$outcome_levels,
                 .k1_calibration_outcome_levels) ||
             !identical(payload$canonical_recovery_criterion,
                 "minimum_target_loading_cosine") ||
-            !identical(payload$canonical_recovery_threshold,
-                frozen_threshold) ||
+            !is.numeric(payload$canonical_recovery_threshold) ||
+            length(payload$canonical_recovery_threshold) != 1L ||
+            !is.finite(payload$canonical_recovery_threshold) ||
+            payload$canonical_recovery_threshold < 0 ||
+            payload$canonical_recovery_threshold > 1 ||
             !identical(payload$descriptive_recovery_fields,
                 "target_subspace_angle_deg") ||
             !identical(payload$gating_fields, c(
@@ -401,8 +463,7 @@ assess_k1_calibration_outcomes <- function(
                 is.character(value) && length(value) == 1L &&
                     grepl("^[0-9a-f]{64}$", value)
             }, logical(1L))) ||
-            !is.data.frame(payload$replicates) ||
-            !is.data.frame(payload$cells) || !nrow(payload$replicates) ||
+            !replicate_schema_valid || !cell_schema_valid ||
             anyDuplicated(payload$source_task_ids) ||
             !identical(payload$source_task_ids,
                 payload$replicates$task_id) ||
@@ -584,6 +645,32 @@ plot_k1_calibration_outcomes <- function(assessment) {
     if (!identical(assessment, reproduced)) {
         .k1_acceptance_runner_abort(
             "calibration artifact assessment does not reproduce"
+        )
+    }
+    expected_replicates <- tempfile("k1-calibration-replicates-", fileext = ".csv")
+    expected_cells <- tempfile("k1-calibration-cells-", fileext = ".csv")
+    on.exit(unlink(c(expected_replicates, expected_cells)), add = TRUE)
+    utils::write.csv(reproduced$replicates, expected_replicates,
+        row.names = FALSE)
+    utils::write.csv(reproduced$cells, expected_cells, row.names = FALSE)
+    expected_caption <- strsplit(
+        scientific_caption(plot_k1_calibration_outcomes(reproduced)),
+        "\\n",
+        fixed = FALSE
+    )[[1L]]
+    if (!identical(
+            readLines(file.path(artifact, "replicates.csv"), warn = FALSE),
+            readLines(expected_replicates, warn = FALSE)
+        ) || !identical(
+            readLines(file.path(artifact, "cell-summary.csv"), warn = FALSE),
+            readLines(expected_cells, warn = FALSE)
+        ) || !identical(
+            readLines(file.path(artifact, "outcome-map-caption.txt"),
+                warn = FALSE),
+            expected_caption
+        )) {
+        .k1_acceptance_runner_abort(
+            "calibration artifact derivatives do not reproduce"
         )
     }
     expected_environment <- list(
