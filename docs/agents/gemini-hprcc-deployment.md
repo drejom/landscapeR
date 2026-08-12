@@ -132,8 +132,17 @@ Only after the runner revision is reviewed, merged, installed, and preflighted:
 
 ```sh
 export LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-v2-merge-SHA-1>
-Rscript -e 'targets::tar_make(use_crew = TRUE)'
+cp "$(Rscript -e 'cat(system.file("extdata", "k1-gemini-tar-make.sbatch", package = "landscapeR"))')" tar-make.sbatch
+sbatch tar-make.sbatch
 ```
+
+The submitted Slurm job is the `targets` controller: it runs
+`Rscript targets::tar_make()` on a compute node, and that controller dispatches
+the hprcc/crew workers. Never run `tar_make()` for these workflows directly on
+a Gemini login node. Submit from the dedicated run directory so
+`SLURM_SUBMIT_DIR`, `_targets.R`, the targets store, controller logs, and worker
+stores all resolve to that run. Export the reviewed revision and control
+variables before `sbatch`; Slurm carries them into the controller environment.
 
 For the 900-task independent AML-shaped run, also export
 `LANDSCAPER_K1_CONTROLS=aml_synchronized` and
@@ -157,10 +166,15 @@ PILOT_ROOT="/scratch/$USER/landscapeR/k1-aml-resource-pilot"
 mkdir -p "$PILOT_ROOT"
 cd "$PILOT_ROOT"
 cp "$(Rscript -e 'cat(system.file("extdata", "k1-aml-resource-pilot-gemini-targets.R", package = "landscapeR"))')" _targets.R
-Rscript -e 'targets::tar_make(use_crew = TRUE)'
+cp "$(Rscript -e 'cat(system.file("extdata", "k1-gemini-tar-make.sbatch", package = "landscapeR"))')" tar-make.sbatch
+sbatch tar-make.sbatch
 Rscript -e 'stopifnot(identical(targets::tar_read(aml_largest_cell_resource_pilot)$status, "success"))'
 Rscript -e 'hprcc::summarize_resource_usage(path = file.path(Sys.getenv("HPRCC_TARGETS_STORE_BASE", unset = file.path(getwd(), "_targets")), "logs"), targets_file = "_targets.R")'
 ```
+
+Run the two verification commands only after the controller Slurm job is
+`COMPLETED` with exit code zero. They are read-only inspections; submit any
+material recomputation as another controller job.
 
 Do not set `LANDSCAPER_K1_PROTOCOL_MERGE` or
 `LANDSCAPER_K1_RUNNER_MERGE` for this pilot. The pilot uses only its disclosed

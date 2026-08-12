@@ -4,7 +4,21 @@ fake_aml_acceptance_provenance <- function() list(
     version = "1.0.0",
     evidence_status = "independent_acceptance",
     generator_and_decomposition = list(fixture = TRUE),
-    atlas = list(fixture = TRUE),
+    atlas = list(
+        fixture = TRUE,
+        time_course_models = list(
+            list(
+                component = 1L,
+                unadjusted = list(status = "estimable", diagnostic = ""),
+                adjusted = list(status = "estimable", diagnostic = "")
+            ),
+            list(
+                component = 2L,
+                unadjusted = list(status = "estimable", diagnostic = ""),
+                adjusted = list(status = "estimable", diagnostic = "")
+            )
+        )
+    ),
     proposal = list(fixture = TRUE),
     identifiability = list(fixture = TRUE),
     stage2 = list(fixture = TRUE)
@@ -256,6 +270,119 @@ test_that("frozen AML acceptance task returns typed longitudinal metrics", {
     expect_error(
         landscapeR:::.k1_acceptance_validate_result(changed, task, protocol),
         "AML acceptance metrics violate"
+    )
+    non_estimable <- result
+    non_estimable$metrics$target_unadjusted_estimate <- NA_real_
+    non_estimable$metrics$target_adjusted_estimate <- NA_real_
+    target <- non_estimable$metrics$target_component
+    models <- non_estimable$metrics$acceptance_provenance$atlas$
+        time_course_models
+    target_model <- vapply(models, function(model) {
+        identical(model$component, target)
+    }, logical(1L))
+    models[[which(target_model)]]$unadjusted$status <- "singular"
+    models[[which(target_model)]]$unadjusted$diagnostic <-
+        "singular-random-effects-covariance"
+    models[[which(target_model)]]$adjusted$status <- "singular"
+    models[[which(target_model)]]$adjusted$diagnostic <-
+        "singular-random-effects-covariance"
+    non_estimable$metrics$acceptance_provenance$atlas$
+        time_course_models <- models
+    non_estimable$metrics$acceptance_provenance_digest <- digest::digest(
+        non_estimable$metrics$acceptance_provenance,
+        algo = "sha256"
+    )
+    expect_invisible(landscapeR:::.k1_acceptance_validate_result(
+        non_estimable,
+        task,
+        protocol
+    ))
+    malformed <- non_estimable
+    malformed$metrics$target_unadjusted_estimate <- Inf
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(
+            malformed,
+            task,
+            protocol
+        ),
+        "AML acceptance metrics violate"
+    )
+    malformed$metrics$target_unadjusted_estimate <- NaN
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(
+            malformed,
+            task,
+            protocol
+        ),
+        "AML acceptance metrics violate"
+    )
+    malformed$metrics$target_unadjusted_estimate <- "not-estimable"
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(
+            malformed,
+            task,
+            protocol
+        ),
+        "AML acceptance metrics violate"
+    )
+    missing_without_abstention <- result
+    missing_without_abstention$metrics$target_unadjusted_estimate <- NA_real_
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(
+            missing_without_abstention,
+            task,
+            protocol
+        ),
+        "AML acceptance metrics violate"
+    )
+    finite_with_abstention <- non_estimable
+    finite_with_abstention$metrics$target_unadjusted_estimate <- 1
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(
+            finite_with_abstention,
+            task,
+            protocol
+        ),
+        "AML acceptance metrics violate"
+    )
+    unknown_status <- non_estimable
+    models <- unknown_status$metrics$acceptance_provenance$atlas$
+        time_course_models
+    models[[which(target_model)]]$unadjusted$status <- "unknown"
+    unknown_status$metrics$acceptance_provenance$atlas$
+        time_course_models <- models
+    unknown_status$metrics$acceptance_provenance_digest <- digest::digest(
+        unknown_status$metrics$acceptance_provenance,
+        algo = "sha256"
+    )
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(
+            unknown_status,
+            task,
+            protocol
+        ),
+        "AML acceptance metrics violate"
+    )
+    unknown_evidence_tier <- result
+    unknown_evidence_tier$metrics$target_unadjusted_status <- "unknown"
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(
+            unknown_evidence_tier,
+            task,
+            protocol
+        ),
+        "AML acceptance metrics violate"
+    )
+    malformed_provenance <- result
+    malformed_provenance$metrics$acceptance_provenance <- "invalid"
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_result(
+            malformed_provenance,
+            task,
+            protocol
+        ),
+        "AML acceptance metrics violate",
+        class = "k1_acceptance_runner_error"
     )
     expect_true(result$metrics$stage2_ineligible)
     expect_true(is.finite(result$metrics$target_unadjusted_estimate))

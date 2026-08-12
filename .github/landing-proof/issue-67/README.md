@@ -7,6 +7,24 @@ issue #51, or close issue #67.
 
 ## Gemini resource pilot
 
+### Controller execution hierarchy
+
+```text
+sbatch tar-make.sbatch
+  └─ Gemini compute node: Rscript targets::tar_make()
+       └─ hprcc/crew: Slurm worker jobs for complete acceptance tasks
+```
+
+The packaged `k1-gemini-tar-make.sbatch` now makes the controller allocation
+explicit. The `targets` controller itself runs on Gemini's `compute` partition;
+it is not a login-node process that merely sends its workers to Slurm. The
+template follows `~/bin/ij` for the shared library and bind conventions while
+retaining the reviewed production `rbiocverse_3.22.sif` image used by the worker
+profiles. Gemini job
+`35389415` exercised this corrected hierarchy while diagnosing the collection
+contract, and reached artifact validation on compute node `g-c-1-4-01` before
+the typed non-estimability defect stopped publication.
+
 [`k1-aml-gemini-resource-pilot.tsv`](../../../inst/extdata/k1-aml-gemini-resource-pilot.tsv)
 records the required largest-cell operational pilot from reviewed merge
 `55c6aef`: 12 mice per condition, 10,000 features, 99 permutations, and 99

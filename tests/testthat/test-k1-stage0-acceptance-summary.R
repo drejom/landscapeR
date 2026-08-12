@@ -2,7 +2,14 @@ summary_aml_acceptance_provenance <- function() list(
     version = "1.0.0",
     evidence_status = "independent_acceptance",
     generator_and_decomposition = list(fixture = TRUE),
-    atlas = list(fixture = TRUE),
+    atlas = list(
+        fixture = TRUE,
+        time_course_models = lapply(1:2, function(component) list(
+            component = component,
+            unadjusted = list(status = "estimable", diagnostic = ""),
+            adjusted = list(status = "estimable", diagnostic = "")
+        ))
+    ),
     proposal = list(fixture = TRUE),
     identifiability = list(fixture = TRUE),
     stage2 = list(fixture = TRUE)

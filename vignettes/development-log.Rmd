@@ -602,6 +602,16 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
 
 ## Implementation index
 
+- **2026-08-11 — Typed AML abstention and Gemini controller boundary:** issue
+  [#67](https://github.com/drejom/landscapeR/issues/67) found 162 of 900
+  completed AML replicates in which the required random-slope model was
+  singular for the target component. Those are honest non-estimable results,
+  not computational failures. Collection now accepts an exact missing estimate
+  only when the retained component and evidence variant records a recognized
+  model abstention and diagnostic; contradictory or malformed values remain
+  invalid. The packaged Gemini launcher also submits the `targets` controller
+  itself through Slurm. The compute-node `tar_make()` process then dispatches
+  hprcc/crew worker jobs, so neither controller nor workers run on a login node.
 - **2026-08-11 — Distributed acceptance-result aggregation:** issue
   [#67](https://github.com/drejom/landscapeR/issues/67) completed all 900
   frozen AML result branches on Gemini before the collector rejected equal,
