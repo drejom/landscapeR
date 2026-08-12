@@ -5,6 +5,29 @@ longitudinal control exercises the intended package contracts. They do not
 freeze acceptance thresholds, consume the independent acceptance seeds from
 issue #51, or close issue #67.
 
+## Gemini resource pilot
+
+[`k1-aml-gemini-resource-pilot.tsv`](../../../inst/extdata/k1-aml-gemini-resource-pilot.tsv)
+records the required largest-cell operational pilot from reviewed merge
+`55c6aef`: 12 mice per condition, 10,000 features, 99 permutations, and 99
+identifiability refits. Its values are verified against the installed compact
+digest-bound machine record
+[`k1-aml-gemini-resource-pilot-record.rds`](../../../inst/extdata/k1-aml-gemini-resource-pilot-record.rds),
+which was generated directly from the stored typed target and native hprcc
+summary.
+The typed result completed without computational failure. hprcc observed 1.65
+GB peak memory, 3.3% peak CPU, and 3.8 minutes and recommended its `tiny`
+resource class. This disclosed-seed run sets scheduler resources only. It is
+explicitly non-evidentiary and did not derive or consume a frozen acceptance
+seed.
+
+The exact cluster procedure, including the isolated store, disclosed seed,
+reviewed-revision requirement, typed-result check, and hprcc measurement
+command, is documented under
+[`AML largest-cell resource-pilot result`](../../../docs/agents/gemini-hprcc-deployment.md#aml-largest-cell-resource-pilot-result).
+An exact rerun requires the recorded source revision and the packaged pilot
+profile; it must not set either production merge variable.
+
 ## Independent-acceptance summary surfaces
 
 | Cell pass rates | Geometric recovery and recurrence |

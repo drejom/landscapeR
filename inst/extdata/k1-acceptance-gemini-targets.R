@@ -45,13 +45,6 @@ if (identical(controls, "aml_synchronized") &&
     )
 }
 if (!nzchar(runner_merge)) runner_merge <- NULL
-if (identical(controls, "aml_synchronized")) {
-    stop(
-        "AML production is blocked until the disclosed-seed largest-cell ",
-        "resource pilot is recorded and this profile is reviewed with its ",
-        "measured resource settings"
-    )
-}
 
 scratch_root <- file.path(
     "/scratch",

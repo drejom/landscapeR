@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#67 independent AML-shaped
-acceptance**.
+**Next task after this change lands:** **#67 frozen independent AML-shaped
+acceptance execution**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -312,8 +312,11 @@ component alignment, and typed cross-sectional Stage 2 ineligibility.
 **Calibration only:** develop and diagnose on disclosed seeds. Do not consume
 the independent acceptance seeds.
 
-**Status:** calibration implementation complete; #51 phase B1 is complete and
-the independent acceptance lane is now unblocked.
+**Status:** calibration implementation and the reviewed acceptance runner are
+complete. The disclosed Gemini largest-cell resource pilot completed at the
+reviewed runner merge with all 99 permutations and all 99 identifiability
+refits; its measured production packing is recorded in the follow-up that
+unblocks frozen execution. #51 phase B1 is complete.
 
 ### 6. Refreeze K=1 acceptance before execution: #51 phase A and #177
 
@@ -344,6 +347,10 @@ ADR 0002 is not amended from this partial result.
 Run the frozen #67 cases without tuning. Preserve all metrics and valid
 ineligible/abstention outcomes. Close #67 only when the frozen result is
 serialized and reviewable.
+
+**Status:** runner and resource preflight complete. After the reviewed
+resource-setting follow-up merges, run the frozen 900 tasks from the dedicated
+Gemini store and verify the content-addressed artifact.
 
 ### 8. Complete K=1 acceptance — #51 phase B
 
@@ -554,7 +561,7 @@ bodies may state dependencies but do not change this ordering.
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
 | [#65](https://github.com/drejom/landscapeR/issues/65) | Longitudinal extensions | parked |
 | [#66](https://github.com/drejom/landscapeR/issues/66) | Longitudinal observation design | queued |
-| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — next; unblocked by #51 phase B1 |
+| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — next; resource pilot complete, frozen 900-task execution |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
