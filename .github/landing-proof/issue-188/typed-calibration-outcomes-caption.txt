@@ -1,0 +1,12 @@
+K=1 disclosed-calibration recovery and estimability. The AML-shaped synthetic calibration
+experiment to assess the declared condition target contrasts CM with CTL. Each symbol is one
+requested replicate positioned by mice per condition and expression feature count; Shape
+identifies recovered and estimable, recovered but downstream non-estimable, recovery below
+threshold, or execution failure outcomes. The analysis unit is complete synthetic mouse
+trajectory; the estimand is axis recovery and downstream estimability use separate declared
+denominators; time is recorded as collection time in weeks; adjustment uses batch. Missing
+downstream rates indicate no recovered axis; recovered but downstream interpretation was not
+estimable is retained separately from replicates that did not recover the planted axis. Axis
+recovery uses one canonical rule: loading cosine ≥ 0.9; its equivalent angle is descriptive.
+This is retrospective diagnostic evidence from consumed acceptance results and cannot revise
+their historical claim or validate a new protocol.

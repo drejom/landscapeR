@@ -93,6 +93,7 @@ Collate:
     '13i-stage0-k1-acceptance-protocol.R'
     '13j-stage0-k1-acceptance-runner.R'
     '13k-stage0-k1-acceptance-summary.R'
+    '13l-stage0-k1-calibration-outcomes.R'
     '14-stage1-plots.R'
     '15-stage2-kde.R'
     '16-stage2-plots.R'
