@@ -1617,7 +1617,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
             )
         }
     }
-    results
+    unname(results)
 }
 
 .k1_acceptance_result_ids <- function(results) {

@@ -72,10 +72,13 @@ test_that("collector ignores dynamic-branch names but preserves task order", {
         branch_b = list(task_id = "task-b")
     )
 
+    collected <- landscapeR:::.k1_acceptance_collect(results, tasks)
+    expect_identical(collected, unname(results))
     expect_identical(
-        landscapeR:::.k1_acceptance_collect(results, tasks),
-        results
+        collected,
+        landscapeR:::.k1_acceptance_collect(unname(results), tasks)
     )
+    expect_null(names(collected))
     expect_error(
         landscapeR:::.k1_acceptance_collect(rev(results), tasks),
         "result order or task identity",
