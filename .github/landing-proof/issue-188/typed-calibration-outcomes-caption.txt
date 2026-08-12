@@ -1,13 +1,17 @@
-K=1 synthetic longitudinal recovery and estimability. The AML-shaped synthetic longitudinal
+K=1 target-axis recovery and downstream interpretation. The AML-shaped synthetic longitudinal
 calibration experiment to assess the declared condition target contrasts disease with control.
-Each symbol is one requested replicate positioned by mice per condition and expression feature
-count; shape identifies recovered and estimable, recovered but downstream non-estimable,
-recovery below threshold, non-evaluable recovery, or execution failure outcomes. The analysis
-unit is complete synthetic mouse trajectory; the estimand is the pair of separately reported
-rates for target-axis recovery and downstream estimability; time is recorded as collection time
-in weeks; adjustment uses batch. Downstream estimability is not evaluated when the planted axis
-is not recovered or recovery itself is unavailable; recovered but downstream non-estimable
-replicates remain a distinct plotted state. Axis recovery uses one canonical rule: loading
-cosine at least 0.9; its equivalent angle is descriptive. These known-truth synthetic results
-describe recovery under the tested settings only; they do not establish performance for
-biological data.
+Red arrows mark the planted reference axis and black arrows show an abstract unsigned angle
+reconstructed from absolute loading cosine in a schematic two-dimensional plane; panel A shows
+successful geometric recovery with downstream interpretation not estimable; panel B shows
+cosine agreement below the recovery threshold, with downstream interpretation not evaluated;
+the upward orientation is illustrative, not an observed coordinate. The analysis unit is
+complete synthetic mouse trajectory; the estimand is agreement between the planted and
+recovered target axes, followed by estimability of the declared downstream interpretation; time
+is recorded as collection time in weeks; adjustment uses batch. Only completed replicates with
+evaluable recovery geometry are drawn in the component plane; execution failures and replicates
+with unavailable recovery evidence or component-identity mismatch remain in the typed outcome
+table and are not converted into geometric arrows. Axis recovery uses one canonical rule:
+loading cosine at least 0.9; its equivalent angle is descriptive. These known-truth synthetic
+results describe recovery under the tested settings only; they do not establish performance for
+biological data. The displayed examples were selected explicitly by task ID: outcome-1,
+outcome-3.

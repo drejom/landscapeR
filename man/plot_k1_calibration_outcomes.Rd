@@ -2,16 +2,21 @@
 % Please edit documentation in R/13l-stage0-k1-calibration-outcomes.R
 \name{plot_k1_calibration_outcomes}
 \alias{plot_k1_calibration_outcomes}
-\title{Plot disclosed K=1 calibration outcome states}
+\title{Plot K=1 recovery geometry and downstream interpretation}
 \usage{
-plot_k1_calibration_outcomes(assessment)
+plot_k1_calibration_outcomes(assessment, task_ids = NULL)
 }
 \arguments{
 \item{assessment}{object returned by \code{\link[=assess_k1_calibration_outcomes]{assess_k1_calibration_outcomes()}}.}
+
+\item{task_ids}{optional character vector of disclosed replicate task IDs to
+draw. By default, all replicates with evaluable cosine geometry are shown.}
 }
 \value{
-A publication-themed \code{ggplot} with a separate scientific caption.
+A publication-themed component-plane \code{ggplot} with a separate
+scientific caption. The complete typed outcome table remains available in
+\code{assessment$replicates}.
 }
 \description{
-Plot disclosed K=1 calibration outcome states
+Plot K=1 recovery geometry and downstream interpretation
 }

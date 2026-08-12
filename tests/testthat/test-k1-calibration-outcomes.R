@@ -225,26 +225,154 @@ test_that("calibration outcome plot exposes both scientific failure modes", {
         fixture$tasks,
         fixture$protocol
     )
-    plot <- plot_k1_calibration_outcomes(assessment)
+    plot <- plot_k1_calibration_outcomes(
+        assessment,
+        task_ids = c("outcome-1", "outcome-3")
+    )
 
     expect_s3_class(plot, "ggplot")
     expect_match(
         scientific_caption(plot),
-        "recovered\\s+but downstream non-estimable"
+        "downstream interpretation not\\s+estimable"
     )
-    expect_match(scientific_caption(plot), "planted axis\\s+is not recovered")
-    expect_match(scientific_caption(plot), "known-truth synthetic")
-    expect_match(scientific_caption(plot), "recovery itself is unavailable")
+    expect_match(
+        scientific_caption(plot),
+        "cosine agreement below the recovery threshold"
+    )
+    expect_match(scientific_caption(plot), "known-truth\\s+synthetic")
+    expect_match(scientific_caption(plot), "typed\\s+outcome\\s+table")
+    expect_match(
+        scientific_caption(plot),
+        "upward\\s+orientation is illustrative"
+    )
     expect_false(grepl(";;", scientific_caption(plot), fixed = TRUE))
     expect_setequal(
         as.character(unique(assessment$replicates$outcome)),
         assessment$outcome_levels
     )
-    expect_identical(
-        plot$labels$shape,
-        NULL
+    geometry <- attr(plot, "landscapeR_k1_schematic_data", exact = TRUE)
+    expect_s3_class(geometry, "data.frame")
+    expect_setequal(
+        as.character(unique(geometry$direction)),
+        c("Planted reference axis", "Cosine-derived unsigned angle")
     )
-    expect_length(plot$scales$get_scales("shape")$palette(5L), 5L)
+    expect_setequal(
+        as.character(unique(geometry$panel)),
+        c(
+            paste(
+                "A  Axis recovered\n",
+                "Downstream interpretation not estimable",
+                sep = ""
+            ),
+            paste(
+                "B  Axis agreement below threshold\n",
+                "Downstream not evaluated",
+                sep = ""
+            )
+        )
+    )
+    expect_identical(plot$labels$colour, NULL)
+    expect_null(plot$scales$get_scales("shape"))
+    expect_match(scientific_caption(plot), "outcome-1,\\s+outcome-3")
+})
+
+test_that("calibration geometry excludes identity mismatch and keeps all rows", {
+    fixture <- calibration_outcome_fixture()
+    duplicate <- fixture$results[[1L]]
+    duplicate$task_id <- "outcome-1b"
+    duplicate$canonical_cell <- fixture$tasks$canonical_cell[[1L]]
+    duplicate$replicate_index <- 2L
+    duplicate$metrics$target_loading_cosine <- 0.96
+    fixture$tasks <- rbind(
+        fixture$tasks,
+        transform(
+            fixture$tasks[1L, , drop = FALSE],
+            task_id = "outcome-1b",
+            replicate_index = 2L
+        )
+    )
+    identity_mismatch <- fixture$results[[3L]]
+    identity_mismatch$metrics$target_loading_cosine <- 0.98
+    identity_mismatch$metrics$target_component <- 1L
+    identity_mismatch$metrics$nuisance_component <- 2L
+    fixture$results <- c(fixture$results, list(duplicate))
+    fixture$results[[3L]] <- identity_mismatch
+
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results,
+        fixture$tasks,
+        fixture$protocol
+    )
+    identity_geometry <- attr(
+        plot_k1_calibration_outcomes(assessment),
+        "landscapeR_k1_schematic_data",
+        exact = TRUE
+    )
+    expect_false("outcome-3" %in% identity_geometry$task_id)
+
+    fixture <- calibration_outcome_fixture()
+    fixture$tasks <- rbind(
+        fixture$tasks,
+        transform(
+            fixture$tasks[1L, , drop = FALSE],
+            task_id = "outcome-1b",
+            replicate_index = 2L
+        )
+    )
+    duplicate <- fixture$results[[1L]]
+    duplicate$task_id <- "outcome-1b"
+    duplicate$replicate_index <- 2L
+    duplicate$metrics$target_loading_cosine <- 0.96
+    fixture$results <- c(fixture$results, list(duplicate))
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results,
+        fixture$tasks,
+        fixture$protocol
+    )
+    geometry <- attr(
+        plot_k1_calibration_outcomes(assessment),
+        "landscapeR_k1_schematic_data",
+        exact = TRUE
+    )
+    expect_setequal(
+        unique(geometry$task_id[
+            geometry$direction == "Cosine-derived unsigned angle"
+        ]),
+        c("outcome-1", "outcome-1b", "outcome-2", "outcome-3")
+    )
+
+    assessment$replicates$diagnostic[[3L]] <-
+        "equivalent explanatory wording"
+    assessment$cells <- landscapeR:::.k1_calibration_cell_rows(
+        assessment$replicates
+    )
+    payload <- unclass(assessment)
+    payload$digest <- NULL
+    assessment$digest <- digest::digest(payload, algo = "sha256")
+    wording_geometry <- attr(
+        plot_k1_calibration_outcomes(assessment),
+        "landscapeR_k1_schematic_data",
+        exact = TRUE
+    )
+    expect_true("outcome-3" %in% wording_geometry$task_id)
+})
+
+test_that("calibration plot handles assessments without drawable geometry", {
+    fixture <- calibration_outcome_fixture()
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results[4L],
+        fixture$tasks[4L, , drop = FALSE],
+        fixture$protocol
+    )
+
+    plot <- plot_k1_calibration_outcomes(assessment)
+    expect_s3_class(plot, "ggplot")
+    expect_null(attr(plot, "landscapeR_k1_schematic_data", exact = TRUE))
+    caption <- scientific_caption(plot)
+    expect_match(caption, "AML-shaped synthetic longitudinal")
+    expect_match(caption, "no completed replicate", ignore.case = TRUE)
+    expect_match(caption, "loading cosine at\\s+least 0.9")
+    expect_match(caption, "known-truth synthetic")
 })
 
 test_that("historical acceptance summaries remain reproducible", {

@@ -584,104 +584,328 @@ assess_k1_calibration_outcomes <- function(
     invisible(TRUE)
 }
 
-#' Plot disclosed K=1 calibration outcome states
+#' Plot K=1 recovery geometry and downstream interpretation
 #'
 #' @param assessment object returned by [assess_k1_calibration_outcomes()].
-#' @return A publication-themed `ggplot` with a separate scientific caption.
+#' @param task_ids optional character vector of disclosed replicate task IDs to
+#'   draw. By default, all replicates with evaluable cosine geometry are shown.
+#' @return A publication-themed component-plane `ggplot` with a separate
+#'   scientific caption. The complete typed outcome table remains available in
+#'   `assessment$replicates`.
 #' @export
-plot_k1_calibration_outcomes <- function(assessment) {
+plot_k1_calibration_outcomes <- function(assessment, task_ids = NULL) {
     .validate_k1_calibration_outcomes(assessment)
-    display <- assessment$replicates
-    labels <- c(
-        recovered_and_estimable = "Recovered, estimable",
+    caption_context <- function(encodings, estimand, missingness) {
+        .new_scientific_caption_view(
+            title = "K=1 target-axis recovery and downstream interpretation.",
+            experiment_label = assessment$scientific_context$experiment_label,
+            target_field = assessment$scientific_context$target_field,
+            oriented_levels = assessment$scientific_context$oriented_levels,
+            sampling_unit = assessment$scientific_context$sampling_unit,
+            time_field = assessment$scientific_context$time_field,
+            time_unit = assessment$scientific_context$time_unit,
+            nuisance_fields = assessment$scientific_context$nuisance_fields,
+            encodings = encodings,
+            estimand = estimand,
+            missingness = missingness,
+            threshold = paste0(
+                "Axis recovery uses one canonical rule: loading cosine at ",
+                "least ",
+                format(
+                    assessment$canonical_recovery_threshold,
+                    trim = TRUE
+                ),
+                "; its equivalent angle is descriptive."
+            ),
+            claim_boundary = paste(
+                "These known-truth synthetic results describe recovery under",
+                "the tested settings only; they do not establish performance",
+                "for biological data."
+            ),
+            state = "uncalibrated"
+        )
+    }
+    if (!is.null(task_ids) && (
+            !is.character(task_ids) || !length(task_ids) ||
+            anyNA(task_ids) || any(!nzchar(task_ids)) ||
+            anyDuplicated(task_ids) ||
+            any(!task_ids %in% assessment$replicates$task_id))) {
+        .stop_landscapeR_validation(
+            "task_ids must name unique assessment replicate task IDs"
+        )
+    }
+    protocol_version <- switch(
+        assessment$source_protocol_id,
+        `k1-stage0-acceptance-v1` = "1",
+        `k1-stage0-acceptance-v2` = "2"
+    )
+    source_thresholds <- k1_acceptance_protocol(protocol_version)$thresholds$
+        aml_synchronized
+    cosine_failure <-
+        assessment$replicates$outcome == "recovery_below_threshold" &
+        assessment$replicates$target_component ==
+            source_thresholds$required_target_component &
+        assessment$replicates$nuisance_component ==
+            source_thresholds$required_nuisance_component &
+        assessment$replicates$target_loading_cosine <
+            assessment$canonical_recovery_threshold
+    display <- assessment$replicates[
+        assessment$replicates$outcome %in% c(
+            "recovered_and_estimable",
+            "recovered_downstream_nonestimable"
+        ) |
+        cosine_failure,
+        ,
+        drop = FALSE
+    ]
+    if (!is.null(task_ids)) {
+        indices <- match(task_ids, display$task_id)
+        if (anyNA(indices)) {
+            .stop_landscapeR_validation(
+                "task_ids must identify replicates with drawable cosine geometry"
+            )
+        }
+        display <- display[indices, , drop = FALSE]
+    }
+    if (!nrow(display)) {
+        caption_view <- caption_context(
+            encodings = paste(
+                "The unavailable panel states that no completed replicate",
+                "contained evaluable cosine geometry."
+            ),
+            estimand = paste(
+                "agreement between the planted reference axis and an",
+                "evaluable recovered target axis"
+            ),
+            missingness = paste(
+                "Cosine geometry is unavailable for every completed",
+                "replicate; typed execution and recovery outcomes remain in",
+                "the assessment table."
+            )
+        )
+        plot <- ggplot2::ggplot() +
+            ggplot2::annotate(
+                "text", x = 0, y = 0,
+                label = paste(
+                    "No completed replicate has evaluable",
+                    "cosine geometry"
+                ),
+                family = "Helvetica", size = 3
+            ) +
+            ggplot2::coord_cartesian(xlim = c(-1, 1), ylim = c(-1, 1)) +
+            ggplot2::labs(x = NULL, y = NULL) +
+            theme_landscapeR() +
+            ggplot2::theme(
+                axis.text = ggplot2::element_blank(),
+                axis.ticks = ggplot2::element_blank(),
+                axis.line = ggplot2::element_blank()
+            )
+        return(.with_scientific_caption(
+            plot,
+            .build_scientific_caption(caption_view)
+        ))
+    }
+    panel_descriptions <- c(
+        recovered_and_estimable =
+            "Axis recovered\nDownstream interpretation estimable",
         recovered_downstream_nonestimable =
-            "Recovered, not estimable",
-        recovery_below_threshold = "Not recovered",
-        recovery_not_evaluable = "Recovery unavailable",
-        execution_failure = "Execution failed"
+            "Axis recovered\nDownstream interpretation not estimable",
+        recovery_below_threshold =
+            "Axis agreement below threshold\nDownstream not evaluated"
     )
-    display$outcome_label <- factor(
-        labels[as.character(display$outcome)],
-        levels = unname(labels)
+    present_outcomes <- names(panel_descriptions)[
+        names(panel_descriptions) %in% as.character(display$outcome)
+    ]
+    panel_letters <- stats::setNames(
+        LETTERS[seq_along(present_outcomes)],
+        present_outcomes
     )
-    caption_view <- .new_scientific_caption_view(
-        title = "K=1 synthetic longitudinal recovery and estimability.",
-        experiment_label = assessment$scientific_context$experiment_label,
-        target_field = assessment$scientific_context$target_field,
-        oriented_levels = assessment$scientific_context$oriented_levels,
-        sampling_unit = assessment$scientific_context$sampling_unit,
-        time_field = assessment$scientific_context$time_field,
-        time_unit = assessment$scientific_context$time_unit,
-        nuisance_fields = assessment$scientific_context$nuisance_fields,
+    panel_labels <- stats::setNames(
+        paste0(
+            unname(panel_letters),
+            "  ",
+            unname(panel_descriptions[present_outcomes])
+        ),
+        present_outcomes
+    )
+    status_labels <- c(
+        recovered_and_estimable =
+            "Recovery gate: met  |  Interpretation: estimable",
+        recovered_downstream_nonestimable =
+            "Recovery gate: met  |  Interpretation: not estimable",
+        recovery_below_threshold =
+            "Recovery gate: not met  |  Interpretation: not evaluated"
+    )
+    display$panel <- factor(
+        panel_labels[as.character(display$outcome)],
+        levels = unname(panel_labels[present_outcomes])
+    )
+    display$status_label <- unname(
+        status_labels[as.character(display$outcome)]
+    )
+    display$angle_rad <- acos(pmax(
+        0,
+        pmin(1, abs(display$target_loading_cosine))
+    ))
+    display$recovered_x <- cos(display$angle_rad)
+    display$recovered_y <- sin(display$angle_rad)
+    status_data <- unique(display[c("panel", "status_label")])
+    vector_data <- rbind(
+        data.frame(
+            panel = display$panel,
+            task_id = display$task_id,
+            direction = "Planted reference axis",
+            x = 0,
+            y = 0,
+            xend = 1,
+            yend = 0
+        ),
+        data.frame(
+            panel = display$panel,
+            task_id = display$task_id,
+            direction = "Cosine-derived unsigned angle",
+            x = 0,
+            y = 0,
+            xend = display$recovered_x,
+            yend = display$recovered_y
+        )
+    )
+    vector_data$direction <- factor(
+        vector_data$direction,
+        levels = c(
+            "Planted reference axis",
+            "Cosine-derived unsigned angle"
+        )
+    )
+    panel_clauses <- c(
+        recovered_and_estimable = paste(
+            "shows successful geometric recovery with downstream",
+            "interpretation estimable"
+        ),
+        recovered_downstream_nonestimable = paste(
+            "shows successful geometric recovery with downstream",
+            "interpretation not estimable"
+        ),
+        recovery_below_threshold = paste(
+            "shows cosine agreement below the recovery threshold, with",
+            "downstream interpretation not evaluated"
+        )
+    )
+    panel_encoding <- paste(
+        paste0(
+            "panel ",
+            unname(panel_letters[present_outcomes]),
+            " ",
+            unname(panel_clauses[present_outcomes])
+        ),
+        collapse = "; "
+    )
+    caption_view <- caption_context(
         encodings = c(
             paste(
-                "Each symbol is one requested replicate positioned by",
-                "mice per condition and expression feature count"
+                "Red arrows mark the planted reference axis and black arrows",
+                "show an abstract unsigned angle reconstructed from absolute",
+                "loading cosine in a schematic two-dimensional plane"
             ),
-            paste(
-                "shape identifies recovered and estimable, recovered but",
-                "downstream non-estimable, recovery below threshold,",
-                "non-evaluable recovery, or execution failure outcomes."
+            paste0(
+                panel_encoding,
+                "; the upward orientation is illustrative, not an observed ",
+                "coordinate."
             )
         ),
         estimand = paste(
-            "the pair of separately reported rates for target-axis recovery",
-            "and downstream estimability"
+            "agreement between the planted and recovered target axes, followed",
+            "by estimability of the declared downstream interpretation"
         ),
         missingness = paste(
-            "Downstream estimability is not evaluated when the planted axis",
-            "is not recovered or recovery itself is unavailable; recovered",
-            "but downstream non-estimable replicates remain a distinct",
-            "plotted state."
-        ),
-        threshold = paste0(
-            "Axis recovery uses one canonical rule: loading cosine at least ",
-            format(assessment$canonical_recovery_threshold, trim = TRUE),
-            "; its equivalent angle is descriptive."
-        ),
-        claim_boundary = paste(
-            "These known-truth synthetic results describe recovery under the",
-            "tested settings only; they do not establish performance for",
-            "biological data."
-        ),
-        state = "uncalibrated"
+            "Only completed replicates with evaluable recovery geometry are",
+            "drawn in the component plane; execution failures and replicates",
+            "with unavailable recovery evidence or component-identity",
+            "mismatch remain in the typed outcome table and are not converted",
+            "into geometric arrows."
+        )
     )
-    plot <- ggplot2::ggplot(display, ggplot2::aes(
-        x = subjects_per_condition,
-        y = factor(p, levels = sort(unique(p))),
-        shape = outcome_label
-    )) +
-        ggplot2::geom_point(
-            size = 3.1,
-            stroke = 0.8,
-            colour = unname(landscapeR_palette("semantic")[["ink"]]),
-            position = ggplot2::position_jitter(
-                width = 0.10,
-                height = 0,
-                seed = 188L
+    if (!is.null(task_ids)) {
+        caption_view$claim_boundary <- paste(
+            caption_view$claim_boundary,
+            "The displayed examples were selected explicitly by task ID:",
+            paste0(paste(task_ids, collapse = ", "), ".")
+        )
+    }
+    semantic <- landscapeR_palette("semantic")
+    plot <- ggplot2::ggplot(vector_data) +
+        ggplot2::geom_hline(
+            yintercept = 0,
+            colour = unname(semantic[["structure"]]),
+            linewidth = 0.25
+        ) +
+        ggplot2::geom_vline(
+            xintercept = 0,
+            colour = unname(semantic[["structure"]]),
+            linewidth = 0.25
+        ) +
+        ggplot2::geom_segment(
+            ggplot2::aes(
+                x = x,
+                y = y,
+                xend = xend,
+                yend = yend,
+                colour = direction
+            ),
+            linewidth = 1,
+            alpha = 0.9,
+            arrow = grid::arrow(
+                length = grid::unit(2.2, "mm"),
+                type = "closed"
             )
         ) +
-        ggplot2::scale_shape_manual(
-            values = c(16, 1, 4, 0, 3),
+        ggplot2::geom_point(
+            x = 0,
+            y = 0,
+            colour = unname(semantic[["ink"]]),
+            size = 1.5
+        ) +
+        ggplot2::geom_label(
+            data = status_data,
+            ggplot2::aes(x = 0.5, y = -0.31, label = status_label),
+            inherit.aes = FALSE,
+            family = "Helvetica",
+            size = 2.2,
+            linewidth = 0.2,
+            label.padding = grid::unit(1.1, "mm"),
+            colour = unname(semantic[["ink"]]),
+            fill = unname(semantic[["paper"]])
+        ) +
+        ggplot2::facet_wrap(ggplot2::vars(panel), nrow = 1L) +
+        ggplot2::scale_colour_manual(
+            values = c(
+                "Planted reference axis" =
+                    unname(semantic[["focal"]]),
+                "Cosine-derived unsigned angle" =
+                    unname(semantic[["ink"]])
+            ),
             drop = FALSE
         ) +
-        ggplot2::scale_x_continuous(
-            breaks = sort(unique(display$subjects_per_condition))
+        ggplot2::coord_equal(
+            xlim = c(-0.12, 1.12),
+            ylim = c(-0.42, 1.02),
+            expand = FALSE,
+            clip = "off"
         ) +
         ggplot2::labs(
-            x = "Synthetic mice per condition",
-            y = "Expression features",
-            shape = NULL
+            x = "Schematic target-axis direction",
+            y = "Schematic orthogonal direction",
+            colour = NULL
         ) +
         theme_landscapeR(square = FALSE) +
-        ggplot2::guides(shape = ggplot2::guide_legend(
-            ncol = 2L,
-            byrow = TRUE
-        )) +
         ggplot2::theme(
             legend.position = "bottom",
-            legend.text = ggplot2::element_text(size = 7)
+            legend.justification = "center",
+            axis.text = ggplot2::element_blank(),
+            axis.ticks = ggplot2::element_blank(),
+            panel.spacing = grid::unit(7, "mm")
         )
+    attr(plot, "landscapeR_k1_schematic_data") <- vector_data
     .with_scientific_caption(
         plot,
         .build_scientific_caption(caption_view)

@@ -1,6 +1,9 @@
-"canonical_cell","control","subjects_per_condition","p","n_requested","n_execution_completed","n_execution_failure","n_recovery_evaluable","n_recovered","n_recovery_below_threshold","n_recovery_not_evaluable","n_downstream_evaluable","n_recovered_and_estimable","n_recovered_downstream_nonestimable","recovery_rate","downstream_estimability_rate","recovery_rate_denominator","estimability_rate_denominator"
-"control=aml_synchronized;subjects_per_condition=4;p=100","aml_synchronized",4,100,1,1,0,1,1,0,0,1,0,1,1,0,"replicates with evaluable decomposition recovery","replicates whose target axis was recovered"
-"control=aml_synchronized;subjects_per_condition=7;p=100","aml_synchronized",7,100,1,1,0,1,1,0,0,1,1,0,1,1,"replicates with evaluable decomposition recovery","replicates whose target axis was recovered"
-"control=aml_synchronized;subjects_per_condition=12;p=100","aml_synchronized",12,100,1,0,1,0,0,0,0,0,0,0,NA,NA,"replicates with evaluable decomposition recovery","replicates whose target axis was recovered"
-"control=aml_synchronized;subjects_per_condition=7;p=10000","aml_synchronized",7,10000,1,1,0,0,0,0,1,0,0,0,NA,NA,"replicates with evaluable decomposition recovery","replicates whose target axis was recovered"
-"control=aml_synchronized;subjects_per_condition=12;p=10000","aml_synchronized",12,10000,1,1,0,1,0,1,0,0,0,0,0,NA,"replicates with evaluable decomposition recovery","replicates whose target axis was recovered"
+"panel","task_id","direction","x","y","xend","yend"
+"A  Axis recovered
+Downstream interpretation not estimable","outcome-1","Planted reference axis",0,0,1,0
+"B  Axis agreement below threshold
+Downstream not evaluated","outcome-3","Planted reference axis",0,0,1,0
+"A  Axis recovered
+Downstream interpretation not estimable","outcome-1","Cosine-derived unsigned angle",0,0,0.98,0.198997487421324
+"B  Axis agreement below threshold
+Downstream not evaluated","outcome-3","Cosine-derived unsigned angle",0,0,0.7,0.714142842854285
