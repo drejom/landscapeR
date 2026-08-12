@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#67 frozen independent AML-shaped
-acceptance execution**.
+**Next task after this change lands:** **#188 correct K=1 recovery gates and
+typed calibration outcomes**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -126,6 +126,23 @@ The milestone is complete only when:
                                                          │
                                                          v
                                              #67 independent acceptance execution
+                                                  complete negative result
+                                                         │
+                                                         v
+                                             #187 revised calibration spec
+                                                         │
+                                                         v
+                                             #188 canonical recovery gate +
+                                                  typed outcome states
+                                                         │
+                                      ┌──────────────────┼──────────────────┐
+                                      v                  v                  v
+                              #189 destructive     #190 repeated      #191 signal/noise
+                              sampling map         sampling map        regimes
+                                      └──────────────────┼──────────────────┘
+                                                         v
+                                             #193 refreeze + independent
+                                                  acceptance execution
                                                          │
                                                          v
                                              #51 phase B: aggregate/finalize
@@ -137,10 +154,11 @@ The milestone is complete only when:
                                              #71 exploratory AML Stage 1
 ```
 
-#51 and #67 deliberately cross at the calibration/acceptance boundary: #67 may
-be implemented and exercised on disclosed calibration seeds, but its independent
-acceptance run uses only seeds and rules already frozen by #51. The same output
-cannot choose and validate the protocol.
+#51 and #67 crossed at the original calibration/acceptance boundary: #67 used
+only seeds and rules already frozen by #51. That completed negative result is
+now immutable historical evidence. The same separation applies to #187–#193:
+disclosed calibration may design the revision, but newly frozen independent
+seeds alone may evaluate it.
 
 ## Single-agent order
 
@@ -206,7 +224,7 @@ confirmation; stable-subspace/no-stable-axis is a valid abstention.
 **Active prefactor:** #91 and its general-contract correction #100 are
 complete. #92, #83, #93, #94, #106, and #108 are complete. #107 completes on
 merge, closing the public scientific-caption migration and returning the active
-sequence to the #67 calibration lane. #114 completes on merge, moving the
+sequence to the K=1 calibration lane. #114 completes on merge, moving the
 legacy Stage 1/2 plot calculations behind stored typed evidence without
 reordering that lane.
 #101 reconciles supporting Pogona manifests without changing the active task
@@ -225,10 +243,15 @@ The [2026-07-31 whole-codebase technical-debt audit](docs/archive/technical-debt
 and follow-up architecture and HPC reviews are fully represented by issues.
 The maintenance lane is deliberately active until the audited backlog is clean.
 The K=1 acceptance ladder remains the current scientific lane. #51 phase B1
-has executed all 16,100 frozen generic, negative-control, and shared-baseline
-tasks. No tested sample count passed the complete recovery and false-topology
-gates, so no supported minimum is claimed. The next task is #67 independent
-AML-shaped acceptance. Issue labels do not independently change this schedule.
+executed all 16,100 frozen generic, negative-control, and shared-baseline tasks,
+and #67 executed all 900 frozen AML-shaped tasks. Neither run supports a sample
+range. The #67 audit also showed that the validation instrument itself is not
+yet fit for final adjudication: it gates one-dimensional recovery twice using
+inconsistent cosine/angle cutoffs, cannot evaluate some declared small-sample
+cells, assumes complete repeated trajectories, and tests only one
+fixed-total-signal high-dimensional regime. The next task is #188, followed by
+the revised calibration sequence in #189–#191 and a newly frozen independent
+acceptance in #193. Issue labels do not independently change this schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -303,7 +326,7 @@ backend through the same future seam.
 | ADR authority, CI selection, contributor/repository governance | #129, #130, #131; separate repository-hygiene decision |
 | Future-backed repetition, deterministic RNG, HPC and orchestration | #57, #132, #133, #134, #135 |
 
-### 5. AML-shaped synthetic control — #67 calibration lane
+### 5. AML-shaped synthetic control — #67 complete negative acceptance
 
 **Deliverable:** repeated synthetic mice, stronger time/nuisance axis, planted
 non-dominant condition-by-time target axis, subject-aware atlas/proposal,
@@ -312,11 +335,21 @@ component alignment, and typed cross-sectional Stage 2 ineligibility.
 **Calibration only:** develop and diagnose on disclosed seeds. Do not consume
 the independent acceptance seeds.
 
-**Status:** calibration implementation and the reviewed acceptance runner are
-complete. The disclosed Gemini largest-cell resource pilot completed at the
-reviewed runner merge with all 99 permutations and all 99 identifiability
-refits; its measured production packing is recorded in the follow-up that
-unblocks frozen execution. #51 phase B1 is complete.
+**Status:** complete. All 900 frozen tasks executed on Gemini and the verified
+content-addressed artifact
+`k1-stage0-acceptance-v2-728dc79c448d7e42` preserves the original worker
+results and separate recovery-collector provenance. No cell passed every frozen
+cell-level criterion. At 100 features, replicate pass rates were 0%, 50%, and
+96% for 4, 7, and 12 mice per condition; all 1,000- and 10,000-feature cells
+had 0% complete replicate passes.
+
+**Interpretation boundary:** this is a valid negative acceptance result, but it
+does not establish that the scientific method is unfit. Audit showed that the
+1,000-feature planted axis was recovered closely while failing a redundant
+15-degree cutoff, four-mouse cells could not produce the required
+identifiability evidence, and the 10,000-feature fixed spike was submerged by
+an increasing independent-noise spectrum. The artifact and consumed seeds
+remain immutable historical evidence.
 
 ### 6. Refreeze K=1 acceptance before execution: #51 phase A and #177
 
@@ -339,26 +372,50 @@ commit. Phase B1 subsequently executed from that reviewed merge.
 90% pass-rate gate, and false double-well topology exceeded the frozen 5%
 maximum in both negative controls. False target selection stayed within the
 limit, and the shared-baseline safety control passed. The supported minimum is
-therefore `NA`. Final adjudication still requires #67 and the phase-B aggregate;
-ADR 0002 is not amended from this partial result.
+therefore `NA`. #67 subsequently completed with a negative result, but the
+combined evidence exposed validation-instrument defects now governed by
+#187–#193; ADR 0002 is not amended from these historical runs.
 
-### 7. Independent AML-shaped acceptance — #67 acceptance lane
+### 7. Repair the K=1 calibration instrument — #187 and #188
 
-Run the frozen #67 cases without tuning. Preserve all metrics and valid
-ineligible/abstention outcomes. Close #67 only when the frozen result is
-serialized and reviewable.
+**Parent specification:** #187 defines the design-aware calibration and
+operating-map contract. #188 is the next task and corrects the duplicated
+one-dimensional recovery gate while introducing typed outcomes that distinguish
+recovery failure, downstream non-estimability, evaluated threshold failure,
+and execution failure.
 
-**Status:** runner and resource preflight complete. After the reviewed
-resource-setting follow-up merges, run the frozen 900 tasks from the dedicated
-Gemini store and verify the content-addressed artifact.
+**Exit:** one governed calibration path exposes the corrected semantics through
+replicate evidence, aggregation, operating-map-ready data, scientific caption,
+artifact provenance, and visual proof without rewriting #67.
 
-### 8. Complete K=1 acceptance — #51 phase B
+### 8. Map realistic designs and high-dimensional regimes — #189–#191
 
-Run/aggregate the frozen generic controls, incorporate the frozen #67 result,
-produce content-addressed artifacts, and amend ADR 0002 with the already-frozen
-thresholds, pass rates, false-positive limit, and supported sample range.
+After #188, three independently grabbable slices may proceed in parallel:
 
-### 9. Asynchronous-onset AML robustness control — #168
+- #189 maps independent destructive time courses with one to three biological
+  samples per condition-time cell, unequal cells, isolated sequencing loss,
+  and missing internal cells;
+- #190 maps complete and incomplete repeated-subject trajectories, retaining
+  strict typed random-slope abstention; and
+- #191 separates fixed-spike adversarial noise, sparse informative features,
+  growing coherent signal, correlated modules, and null/near-null regimes above,
+  near, and below the recovery boundary.
+
+Each slice must deliver a complete governed path through generation, execution,
+typed evidence, operating map, separate caption, artifact, and visual proof.
+
+### 9. Refreeze and execute revised K=1 acceptance — #193 then #51 phase B
+
+After #189–#191, review the disclosed calibration evidence, amend ADRs 0016 and
+0002, freeze a new protocol with entirely disjoint seeds, and execute #193.
+Then #51 may integrate the historical and revised artifacts and state supported,
+unsupported, and out-of-domain regions. A negative result remains valid; the
+same seeds may not tune and validate a revision.
+
+#192, which locates a real experiment as a point or uncertainty region within a
+compatible calibrated operating domain, is useful but does not block #193.
+
+### 10. Asynchronous-onset AML robustness control — #168
 
 **Deliverable:** retain approximately stationary CTL trajectories while AML
 animals move coherently along a planted disease direction at heterogeneous
@@ -368,11 +425,11 @@ dispersion, responder fraction, effect strength, irregular sampling, and
 design-preserving dropout.
 
 **Claim boundary:** this is a known-truth robustness gate, not independent
-biological acceptance. It follows the frozen #51/#67 acceptance sequence so it
+biological acceptance. It follows revised acceptance #193 and #51 phase B so it
 cannot redefine thresholds from its own output. A calibrated structured
 abstention is a valid result where the asynchronous signal is not recoverable.
 
-### 10. Exploratory primary AML Stage 1 — #71
+### 11. Exploratory primary AML Stage 1 — #71
 
 Fit `primary_2018` only, show the observation-before-interpretation sequence,
 require human component confirmation, freeze the state-space definition, and
@@ -387,11 +444,12 @@ claim.
   association implementation may proceed.
 - #60 may locate/verify cKit, blast, or flow metadata at any time; it is useful
   atlas enrichment but does not block the primary target/time analysis.
-- #168 must not run before #51 and #67 complete. It is the final synthetic
-  realism gate before #71, not another calibration source for frozen thresholds.
+- #168 must not run before #193 and #51 phase B complete. It is the final
+  synthetic realism gate before #71, not another calibration source for frozen
+  thresholds.
 - The verified execution audit has satisfied #57's reusable-repetition trigger.
   #57 is agent-ready as a deliberately opened parallel maintenance prefactor;
-  it does not displace #67 or justify rewriting stable numerical code.
+  it does not displace #188 or justify rewriting stable numerical code.
 - #172 may run now as a human-led documentation-standards and audit lane while
   #177 corrects the protocol and the later #51 execution proceeds. It does not
   consume acceptance seeds or displace the scientific next task.
@@ -411,13 +469,13 @@ The sequence is:
 
 1. #172 defines the audience-specific standard through human grilling and
    audits representative documentation. This work is active now and may run in
-   parallel with #51 phase-B1 execution.
+   parallel with the #187–#193 calibration lane.
 2. #173 applies the approved standard to the complete K=1 acceptance journey.
-   It must land before #51 phase B publishes a supported operating range, so
-   the first major acceptance result uses the agreed explanatory structure.
+   It must land before #51 phase B publishes the revised supported operating
+   range, so the final K=1 conclusion uses the agreed explanatory structure.
 3. #174 establishes the canonical contributor path after #172. It does not
-   block #67, #168, or #71, but it must complete before v1 or before the project
-   solicits implementation of new modules from external contributors,
+   block #188–#193, #168, or #71, but it must complete before v1 or before the
+   project solicits implementation of new modules from external contributors,
    whichever comes first.
 4. #175 automates only mechanically safe requirements after #172 and the #173
    pilot. It is a pre-v1 gate and must leave scientific clarity and appropriate
@@ -509,8 +567,9 @@ amend this roadmap explicitly.
 
 These items do not reorder the scientific path unless their trigger is met:
 
-- #57 — future-backed repetition, compute tiers, and run-level RNG; queued as
-  the execution prefactor for #132–#135 without displacing #67.
+- #57 — future-backed repetition, compute tiers, and run-level RNG; retained as
+  the completed execution prefactor for #132–#135 and the revised calibration
+  workloads.
 - #41 — development-only SSH adapter, triggered only by a frozen run that
   cannot be completed on the available local executor.
 - #58 — focused tidy accessors/interoperability after scientific result
@@ -545,7 +604,7 @@ bodies may state dependencies but do not change this ordering.
 | [#24](https://github.com/drejom/landscapeR/issues/24) | AML robustness projection | queued |
 | [#41](https://github.com/drejom/landscapeR/issues/41) | Conditional infrastructure | conditional |
 | [#49](https://github.com/drejom/landscapeR/issues/49) | K≥2/islet-diabetes | queued |
-| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — phase B1 complete; final aggregate after #67 |
+| [#51](https://github.com/drejom/landscapeR/issues/51) | Exploratory AML Stage 1 gate | active — historical runs complete; final aggregate after #193 |
 | [#52](https://github.com/drejom/landscapeR/issues/52) | Pogona/bifurcation | queued |
 | [#53](https://github.com/drejom/landscapeR/issues/53) | Exploratory AML Stage 1 foundation | complete |
 | [#54](https://github.com/drejom/landscapeR/issues/54) | Exploratory AML Stage 1 foundation | complete on merge |
@@ -561,7 +620,7 @@ bodies may state dependencies but do not change this ordering.
 | [#64](https://github.com/drejom/landscapeR/issues/64) | Longitudinal extensions | parked |
 | [#65](https://github.com/drejom/landscapeR/issues/65) | Longitudinal extensions | parked |
 | [#66](https://github.com/drejom/landscapeR/issues/66) | Longitudinal observation design | queued |
-| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | active — next; resource pilot complete, frozen 900-task execution |
+| [#67](https://github.com/drejom/landscapeR/issues/67) | Exploratory AML Stage 1 acceptance | complete — verified negative result; validation-design limits exposed |
 | [#70](https://github.com/drejom/landscapeR/issues/70) | Roadmap/documentation bootstrap | complete |
 | [#71](https://github.com/drejom/landscapeR/issues/71) | Exploratory AML Stage 1 execution | active — milestone exit |
 | [#79](https://github.com/drejom/landscapeR/issues/79) | Exploratory AML Stage 1 interpretation — #55 slice | complete |
@@ -607,7 +666,7 @@ bodies may state dependencies but do not change this ordering.
 | [#144](https://github.com/drejom/landscapeR/issues/144) | Maintenance — pkgdown stack-imbalance warnings | complete on merge; then resume #123 |
 | [#158](https://github.com/drejom/landscapeR/issues/158) | Candidate decomposition method — rhoPCA | parked — research question |
 | [#159](https://github.com/drejom/landscapeR/issues/159) | Candidate temporal biological dataset — snake brumation | parked — research question |
-| [#168](https://github.com/drejom/landscapeR/issues/168) | Exploratory AML Stage 1 — asynchronous-onset robustness | active — blocked by #51 and #67 |
+| [#168](https://github.com/drejom/landscapeR/issues/168) | Exploratory AML Stage 1 — asynchronous-onset robustness | active — blocked by #193 and #51 phase B |
 | [#170](https://github.com/drejom/landscapeR/issues/170) | Maintenance — K=1 acceptance runner module seams | queued after governed #51 execution |
 | [#172](https://github.com/drejom/landscapeR/issues/172) | Cross-cutting documentation clarity: standard and audit | active; parallel human decision lane |
 | [#173](https://github.com/drejom/landscapeR/issues/173) | Cross-cutting documentation clarity: K=1 pilot | queued; blocked by #172; before #51 phase B publication |
@@ -616,6 +675,13 @@ bodies may state dependencies but do not change this ordering.
 | [#177](https://github.com/drejom/landscapeR/issues/177) | Exploratory AML Stage 1 gate: K=1 protocol v2 | complete on merge; then #51 phase B1 |
 | [#178](https://github.com/drejom/landscapeR/issues/178) | Independent time-course extension: shared baseline controls | parked; human method decision; non-blocking |
 | [#181](https://github.com/drejom/landscapeR/issues/181) | Maintenance — R lint baseline and ratcheting enforcement | queued; standalone maintenance lane |
+| [#187](https://github.com/drejom/landscapeR/issues/187) | K=1 design-aware calibration and operating maps | active — parent specification |
+| [#188](https://github.com/drejom/landscapeR/issues/188) | K=1 calibration semantics | active — next task |
+| [#189](https://github.com/drejom/landscapeR/issues/189) | K=1 destructive-time-course operating map | active — blocked by #188 |
+| [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | active — blocked by #188 |
+| [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | active — blocked by #188 |
+| [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | queued — blocked by #189–#191; does not block acceptance |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — blocked by #189–#191 |
 <!-- issue-map:end -->
 
 ---
@@ -640,6 +706,7 @@ plans.
 | 2026-07-25 | General cross-sectional component interpretation | #80 complete; continuous, ordered, adjusted, resampled, and search-aware evidence landed |
 | 2026-07-27 | Pogona master-registry reconciliation | #101 complete; canonical manifests derive from the audited registry while unresolved records remain excluded |
 | 2026-08-06 | Durable evidence execution substrate | #132–#135 complete on merge; future-backed repetition, remote-worker identity, transfer benchmarking, and targets/crew scheduler orchestration retain one scientific interface |
+| 2026-08-12 | Frozen AML-shaped K=1 acceptance | #67 complete negative result; 900/900 tasks verified, no supported cell, and validation-instrument defects routed to #187–#193 without reusing consumed seeds |
 
 ---
 
