@@ -188,12 +188,14 @@ hprcc's native resource summary reported:
 | Duration | 3.8 minutes |
 | hprcc recommendation | `tiny` |
 
-The retained digest-bound machine record is
-`.github/landing-proof/issue-67/gemini-resource-pilot-record.rds`; it was
-generated directly from the stored typed target and native hprcc summary. The
-adjacent TSV is a cold-readable view whose values are tested against that
-record. The production controller therefore requests 2 CPUs, 8 GB, and 60
-minutes and handles up to eight complete tasks sequentially per worker. This
+The installed digest-bound machine record is
+`inst/extdata/k1-aml-gemini-resource-pilot-record.rds`; it was generated
+directly from the stored typed target and native hprcc summary. The adjacent
+TSV is a cold-readable view whose values are tested against that record. Keeping
+both under `inst/extdata` means local, installed-package, CI, and Gemini checks
+verify the same governed evidence. The production controller therefore requests
+2 CPUs, 8 GB, and 60 minutes and handles up to eight complete tasks sequentially
+per worker. This
 preserves more than 4.8 times the observed peak memory. Eight observed-duration
 tasks project to 30.4 minutes before safety allowance, leaving nearly half the
 wall-time request for startup and runtime variation. Low measured CPU use does

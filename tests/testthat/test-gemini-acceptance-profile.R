@@ -1,15 +1,15 @@
 test_that("Gemini AML production profile is bound to measured pilot resources", {
-    root <- testthat::test_path("..", "..")
-    profile_path <- file.path(
-        root, "inst", "extdata", "k1-acceptance-gemini-targets.R"
+    profile_path <- system.file(
+        "extdata", "k1-acceptance-gemini-targets.R",
+        package = "landscapeR", mustWork = TRUE
     )
-    pilot_path <- file.path(
-        root, ".github", "landing-proof", "issue-67",
-        "gemini-resource-pilot.tsv"
+    pilot_path <- system.file(
+        "extdata", "k1-aml-gemini-resource-pilot.tsv",
+        package = "landscapeR", mustWork = TRUE
     )
-    record_path <- file.path(
-        root, ".github", "landing-proof", "issue-67",
-        "gemini-resource-pilot-record.rds"
+    record_path <- system.file(
+        "extdata", "k1-aml-gemini-resource-pilot-record.rds",
+        package = "landscapeR", mustWork = TRUE
     )
     profile <- paste(readLines(profile_path, warn = FALSE), collapse = "\n")
     pilot <- utils::read.delim(pilot_path, check.names = FALSE)
