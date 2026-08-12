@@ -148,6 +148,8 @@ test_that("calibration outcomes separate recovery from downstream estimability",
         -1
     )
     expect_true(assessment$replicates$stage2_ineligible[[2L]])
+    expect_identical(assessment$replicates$target_component[[2L]], 2L)
+    expect_identical(assessment$replicates$nuisance_component[[2L]], 1L)
     expect_false(assessment$replicates$recovery_met[[3L]])
     expect_true(is.na(assessment$replicates$recovery_met[[4L]]))
     expect_false(assessment$replicates$recovery_evaluable[[5L]])
@@ -162,6 +164,33 @@ test_that("calibration outcomes separate recovery from downstream estimability",
         assessment$claim_status,
         "retrospective_diagnostic_only"
     )
+})
+
+test_that("integer-valued double component identities remain valid", {
+    fixture <- calibration_outcome_fixture()
+    fixture$results[[2L]]$metrics$target_component <- 2
+    fixture$results[[2L]]$metrics$nuisance_component <- 1
+    fixture$results[[2L]]$metrics$acceptance_provenance$atlas$
+        time_course_models[[1L]]$component <- 1
+    fixture$results[[2L]]$metrics$acceptance_provenance$atlas$
+        time_course_models[[2L]]$component <- 2
+    fixture$results[[2L]]$metrics$acceptance_provenance_digest <-
+        digest::digest(
+            fixture$results[[2L]]$metrics$acceptance_provenance,
+            algo = "sha256"
+        )
+
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results,
+        fixture$tasks,
+        fixture$protocol
+    )
+
+    expect_identical(
+        as.character(assessment$replicates$outcome[[2L]]),
+        "recovered_and_estimable"
+    )
+    expect_s3_class(plot_k1_calibration_outcomes(assessment), "ggplot")
 })
 
 test_that("calibration cell denominators preserve typed outcomes", {
@@ -201,11 +230,12 @@ test_that("calibration outcome plot exposes both scientific failure modes", {
     expect_s3_class(plot, "ggplot")
     expect_match(
         scientific_caption(plot),
-        "recovered but downstream\\s+interpretation was not"
+        "recovered\\s+but downstream non-estimable"
     )
-    expect_match(scientific_caption(plot), "recover\\s+the planted axis")
+    expect_match(scientific_caption(plot), "planted axis\\s+is not recovered")
     expect_match(scientific_caption(plot), "known-truth synthetic")
-    expect_match(scientific_caption(plot), "lacked evaluable recovery")
+    expect_match(scientific_caption(plot), "recovery itself is unavailable")
+    expect_false(grepl(";;", scientific_caption(plot), fixed = TRUE))
     expect_setequal(
         as.character(unique(assessment$replicates$outcome)),
         assessment$outcome_levels
@@ -349,6 +379,30 @@ test_that("calibration outcome assessment rejects malformed public inputs", {
     assessment <- assess_k1_calibration_outcomes(
         fixture$results, fixture$tasks, fixture$protocol)
     assessment$source_protocol_id <- "invented"
+    payload <- unclass(assessment)
+    payload$digest <- NULL
+    assessment$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_calibration_outcomes(assessment),
+        class = "landscapeR_validation_error"
+    )
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results, fixture$tasks, fixture$protocol)
+    assessment$replicates$outcome[[2L]] <- "execution_failure"
+    assessment$cells <- landscapeR:::.k1_calibration_cell_rows(
+        assessment$replicates)
+    payload <- unclass(assessment)
+    payload$digest <- NULL
+    assessment$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_calibration_outcomes(assessment),
+        class = "landscapeR_validation_error"
+    )
+    assessment <- assess_k1_calibration_outcomes(
+        fixture$results, fixture$tasks, fixture$protocol)
+    assessment$replicates$downstream_estimable[[3L]] <- TRUE
+    assessment$cells <- landscapeR:::.k1_calibration_cell_rows(
+        assessment$replicates)
     payload <- unclass(assessment)
     payload$digest <- NULL
     assessment$digest <- digest::digest(payload, algo = "sha256")

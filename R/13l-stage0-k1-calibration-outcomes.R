@@ -94,7 +94,8 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
     provenance <- metrics$acceptance_provenance
     models <- provenance$atlas$time_course_models
     selected <- Filter(function(model) {
-        is.list(model) && identical(model$component, component)
+        is.list(model) && length(model$component) == 1L &&
+            isTRUE(model$component == component)
     }, models)
     if (length(selected) != 1L) return(character())
     model <- selected[[1L]]
@@ -115,6 +116,8 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
         downstream_estimable = NA,
         target_loading_cosine = NA_real_,
         target_subspace_angle_deg = NA_real_,
+        target_component = NA_integer_,
+        nuisance_component = NA_integer_,
         target_proposal_rank = NA_integer_,
         target_index_recurrence = NA_real_,
         mean_matched_loading_cosine = NA_real_,
@@ -134,16 +137,16 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
     if (!base$execution_completed) return(base)
 
     metrics <- result$metrics
+    target_component <- as.integer(metrics$target_component)
+    nuisance_component <- as.integer(metrics$nuisance_component)
     component_identity_evaluable <-
-        is.finite(metrics$target_component) &&
-        is.finite(metrics$nuisance_component)
+        is.finite(target_component) &&
+        is.finite(nuisance_component)
     recovery_evaluable <- is.finite(metrics$target_loading_cosine) &&
         component_identity_evaluable
     recovery_met <- if (recovery_evaluable) {
-        identical(metrics$target_component,
-            threshold$required_target_component) &&
-            identical(metrics$nuisance_component,
-                threshold$required_nuisance_component) &&
+        target_component == threshold$required_target_component &&
+            nuisance_component == threshold$required_nuisance_component &&
             metrics$target_loading_cosine >=
                 threshold$minimum_target_loading_cosine
     } else {
@@ -160,21 +163,20 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
         is.finite(metrics$target_index_recurrence) &&
         is.finite(metrics$mean_matched_loading_cosine) &&
         is.finite(metrics$identifiability_completion_rate)
-    diagnostic <- ""
+    downstream_diagnostic <- ""
     if (!downstream_estimable) {
         models <- metrics$acceptance_provenance$atlas$time_course_models
         selected <- Filter(function(model) {
-            is.list(model) && identical(
-                model$component,
-                threshold$required_target_component
-            )
+            is.list(model) && length(model$component) == 1L &&
+                isTRUE(model$component ==
+                    threshold$required_target_component)
         }, models)
         diagnostics <- if (length(selected) == 1L) {
             unlist(lapply(selected[[1L]][c("unadjusted", "adjusted")],
                 `[[`, "diagnostic"), use.names = FALSE)
         } else character()
         diagnostics <- unique(diagnostics[nzchar(diagnostics)])
-        diagnostic <- if (length(diagnostics)) {
+        downstream_diagnostic <- if (length(diagnostics)) {
             paste(diagnostics, collapse = "; ")
         } else {
             "required downstream model or identifiability evidence unavailable"
@@ -188,10 +190,20 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
         }
         "recovery_not_evaluable"
     } else if (!isTRUE(recovery_met)) {
+        diagnostic <- if (
+                target_component != threshold$required_target_component ||
+                nuisance_component != threshold$required_nuisance_component
+            ) {
+            "component identity did not match the declared target and nuisance"
+        } else {
+            "target-loading cosine was below the recovery threshold"
+        }
         "recovery_below_threshold"
     } else if (!downstream_estimable) {
+        diagnostic <- downstream_diagnostic
         "recovered_downstream_nonestimable"
     } else {
+        diagnostic <- ""
         "recovered_and_estimable"
     }
     base$recovery_evaluable <- recovery_evaluable
@@ -203,6 +215,8 @@ setOldClass(c("K1CalibrationOutcomeAssessment", "list"))
     }
     base$target_loading_cosine <- metrics$target_loading_cosine
     base$target_subspace_angle_deg <- metrics$target_subspace_angle_deg
+    base$target_component <- target_component
+    base$nuisance_component <- nuisance_component
     base$target_proposal_rank <- metrics$target_proposal_rank
     base$target_index_recurrence <- metrics$target_index_recurrence
     base$mean_matched_loading_cosine <-
@@ -394,6 +408,7 @@ assess_k1_calibration_outcomes <- function(
         "p", "replicate_index", "execution_completed",
         "recovery_evaluable", "recovery_met", "downstream_estimable",
         "target_loading_cosine", "target_subspace_angle_deg",
+        "target_component", "nuisance_component",
         "target_proposal_rank", "target_index_recurrence",
         "mean_matched_loading_cosine", "identifiability_completion_rate",
         "target_unadjusted_estimate", "target_adjusted_estimate",
@@ -437,6 +452,18 @@ assess_k1_calibration_outcomes <- function(
     } else {
         NA_real_
     }
+    source_target_component <- if (!is.null(source_protocol)) {
+        source_protocol$thresholds$aml_synchronized$
+            required_target_component
+    } else {
+        NA_integer_
+    }
+    source_nuisance_component <- if (!is.null(source_protocol)) {
+        source_protocol$thresholds$aml_synchronized$
+            required_nuisance_component
+    } else {
+        NA_integer_
+    }
     required_logical_complete <- c(
         "execution_completed", "recovery_evaluable"
     )
@@ -464,6 +491,35 @@ assess_k1_calibration_outcomes <- function(
             is.na(payload$replicates$downstream_estimable)) &&
         all(payload$replicates$execution_completed |
             is.na(payload$replicates$stage2_ineligible))
+    expected_recovery_evaluable <-
+        payload$replicates$execution_completed &
+        is.finite(payload$replicates$target_loading_cosine) &
+        is.finite(payload$replicates$target_component) &
+        is.finite(payload$replicates$nuisance_component)
+    expected_recovery_met <- expected_recovery_evaluable &
+        payload$replicates$target_component == source_target_component &
+        payload$replicates$nuisance_component == source_nuisance_component &
+        payload$replicates$target_loading_cosine >= source_threshold
+    expected_recovery_met[!expected_recovery_evaluable] <- NA
+    expected_downstream_applicable <-
+        !is.na(expected_recovery_met) & expected_recovery_met
+    expected_outcome <- ifelse(
+        !payload$replicates$execution_completed,
+        "execution_failure",
+        ifelse(
+            !payload$replicates$recovery_evaluable,
+            "recovery_not_evaluable",
+            ifelse(
+                !payload$replicates$recovery_met,
+                "recovery_below_threshold",
+                ifelse(
+                    payload$replicates$downstream_estimable,
+                    "recovered_and_estimable",
+                    "recovered_downstream_nonestimable"
+                )
+            )
+        )
+    )
     cell_schema_valid <- is.data.frame(payload$cells) &&
         identical(names(payload$cells), cell_fields)
     if (!identical(names(payload), required) ||
@@ -504,6 +560,14 @@ assess_k1_calibration_outcomes <- function(
                     grepl("^[0-9a-f]{64}$", value)
             }, logical(1L))) ||
             !replicate_schema_valid || !cell_schema_valid ||
+            !identical(payload$replicates$recovery_evaluable,
+                expected_recovery_evaluable) ||
+            !identical(payload$replicates$recovery_met,
+                expected_recovery_met) ||
+            !identical(!is.na(payload$replicates$downstream_estimable),
+                expected_downstream_applicable) ||
+            !identical(as.character(payload$replicates$outcome),
+                expected_outcome) ||
             anyDuplicated(payload$source_task_ids) ||
             !identical(payload$source_task_ids,
                 payload$replicates$task_id) ||
@@ -552,23 +616,23 @@ plot_k1_calibration_outcomes <- function(assessment) {
         encodings = c(
             paste(
                 "Each symbol is one requested replicate positioned by",
-                "mice per condition and expression feature count."
+                "mice per condition and expression feature count"
             ),
             paste(
-                "Shape identifies recovered and estimable, recovered but",
+                "shape identifies recovered and estimable, recovered but",
                 "downstream non-estimable, recovery below threshold,",
                 "non-evaluable recovery, or execution failure outcomes."
             )
         ),
         estimand = paste(
-            "separate rates of target-axis recovery and downstream",
-            "estimability"
+            "the pair of separately reported rates for target-axis recovery",
+            "and downstream estimability"
         ),
         missingness = paste(
-            "Missing downstream rates indicate no recovered axis;",
-            "recovered but downstream interpretation was not estimable is",
-            "retained separately from replicates that did not recover the",
-            "planted axis or lacked evaluable recovery evidence."
+            "Downstream estimability is not evaluated when the planted axis",
+            "is not recovered or recovery itself is unavailable; recovered",
+            "but downstream non-estimable replicates remain a distinct",
+            "plotted state."
         ),
         threshold = paste0(
             "Axis recovery uses one canonical rule: loading cosine at least ",
