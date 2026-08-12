@@ -21,16 +21,14 @@ Complete these gates in order for every implementation issue:
 10. Resolve merge conflicts without discarding either intent, then revalidate.
 11. Merge only after every preceding gate is satisfied.
 
-Reporting “I could not satisfy this, because X” is a correct outcome. Inventing
-work to fill a ticket is not.
+Reporting “I could not satisfy this, because X” is correct; inventing work is not.
 ## Never-touch list
-No entries yet; add one only after a concrete incident demonstrates a context-specific hazard.
+No entries yet; add one only after a concrete incident demonstrates a hazard.
 ## Earned defect checklist
 
 ### RR-001 — Wait for and monitor asynchronous reviewers
-Do not treat a newly opened, green pull request as review-complete. Keep an
-active monitor on every requested asynchronous reviewer, then inspect all
-threads before merge rather than leaving polling to the user.
+Do not treat a newly opened, green pull request as review-complete. Monitor every
+requested asynchronous reviewer and inspect all threads before merge.
 **Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137)
 received two actionable findings after internal review; [PR #139](https://github.com/drejom/landscapeR/pull/139)
 required repeated manual prompts while Copilot reviews were pending.
@@ -42,50 +40,34 @@ Do not interpolate Markdown containing backticks into shell command arguments; u
 Repository policy parsers must accept equivalent Markdown forms; test semantic variants, not one exact spelling.
 **Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) initially rejected valid checkbox variants.
 ### RR-005 — Make governed identity behavioral and transactional
-When a callable implementation's governed identity authorizes registration or
-replacement, include behavior-relevant captured state across the full lexical
-environment chain. More generally, validate and prepare the complete
-provenance record before mutating a governed store, and test that drift or
-fingerprint failure leaves both state and history unchanged.
-
+When governed identity authorizes registration or replacement, include relevant
+captured state across the lexical environment chain. Validate complete
+provenance before mutation; test that failure leaves state and history unchanged.
 **Incident:** [Issue #120 implementation review](https://github.com/drejom/landscapeR/issues/120#issuecomment-5150510334)
 found that body-only fingerprints, incomplete closure environments, and
 assign-before-record ordering could hide behavior changes or leave an
 unprovenanced registry mutation.
 
 ### RR-006 — Verify that visual encodings carry independent meaning
-Before accepting a diagnostic relationship, verify that its plotted quantities
-are not deterministic transforms of one another. Also verify that semantic
-highlight colours retain their declared role rather than marking
-result-selected extremes. A mathematically redundant or semantically overloaded
-encoding can look informative while adding no evidence.
-
+Verify that plotted quantities are not deterministic transforms and semantic
+highlight colours retain their role rather than marking selected extremes.
 **Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) initially
 plotted one-dimensional principal angle against its exact absolute-cosine
 transform and used the focal red for the three largest observed rotations.
 
 ### RR-007 — Keep transient roots outside package builds
-A repo-root scratch directory must be excluded from both Git tracking and the R
-source-package build. Before trusting a local package check, verify that its
-generated site, bundles, and prior check directories were not copied into the
-tarball. The mechanical rule belongs in `.gitignore` and `.Rbuildignore`.
-
+Exclude repo scratch from Git and R package builds. Before trusting a package
+check, verify that generated sites, bundles, and prior checks missed the tarball.
 **Incident:** [Issue #117](https://github.com/drejom/landscapeR/issues/117) found `.scratch/` entered `R CMD build` and exhausted file handles.
 
 ### RR-008 — Preserve orthogonal typed state during adaptation
-When an adapter adds request-specific presentation or caption facts, it must
-not overwrite an independent state dimension such as availability. Test the
-typed state as well as the rendered prose: a caption can describe partial
-evidence correctly while its enclosing object silently claims otherwise.
-
+Presentation adapters must not overwrite independent state such as availability.
+Test typed state as well as prose.
 **Incident:** issue #118 review found surface-caption adaptation replaced `partial` with `uncalibrated`.
 
 ### RR-009 — Observe governed identity independently
-Never verify an installed artifact by asking it to echo the expected identity.
-Read identity from installation or build metadata that the job cannot redefine;
-if that evidence is absent, report it as unavailable or stop at a boundary that
-requires exact identity.
-
+Never ask an artifact to echo expected identity. Read installation or build
+metadata it cannot redefine; if absent, report unavailable or stop.
 **Incident:** issue #134 review found remote workers could echo the expected SHA while running different installed code.
 
 ### RR-010 — Prove parallelism boundaries behaviorally
@@ -130,6 +112,16 @@ or reordered identities.
 **Incident:** issue #67 completed all 900 unique Gemini result branches, but its
 collector rejected the valid ordered identities because `targets` branch names
 were present on one character vector and absent from the other.
+
+### RR-015 — Preserve typed non-estimability through aggregation
+When an analysis contract permits a method to abstain, aggregation and artifact
+validation must accept the corresponding typed missing estimate and retain its
+diagnostic. Do not require a finite value, substitute zero, or weaken the model
+after the worker has correctly reported non-estimability. Continue to reject
+infinite, nonnumeric, or structurally invalid estimates.
+**Incident:** issue #67 completed all 900 Gemini AML branches, but artifact
+collection rejected 162 otherwise valid results whose required random-slope
+models were singular and therefore returned `NA` target-effect estimates.
 
 ## Verify, never assume
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A

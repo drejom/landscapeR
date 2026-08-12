@@ -1425,6 +1425,30 @@ print.K1AcceptanceManifest <- function(x, ...) {
                 (is.na(value) ||
                     (is.finite(value) && value >= 0 && value <= 90))
         }
+        estimate_is_valid <- function(value, component, variant) {
+            if (!is.numeric(value) || length(value) != 1L) return(FALSE)
+            provenance <- metrics$acceptance_provenance
+            if (!is.list(provenance) || !is.list(provenance$atlas)) {
+                return(FALSE)
+            }
+            models <- provenance$atlas$time_course_models
+            if (!is.list(models)) return(FALSE)
+            rows <- vapply(models, function(model) {
+                is.list(model) && identical(model$component, component)
+            }, logical(1L))
+            if (sum(rows) != 1L) return(FALSE)
+            model <- models[[which(rows)]][[variant]]
+            if (!is.list(model) ||
+                    !.is_scalar_nonempty_text(model$status)) return(FALSE)
+            if (is.finite(value)) {
+                return(identical(model$status, "estimable"))
+            }
+            identical(value, NA_real_) &&
+                model$status %in% c(
+                    "not-estimable", "non-convergent", "singular"
+                ) &&
+                .is_scalar_nonempty_text(model$diagnostic)
+        }
         scalar_text <- function(value) {
             is.character(value) && length(value) == 1L && !is.na(value) &&
                 nzchar(value)
@@ -1446,18 +1470,33 @@ print.K1AcceptanceManifest <- function(x, ...) {
                     "mean_bootstrap_subspace_angle_deg",
                     "q95_bootstrap_subspace_angle_deg"
                 )], angle_or_missing, logical(1L))) ||
-                any(!vapply(metrics[c(
-                    "target_unadjusted_estimate", "target_adjusted_estimate",
-                    "nuisance_unadjusted_estimate",
-                    "nuisance_adjusted_estimate"
-                )], function(value) {
-                    is.numeric(value) && length(value) == 1L &&
-                        is.finite(value)
-                }, logical(1L))) ||
+                !estimate_is_valid(
+                    metrics$target_unadjusted_estimate,
+                    metrics$target_component,
+                    "unadjusted"
+                ) ||
+                !estimate_is_valid(
+                    metrics$target_adjusted_estimate,
+                    metrics$target_component,
+                    "adjusted"
+                ) ||
+                !estimate_is_valid(
+                    metrics$nuisance_unadjusted_estimate,
+                    metrics$nuisance_component,
+                    "unadjusted"
+                ) ||
+                !estimate_is_valid(
+                    metrics$nuisance_adjusted_estimate,
+                    metrics$nuisance_component,
+                    "adjusted"
+                ) ||
                 any(!vapply(metrics[c(
                     "target_unadjusted_status", "target_adjusted_status",
                     "nuisance_unadjusted_status", "nuisance_adjusted_status"
-                )], scalar_text, logical(1L))) ||
+                )], function(value) {
+                    scalar_text(value) &&
+                        identical(value, "estimable-exploratory-only")
+                }, logical(1L))) ||
                 any(!vapply(metrics[c(
                     "target_component", "nuisance_component",
                     "target_proposal_rank", "nuisance_proposal_rank"

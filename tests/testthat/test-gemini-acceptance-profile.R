@@ -11,9 +11,17 @@ test_that("Gemini AML production profile is bound to measured pilot resources", 
         "extdata", "k1-aml-gemini-resource-pilot-record.rds",
         package = "landscapeR", mustWork = TRUE
     )
+    controller_path <- system.file(
+        "extdata", "k1-gemini-tar-make.sbatch",
+        package = "landscapeR", mustWork = TRUE
+    )
     profile <- paste(readLines(profile_path, warn = FALSE), collapse = "\n")
     pilot <- utils::read.delim(pilot_path, check.names = FALSE)
     record <- readRDS(record_path)
+    controller <- paste(
+        readLines(controller_path, warn = FALSE),
+        collapse = "\n"
+    )
     record_digest <- record$record_digest
     digest_payload <- record
     digest_payload$record_digest <- NULL
@@ -34,6 +42,22 @@ test_that("Gemini AML production profile is bound to measured pilot resources", 
     expect_identical(slurm_memory_gb, 8L)
     expect_identical(slurm_walltime_min, 60L)
     expect_identical(tasks_per_worker, 8L)
+    expect_match(controller, "#SBATCH --partition=compute", fixed = TRUE)
+    expect_match(controller, "Rscript -e 'targets::tar_make(", fixed = TRUE)
+    expect_match(controller, "callr_function = NULL", fixed = TRUE)
+    expect_match(controller, "R_LIBS_SITE=$shared_library", fixed = TRUE)
+    expect_match(controller, "rbiocverse_3.22.sif", fixed = TRUE)
+    expect_false(grepl("vscode-rbioc", controller, fixed = TRUE))
+    expect_match(
+        controller,
+        "#SBATCH --output=targets-controller-%j.out",
+        fixed = TRUE
+    )
+    expect_match(
+        controller,
+        "#SBATCH --error=targets-controller-%j.err",
+        fixed = TRUE
+    )
 
     expect_identical(
         record_digest,
