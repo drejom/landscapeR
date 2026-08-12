@@ -23,10 +23,8 @@ Complete these gates in order for every implementation issue:
 
 Reporting “I could not satisfy this, because X” is a correct outcome. Inventing
 work to fill a ticket is not.
-
 ## Never-touch list
 No entries yet; add one only after a concrete incident demonstrates a context-specific hazard.
-
 ## Earned defect checklist
 
 ### RR-001 — Wait for and monitor asynchronous reviewers
@@ -40,11 +38,9 @@ required repeated manual prompts while Copilot reviews were pending.
 ### RR-002 — Send Markdown API bodies from files
 Do not interpolate Markdown containing backticks into shell command arguments; use a file-backed request body.
 **Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137) had a review reply corrupted by shell interpolation.
-
 ### RR-003 — Validate Markdown meaning, not template spelling
 Repository policy parsers must accept equivalent Markdown forms; test semantic variants, not one exact spelling.
 **Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) initially rejected valid checkbox variants.
-
 ### RR-005 — Make governed identity behavioral and transactional
 When a callable implementation's governed identity authorizes registration or
 replacement, include behavior-relevant captured state across the full lexical
@@ -107,7 +103,6 @@ alone leaves the scientific decision unchanged.
 
 **Incident:** issue #135 review found that the elapsed-time ratio differed by
 execution backend and was also used as a candidate-selection gate.
-
 ### RR-012 — Build and inspect pull-request bodies from the repository template
 Read `.github/pull_request_template.md`, populate it from committed evidence,
 and inspect the rendered GitHub body before review. Required proof must exist,
@@ -123,13 +118,20 @@ committed governed artifact through its semantic verifier before merge. New
 fields must not change the reconstructed payload, field order, digest, or
 caption contract of an earlier artifact unless a declared migration governs
 that change.
-
 **Incident:** issue #67 added AML-only summary fields that passed focused tests
 but initially made the committed phase-B1 acceptance artifact fail semantic
 reproduction during vignette rebuilding.
 
-## Verify, never assume
+### RR-014 — Compare governed identities independently of orchestration labels
+When parallel orchestration attaches names or labels to a result container,
+compare the governed identity values and their required order independently of
+those incidental attributes. Continue to reject missing, duplicate, unexpected,
+or reordered identities.
+**Incident:** issue #67 completed all 900 unique Gemini result branches, but its
+collector rejected the valid ordered identities because `targets` branch names
+were present on one character vector and absent from the other.
 
+## Verify, never assume
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A
 wrong “fix” is worse than a declined comment: respond with evidence when a
 finding does not apply.
@@ -138,7 +140,6 @@ Before substantial work, scan for contradictions and spot-check relevant entries
 against current code. Near 150 lines, perform a full consolidation pass.
 
 ## Maintenance duties
-
 - **Add:** record new defect classes with concrete incidents; reject speculation.
 - **Correct:** fix or remove outdated entries and name the correction.
 - **Deduplicate:** search before adding; consolidate overlapping rules.
