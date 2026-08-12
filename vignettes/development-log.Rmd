@@ -602,6 +602,14 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
 
 ## Implementation index
 
+- **2026-08-11 — Distributed acceptance-result aggregation:** issue
+  [#67](https://github.com/drejom/landscapeR/issues/67) completed all 900
+  frozen AML result branches on Gemini before the collector rejected equal,
+  correctly ordered task identities that carried `targets` branch names. The
+  collector now compares the governed identity values independently of those
+  orchestration-only names while continuing to reject incomplete, duplicate,
+  unexpected, or reordered identities. The stored result branches are reusable;
+  this operational repair does not change their scientific inputs or outputs.
 - **2026-07-14 — K=1 foundation and visual landing-proof policy:**
   [#50](https://github.com/drejom/landscapeR/issues/50) adds the registered
   single-omic-layer SVD and calibration control;
@@ -610,4 +618,4 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
   co-located with the diff in [PR #69](https://github.com/drejom/landscapeR/pull/69).
   This remains implementation work, not K=1 acceptance evidence.
 
-*Last updated: 2026-08-09. Documentation site: <https://drejom.github.io/landscapeR/>.*
+*Last updated: 2026-08-11. Documentation site: <https://drejom.github.io/landscapeR/>.*

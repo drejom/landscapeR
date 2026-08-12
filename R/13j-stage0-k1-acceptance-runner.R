@@ -1603,7 +1603,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
         )
     }
     ids <- .k1_acceptance_result_ids(results)
-    if (!identical(ids, tasks$task_id)) {
+    if (!identical(unname(ids), unname(tasks$task_id))) {
         .k1_acceptance_runner_abort(
             "acceptance result order or task identity is incomplete"
         )
@@ -1617,7 +1617,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
             )
         }
     }
-    results
+    unname(results)
 }
 
 .k1_acceptance_result_ids <- function(results) {

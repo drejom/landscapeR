@@ -62,6 +62,30 @@ test_that("runner provenance does not alter frozen manifest tasks or seeds", {
     )
 })
 
+test_that("collector ignores dynamic-branch names but preserves task order", {
+    tasks <- data.frame(
+        task_id = c("task-a", "task-b"),
+        stringsAsFactors = FALSE
+    )
+    results <- list(
+        branch_a = list(task_id = "task-a"),
+        branch_b = list(task_id = "task-b")
+    )
+
+    collected <- landscapeR:::.k1_acceptance_collect(results, tasks)
+    expect_identical(collected, unname(results))
+    expect_identical(
+        collected,
+        landscapeR:::.k1_acceptance_collect(unname(results), tasks)
+    )
+    expect_null(names(collected))
+    expect_error(
+        landscapeR:::.k1_acceptance_collect(rev(results), tasks),
+        "result order or task identity",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
 test_that("acceptance seed derivation follows the frozen canonical contract", {
     manifest <- k1_acceptance_manifest(fake_phase_a_merge())
     first <- manifest$tasks[manifest$tasks$control == "generic_double_well", ][1L, ]
