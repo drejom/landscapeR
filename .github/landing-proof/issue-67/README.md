@@ -16,6 +16,13 @@ resource class. This disclosed-seed run sets scheduler resources only. It is
 explicitly non-evidentiary and did not derive or consume a frozen acceptance
 seed.
 
+The exact cluster procedure, including the isolated store, disclosed seed,
+reviewed-revision requirement, typed-result check, and hprcc measurement
+command, is documented under
+[`AML largest-cell resource-pilot result`](../../../docs/agents/gemini-hprcc-deployment.md#aml-largest-cell-resource-pilot-result).
+An exact rerun requires the recorded source revision and the packaged pilot
+profile; it must not set either production merge variable.
+
 ## Independent-acceptance summary surfaces
 
 | Cell pass rates | Geometric recovery and recurrence |
