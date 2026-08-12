@@ -5,6 +5,17 @@ longitudinal control exercises the intended package contracts. They do not
 freeze acceptance thresholds, consume the independent acceptance seeds from
 issue #51, or close issue #67.
 
+## Gemini resource pilot
+
+[`gemini-resource-pilot.tsv`](gemini-resource-pilot.tsv) records the required
+largest-cell operational pilot from reviewed merge `55c6aef`: 12 mice per
+condition, 10,000 features, 99 permutations, and 99 identifiability refits.
+The typed result completed without computational failure. hprcc observed 1.65
+GB peak memory, 3.3% peak CPU, and 3.8 minutes and recommended its `tiny`
+resource class. This disclosed-seed run sets scheduler resources only. It is
+explicitly non-evidentiary and did not derive or consume a frozen acceptance
+seed.
+
 ## Independent-acceptance summary surfaces
 
 | Cell pass rates | Geometric recovery and recurrence |

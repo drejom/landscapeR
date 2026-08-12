@@ -144,13 +144,10 @@ retained in the manifest and must match the installed runtime revision. This
 command may be run only after that runner revision is reviewed, merged,
 installed, and preflighted.
 
-The generic pilot above does not authorize these materially heavier AML tasks.
-Before the frozen 900-task launch, run one disclosed-seed development pilot for
-the largest AML cell (`12` mice per condition and `10,000` features) with all
-`99` permutations and `99` complete-trajectory refits. Record hprcc's peak
-memory, CPU, wall time, and recommendation here, then revise `slurm_mem_gigabytes`,
-`slurm_walltime_minutes`, and `tasks_max` in a reviewed change. Production AML
-execution remains blocked until that evidence is recorded.
+The generic pilot above did not authorize these materially heavier AML tasks.
+The required disclosed-seed largest-cell pilot has now completed, as recorded
+below. Its reviewed resource settings authorize execution operationally; they
+do not alter the frozen scientific graph or constitute acceptance evidence.
 
 The pilot has its own packaged targets profile, isolated store, and disclosed
 root `867530900`; it never constructs an acceptance manifest. On Gemini:
@@ -165,10 +162,41 @@ Rscript -e 'stopifnot(identical(targets::tar_read(aml_largest_cell_resource_pilo
 Rscript -e 'hprcc::summarize_resource_usage(path = file.path(Sys.getenv("HPRCC_TARGETS_STORE_BASE", unset = file.path(getwd(), "_targets")), "logs"), targets_file = "_targets.R")'
 ```
 
-Retain the hprcc summary with the reviewed resource-setting change. Do not set
-`LANDSCAPER_K1_PROTOCOL_MERGE` or `LANDSCAPER_K1_RUNNER_MERGE` for this pilot.
-The packaged production profile deliberately fails closed for AML until that
-follow-up change records the measurements and removes the executable block.
+Do not set `LANDSCAPER_K1_PROTOCOL_MERGE` or
+`LANDSCAPER_K1_RUNNER_MERGE` for this pilot. The pilot uses only its disclosed
+development root and cannot construct an acceptance manifest.
+
+### AML largest-cell resource-pilot result
+
+On 2026-08-11, reviewed merge
+`55c6aefaff5d508eda38371549c04a8f841b3981` ran the largest AML cell: 12
+mice per condition, 10,000 features, 99 permutations, and 99 complete-trajectory
+identifiability refits. The xattr-free revision-stamped source bundle SHA-256
+was `8fbfee81f94081fd7c35dda2d25269ae656f346a9aeb2f46399bb7c5e026ac35`.
+Gemini Slurm job `35384134_1` completed with exit code zero. The typed result
+reported `success`, all 99 permutations and all 99 refits completed, and zero
+computational failures. The expected BBP diagnostic warned that the planted
+signal was below the high-dimensional recovery threshold; this is scientific
+diagnostic output rather than a compute failure.
+
+hprcc's native resource summary reported:
+
+| Measurement | Observed value |
+|---|---:|
+| Peak memory | 1.65 GB |
+| Peak CPU | 3.3% |
+| Duration | 3.8 minutes |
+| hprcc recommendation | `tiny` |
+
+The retained machine-readable record is
+`.github/landing-proof/issue-67/gemini-resource-pilot.tsv`. The production
+controller therefore requests 2 CPUs, 8 GB, and 60 minutes and handles up to
+eight complete tasks sequentially per worker. This preserves more than 4.8
+times the observed peak memory. Eight observed-duration tasks project to 30.4
+minutes before safety allowance, leaving nearly half the wall-time request for
+startup and runtime variation. Low measured CPU use does not justify changing
+the reviewed two-CPU controller convention. These packing choices affect only
+scheduler throughput, not task identity, RNG streams, or scientific results.
 
 The first production make reveals the deterministic post-merge seed manifest.
 Do not run this command during runner development. If an operational branch
