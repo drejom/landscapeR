@@ -357,6 +357,7 @@
         "plot_k1_independent_time_course_calibration",
         "plot_k1_repeated_subject_calibration",
         "plot_k1_high_dimensional_calibration",
+        "plot_k1_operating_domain",
         "plot_k1_revised_acceptance",
         "plot_components",
         "plot_spectrum",
@@ -369,10 +370,10 @@
         "plot.ComponentAbstention"
     ),
     policy = c(
-        rep("caption-required", 17L)
+        rep("caption-required", 18L)
     ),
     tracking_issue = c(
-        rep(NA_integer_, 17L)
+        rep(NA_integer_, 18L)
     ),
     stringsAsFactors = FALSE
 )

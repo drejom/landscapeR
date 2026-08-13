@@ -425,7 +425,8 @@ unsupported, and out-of-domain regions. A negative result remains valid; the
 same seeds may not tune and validate a revision.
 
 #192, which locates a real experiment as a point or uncertainty region within a
-compatible calibrated operating domain, is useful but does not block #193.
+compatible calibrated operating domain, completes on merge. It is useful but
+does not block #193.
 
 ### 10. Asynchronous-onset AML robustness control — #168
 
@@ -692,7 +693,7 @@ bodies may state dependencies but do not change this ordering.
 | [#189](https://github.com/drejom/landscapeR/issues/189) | K=1 destructive-time-course operating map | complete on merge |
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
-| [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | queued — blocked by #189–#191; does not block acceptance |
+| [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | complete on merge; does not block acceptance |
 | [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; v4 protocol merged, runner adaptation in progress, then independent HPC execution after runner merge |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |

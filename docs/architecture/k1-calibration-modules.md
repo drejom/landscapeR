@@ -24,3 +24,13 @@ module-specific validator, caption, typed non-estimability, or plotting rules.
 
 The shared helper is internal. Public APIs and serialized assessment and
 artifact formats remain module-specific and unchanged.
+
+`locate_k1_operating_domain()` is a separate public comparison seam. It accepts
+a declared sampling design, one compatible design assessment, a
+high-dimensional assessment, and versioned observed diagnostics. Its typed
+result retains the exact calibration cells that bracket an experiment point or
+uncertainty interval. It returns out-of-domain evidence without a recovery
+probability when design, feature count, signal/noise range, covariance regime,
+or diagnostic coverage is incompatible. This compares operating
+characteristics; it never projects biological observations into a synthetic
+state space or quasi-potential landscape.
