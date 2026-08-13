@@ -427,7 +427,9 @@ verify_k1_repeated_subject_calibration(artifact)
 ```
 
 Panel A asks whether the planted feature-space target was recovered. Panel B
-asks whether complete-subject bootstrap refits recover the nominated axis.
+shows mean absolute loading cosine for that planted target under
+complete-subject bootstrap refits; it is independent of whether metadata-based
+component nomination succeeds.
 Panel C asks whether the required random-intercept-plus-slope model remains
 estimable after recovery. A cross is typed scientific non-estimability, not a
 probability of zero. When the random slope is not identifiable, the method does

@@ -17,9 +17,10 @@ independent animal.
 
 Crosses are typed scientific non-estimability, not zero-valued evidence. The
 strict model does not fall back to random-intercept-only or observation-level
-independence when a random slope is not identifiable. Execution failures have
-a separate hollow-triangle encoding and are absent from this fully completed
-proof run.
+independence when a random slope is not identifiable. One named task carries a
+declared scheduler interruption in the assessment's execution provenance. It
+is excluded from scientific denominators and appears as a hollow triangle at
+the left margin, separately from scientific non-estimability.
 
 The exact displayed evidence is in `repeated-subject-operating-map.csv`. The
 publication caption is separate in

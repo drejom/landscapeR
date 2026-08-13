@@ -121,6 +121,18 @@ test_that("operating evidence separates recovery, identifiability, and model sup
         "condition-stratified-subject-trajectory-bootstrap"
     )
     expect_identical(evidence$identifiability$n_requested, 2L)
+    expect_identical(evidence$identifiability$n_completed, 2L)
+    expect_identical(
+        evidence$metadata_nomination$nominated_component,
+        assessment$replicates$nominated_component[complete][[1L]]
+    )
+    expect_true(all(vapply(
+        assessment$execution$values,
+        function(value) {
+            is.list(value$evidence$identifiability$replicates) &&
+                length(value$evidence$identifiability$replicates) == 2L
+        }, logical(1L)
+    )))
 
     contradictory_audit <- assessment
     contradictory_audit$sampling_audit$complete <-
@@ -147,6 +159,73 @@ test_that("operating evidence separates recovery, identifiability, and model sup
         plot_k1_repeated_subject_calibration(contradictory_outcome),
         class = "landscapeR_validation_error"
     )
+
+    contradictory_nested <- assessment
+    contradictory_nested$execution$values[[1L]]$evidence$
+        identifiability$n_completed <- 999L
+    execution_payload <- contradictory_nested$execution[
+        c("values", "account", "provenance")
+    ]
+    contradictory_nested$execution$digest <- digest::digest(
+        execution_payload, algo = "sha256", serialize = TRUE
+    )
+    payload <- unclass(contradictory_nested)
+    payload$digest <- NULL
+    contradictory_nested$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_repeated_subject_calibration(contradictory_nested),
+        class = "landscapeR_validation_error"
+    )
+
+    contradictory_account <- assessment
+    contradictory_account$execution$account$completed[[1L]] <- FALSE
+    execution_payload <- contradictory_account$execution[
+        c("values", "account", "provenance")
+    ]
+    contradictory_account$execution$digest <- digest::digest(
+        execution_payload, algo = "sha256", serialize = TRUE
+    )
+    payload <- unclass(contradictory_account)
+    payload$digest <- NULL
+    contradictory_account$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_repeated_subject_calibration(contradictory_account),
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("target-axis bootstrap remains independent of model abstention", {
+    assessment <- run_k1_repeated_subject_calibration(
+        template_ids = "terminal_dropout", replicates = 1L,
+        p = 20L, axis_resamples = 3L, seed = 19006L,
+        sequential_internal = TRUE
+    )
+
+    expect_false(assessment$replicates$model_estimable[[1L]])
+    expect_true(assessment$replicates$axis_identifiability_evaluable[[1L]])
+    expect_identical(
+        assessment$execution$values[[1L]]$evidence$identifiability$n_requested,
+        3L
+    )
+    expect_identical(
+        assessment$execution$values[[1L]]$evidence$identifiability$n_completed,
+        3L
+    )
+})
+
+test_that("nested bootstrap results do not depend on warnings-as-errors", {
+    old_warning <- getOption("warn")
+    on.exit(options(warn = old_warning), add = TRUE)
+    options(warn = 2)
+
+    assessment <- run_k1_repeated_subject_calibration(
+        template_ids = "complete", replicates = 1L,
+        p = 20L, axis_resamples = 2L, seed = 19007L,
+        sequential_internal = TRUE
+    )
+
+    expect_true(assessment$replicates$execution_completed[[1L]])
+    expect_identical(assessment$execution$account$n_failed, 0L)
 })
 
 test_that("repeated-subject operating map has exact data and separate caption", {
@@ -165,7 +244,7 @@ test_that("repeated-subject operating map has exact data and separate caption", 
         "A  Target-axis recovery", "B  Axis identifiability",
         "C  Random-slope model estimability"
     ))
-    expect_match(caption, "complete-subject axis bootstrap")
+    expect_match(caption, "complete-subject target-axis bootstrap")
     expect_match(caption, "cm1 at time 2, cm1 at time 3")
     expect_match(caption, "crosses mark a scientific quantity")
     expect_false(grepl(caption, paste(capture.output(print(plot)), collapse = "\n"),
