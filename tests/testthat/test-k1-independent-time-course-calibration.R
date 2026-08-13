@@ -187,6 +187,34 @@ test_that("governed calibration separates recovery from downstream estimability"
         plot_k1_independent_time_course_calibration(contradictory_outcome),
         class = "landscapeR_validation_error"
     )
+
+    contradictory_context <- assessment
+    contradictory_context$scientific_context$target_field <- "wrong_target"
+    payload <- unclass(contradictory_context)
+    payload$digest <- NULL
+    contradictory_context$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_independent_time_course_calibration(contradictory_context),
+        class = "landscapeR_validation_error"
+    )
+
+    contradictory_execution <- assessment
+    contradictory_execution$replicates$target_loading_cosine[[1L]] <- 0.1
+    contradictory_execution$replicates$recovery_met[[1L]] <- FALSE
+    contradictory_execution$replicates$downstream_estimable[[1L]] <- NA
+    contradictory_execution$replicates$outcome[[1L]] <-
+        "recovery_below_threshold"
+    contradictory_execution$cells <-
+        landscapeR:::.k1_independent_time_cell_summary(
+            contradictory_execution$replicates
+        )
+    payload <- unclass(contradictory_execution)
+    payload$digest <- NULL
+    contradictory_execution$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_independent_time_course_calibration(contradictory_execution),
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("typed association abstention remains scientific non-estimability", {

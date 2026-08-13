@@ -464,6 +464,16 @@ k1_independent_time_course_control_info <- function(x) {
     )
 }
 
+.k1_independent_time_scientific_context <- function() list(
+    experiment_label = "Synthetic independent destructive time course",
+    target_field = "condition",
+    oriented_levels = c("CTL", "CM"),
+    sampling_unit = "one independently collected animal",
+    time_field = "collection_time",
+    time_unit = "days",
+    nuisance_fields = "batch"
+)
+
 .k1_independent_time_assess_one <- function(
     template_id, p, noise_sd, time_signal, condition_time_signal,
     seed, recovery_threshold
@@ -661,10 +671,7 @@ k1_independent_time_course_control_info <- function(x) {
             !is.finite(payload$recovery_threshold) ||
             payload$recovery_threshold <= 0 ||
             payload$recovery_threshold > 1 ||
-            !is.list(context) || !identical(names(context), c(
-                "experiment_label", "target_field", "oriented_levels",
-                "sampling_unit", "time_field", "time_unit", "nuisance_fields"
-            )) ||
+            !identical(context, .k1_independent_time_scientific_context()) ||
             !is.list(sampling_audit) || !length(sampling_audit) ||
             is.null(names(sampling_audit)) || anyDuplicated(names(sampling_audit)) ||
             any(!vapply(sampling_audit, function(template) {
@@ -721,10 +728,16 @@ k1_independent_time_course_control_info <- function(x) {
     completed_values_match <- vapply(seq_len(nrow(replicates)), function(i) {
         value <- execution$values[[i]]
         if (!replicates$execution_completed[[i]]) return(is.null(value))
-        is.list(value) && identical(value$task_id, replicates$task_id[[i]]) &&
-            identical(as.integer(value$replicate_index),
-                as.integer(replicates$replicate_index[[i]])) &&
-            identical(value$template_id, replicates$template_id[[i]])
+        if (!is.list(value)) return(FALSE)
+        expected <- as.data.frame(value, stringsAsFactors = FALSE)
+        if (!identical(names(expected), expected_replicates)) return(FALSE)
+        expected$outcome <- factor(
+            expected$outcome, levels = .k1_calibration_outcome_levels
+        )
+        observed <- replicates[i, , drop = FALSE]
+        rownames(expected) <- NULL
+        rownames(observed) <- NULL
+        identical(expected, observed)
     }, logical(1L))
     invalid_outcomes <-
         any(replicates$recovery_met %in% TRUE &
@@ -872,15 +885,7 @@ run_k1_independent_time_course_calibration <- function(
         version = "k1-independent-time-course-calibration-v1",
         claim_status = "disclosed_calibration_only",
         recovery_threshold = recovery_threshold,
-        scientific_context = list(
-            experiment_label = "Synthetic independent destructive time course",
-            target_field = "condition",
-            oriented_levels = c("CTL", "CM"),
-            sampling_unit = "one independently collected animal",
-            time_field = "collection_time",
-            time_unit = "days",
-            nuisance_fields = "batch"
-        ),
+        scientific_context = .k1_independent_time_scientific_context(),
         sampling_audit = templates[template_ids],
         execution = execution,
         replicates = replicate_rows,
@@ -939,15 +944,13 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
         display$n_downstream_evaluable > 0L &
         display$n_downstream_estimable == 0L
     display$state <- ifelse(
-        display$n_execution_failure > 0L, "Partial execution",
-        ifelse(display$denominator == 0L | downstream_abstention,
-            "Not estimable", "Estimated")
+        display$denominator == 0L | downstream_abstention,
+        "Not estimable", "Estimated"
+    )
+    display$execution_state <- ifelse(
+        display$n_execution_failure > 0L, "Partial execution", "Complete"
     )
     display$plotted_probability <- display$probability
-    display$plotted_probability[
-        display$state == "Partial execution" &
-            !is.finite(display$plotted_probability)
-    ] <- 0.04
     display$plotted_probability[
         display$state == "Not estimable" &
             !is.finite(display$plotted_probability)
@@ -960,6 +963,16 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
     )) +
         ggplot2::geom_point(ggplot2::aes(shape = state, fill = state),
             size = 2.4, stroke = 0.45, colour = semantic[["ink"]]) +
+        ggplot2::geom_point(
+            data = display[display$execution_state == "Partial execution", ,
+                drop = FALSE],
+            mapping = ggplot2::aes(
+                x = -0.08, y = template_axis_label,
+                shape = "Partial execution", fill = "Partial execution"
+            ),
+            inherit.aes = FALSE, size = 2.4, stroke = 0.45,
+            colour = semantic[["ink"]]
+        ) +
         ggplot2::facet_wrap(~ evidence, nrow = 1L) +
         ggplot2::scale_shape_manual(values = c(
             "Estimated" = 21, "Not estimable" = 4,
@@ -969,7 +982,7 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
             "Estimated" = semantic[["focal"]],
             "Not estimable" = NA, "Partial execution" = semantic[["missing"]]
         )) +
-        ggplot2::scale_x_continuous(limits = c(0, 1),
+        ggplot2::scale_x_continuous(limits = c(-0.12, 1),
             breaks = c(0, 0.5, 1)) +
         ggplot2::labs(
             x = "Probability across calibration replicates",
@@ -1027,7 +1040,10 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
                 "crosses mark either no eligible denominator or universal",
                 "downstream model abstention after recovery"
             ),
-            "hollow triangles mark probabilities estimated from partial execution"
+            paste(
+                "hollow triangles at the left margin independently mark",
+                "partial execution and do not encode a probability"
+            )
         ),
         estimand = "standardized condition-by-time interaction",
         design = paste(

@@ -1,25 +1,25 @@
-"template_id","template_label","missingness","p","n_intended","n_retained","minimum_cell_size","maximum_cell_size","mean_retained_per_declared_cell","n_requested","n_execution_completed","n_execution_failure","n_recovery_evaluable","n_recovered","recovery_probability","n_downstream_evaluable","n_downstream_estimable","downstream_estimability_probability","evidence","probability","denominator","template_axis_label","state","plotted_probability"
+"template_id","template_label","missingness","p","n_intended","n_retained","minimum_cell_size","maximum_cell_size","mean_retained_per_declared_cell","n_requested","n_execution_completed","n_execution_failure","n_recovery_evaluable","n_recovered","recovery_probability","n_downstream_evaluable","n_downstream_estimable","downstream_estimability_probability","evidence","probability","denominator","template_axis_label","state","execution_state","plotted_probability"
 "balanced_1","One animal per condition-time cell","complete",100,8,8,1,1,1,5,5,0,5,1,0.2,1,0,0,"A  Target-axis recovery",0.2,5,"1 per cell
-1 mean retained","Estimated",0.2
+1 mean retained","Estimated","Complete",0.2
 "balanced_2","Two animals per condition-time cell","complete",100,16,16,2,2,2,5,5,0,5,1,0.2,1,1,1,"A  Target-axis recovery",0.2,5,"2 per cell
-2 mean retained","Estimated",0.2
+2 mean retained","Estimated","Complete",0.2
 "balanced_3","Three animals per condition-time cell","complete",100,24,24,3,3,3,5,5,0,5,3,0.6,3,3,1,"A  Target-axis recovery",0.6,5,"3 per cell
-3 mean retained","Estimated",0.6
+3 mean retained","Estimated","Complete",0.6
 "unequal_1_2_3","Unequal one-to-three-animal cells","unequal_declared_cells",100,16,16,1,3,2,5,5,0,5,1,0.2,1,0,0,"A  Target-axis recovery",0.2,5,"Unequal 1-3
-2 mean retained","Estimated",0.2
+2 mean retained","Estimated","Complete",0.2
 "isolated_library_failure","Three-animal cells with one failed library","isolated_library_failure",100,24,23,2,3,2.875,5,4,1,4,2,0.5,2,2,1,"A  Target-axis recovery",0.5,4,"One library lost
-2.9 mean retained","Partial execution",0.5
+2.9 mean retained","Estimated","Partial execution",0.5
 "missing_internal_cell","Two-animal cells with one internal cell absent","missing_internal_condition_time_cell",100,14,14,0,2,1.75,5,5,0,5,3,0.6,3,3,1,"A  Target-axis recovery",0.6,5,"One cell absent
-1.8 mean retained","Estimated",0.6
+1.8 mean retained","Estimated","Complete",0.6
 "balanced_1","One animal per condition-time cell","complete",100,8,8,1,1,1,5,5,0,5,1,0.2,1,0,0,"B  Estimability after recovery",0,1,"1 per cell
-1 mean retained","Not estimable",0
+1 mean retained","Not estimable","Complete",0
 "balanced_2","Two animals per condition-time cell","complete",100,16,16,2,2,2,5,5,0,5,1,0.2,1,1,1,"B  Estimability after recovery",1,1,"2 per cell
-2 mean retained","Estimated",1
+2 mean retained","Estimated","Complete",1
 "balanced_3","Three animals per condition-time cell","complete",100,24,24,3,3,3,5,5,0,5,3,0.6,3,3,1,"B  Estimability after recovery",1,3,"3 per cell
-3 mean retained","Estimated",1
+3 mean retained","Estimated","Complete",1
 "unequal_1_2_3","Unequal one-to-three-animal cells","unequal_declared_cells",100,16,16,1,3,2,5,5,0,5,1,0.2,1,0,0,"B  Estimability after recovery",0,1,"Unequal 1-3
-2 mean retained","Not estimable",0
+2 mean retained","Not estimable","Complete",0
 "isolated_library_failure","Three-animal cells with one failed library","isolated_library_failure",100,24,23,2,3,2.875,5,4,1,4,2,0.5,2,2,1,"B  Estimability after recovery",1,2,"One library lost
-2.9 mean retained","Partial execution",1
+2.9 mean retained","Estimated","Partial execution",1
 "missing_internal_cell","Two-animal cells with one internal cell absent","missing_internal_condition_time_cell",100,14,14,0,2,1.75,5,5,0,5,3,0.6,3,3,1,"B  Estimability after recovery",1,3,"One cell absent
-1.8 mean retained","Estimated",1
+1.8 mean retained","Estimated","Complete",1
