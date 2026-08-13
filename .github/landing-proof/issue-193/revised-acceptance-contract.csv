@@ -1,0 +1,5 @@
+"evidence_family","declared_cells","replicates_per_cell","requested_replicates","canonical_recovery","claim_before_execution"
+"Destructive time courses",18,100,1800,"absolute loading cosine >= 0.90","predeclared protocol only"
+"Repeated-subject time courses",12,100,1200,"absolute loading cosine >= 0.90","predeclared protocol only"
+"High-dimensional signal regimes",36,100,3600,"absolute loading cosine >= 0.90","predeclared protocol only"
+"Null and near-null regimes",6,100,600,"absolute loading cosine >= 0.90","predeclared protocol only"

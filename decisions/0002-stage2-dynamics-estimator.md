@@ -152,6 +152,29 @@ research and Stage 0 criteria. This amendment supersedes the earlier blanket
   trajectory prediction and the Golem reward field; not required for
   critical-point detection).
 
+## K=1 revised acceptance boundary
+
+**Amendment (2026-08-12).** The design-aware calibration in #189–#191 and the
+historical negative acceptance evidence in #67 require Stage 1 recovery and
+Stage 2 estimability to be reported separately. The revised K=1 protocol uses
+absolute loading cosine as its sole one-dimensional recovery gate. Stage 2
+outcomes do not alter that recovery classification.
+
+The current `kde_logdensity` estimator remains a one-dimensional,
+cross-sectional distributional estimator. It is not applied to repeated
+subject trajectories or destructive condition-by-time designs merely because
+their Stage 1 axis was recovered. For those controls, a typed Stage 2
+ineligibility or a design-specific Stage 1 interpretation abstention is a
+correct boundary result, not a failed decomposition. No longitudinal dynamics,
+direction, onset-time, or causal trajectory claim follows from K=1 recovery.
+
+The earlier well-location, barrier-height, and negative-control criteria remain
+historical version 1 and version 2 evidence. Version 3 does not silently
+reinterpret them or use the consumed #67 seeds. Final Stage 2 acceptance status
+can change only after the new content-addressed artifact is verified and its
+cell-specific results are recorded here. Until then this ADR remains
+provisional-accepted and the real-data stop rule in ADR 0016 remains active.
+
 ## Review trigger
 
 Revisit estimator choice if any of the following:

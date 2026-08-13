@@ -57,9 +57,119 @@ test_that("K=1 acceptance protocol v2 extends the lower tail and preserves v1", 
         )
     )
     expect_error(
-        k1_acceptance_protocol("3"),
+        k1_acceptance_protocol("4"),
         class = "k1_acceptance_protocol_error"
     )
+})
+
+test_that("K=1 acceptance protocol v3 freezes revised design-aware evidence", {
+    revised <- k1_acceptance_protocol("3")
+
+    expect_identical(revised$protocol_id, "k1-stage0-acceptance-v3")
+    expect_identical(revised$artifact_version, "3")
+    expect_true(validate_k1_acceptance_protocol(revised))
+    expect_identical(revised$protocol_status, "frozen_before_acceptance")
+    expect_false(revised$execution$acceptance_execution_available)
+    expect_false(revised$provenance$acceptance_results_inspected)
+    expect_identical(
+        revised$thresholds$target_axis_recovery,
+        list(
+            canonical_metric = "absolute_loading_cosine",
+            minimum = 0.90,
+            principal_angle_role = "descriptive_equivalent_only"
+        )
+    )
+    expect_identical(
+        revised$outcome_states,
+        c(
+            "recovered_and_estimable",
+            "recovered_downstream_nonestimable",
+            "recovery_below_threshold",
+            "recovery_not_evaluable",
+            "execution_failure"
+        )
+    )
+    expect_identical(
+        revised$seed_plan$control,
+        c(
+            "independent_time_course", "repeated_subject",
+            "high_dimensional_signal", "high_dimensional_null"
+        )
+    )
+    expect_identical(
+        revised$seed_plan$replicates_per_grid_cell,
+        rep(100L, 4L)
+    )
+    expect_identical(revised$workload$total_replicates, 7200L)
+    expect_identical(
+        revised$grids$independent_time_course$template_ids,
+        c(
+            "balanced_1", "balanced_2", "balanced_3", "unequal_1_2_3",
+            "isolated_library_failure", "missing_internal_cell"
+        )
+    )
+    expect_identical(
+        revised$grids$repeated_subject$template_ids,
+        c(
+            "complete", "isolated_observation_loss", "terminal_dropout",
+            "condition_dependent_loss"
+        )
+    )
+    expect_identical(
+        revised$grids$independent_time_course$feature_counts,
+        c(100L, 1000L, 10000L)
+    )
+    expect_identical(
+        revised$grids$repeated_subject$feature_counts,
+        c(100L, 1000L, 10000L)
+    )
+    expect_identical(
+        revised$grids$high_dimensional_signal$regime_ids,
+        c(
+            "fixed_total_spike", "fixed_sparse", "growing_coherent",
+            "correlated_modules"
+        )
+    )
+    expect_identical(
+        revised$grids$high_dimensional_signal$signal_ratios,
+        c(0.75, 1, 1.25)
+    )
+    expect_identical(
+        revised$grids$high_dimensional_null$signal_ratios,
+        c(0, 0.75)
+    )
+    expect_match(revised$pass_rules$out_of_domain, "outside")
+    expect_match(revised$pass_rules$downstream_nonestimability, "separate")
+    expect_match(revised$pass_rules$execution, "rates of 1.00")
+    expect_match(revised$pass_rules$recovery, "all requested replicates")
+    expect_identical(revised$resampling$repeated_axis_resamples, 19L)
+    expect_identical(revised$resampling$high_dimensional_axis_resamples, 19L)
+    expect_identical(
+        revised$separation$reserved_historical_acceptance_ranges$
+            manifest_digest,
+        "ce5b129f09cdc7c0e4a50ad929f0b640b7db8ae6b6d406293b5e7b81a247417c"
+    )
+    expect_true(all(c(18900:18909, 19000:19009, 19100:19109) %in%
+        revised$separation$reserved_calibration_rng_streams))
+    expect_identical(
+        revised$grids$high_dimensional_signal$signal_parameterization$
+            reference_p,
+        100L
+    )
+    expect_match(
+        revised$grids$high_dimensional_signal$signal_parameterization$
+            effective_ratio,
+        "loading norm"
+    )
+    expect_identical(
+        revised$separation$calibration_stream_manifests$issue,
+        c(189L, 190L, 191L)
+    )
+    expect_true(all(grepl(
+        "^[0-9a-f]{64}$",
+        revised$separation$calibration_stream_manifests$
+            stream_manifest_digest
+    )))
 })
 
 test_that("K=1 acceptance seeds remain hidden until their protocol merge", {
