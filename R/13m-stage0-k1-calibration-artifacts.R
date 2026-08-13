@@ -69,6 +69,13 @@
     environment <- .k1_calibration_read_or_abort(
         readRDS(file.path(artifact, "environment.rds")), messages$invalid
     )
+    environment_fields <- c(
+        "assessment_digest", "runtime_identity", "claim_status"
+    )
+    if (!is.list(environment) ||
+            !identical(names(environment), environment_fields)) {
+        .k1_acceptance_runner_abort(messages$invalid)
+    }
     validator(assessment)
     .k1_acceptance_validate_identity(environment$runtime_identity)
 

@@ -385,6 +385,21 @@ test_that("calibration artifacts reproduce typed and visual derivatives", {
     writeBin(original_assessment, assessment_path)
     writeLines(original_manifest, manifest_path)
 
+    saveRDS("not an environment envelope", environment_path)
+    manifest <- utils::read.delim(manifest_path,
+        stringsAsFactors = FALSE, check.names = FALSE)
+    manifest$sha256[manifest$file == "environment.rds"] <-
+        landscapeR:::.k1_acceptance_file_digest(environment_path)
+    utils::write.table(manifest, manifest_path, sep = "\t", quote = FALSE,
+        row.names = FALSE)
+    expect_error(
+        verify_k1_independent_time_course_calibration(artifact),
+        "manifest or digests are invalid",
+        class = "k1_acceptance_runner_error"
+    )
+    saveRDS(original_environment, environment_path)
+    writeLines(original_manifest, manifest_path)
+
     testthat::local_mocked_bindings(
         .k1_calibration_atomic_move = function(from, to) FALSE,
         .package = "landscapeR"
