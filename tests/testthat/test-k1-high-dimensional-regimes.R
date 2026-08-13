@@ -198,18 +198,20 @@ test_that("high-dimensional artifacts replay and targets stay backend-neutral", 
     )
     expect_identical(graph[[1L]]$settings$deployment, "worker")
     assessment_command <- graph[[1L]]$command$string
-    expect_false(grepl("sequential_internal", assessment_command, fixed = TRUE))
+    expect_true(grepl(
+        "sequential_internal = TRUE", assessment_command, fixed = TRUE
+    ))
 
-    sequential_graph <- k1_high_dimensional_calibration_targets(
+    distributed_graph <- k1_high_dimensional_calibration_targets(
         artifact_root = normalizePath(root),
         controller = "gemini-high-dimensional",
         regime_ids = "fixed_sparse", feature_counts = 40L,
         signal_ratios = 0.75, replicates = 1L, axis_resamples = 1L,
-        sequential_internal = TRUE
+        sequential_internal = FALSE
     )
-    sequential_command <- sequential_graph[[1L]]$command$string
+    distributed_command <- distributed_graph[[1L]]$command$string
     expect_true(grepl(
-        "sequential_internal = TRUE", sequential_command, fixed = TRUE
+        "sequential_internal = FALSE", distributed_command, fixed = TRUE
     ))
 })
 
@@ -254,6 +256,44 @@ test_that("high-dimensional replay rejects changed child RNG declarations", {
     expect_error(
         landscapeR:::.validate_k1_high_dimensional_assessment(changed),
         "replicate evidence does not match",
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("high-dimensional replay rejects child seeds shared across tasks", {
+    assessment <- run_k1_high_dimensional_calibration(
+        regime_ids = "fixed_sparse", feature_counts = 40L,
+        signal_ratios = c(0.75, 1.25), replicates = 1L,
+        informative_features = 8L, axis_resamples = 1L,
+        seed = 19109L, sequential_internal = TRUE
+    )
+    first_seed <- assessment$execution$values[[1L]]$evidence$rng$
+        child_seeds[["generator"]]
+    second_id <- assessment$execution$values[[2L]]$evidence$rng$task_id
+    derive_seed <- landscapeR:::.k1_high_dimensional_child_seed
+    testthat::local_mocked_bindings(
+        .k1_high_dimensional_child_seed = function(stream, task_id) {
+            if (identical(task_id, paste0(second_id, ":generator"))) {
+                return(first_seed)
+            }
+            derive_seed(stream, task_id)
+        },
+        .package = "landscapeR"
+    )
+    changed <- assessment
+    changed$execution$values[[2L]]$evidence$rng$child_seeds[["generator"]] <-
+        first_seed
+    changed$execution$values[[2L]]$evidence$generator$seed <- first_seed
+    changed$execution$digest <- digest::digest(
+        changed$execution[c("values", "account", "provenance")],
+        algo = "sha256", serialize = TRUE
+    )
+    payload <- changed[names(changed) != "digest"]
+    changed$digest <- digest::digest(payload, algo = "sha256")
+
+    expect_error(
+        landscapeR:::.validate_k1_high_dimensional_assessment(changed),
+        "child RNG seeds collide",
         class = "landscapeR_validation_error"
     )
 })

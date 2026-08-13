@@ -7,6 +7,7 @@
 k1_high_dimensional_calibration_targets(
   artifact_root,
   controller = "k1-high-dimensional",
+  sequential_internal = TRUE,
   ...
 )
 }
@@ -15,6 +16,9 @@ k1_high_dimensional_calibration_targets(
 
 \item{controller}{named crew controller configured by the caller.}
 
+\item{sequential_internal}{execute the scientific grid in the scheduler
+worker. Set \code{FALSE} only for an explicitly resourced nested future plan.}
+
 \item{...}{scientific arguments forwarded to
 \code{\link[=run_k1_high_dimensional_calibration]{run_k1_high_dimensional_calibration()}}.}
 }
@@ -22,9 +26,8 @@ k1_high_dimensional_calibration_targets(
 List of targets objects.
 }
 \description{
-The assessment target leaves \code{sequential_internal} at the runner's default
-unless the caller supplies it in \code{...}. This allows a future plan configured
-inside the scheduler worker to distribute the scientific grid. Callers that
-allocate one worker per target may instead pass \code{sequential_internal = TRUE}
-explicitly to prevent nested workers.
+The graph uses one scheduler-owned worker and disables nested future workers
+by default. Set \code{sequential_internal = FALSE} only when the scheduler job has
+explicitly allocated resources for a future plan inside that worker. Task
+identities and RNG streams are unchanged by either execution mode.
 }

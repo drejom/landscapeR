@@ -609,6 +609,15 @@ k1_high_dimensional_control_info <- function(x) {
             "high-dimensional replicate evidence does not match its summary"
         )
     }
+    completed_values <- x$execution$values[x$execution$account$completed]
+    child_seeds <- unlist(lapply(completed_values, function(value) {
+        value$evidence$rng$child_seeds
+    }), use.names = FALSE)
+    if (anyDuplicated(child_seeds)) {
+        .stop_landscapeR_validation(
+            "high-dimensional replicate child RNG seeds collide"
+        )
+    }
     invisible(TRUE)
 }
 
@@ -1023,20 +1032,22 @@ verify_k1_high_dimensional_calibration <- function(artifact) {
 
 #' Declare the backend-neutral high-dimensional calibration graph
 #'
-#' The assessment target leaves `sequential_internal` at the runner's default
-#' unless the caller supplies it in `...`. This allows a future plan configured
-#' inside the scheduler worker to distribute the scientific grid. Callers that
-#' allocate one worker per target may instead pass `sequential_internal = TRUE`
-#' explicitly to prevent nested workers.
+#' The graph uses one scheduler-owned worker and disables nested future workers
+#' by default. Set `sequential_internal = FALSE` only when the scheduler job has
+#' explicitly allocated resources for a future plan inside that worker. Task
+#' identities and RNG streams are unchanged by either execution mode.
 #'
 #' @param artifact_root absolute shared publication directory.
 #' @param controller named crew controller configured by the caller.
+#' @param sequential_internal execute the scientific grid in the scheduler
+#'   worker. Set `FALSE` only for an explicitly resourced nested future plan.
 #' @param ... scientific arguments forwarded to
 #'   [run_k1_high_dimensional_calibration()].
 #' @return List of targets objects.
 #' @export
 k1_high_dimensional_calibration_targets <- function(
-    artifact_root, controller = "k1-high-dimensional", ...
+    artifact_root, controller = "k1-high-dimensional",
+    sequential_internal = TRUE, ...
 ) {
     if (!requireNamespace("targets", quietly = TRUE)) {
         .stop_landscapeR_validation(
@@ -1045,15 +1056,20 @@ k1_high_dimensional_calibration_targets <- function(
     }
     if (!.is_scalar_nonempty_text(artifact_root) ||
             !grepl("^/", path.expand(artifact_root)) ||
-            !.is_scalar_nonempty_text(controller)) {
+            !.is_scalar_nonempty_text(controller) ||
+            !is.logical(sequential_internal) ||
+            length(sequential_internal) != 1L || is.na(sequential_internal)) {
         .stop_landscapeR_validation(
-            "artifact_root must be absolute and controller must be non-empty"
+            paste(
+                "artifact_root must be absolute, controller must be non-empty,",
+                "and sequential_internal must be TRUE or FALSE"
+            )
         )
     }
     arguments <- list(...)
     run_call <- as.call(c(
         list(quote(landscapeR::run_k1_high_dimensional_calibration)),
-        arguments
+        arguments, list(sequential_internal = sequential_internal)
     ))
     list(
         .k1_acceptance_target(
