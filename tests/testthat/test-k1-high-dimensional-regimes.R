@@ -87,6 +87,7 @@ test_that("high-dimensional assessment separates scientific and execution eviden
     expect_s3_class(assessment, "K1HighDimensionalAssessment")
     expect_identical(assessment$execution$account$n_requested, 3L)
     expect_identical(assessment$execution$account$n_completed, 3L)
+    expect_identical(assessment$execution$provenance$compute_tier, "evidence")
     expect_named(assessment$replicates, c(
         "task_id", "replicate_index", "regime_id", "regime_label",
         "boundary_position", "n", "p", "informative_feature_count",
@@ -196,6 +197,20 @@ test_that("high-dimensional artifacts replay and targets stay backend-neutral", 
         c("k1_high_dimensional_assessment", "k1_high_dimensional_artifact")
     )
     expect_identical(graph[[1L]]$settings$deployment, "worker")
+    assessment_command <- graph[[1L]]$command$string
+    expect_false(grepl("sequential_internal", assessment_command, fixed = TRUE))
+
+    sequential_graph <- k1_high_dimensional_calibration_targets(
+        artifact_root = normalizePath(root),
+        controller = "gemini-high-dimensional",
+        regime_ids = "fixed_sparse", feature_counts = 40L,
+        signal_ratios = 0.75, replicates = 1L, axis_resamples = 1L,
+        sequential_internal = TRUE
+    )
+    sequential_command <- sequential_graph[[1L]]$command$string
+    expect_true(grepl(
+        "sequential_internal = TRUE", sequential_command, fixed = TRUE
+    ))
 })
 
 test_that("high-dimensional calibration is deterministic and preserves caller RNG", {
@@ -217,4 +232,28 @@ test_that("high-dimensional calibration is deterministic and preserves caller RN
         first$execution$provenance$task_streams[[1L]])
     expect_s4_class(evidence$component_interpretation$atlas,
         "MetadataAssociationAtlas")
+})
+
+test_that("high-dimensional replay rejects changed child RNG declarations", {
+    assessment <- run_k1_high_dimensional_calibration(
+        regime_ids = "fixed_sparse", feature_counts = 40L,
+        signal_ratios = 0.75, replicates = 1L,
+        informative_features = 8L, axis_resamples = 1L,
+        seed = 19108L, sequential_internal = TRUE
+    )
+    changed <- assessment
+    changed$execution$values[[1L]]$evidence$rng$child_seeds[["generator"]] <-
+        changed$execution$values[[1L]]$evidence$rng$child_seeds[["generator"]] + 1L
+    changed$execution$digest <- digest::digest(
+        changed$execution[c("values", "account", "provenance")],
+        algo = "sha256", serialize = TRUE
+    )
+    payload <- changed[names(changed) != "digest"]
+    changed$digest <- digest::digest(payload, algo = "sha256")
+
+    expect_error(
+        landscapeR:::.validate_k1_high_dimensional_assessment(changed),
+        "replicate evidence does not match",
+        class = "landscapeR_validation_error"
+    )
 })

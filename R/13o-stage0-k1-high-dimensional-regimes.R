@@ -515,6 +515,7 @@ k1_high_dimensional_control_info <- function(x) {
             as.integer(sum(!x$replicates$execution_completed))) &&
         identical(x$execution$provenance$task_ids,
             x$replicates$task_id) &&
+        identical(x$execution$provenance$compute_tier, "evidence") &&
         identical(x$execution$digest, digest::digest(
             x$execution[c("values", "account", "provenance")],
             algo = "sha256", serialize = TRUE
@@ -567,6 +568,16 @@ k1_high_dimensional_control_info <- function(x) {
         recovery <- value$evidence$target_recovery
         downstream <- value$evidence$downstream_estimability
         rng <- value$evidence$rng
+        child_seed_names <- c(
+            "generator", "association", "proposal", "resampling"
+        )
+        expected_child_seeds <- stats::setNames(vapply(
+            child_seed_names,
+            function(child) .k1_high_dimensional_child_seed(
+                rng$task_stream, paste0(rng$task_id, ":", child)
+            ),
+            integer(1L)
+        ), child_seed_names)
         valid_evidence <- is.list(interpretation) &&
             is(interpretation$atlas, "MetadataAssociationAtlas") &&
             (is(interpretation$proposal, "ComponentProposal") ||
@@ -581,7 +592,10 @@ k1_high_dimensional_control_info <- function(x) {
             identical(rng$task_id, observed$task_id[[1L]]) &&
             identical(rng$task_stream,
                 x$execution$provenance$task_streams[[index]]) &&
-            is.integer(rng$child_seeds) && length(rng$child_seeds) == 4L
+            is.integer(rng$child_seeds) &&
+            identical(rng$child_seeds, expected_child_seeds) &&
+            !anyDuplicated(rng$child_seeds) &&
+            identical(generator$seed, unname(rng$child_seeds[["generator"]]))
         identical(expected, observed) && valid_generator && valid_evidence &&
             identical(value$evidence$generator$regime_id,
                 observed$regime_id[[1L]]) &&
@@ -679,7 +693,7 @@ run_k1_high_dimensional_calibration <- function(
     )
     tasks <- split(grid, seq_len(nrow(grid)))
     execution <- .future_repetition(
-        tasks, task_ids, seed, "standard",
+        tasks, task_ids, seed, "evidence",
         sequential_internal = sequential_internal,
         future_scheduling = future_scheduling,
         worker = function(task, task_id, stream) {
@@ -1009,6 +1023,12 @@ verify_k1_high_dimensional_calibration <- function(artifact) {
 
 #' Declare the backend-neutral high-dimensional calibration graph
 #'
+#' The assessment target leaves `sequential_internal` at the runner's default
+#' unless the caller supplies it in `...`. This allows a future plan configured
+#' inside the scheduler worker to distribute the scientific grid. Callers that
+#' allocate one worker per target may instead pass `sequential_internal = TRUE`
+#' explicitly to prevent nested workers.
+#'
 #' @param artifact_root absolute shared publication directory.
 #' @param controller named crew controller configured by the caller.
 #' @param ... scientific arguments forwarded to
@@ -1033,7 +1053,7 @@ k1_high_dimensional_calibration_targets <- function(
     arguments <- list(...)
     run_call <- as.call(c(
         list(quote(landscapeR::run_k1_high_dimensional_calibration)),
-        arguments, list(sequential_internal = TRUE)
+        arguments
     ))
     list(
         .k1_acceptance_target(

@@ -22,5 +22,9 @@ k1_high_dimensional_calibration_targets(
 List of targets objects.
 }
 \description{
-Declare the backend-neutral high-dimensional calibration graph
+The assessment target leaves \code{sequential_internal} at the runner's default
+unless the caller supplies it in \code{...}. This allows a future plan configured
+inside the scheduler worker to distribute the scientific grid. Callers that
+allocate one worker per target may instead pass \code{sequential_internal = TRUE}
+explicitly to prevent nested workers.
 }
