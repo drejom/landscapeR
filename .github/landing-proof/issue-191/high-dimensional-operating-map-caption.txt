@@ -1,0 +1,15 @@
+High-dimensional signal-recovery operating evidence. The correlated feature modules; fixed
+sparse informative set with added noise features; fixed total signal with added noise features;
+growing coherent informative set; null or near-null signal experiment to assess the declared
+condition target contrasts target with reference. (A) Probability that the planted target
+loading was recovered. (B) Mean absolute loading cosine for the planted target under
+target-stratified biological-unit bootstrap. Black-outlined circles show exact cell summaries
+and lines join equal feature counts within a signal regime; The pale vertical line marks the
+covariance-adjusted noise reference; crosses mark quantities that were not estimable. The
+analysis unit is independent synthetic biological observation; the design is 24 independent
+observations; feature count and information structure vary independently; the estimand is
+recovery of a planted feature-loading direction. 84 outer executions and 252 of 252 target-axis
+refits completed. Component nomination and downstream estimability remain in the exact cell
+table but are not repeated on this primary recovery map. Panel A uses an absolute
+loading-cosine threshold of 0.90. The covariance-adjusted noise reference is a disclosed
+simulation coordinate, not a biological acceptance threshold or universal sample-size rule.

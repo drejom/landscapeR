@@ -1,0 +1,29 @@
+"regime_id","regime_label","boundary_position","n","p","informative_feature_count","informative_feature_fraction","covariance_regime","signal_strength","noise_sd","recovery_boundary","n_requested","n_execution_completed","recovery_probability","mean_axis_similarity","proposal_probability","downstream_estimability_probability"
+"correlated_modules","Correlated feature modules","below",24,100,10,0.1,"block-correlated-gaussian",0,1,24.6469766139831,3,3,0,0.780702418959837,0.666666666666667,1
+"correlated_modules","Correlated feature modules","below",24,100,10,0.1,"block-correlated-gaussian",18.4852324604873,1,24.6469766139831,3,3,0,0.825229373578932,1,1
+"correlated_modules","Correlated feature modules","above",24,100,10,0.1,"block-correlated-gaussian",30.8087207674788,1,24.6469766139831,3,3,1,0.960259896171701,1,1
+"correlated_modules","Correlated feature modules","below",24,500,10,0.02,"block-correlated-gaussian",0,1,36.8558264405075,3,3,0,0.461126693891993,1,1
+"correlated_modules","Correlated feature modules","below",24,500,10,0.02,"block-correlated-gaussian",18.4852324604873,1,36.8558264405075,3,3,0,0.617678127953276,1,1
+"correlated_modules","Correlated feature modules","below",24,500,10,0.02,"block-correlated-gaussian",30.8087207674788,1,36.8558264405075,3,3,0,0.606470736029244,1,1
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.431685053189987,1,1
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.532753049563857,1,1
+"fixed_sparse","Fixed sparse informative set with added noise features","above",24,100,10,0.1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,0,0.634535057803114,1,1
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.278173568082221,1,1
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,500,10,0.02,"independent-gaussian",5.24945326737087,1,10.4663513939211,3,3,0,0.452210529468963,1,1
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,500,10,0.02,"independent-gaussian",8.74908877895146,1,10.4663513939211,3,3,0,0.373626417298755,1,1
+"fixed_total_spike","Fixed total signal with added noise features","below",24,100,100,1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.503471423665207,1,1
+"fixed_total_spike","Fixed total signal with added noise features","below",24,100,100,1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.498571437655467,1,1
+"fixed_total_spike","Fixed total signal with added noise features","above",24,100,100,1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,0,0.631423296325111,1,1
+"fixed_total_spike","Fixed total signal with added noise features","below",24,500,500,1,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.420273962771333,1,1
+"fixed_total_spike","Fixed total signal with added noise features","below",24,500,500,1,"independent-gaussian",5.24945326737087,1,10.4663513939211,3,3,0,0.411259489457238,0.666666666666667,1
+"fixed_total_spike","Fixed total signal with added noise features","below",24,500,500,1,"independent-gaussian",8.74908877895146,1,10.4663513939211,3,3,0,0.283408539446332,1,1
+"growing_coherent","Growing coherent informative set","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.463720489023008,1,1
+"growing_coherent","Growing coherent informative set","above",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.803655389356641,1,1
+"growing_coherent","Growing coherent informative set","above",24,100,10,0.1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,1,0.944500240954172,1,1
+"growing_coherent","Growing coherent informative set","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.398351614822088,1,1
+"growing_coherent","Growing coherent informative set","above",24,500,10,0.02,"independent-gaussian",5.24945326737087,1,10.4663513939211,3,3,0,0.548608289440832,1,1
+"growing_coherent","Growing coherent informative set","above",24,500,10,0.02,"independent-gaussian",8.74908877895146,1,10.4663513939211,3,3,0,0.697511612002592,1,1
+"null_near_null","Null or near-null signal","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.56996779108172,1,1
+"null_near_null","Null or near-null signal","below",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.542922313382906,1,1
+"null_near_null","Null or near-null signal","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.241209919357529,1,1
+"null_near_null","Null or near-null signal","below",24,500,10,0.02,"independent-gaussian",5.24945326737087,1,10.4663513939211,3,3,0,0.531454756530293,1,1

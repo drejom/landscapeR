@@ -30,6 +30,7 @@ articles:
   - title: Evidence
     navbar: Evidence
     contents:
+      - k1-high-dimensional-calibration
       - k1-stage0-phase-b1-evidence
       - stage1-evidence
   - title: Development log
