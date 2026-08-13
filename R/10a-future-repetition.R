@@ -5,7 +5,7 @@
     "analytic-unadjusted", "analytic-adjusted", "standard-resampled"
 )
 .repetition_rng_kind <- "L'Ecuyer-CMRG"
-.repetition_seed_scheme <- "sha256-lecuyer-state-v1"
+.repetition_seed_scheme <- "sha256-lecuyer-rejection-state-v2"
 
 .validate_compute_tier <- function(compute_tier) {
     if (!is.character(compute_tier) || length(compute_tier) != 1L ||
@@ -36,12 +36,15 @@
         start <- (i - 1L) * 7L + 1L
         as.integer(strtoi(substr(hash, start, start + 6L), base = 16L) + 1L)
     }, integer(1L))
-    c(407L, state)
+    # 10407 encodes L'Ecuyer-CMRG, Inversion normal generation, and the
+    # current Rejection discrete sampler. 407 selects obsolete Rounding and
+    # makes deterministic scientific tasks depend on the warning policy.
+    c(10407L, state)
 }
 
 .with_rng_stream <- function(stream, operation) {
     if (!is.integer(stream) || length(stream) != 7L ||
-            stream[[1L]] %% 10000L != 407L) {
+            stream[[1L]] != 10407L) {
         .stop_landscapeR_validation("RNG stream must be a valid L'Ecuyer-CMRG state")
     }
     previous_kind <- RNGkind()
@@ -159,6 +162,13 @@
         )
     }
     run_one <- function(i) {
+            condition_code <- function(condition) {
+                if (inherits(condition, "landscapeR_validation_error")) {
+                    "validation-failure"
+                } else {
+                    "task-error"
+                }
+            }
             tryCatch(
                 .with_rng_stream(task_streams[[i]], function() {
                     value <- worker(tasks[[i]], task_ids[[i]], task_streams[[i]])
@@ -174,7 +184,7 @@
                 }),
                 error = function(condition) list(
                     completed = FALSE,
-                    failure_code = .repetition_condition_code(condition),
+                    failure_code = condition_code(condition),
                     value = NULL
                 )
             )

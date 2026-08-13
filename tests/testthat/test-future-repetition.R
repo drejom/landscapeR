@@ -24,6 +24,20 @@ test_that("compute tiers and run seeds are validated", {
     }
 })
 
+test_that("derived streams use the current rejection sampler without warnings", {
+    stream <- landscapeR:::.derive_task_stream(4100L, "sampler-contract")
+
+    expect_identical(stream[[1L]], 10407L)
+    expect_warning(
+        landscapeR:::.with_rng_stream(stream, function() sample.int(10L, 3L)),
+        NA
+    )
+    expect_error(
+        landscapeR:::.with_rng_stream(c(407L, stream[-1L]), identity),
+        class = "landscapeR_validation_error"
+    )
+})
+
 test_that("legacy serialized atlas compute tiers remain valid", {
     atlas <- associate_metadata(
         independent_time_course_fixture(include_nuisance = FALSE),

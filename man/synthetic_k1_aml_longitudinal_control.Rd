@@ -12,6 +12,8 @@ synthetic_k1_aml_longitudinal_control(
   time_signal = 8,
   disease_signal = 3,
   dropout_subjects = character(),
+  removed_observations = data.frame(mouse_id = character(), weeks = numeric(), reason =
+    character(), stringsAsFactors = FALSE),
   seed = 42L
 )
 }
@@ -30,6 +32,11 @@ synthetic_k1_aml_longitudinal_control(
 
 \item{dropout_subjects}{optional subject IDs whose final observation is
 removed}
+
+\item{removed_observations}{optional data frame with \code{mouse_id}, \code{weeks},
+and \code{reason} columns declaring exact observations removed before
+expression is generated; this supports auditable incomplete-trajectory
+calibration without imputing or reclassifying observations}
 
 \item{seed}{reproducibility seed}
 }

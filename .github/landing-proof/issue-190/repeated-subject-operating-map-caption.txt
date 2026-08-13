@@ -1,0 +1,21 @@
+Operating evidence for incomplete repeated-subject time courses. The Synthetic repeated-subject
+time course experiment to assess the declared condition target contrasts CM with CTL. (A)
+Target loading recovery at the disclosed absolute cosine threshold. (B) Mean absolute loading
+cosine for the planted target under condition-stratified complete-subject bootstrap. (C)
+Estimability of the adjusted condition-by-time random-intercept-plus-slope model after target
+recovery. Red circles are estimated values; panels A and C show outer-replicate probabilities
+and panel B shows mean cosine; crosses mark a scientific quantity that was not estimable and
+are positioned near zero without encoding a probability; hollow triangles at the left margin
+independently mark incomplete outer execution or target-axis refitting; finite values still
+summarize all completed refits. The analysis unit is one repeatedly observed synthetic mouse;
+the design is four CTL and four CM mice intended at each of four observed times; mouse
+identity, condition, and time remain explicit; the estimand is standardized condition-by-time
+interaction; time is recorded as weeks (times 0, 1, 2, 3) in synthetic study units; adjustment
+uses batch. 5 deterministic outer replicates and 5 complete-subject target-axis bootstrap
+refits per replicate were requested; 19 of 20 outer executions and 95 of 100 target-axis refits
+completed. No visit is imputed or treated as an independent animal. Complete trajectories
+removes no observations; One internal visit missing removes cm1 at time 2; One mouse drops out
+removes cm1 at time 2, cm1 at time 3; Two disease mice drop out removes cm1 at time 2, cm1 at
+time 3, cm2 at time 2, cm2 at time 3. Recovery uses an absolute loading-cosine threshold of
+0.90. This is disclosed synthetic calibration evidence, not an acceptance result or universal
+sample-size rule.
