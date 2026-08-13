@@ -354,6 +354,7 @@
         "plot_k1_acceptance_summary",
         "plot_k1_aml_acceptance_summary",
         "plot_k1_calibration_outcomes",
+        "plot_k1_independent_time_course_calibration",
         "plot_components",
         "plot_spectrum",
         "plot_decomposition",
@@ -365,10 +366,10 @@
         "plot.ComponentAbstention"
     ),
     policy = c(
-        rep("caption-required", 13L)
+        rep("caption-required", 14L)
     ),
     tracking_issue = c(
-        rep(NA_integer_, 13L)
+        rep(NA_integer_, 14L)
     ),
     stringsAsFactors = FALSE
 )

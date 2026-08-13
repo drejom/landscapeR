@@ -363,6 +363,42 @@ non-evidentiary and cannot contribute to the scientific result. Neither that
 pilot, the calibration example, nor its visual proof supports a biological AML
 claim.
 
+### Independent destructive-time-course operating evidence
+
+Destructive sampling uses a different biological animal in every
+condition-time cell. `k1_independent_time_course_template()` declares balanced
+one-, two-, and three-animal cells, unequal cells, an isolated failed sequencing
+library, and a missing internal cell. A failed library remains a recorded
+removal from the intended design; it is never imputed or silently relabelled as
+a smaller balanced experiment.
+
+```{r k1-independent-time-calibration, eval=FALSE}
+assessment <- run_k1_independent_time_course_calibration(
+  replicates = 20L,
+  p = 100L,
+  seed = 18900L
+)
+operating_map <- plot_k1_independent_time_course_calibration(assessment)
+operating_map
+scientific_caption(operating_map)
+
+artifact <- publish_k1_independent_time_course_calibration(
+  artifact_root = "/absolute/shared/evidence",
+  assessment = assessment
+)
+verify_k1_independent_time_course_calibration(artifact)
+```
+
+Panel A asks whether the planted feature-space axis was recovered. Panel B asks
+whether the declared condition-by-time interaction was estimable after
+recovery. A cross is an abstention, not a recovery probability of zero. The map
+is evidence for the displayed synthetic regime only; it does not establish a
+universal minimum sample size. For scheduler-backed work,
+`k1_independent_time_course_calibration_targets()` places the complete
+scientific call behind the existing targets and crew controller boundary, so a
+local controller or an hprcc Slurm controller changes deployment rather than
+the scientific graph.
+
 Before a known-truth calibration is frozen, the structured outcome is
 `not-calibrated` and the evidence remains
 `estimable-exploratory-only`. Singular-value gaps are visible diagnostics, not
