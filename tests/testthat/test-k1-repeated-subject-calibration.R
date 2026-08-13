@@ -177,6 +177,58 @@ test_that("operating evidence separates recovery, identifiability, and model sup
         class = "landscapeR_validation_error"
     )
 
+    contradictory_provenance <- assessment
+    contradictory_provenance$execution$values[[1L]]$evidence$
+        identifiability$replicates[[1L]]$target_replicate_component <- 999L
+    execution_payload <- contradictory_provenance$execution[
+        c("values", "account", "provenance")
+    ]
+    contradictory_provenance$execution$digest <- digest::digest(
+        execution_payload, algo = "sha256", serialize = TRUE
+    )
+    payload <- unclass(contradictory_provenance)
+    payload$digest <- NULL
+    contradictory_provenance$digest <- digest::digest(
+        payload, algo = "sha256"
+    )
+    expect_error(
+        plot_k1_repeated_subject_calibration(contradictory_provenance),
+        class = "landscapeR_validation_error"
+    )
+
+    nested_row_mismatches <- list(
+        recovery = function(x) {
+            x$replicates$target_loading_cosine[[1L]] <- 0.123
+            x
+        },
+        model = function(x) {
+            x$replicates$model_estimable[[1L]] <- FALSE
+            x
+        },
+        identifiability = function(x) {
+            x$replicates$axis_refits_completed[[1L]] <- 0L
+            x
+        },
+        nomination = function(x) {
+            x$replicates$nomination_agrees_with_target[[1L]] <-
+                !x$replicates$nomination_agrees_with_target[[1L]]
+            x
+        }
+    )
+    for (mutate_assessment in nested_row_mismatches) {
+        contradictory <- mutate_assessment(assessment)
+        contradictory$cells <- landscapeR:::.k1_repeated_cell_summary(
+            contradictory$replicates
+        )
+        payload <- unclass(contradictory)
+        payload$digest <- NULL
+        contradictory$digest <- digest::digest(payload, algo = "sha256")
+        expect_error(
+            plot_k1_repeated_subject_calibration(contradictory),
+            class = "landscapeR_validation_error"
+        )
+    }
+
     contradictory_account <- assessment
     contradictory_account$execution$account$completed[[1L]] <- FALSE
     execution_payload <- contradictory_account$execution[
@@ -213,6 +265,60 @@ test_that("target-axis bootstrap remains independent of model abstention", {
     )
 })
 
+test_that("partial target-axis bootstrap evidence remains visible", {
+    assessment <- run_k1_repeated_subject_calibration(
+        template_ids = "complete", replicates = 1L,
+        p = 20L, axis_resamples = 3L, seed = 19008L,
+        sequential_internal = TRUE
+    )
+    evidence <- assessment$execution$values[[1L]]$evidence$identifiability
+    evidence$replicates[[1L]]$status <- "execution_failure"
+    evidence$replicates[[1L]]$target_absolute_similarity <- NA_real_
+    evidence$replicates[[1L]]$target_replicate_component <- NA_integer_
+    evidence$replicates[[1L]]$assignment_margin <- NA_real_
+    evidence$replicates[[1L]]$diagnostic <- "declared-test-interruption"
+    evidence$n_completed <- 2L
+    evidence$status <- "partial"
+    evidence$mean_absolute_similarity <- mean(vapply(
+        evidence$replicates[-1L],
+        function(replicate) replicate$target_absolute_similarity,
+        numeric(1L)
+    ))
+    assessment$execution$values[[1L]]$evidence$identifiability <- evidence
+    assessment$execution$values[[1L]]$row$
+        axis_identifiability_evaluable <- TRUE
+    assessment$execution$values[[1L]]$row$
+        axis_mean_absolute_similarity <- evidence$mean_absolute_similarity
+    assessment$execution$values[[1L]]$row$axis_refits_completed <- 2L
+    assessment$replicates$axis_identifiability_evaluable[[1L]] <- TRUE
+    assessment$replicates$axis_mean_absolute_similarity[[1L]] <-
+        evidence$mean_absolute_similarity
+    assessment$replicates$axis_refits_completed[[1L]] <- 2L
+    assessment$cells <- landscapeR:::.k1_repeated_cell_summary(
+        assessment$replicates
+    )
+    execution_payload <- assessment$execution[
+        c("values", "account", "provenance")
+    ]
+    assessment$execution$digest <- digest::digest(
+        execution_payload, algo = "sha256", serialize = TRUE
+    )
+    payload <- unclass(assessment)
+    payload$digest <- NULL
+    assessment$digest <- digest::digest(payload, algo = "sha256")
+
+    plot <- plot_k1_repeated_subject_calibration(assessment)
+    display <- attr(plot, "landscapeR_k1_repeated_map_data")
+    axis_row <- display$panel == "B  Axis identifiability"
+    expect_equal(
+        display$probability[axis_row], evidence$mean_absolute_similarity
+    )
+    expect_identical(
+        as.character(display$execution_state[axis_row]),
+        "Partial computation"
+    )
+})
+
 test_that("nested bootstrap results do not depend on warnings-as-errors", {
     old_warning <- getOption("warn")
     on.exit(options(warn = old_warning), add = TRUE)
@@ -226,6 +332,17 @@ test_that("nested bootstrap results do not depend on warnings-as-errors", {
 
     expect_true(assessment$replicates$execution_completed[[1L]])
     expect_identical(assessment$execution$account$n_failed, 0L)
+})
+
+test_that("repeated-subject calibration preserves caller RNG state", {
+    set.seed(919L)
+    before <- .Random.seed
+    invisible(run_k1_repeated_subject_calibration(
+        template_ids = "complete", replicates = 1L,
+        p = 20L, axis_resamples = 1L, seed = 19009L,
+        sequential_internal = TRUE
+    ))
+    expect_identical(.Random.seed, before)
 })
 
 test_that("repeated-subject operating map has exact data and separate caption", {

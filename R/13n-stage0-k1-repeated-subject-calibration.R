@@ -295,7 +295,8 @@ k1_repeated_subject_control_info <- function(x) {
             resampling_method =
                 "condition-stratified-subject-trajectory-bootstrap",
             resampling_unit = "complete-subject-trajectory",
-            replicates = list(), reason = "axis resampling not requested"
+            plan_digest = NULL, replicates = list(),
+            reason = "axis resampling not requested"
         ))
     }
     reference <- stage_artifact(fitted, "stage1")
@@ -369,7 +370,15 @@ k1_repeated_subject_control_info <- function(x) {
         n_completed = as.integer(sum(completed)),
         resampling_method = plan$method,
         resampling_unit = plan$unit,
-        plan_digest = plan$digest,
+        plan_digest = digest::digest(list(
+            method = plan$method,
+            unit = plan$unit,
+            n_requested = as.integer(n_resamples),
+            draws = lapply(replicates, function(replicate) list(
+                source_primary = replicate$source_primary,
+                replicate_subject = replicate$replicate_subject
+            ))
+        ), algo = "sha256", serialize = TRUE),
         replicates = replicates,
         reason = if (any(completed)) "" else
             "no target-axis bootstrap decomposition completed"
@@ -472,7 +481,7 @@ k1_repeated_subject_control_info <- function(x) {
         recovery_evaluable = recovery_evaluable,
         recovery_met = recovery_met,
         axis_identifiability_evaluable =
-            identical(target_identifiability$status, "estimable"),
+            is.finite(target_identifiability$mean_absolute_similarity),
         axis_mean_absolute_similarity =
             target_identifiability$mean_absolute_similarity,
         axis_refits_requested = target_identifiability$n_requested,
@@ -595,7 +604,7 @@ k1_repeated_subject_control_info <- function(x) {
         required <- c(
             "status", "mean_absolute_similarity", "n_requested",
             "n_completed", "resampling_method", "resampling_unit",
-            "replicates", "reason"
+            "plan_digest", "replicates", "reason"
         )
         if (!is.list(evidence) ||
                 !all(required %in% names(evidence)) ||
@@ -607,9 +616,50 @@ k1_repeated_subject_control_info <- function(x) {
                     "condition-stratified-subject-trajectory-bootstrap") ||
                 !identical(evidence$resampling_unit,
                     "complete-subject-trajectory")) return(FALSE)
+        replicate_names <- c(
+            "replicate", "status", "target_absolute_similarity",
+            "target_replicate_component", "assignment_margin",
+            "source_primary", "replicate_subject", "diagnostic"
+        )
+        valid_replicate <- vapply(seq_along(evidence$replicates), function(i) {
+            replicate <- evidence$replicates[[i]]
+            if (!is.list(replicate) ||
+                    !identical(names(replicate), replicate_names) ||
+                    !identical(replicate$replicate, as.integer(i)) ||
+                    !replicate$status %in% c("completed", "execution_failure") ||
+                    !is.character(replicate$source_primary) ||
+                    !length(replicate$source_primary) ||
+                    anyNA(replicate$source_primary) ||
+                    !is.character(replicate$replicate_subject) ||
+                    length(replicate$replicate_subject) !=
+                        length(replicate$source_primary) ||
+                    anyNA(replicate$replicate_subject) ||
+                    !is.character(replicate$diagnostic) ||
+                    length(replicate$diagnostic) != 1L ||
+                    is.na(replicate$diagnostic)) return(FALSE)
+            if (identical(replicate$status, "completed")) {
+                is.numeric(replicate$target_absolute_similarity) &&
+                    length(replicate$target_absolute_similarity) == 1L &&
+                    is.finite(replicate$target_absolute_similarity) &&
+                    replicate$target_absolute_similarity >= 0 &&
+                    replicate$target_absolute_similarity <= 1 &&
+                    .is_whole_number(replicate$target_replicate_component, 1L) &&
+                    replicate$target_replicate_component <= 2L &&
+                    is.numeric(replicate$assignment_margin) &&
+                    length(replicate$assignment_margin) == 1L &&
+                    is.finite(replicate$assignment_margin) &&
+                    replicate$assignment_margin >= 0 &&
+                    !nzchar(replicate$diagnostic)
+            } else {
+                is.na(replicate$target_absolute_similarity) &&
+                    is.na(replicate$target_replicate_component) &&
+                    is.na(replicate$assignment_margin) &&
+                    nzchar(replicate$diagnostic)
+            }
+        }, logical(1L))
+        if (any(!valid_replicate)) return(FALSE)
         completed <- vapply(evidence$replicates, function(replicate) {
-            is.list(replicate) && identical(replicate$status, "completed") &&
-                is.finite(replicate$target_absolute_similarity)
+            identical(replicate$status, "completed")
         }, logical(1L))
         observed_mean <- if (any(completed)) {
             mean(vapply(evidence$replicates[completed], function(replicate) {
@@ -618,7 +668,31 @@ k1_repeated_subject_control_info <- function(x) {
         } else {
             NA_real_
         }
-        identical(evidence$n_completed, as.integer(sum(completed))) &&
+        expected_status <- if (all(completed) && length(completed)) {
+            "estimable"
+        } else if (any(completed)) {
+            "partial"
+        } else if (!length(completed)) {
+            "not_requested"
+        } else {
+            "not_estimable"
+        }
+        expected_plan_digest <- if (evidence$n_requested) {
+            digest::digest(list(
+                method = evidence$resampling_method,
+                unit = evidence$resampling_unit,
+                n_requested = evidence$n_requested,
+                draws = lapply(evidence$replicates, function(replicate) list(
+                    source_primary = replicate$source_primary,
+                    replicate_subject = replicate$replicate_subject
+                ))
+            ), algo = "sha256", serialize = TRUE)
+        } else {
+            NULL
+        }
+        identical(evidence$status, expected_status) &&
+            identical(evidence$plan_digest, expected_plan_digest) &&
+            identical(evidence$n_completed, as.integer(sum(completed))) &&
             identical(evidence$mean_absolute_similarity, observed_mean)
     }
     completed_values_match <- vapply(seq_len(nrow(x$replicates)), function(i) {
@@ -635,15 +709,37 @@ k1_repeated_subject_control_info <- function(x) {
         rownames(expected) <- NULL
         rownames(observed) <- NULL
         template <- x$sampling_audit[[observed$template_id[[1L]]]]
+        recovery <- value$evidence$recovery
+        identifiability <- value$evidence$identifiability
+        nomination <- value$evidence$metadata_nomination
+        model <- value$evidence$repeated_subject_model
         identical(expected, observed) &&
             identical(value$evidence$template, template) &&
             identical(value$evidence$outcome,
                 as.character(observed$outcome[[1L]])) &&
-            valid_identifiability(value$evidence$identifiability) &&
-            identical(
-                value$evidence$metadata_nomination$nominated_component,
-                observed$nominated_component[[1L]]
-            )
+            identical(recovery$target_loading_cosine,
+                observed$target_loading_cosine[[1L]]) &&
+            identical(recovery$status == "estimable",
+                observed$recovery_evaluable[[1L]]) &&
+            identical(recovery$met, observed$recovery_met[[1L]]) &&
+            identical(recovery$threshold, x$recovery_threshold) &&
+            valid_identifiability(identifiability) &&
+            identical(is.finite(identifiability$mean_absolute_similarity),
+                observed$axis_identifiability_evaluable[[1L]]) &&
+            identical(identifiability$mean_absolute_similarity,
+                observed$axis_mean_absolute_similarity[[1L]]) &&
+            identical(identifiability$n_requested,
+                observed$axis_refits_requested[[1L]]) &&
+            identical(identifiability$n_completed,
+                observed$axis_refits_completed[[1L]]) &&
+            identical(nomination$nominated_component,
+                observed$nominated_component[[1L]]) &&
+            identical(nomination$agrees_with_planted_target,
+                observed$nomination_agrees_with_target[[1L]]) &&
+            identical(model$status == "estimable",
+                observed$model_estimable[[1L]]) &&
+            identical(model$diagnostic %||% identifiability$reason %||% "",
+                observed$model_diagnostic[[1L]])
     }, logical(1L))
     audit_matches <- vapply(names(x$sampling_audit), function(template_id) {
         template <- x$sampling_audit[[template_id]]
@@ -729,12 +825,13 @@ run_k1_repeated_subject_calibration <- function(
             "repeated-subject calibration arguments are invalid"
         )
     }
-    probe <- tryCatch(
-        synthetic_k1_repeated_subject_control(
+    probe <- tryCatch(.with_rng_stream(
+        .derive_task_stream(seed, "repeated-subject-argument-validation"),
+        function() synthetic_k1_repeated_subject_control(
             templates[[template_ids[[1L]]]], p, noise_sd, time_signal,
             condition_time_signal, seed
-        ), error = identity
-    )
+        )
+    ), error = identity)
     if (inherits(probe, "error")) stop(probe)
     tasks <- unlist(lapply(template_ids, function(template_id) {
         lapply(seq_len(replicates), function(replicate_index) list(
@@ -849,7 +946,9 @@ plot_k1_repeated_subject_calibration <- function(assessment) {
         is.finite(display$probability), display$probability, 0.04
     )
     display$execution_state <- ifelse(
-        display$n_execution_failure > 0L, "Partial execution", "Complete"
+        display$n_execution_failure > 0L |
+            display$n_axis_refits_completed < display$n_axis_refits_requested,
+        "Partial computation", "Complete"
     )
     semantic <- landscapeR_palette("semantic")
     plot <- ggplot2::ggplot(display, ggplot2::aes(
@@ -859,7 +958,7 @@ plot_k1_repeated_subject_calibration <- function(assessment) {
             shape = .data$state, fill = .data$state
         ), size = 2.5, stroke = 0.45, colour = semantic[["ink"]]) +
         ggplot2::geom_point(
-            data = display[display$execution_state == "Partial execution", ,
+            data = display[display$execution_state == "Partial computation", ,
                 drop = FALSE],
             ggplot2::aes(x = -0.08, y = .data$template_axis_label),
             inherit.aes = FALSE, shape = 24, fill = semantic[["missing"]],
@@ -917,7 +1016,8 @@ plot_k1_repeated_subject_calibration <- function(assessment) {
             paste("crosses mark a scientific quantity that was not estimable",
                 "and are positioned near zero without encoding a probability"),
             paste("hollow triangles at the left margin independently mark",
-                "partial execution")
+                "incomplete outer execution or target-axis refitting;",
+                "finite values still summarize all completed refits")
         ),
         estimand = "standardized condition-by-time interaction",
         design = paste(

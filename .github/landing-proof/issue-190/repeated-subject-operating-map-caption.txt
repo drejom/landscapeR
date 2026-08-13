@@ -6,8 +6,9 @@ Estimability of the adjusted condition-by-time random-intercept-plus-slope model
 recovery. Red circles are estimated values; panels A and C show outer-replicate probabilities
 and panel B shows mean cosine; crosses mark a scientific quantity that was not estimable and
 are positioned near zero without encoding a probability; hollow triangles at the left margin
-independently mark partial execution. The analysis unit is one repeatedly observed synthetic
-mouse; the design is four CTL and four CM mice intended at each of four observed times; mouse
+independently mark incomplete outer execution or target-axis refitting; finite values still
+summarize all completed refits. The analysis unit is one repeatedly observed synthetic mouse;
+the design is four CTL and four CM mice intended at each of four observed times; mouse
 identity, condition, and time remain explicit; the estimand is standardized condition-by-time
 interaction; time is recorded as weeks (times 0, 1, 2, 3) in synthetic study units; adjustment
 uses batch. 5 deterministic outer replicates and 5 complete-subject target-axis bootstrap

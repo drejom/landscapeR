@@ -102,6 +102,19 @@ change those measurements without changing the scientific calculation. This
 amendment preserves the manifest's authoritative reporting field while making
 the backend-invariant evidence criterion explicit.
 
+### 2026-08-12 amendment — complete deterministic RNG identity
+
+New task streams use `sha256-lecuyer-rejection-state-v2`. The recorded scheme
+fixes all three parts of the R RNG state: L'Ecuyer-CMRG, Inversion normal
+generation, and the current Rejection discrete sampler. The former
+`sha256-lecuyer-state-v1` header selected R's obsolete Rounding sampler and
+could turn valid tasks into execution failures when warnings became errors.
+V2 is a correctness change, not a migration of accepted estimates. Stored v1
+artifacts remain semantically verifiable from their recorded payloads and
+digests, but a v2 rerun is a new computation, not bitwise reproduction of v1.
+Frozen workflows that require an accepted historical draw sequence continue to
+use their explicit `legacy-sequential-stream-v1` seam.
+
 ### Execution boundary
 
 - Reusable package functions may use `future.apply` for independent repeated
@@ -133,6 +146,8 @@ the backend-invariant evidence criterion explicit.
   embedding worker policy in scientific functions.
 - Tests must establish equality across sequential and a small multisession plan,
   including seeded stochastic results.
+- Constructed task streams must work under warnings-as-errors and reject
+  incomplete or obsolete RNG headers.
 - Checkpoint/progress presentation remains derived from durable task state; no
   `progressr` dependency is introduced by this decision.
 - Full-evidence protocol output remains evidentiary only when produced by the

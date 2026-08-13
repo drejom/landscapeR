@@ -124,10 +124,8 @@ collection rejected 162 otherwise valid results whose required random-slope
 models were singular and therefore returned `NA` target-effect estimates.
 
 ### RR-016 — Encode the complete RNG algorithm in deterministic streams
-When constructing `.Random.seed` streams directly, encode and validate the
-current RNG kind, normal generator, and discrete sampler. Exercise the stream
-under warnings-as-errors; reproducibility must not depend on ambient warning
-policy.
+Constructed `.Random.seed` streams must encode and validate the RNG kind, normal
+generator, and discrete sampler, and work under warnings-as-errors.
 
 **Incident:** issue #190 review found package-derived L'Ecuyer streams used the
 obsolete `Rounding` discrete sampler header. Nested bootstrap tasks emitted a
@@ -139,7 +137,7 @@ wrong “fix” is worse than a declined comment: respond with evidence when a
 finding does not apply.
 
 Before substantial work, scan for contradictions and spot-check relevant entries
-against current code. Near 150 lines, perform a full consolidation pass.
+against current code. Consolidate near 150 lines.
 
 ## Maintenance duties
 - **Add:** record new defect classes with concrete incidents; reject speculation.

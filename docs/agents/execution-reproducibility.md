@@ -11,11 +11,15 @@ the three governed tiers above.
 
 Every stochastic workflow declares one run seed. The package derives a child
 L'Ecuyer-CMRG stream from that seed plus each stable task identity using the
-recorded `sha256-lecuyer-state-v1` scheme. Task streams therefore do not
+recorded `sha256-lecuyer-rejection-state-v2` scheme. It fixes L'Ecuyer-CMRG,
+Inversion normal generation, and R's current Rejection discrete sampler. Task
+streams therefore do not
 depend on worker count, scheduling, chunking, or completion order. Typed
 repetition results retain every requested task in the denominator and record
 completed tasks, stable failure codes, tier, seed scheme, task identities,
 child stream states, and a content digest. Stream collisions are rejected.
+Stored v1 artifacts remain verifiable, but a v2 rerun is a new computation and
+must not be described as bitwise reproduction of a v1 run.
 Frozen workflows whose accepted estimates were produced from one canonical
 sequential stream instead use the seam's explicit
 `legacy-sequential-stream-v1` derivation. The seam captures each task's stream
