@@ -261,20 +261,29 @@ k1_high_dimensional_control_info <- function(x) {
 .k1_high_dimensional_assess_one <- function(
     regime_id, n, p, informative_features, signal_strength, noise_sd,
     module_correlation, axis_resamples, task_stream, task_id,
-    recovery_threshold
+    recovery_threshold, child_seeds = NULL
 ) {
-    generator_seed <- .k1_high_dimensional_child_seed(
-        task_stream, paste0(task_id, ":generator")
-    )
-    association_seed <- .k1_high_dimensional_child_seed(
-        task_stream, paste0(task_id, ":association")
-    )
-    proposal_seed <- .k1_high_dimensional_child_seed(
-        task_stream, paste0(task_id, ":proposal")
-    )
-    resampling_seed <- .k1_high_dimensional_child_seed(
-        task_stream, paste0(task_id, ":resampling")
-    )
+    if (is.null(child_seeds)) {
+        child_seeds <- vapply(
+            c("generator", "association", "proposal", "resampling"),
+            function(child) .k1_high_dimensional_child_seed(
+                task_stream, paste0(task_id, ":", child)
+            ), integer(1L)
+        )
+    }
+    if (!is.numeric(child_seeds) || length(child_seeds) != 4L ||
+            anyNA(child_seeds) || any(child_seeds < 0) ||
+            any(child_seeds != as.integer(child_seeds)) ||
+            anyDuplicated(child_seeds)) {
+        .stop_landscapeR_validation(
+            "high-dimensional child seeds require four unique whole numbers"
+        )
+    }
+    child_seeds <- as.integer(child_seeds)
+    generator_seed <- child_seeds[[1L]]
+    association_seed <- child_seeds[[2L]]
+    proposal_seed <- child_seeds[[3L]]
+    resampling_seed <- child_seeds[[4L]]
     control <- synthetic_k1_high_dimensional_control(
         regime_id, n, p, informative_features, signal_strength,
         noise_sd, module_correlation, generator_seed

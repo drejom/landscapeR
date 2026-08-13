@@ -1608,10 +1608,14 @@ print.K1AcceptanceManifest <- function(x, ...) {
 }
 
 .k1_validate_runtime_revision <- function(identity, manifest) {
-    if (!identical(manifest$artifact_version, "2")) {
+    revised <- inherits(manifest, "K1RevisedAcceptanceManifest") &&
+        identical(manifest$artifact_version, "3")
+    if (!identical(manifest$artifact_version, "2") && !revised) {
         return(invisible(TRUE))
     }
-    reviewed_revision <- if (is.null(manifest$runner_revision)) {
+    reviewed_revision <- if (revised) {
+        manifest$runner_revision
+    } else if (is.null(manifest$runner_revision)) {
         manifest$phase_a_merge_commit
     } else {
         manifest$runner_revision

@@ -1,0 +1,414 @@
+protocol_merge_v3 <- function() {
+    "4d2ee67653c7de2f7caf2e52da4a8f7fa05ab111"
+}
+
+runner_revision_v3 <- function() strrep("a", 40L)
+
+revised_identity_v3 <- function() list(
+    source_revision = runner_revision_v3(),
+    r_version = paste(R.version$major, R.version$minor, sep = "."),
+    package_versions = c(
+        landscapeR = "0.3.0", digest = "0.6.39", targets = "1.11.4"
+    )
+)
+
+test_that("revised acceptance manifest exactly expands the frozen grid", {
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+
+    expect_s3_class(manifest, "K1RevisedAcceptanceManifest")
+    expect_true(validate_k1_revised_acceptance_manifest(manifest))
+    expect_identical(manifest$protocol_id, "k1-stage0-acceptance-v3")
+    expect_identical(nrow(manifest$tasks), 7200L)
+    expect_identical(as.integer(table(manifest$tasks$control)[c(
+        "independent_time_course", "repeated_subject",
+        "high_dimensional_signal", "high_dimensional_null"
+    )]), c(1800L, 1200L, 3600L, 600L))
+    expect_identical(manifest$tasks$task_ordinal, seq_len(7200L))
+    expect_true(all(lengths(manifest$tasks$stream_seeds) == 8L))
+    expect_identical(anyDuplicated(unlist(manifest$tasks$stream_seeds)), 0L)
+    expect_false(any(unlist(manifest$tasks$stream_seeds) %in%
+        1505953920:1506021917))
+    expect_identical(
+        manifest,
+        k1_revised_acceptance_manifest(
+            protocol_merge_v3(), runner_revision_v3()
+        )
+    )
+})
+
+test_that("revised acceptance manifest is revision-bound and immutable", {
+    expect_error(
+        k1_revised_acceptance_manifest("not-a-commit", runner_revision_v3()),
+        class = "k1_acceptance_runner_error"
+    )
+    expect_error(
+        k1_revised_acceptance_manifest(
+            protocol_merge_v3(), protocol_merge_v3()
+        ),
+        "must differ",
+        class = "k1_acceptance_runner_error"
+    )
+
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    manifest$tasks$seed_root[[1L]] <- manifest$tasks$seed_root[[1L]] + 1L
+    expect_error(
+        validate_k1_revised_acceptance_manifest(manifest),
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+.revised_fixture_results <- function(tasks, recovered) {
+    lapply(seq_len(nrow(tasks)), function(index) structure(list(
+        version = "k1-revised-acceptance-replicate-v1",
+        task_id = tasks$task_id[[index]],
+        control = tasks$control[[index]],
+        status = "success",
+        outcome = if (recovered[[index]]) {
+            "recovered_and_estimable"
+        } else {
+            "recovery_below_threshold"
+        },
+        recovery = list(
+            evaluable = TRUE,
+            met = recovered[[index]],
+            absolute_loading_cosine = if (recovered[[index]]) 0.95 else 0.2
+        ),
+        downstream = list(
+            estimable = if (recovered[[index]]) TRUE else NA,
+            diagnostic = ""
+        ),
+        scientific_evidence = list(
+            fixture = TRUE,
+            claim_status = "implementation_proof_only"
+        ),
+        runtime_identity = revised_identity_v3()
+    ), class = c(
+        "K1RevisedAcceptanceImplementationFixture",
+        "K1RevisedAcceptanceReplicate", "list"
+    )))
+}
+
+test_that("cell decisions retain failures and apply both Wilson gates", {
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    positive <- manifest$tasks[
+        manifest$tasks$canonical_cell ==
+            unique(manifest$tasks$canonical_cell[
+                manifest$tasks$control == "independent_time_course"
+            ])[[1L]],
+        , drop = FALSE
+    ]
+    null <- manifest$tasks[
+        manifest$tasks$canonical_cell ==
+            unique(manifest$tasks$canonical_cell[
+                manifest$tasks$control == "high_dimensional_null"
+            ])[[1L]],
+        , drop = FALSE
+    ]
+    tasks <- rbind(positive, null)
+    recovered <- c(rep(TRUE, 95L), rep(FALSE, 5L), rep(FALSE, 100L))
+    summary <- summarize_k1_revised_acceptance(
+        .revised_fixture_results(tasks, recovered), tasks, protocol
+    )
+
+    expect_s3_class(summary, "K1RevisedAcceptanceSummary")
+    expect_identical(summary$cells$decision, c("supported", "passed_null"))
+    expect_identical(summary$cells$n_requested, c(100L, 100L))
+    expect_identical(summary$cells$n_recovery_evaluable, c(100L, 100L))
+    expect_equal(summary$cells$recovery_probability, c(0.95, 0))
+    expect_true(summary$cells$wilson_95_lower[[1L]] >= 0.8)
+    expect_true(summary$cells$wilson_95_upper[[2L]] <= 0.1)
+    expect_identical(summary$claim_status, "implementation_proof_only")
+    expect_identical(summary$advancement$null_controls_pass, FALSE)
+    expect_identical(summary$advancement$conclusion, "no_advance")
+})
+
+test_that("an incomplete cell is indeterminate rather than supported", {
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    tasks <- manifest$tasks[
+        manifest$tasks$canonical_cell ==
+            unique(manifest$tasks$canonical_cell)[[1L]],
+        , drop = FALSE
+    ]
+    results <- .revised_fixture_results(tasks, rep(TRUE, nrow(tasks)))
+    results[[1L]]$status <- "failure"
+    results[[1L]]$outcome <- "execution_failure"
+    results[[1L]]$recovery <- list(
+        evaluable = FALSE, met = FALSE, absolute_loading_cosine = NA_real_
+    )
+    results[[1L]]$downstream <- list(
+        estimable = NA, diagnostic = "declared test execution failure"
+    )
+    results[[1L]]["scientific_evidence"] <- list(NULL)
+    summary <- summarize_k1_revised_acceptance(results, tasks, protocol)
+
+    expect_identical(summary$cells$decision, "indeterminate")
+    expect_identical(summary$cells$n_completed, 99L)
+    expect_identical(summary$cells$n_recovery_evaluable, 99L)
+    expect_equal(summary$cells$recovery_probability, 0.99)
+})
+
+test_that("revised acceptance targets expose one branch per replicate", {
+    skip_if_not_installed("targets")
+    graph <- k1_revised_acceptance_targets(
+        phase_a_merge_commit = protocol_merge_v3(),
+        runner_revision = runner_revision_v3(),
+        artifact_root = tempfile("k1-revised-acceptance-")
+    )
+
+    expect_identical(vapply(graph, `[[`, character(1L), "name"), c(
+        "k1_v3_protocol", "k1_v3_manifest", "k1_v3_identity",
+        "k1_v3_preflight", "k1_v3_tasks", "k1_v3_task",
+        "k1_v3_result", "k1_v3_results", "k1_v3_artifact",
+        "k1_v3_artifact_verified", "k1_v3_evidence"
+    ))
+    result <- graph[[7L]]
+    expect_identical(result$settings$deployment, "worker")
+    expect_match(deparse(result$settings$pattern), "map\\(k1_v3_task\\)")
+    expect_match(
+        paste(capture.output(print(graph[[4L]])), collapse = "\n"),
+        "k1_revised_assert_execution_authorized"
+    )
+})
+
+test_that("retired version 3 tasks cannot execute", {
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    expect_error(
+        landscapeR:::.k1_revised_run_task(
+            manifest$tasks[1L, , drop = FALSE], protocol
+        ),
+        "version 3 acceptance execution is retired",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("revised acceptance maps use established encodings and captions", {
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    keep <- manifest$tasks$canonical_cell %in% c(
+        unique(manifest$tasks$canonical_cell[
+            manifest$tasks$control == "independent_time_course"
+        ])[[1L]],
+        unique(manifest$tasks$canonical_cell[
+            manifest$tasks$control == "high_dimensional_signal"
+        ])[[1L]],
+        unique(manifest$tasks$canonical_cell[
+            manifest$tasks$control == "high_dimensional_null"
+        ])[[1L]]
+    )
+    tasks <- manifest$tasks[keep, , drop = FALSE]
+    summary <- summarize_k1_revised_acceptance(
+        .revised_fixture_results(tasks, rep(TRUE, nrow(tasks))),
+        tasks, protocol
+    )
+    sampling <- plot_k1_revised_acceptance(summary, "sampling_design")
+    signal <- plot_k1_revised_acceptance(summary, "signal_regime")
+
+    expect_s3_class(sampling, "ggplot")
+    expect_s3_class(signal, "ggplot")
+    expect_match(
+        scientific_caption(sampling),
+        "Recovery across declared longitudinal sampling designs"
+    )
+    expect_match(
+        scientific_caption(signal),
+        "Recovery across high-dimensional signal regimes"
+    )
+    expect_false(grepl("Figure [0-9]", scientific_caption(sampling)))
+    expect_false(grepl("Figure [0-9]", scientific_caption(signal)))
+    expect_true(is.data.frame(attr(
+        sampling, "landscapeR_k1_revised_map_data"
+    )))
+    expect_false(grepl(
+        scientific_caption(signal),
+        paste(capture.output(print(signal)), collapse = "\n"), fixed = TRUE
+    ))
+})
+
+test_that("version 3 historical streams are recorded but not authenticated", {
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    authentication <- manifest$historical_stream_authentication
+
+    expect_identical(authentication$authenticated_for_execution, FALSE)
+    expect_identical(
+        authentication$frozen_manifest_serialization_schema,
+        "not_recorded_in_v3"
+    )
+    expect_match(authentication$v4_requirement, "version 4")
+})
+
+test_that("retired or fabricated evidence cannot publish acceptance artifacts", {
+    testthat::local_mocked_bindings(
+        .k1_acceptance_worker_identity = revised_identity_v3,
+        .package = "landscapeR"
+    )
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    recovered <- with(manifest$tasks,
+        control != "high_dimensional_null")
+    results <- .revised_fixture_results(manifest$tasks, recovered)
+    root <- tempfile("k1-revised-artifacts-")
+    dir.create(root)
+
+    expect_error(
+        landscapeR:::.k1_revised_publish(
+            root, protocol, manifest, manifest$tasks, results,
+            revised_identity_v3()
+        ),
+        "retired version 3",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("collector rejects incoherent typed results", {
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    task <- manifest$tasks[1L, , drop = FALSE]
+    result <- .revised_fixture_results(task, TRUE)[[1L]]
+    result$outcome <- "execution_failure"
+    expect_error(
+        summarize_k1_revised_acceptance(list(result), task, protocol),
+        "internally inconsistent",
+        class = "k1_acceptance_runner_error"
+    )
+    result <- .revised_fixture_results(task, TRUE)[[1L]]
+    result$runtime_identity$source_revision <- strrep("b", 40L)
+    expect_error(
+        landscapeR:::.k1_revised_collect(
+            list(result), task, protocol, runner_revision_v3(),
+            allow_implementation_fixture = TRUE
+        ),
+        "worker revision",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("collector retains a missing scheduler branch as a typed failure", {
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    task <- manifest$tasks[1L, , drop = FALSE]
+    result <- landscapeR:::.k1_revised_collect(
+        list(NULL), task, protocol, runner_revision_v3()
+    )[[1L]]
+
+    expect_identical(result$status, "failure")
+    expect_identical(result$outcome, "execution_failure")
+    expect_null(result$runtime_identity)
+    expect_match(result$downstream$diagnostic, "no serialized result")
+})
+
+test_that("control-specific evidence cannot drift from its manifest task", {
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    task <- manifest$tasks[
+        manifest$tasks$control == "independent_time_course",
+        , drop = FALSE
+    ][1L, , drop = FALSE]
+    row <- list(
+        template_id = task$design_id[[1L]], p = task$p[[1L]],
+        execution_completed = TRUE, target_loading_cosine = 0.95,
+        recovery_evaluable = TRUE, recovery_met = TRUE,
+        downstream_estimable = TRUE, diagnostic = "",
+        outcome = "recovered_and_estimable"
+    )
+    result <- structure(list(
+        version = "k1-revised-acceptance-replicate-v1",
+        task_id = task$task_id[[1L]], control = task$control[[1L]],
+        status = "success", outcome = "recovered_and_estimable",
+        recovery = list(
+            evaluable = TRUE, met = TRUE, absolute_loading_cosine = 0.95
+        ),
+        downstream = list(estimable = TRUE, diagnostic = ""),
+        scientific_evidence = list(
+            version = "k1-revised-scientific-evidence-v1",
+            control = task$control[[1L]], task_id = task$task_id[[1L]],
+            stream_seeds = task$stream_seeds[[1L]],
+            task_stream = task$task_stream[[1L]],
+            execution_contract = landscapeR:::.k1_revised_execution_contract(
+                task, protocol
+            ),
+            observed_generator = list(
+                template_id = task$design_id[[1L]], p = task$p[[1L]],
+                noise_sd = protocol$grids$independent_time_course$fixed$noise_sd,
+                time_signal =
+                    protocol$grids$independent_time_course$fixed$time_signal,
+                condition_time_signal = protocol$grids$
+                    independent_time_course$fixed$condition_time_signal,
+                generator_seed = task$stream_seeds[[1L]][[1L]],
+                association_seed = as.integer(
+                    task$stream_seeds[[1L]][[1L]] + 1L
+                )
+            ),
+            assessment = row
+        ),
+        runtime_identity = revised_identity_v3()
+    ), class = c("K1RevisedAcceptanceReplicate", "list"))
+
+    expect_true(landscapeR:::.k1_revised_validate_result(
+        result, task, protocol, runner_revision_v3()
+    ))
+    result$scientific_evidence$assessment$p <- task$p[[1L]] + 1L
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            result, task, protocol, runner_revision_v3()
+        ),
+        "does not match its task",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("every control has an exact manifest-derived execution contract", {
+    protocol <- k1_acceptance_protocol("3")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), runner_revision_v3()
+    )
+    tasks <- manifest$tasks[match(
+        c(
+            "independent_time_course", "repeated_subject",
+            "high_dimensional_signal", "high_dimensional_null"
+        ),
+        manifest$tasks$control
+    ), , drop = FALSE]
+    contracts <- lapply(seq_len(nrow(tasks)), function(index) {
+        landscapeR:::.k1_revised_execution_contract(
+            tasks[index, , drop = FALSE], protocol
+        )
+    })
+
+    expect_identical(contracts[[1L]]$generator,
+        protocol$grids$independent_time_course$fixed)
+    expect_identical(contracts[[2L]]$axis_resampling_seed,
+        as.integer(tasks$stream_seeds[[2L]][[1L]] + 3L))
+    expect_identical(contracts[[3L]]$generator$n, 24L)
+    expect_identical(contracts[[3L]]$generator$informative_features, 10L)
+    expect_identical(contracts[[4L]]$generator$signal_strength,
+        tasks$signal_strength[[4L]])
+    expect_false(identical(
+        within(contracts[[3L]], generator$noise_sd <- 999),
+        landscapeR:::.k1_revised_execution_contract(tasks[3L, ], protocol)
+    ))
+})

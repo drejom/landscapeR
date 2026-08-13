@@ -122,3 +122,13 @@ the summaries and address from those contents.
 - Historical negative evidence preserved: #67
 - Acceptance results inspected while defining version 3: no
 - Claim before post-merge execution: predeclared acceptance protocol only
+
+## Post-freeze execution status
+
+Version 3 remains the immutable record of the reviewed scientific settings,
+but its complete seed set is retired. During subsequent runner development,
+four manifest task rows were executed as a local integration smoke test before
+the runner had passed review and merged. Their outcomes cannot remain blinded
+independent evidence. No threshold, generator, grid, or conclusion was changed
+in response. Production execution now requires a protocol-only version 4
+refreeze with the same scientific settings and a new merge-derived seed set.
