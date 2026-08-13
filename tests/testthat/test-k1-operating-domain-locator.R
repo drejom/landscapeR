@@ -97,6 +97,46 @@ test_that("sampling designs cannot borrow incompatible calibration evidence", {
     expect_identical(location$reason, "incompatible_sampling_design")
     expect_identical(nrow(location$design_cells), 0L)
     expect_identical(nrow(location$signal_cells), 0L)
+    plot <- plot_k1_operating_domain(location)
+    expect_silent(ggplot2::ggplot_build(plot))
+    plot_data <- attr(plot, "landscapeR_k1_operating_domain_data")
+    expect_identical(names(plot_data), c(
+        "calibration_points", "support_points", "experiment_bounds",
+        "domain_bands"
+    ))
+    expect_identical(nrow(plot_data$domain_bands), 0L)
+    expect_identical(nrow(plot_data$experiment_bounds), 2L)
+    expect_true(all(plot_data$experiment_bounds$clipped == "inside"))
+    caption <- scientific_caption(plot)
+    expect_match(gsub("[[:space:]]+", " ", caption),
+        "no compatible calibration domain can be shown", ignore.case = TRUE)
+    expect_match(gsub("[[:space:]]+", " ", caption),
+        "declared diagnostic position on an uncalibrated axis",
+        ignore.case = TRUE)
+    expect_false(grepl("nearest calibrated boundary", caption,
+        ignore.case = TRUE))
+})
+
+test_that("malformed design assessments fail through the public boundary", {
+    fixture <- locator_fixture()
+    diagnostics <- k1_experiment_diagnostics(
+        feature_count = 20L, spectral_signal = 1, noise_reference = 1,
+        covariance_regime = "independent-gaussian",
+        signal_regime = "fixed_sparse",
+        design = list(
+            minimum_cell_size = 1,
+            maximum_cell_size = 1,
+            mean_retained_per_declared_cell = 1
+        )
+    )
+
+    expect_error(
+        locate_k1_operating_domain(
+            independent_time_course("collection_time", "days"),
+            1, fixture$signal, diagnostics
+        ),
+        class = "landscapeR_validation_error"
+    )
 })
 
 test_that("a repeated-subject experiment uses only repeated-subject cells", {
@@ -151,12 +191,56 @@ test_that("out-of-range signal evidence is not extrapolated", {
     expect_true(is.na(location$recovery_probability))
 
     plot <- plot_k1_operating_domain(location)
-    display <- attr(plot, "landscapeR_k1_operating_domain_data")
+    plot_data <- attr(plot, "landscapeR_k1_operating_domain_data")
     caption <- scientific_caption(plot)
     expect_s3_class(plot, "ggplot")
-    expect_true(all(is.na(display$experiment_probability)))
+    expect_true(all(is.na(
+        plot_data$calibration_points$experiment_probability
+    )))
+    expect_true(all(plot_data$experiment_bounds$clipped == "above"))
+    expect_true(all(plot_data$experiment_bounds$actual_ratio == 10))
+    expect_true(all(plot_data$experiment_bounds$plotted_ratio < 10))
+    expect_identical(nrow(plot_data$domain_bands), 2L)
+    expect_equal(
+        range(ggplot2::ggplot_build(plot)$layout$panel_params[[1L]]$x.range),
+        range(plot_data$domain_bands$xmin, plot_data$domain_bands$xmax),
+        tolerance = 0.25
+    )
     expect_match(caption, "does not extrapolate", ignore.case = TRUE)
+    expect_match(caption, "10", fixed = TRUE)
     expect_match(gsub("[[:space:]]+", " ", caption),
         "not a biological state-space projection",
         ignore.case = TRUE)
+})
+
+test_that("plot data reproduce every visible operating-domain layer", {
+    fixture <- locator_fixture()
+    diagnostics <- k1_experiment_diagnostics(
+        feature_count = c(20L, 40L), spectral_signal = c(0.8, 1),
+        noise_reference = 1, covariance_regime = "independent-gaussian",
+        signal_regime = "fixed_sparse",
+        design = list(
+            minimum_cell_size = c(1, 3),
+            maximum_cell_size = c(1, 3),
+            mean_retained_per_declared_cell = c(1, 3)
+        )
+    )
+    location <- locate_k1_operating_domain(
+        independent_time_course("collection_time", "days"),
+        fixture$independent, fixture$signal, diagnostics
+    )
+
+    plot_data <- attr(
+        plot_k1_operating_domain(location),
+        "landscapeR_k1_operating_domain_data"
+    )
+
+    expect_identical(nrow(plot_data$calibration_points),
+        2L * nrow(location$signal_domain_cells))
+    expect_identical(nrow(plot_data$support_points),
+        2L * nrow(location$signal_cells))
+    expect_identical(nrow(plot_data$experiment_bounds), 4L)
+    expect_identical(nrow(plot_data$domain_bands), 2L)
+    expect_setequal(plot_data$experiment_bounds$actual_ratio, c(0.8, 1))
+    expect_true(all(plot_data$experiment_bounds$clipped == "inside"))
 })

@@ -158,8 +158,16 @@ k1_experiment_diagnostics <- function(
     TRUE
 }
 
-.k1_locator_in_range <- function(values, interval) {
-    values >= min(interval) & values <= max(interval)
+.k1_locator_validate_any_design_assessment <- function(assessment) {
+    if (inherits(assessment, "K1IndependentTimeCourseAssessment")) {
+        .validate_k1_independent_time_assessment(assessment)
+        return(TRUE)
+    }
+    if (inherits(assessment, "K1RepeatedSubjectAssessment")) {
+        .validate_k1_repeated_assessment(assessment)
+        return(TRUE)
+    }
+    FALSE
 }
 
 .k1_locator_support_levels <- function(values, interval) {
@@ -341,6 +349,12 @@ locate_k1_operating_domain <- function(
     }
     .validate_k1_experiment_diagnostics(diagnostics)
     .validate_k1_high_dimensional_assessment(signal_assessment)
+    if (!.k1_locator_validate_any_design_assessment(design_assessment)) {
+        .stop_landscapeR_validation(paste(
+            "design_assessment must be a valid independent-time or",
+            "repeated-subject calibration assessment"
+        ))
+    }
     fields <- .k1_locator_design_fields[[sampling_design@kind]]
     compatible <- !is.null(fields) &&
         .k1_locator_validate_assessment(sampling_design, design_assessment)
@@ -433,9 +447,17 @@ plot_k1_operating_domain <- function(location) {
         display$experiment_probability <- NA_real_
     }
     ratio <- location$locator$signal_ratio
-    limits <- if (nrow(display)) range(c(
-        display$effective_signal_ratio, ratio
-    )) else range(c(0, ratio))
+    domain_limits <- if (nrow(display)) {
+        range(display$effective_signal_ratio)
+    } else {
+        range(c(0, ratio))
+    }
+    clipped_ratio <- pmin(pmax(ratio, domain_limits[[1L]]),
+        domain_limits[[2L]])
+    clipping <- ifelse(
+        ratio < domain_limits[[1L]], "below",
+        ifelse(ratio > domain_limits[[2L]], "above", "inside")
+    )
     support <- location$signal_cells
     support_rows <- if (nrow(support)) rbind(
         transform(support, panel = "A  Target-axis recovery",
@@ -447,11 +469,26 @@ plot_k1_operating_domain <- function(location) {
         probability = numeric(), panel = character()
     )
     semantic <- landscapeR_palette("semantic")
-    domain_rows <- data.frame(
+    domain_rows <- if (nrow(display)) data.frame(
         panel = c("A  Target-axis recovery", "B  Estimability after recovery"),
         xmin = min(display$effective_signal_ratio),
         xmax = max(display$effective_signal_ratio)
+    ) else data.frame(
+        panel = character(), xmin = numeric(), xmax = numeric()
     )
+    experiment_rows <- expand.grid(
+        panel = c(
+            "A  Target-axis recovery", "B  Estimability after recovery"
+        ),
+        boundary = seq_along(ratio),
+        stringsAsFactors = FALSE
+    )
+    experiment_rows$actual_ratio <- ratio[experiment_rows$boundary]
+    experiment_rows$plotted_ratio <- clipped_ratio[experiment_rows$boundary]
+    experiment_rows$clipped <- clipping[experiment_rows$boundary]
+    experiment_rows$boundary_marker <- c(
+        below = "<", inside = "", above = ">"
+    )[experiment_rows$clipped]
     plot <- ggplot2::ggplot(display, ggplot2::aes(
         x = .data$effective_signal_ratio,
         y = .data$calibration_probability
@@ -463,9 +500,22 @@ plot_k1_operating_domain <- function(location) {
             ), inherit.aes = FALSE, fill = semantic[["structure"]],
             alpha = 0.08
         ) +
-        ggplot2::geom_vline(xintercept = range(ratio),
-            colour = semantic[["focal"]], linetype = "dashed",
-            linewidth = 0.45) +
+        ggplot2::geom_vline(
+            data = experiment_rows,
+            ggplot2::aes(xintercept = plotted_ratio),
+            inherit.aes = FALSE, colour = semantic[["focal"]],
+            linetype = "dashed", linewidth = 0.45
+        ) +
+        ggplot2::geom_text(
+            data = experiment_rows[
+                experiment_rows$clipped != "inside", , drop = FALSE
+            ],
+            ggplot2::aes(
+                x = plotted_ratio, y = 0.5, label = boundary_marker
+            ),
+            inherit.aes = FALSE, colour = semantic[["focal"]],
+            fontface = "bold", size = 5
+        ) +
         ggplot2::geom_point(shape = 21, fill = semantic[["paper"]],
             colour = semantic[["ink"]], size = 2.1, stroke = 0.4) +
         ggplot2::geom_point(
@@ -478,7 +528,7 @@ plot_k1_operating_domain <- function(location) {
             colour = semantic[["focal"]], size = 3, stroke = 0.8
         ) +
         ggplot2::facet_wrap(~ .data$panel, nrow = 1L) +
-        ggplot2::scale_x_continuous(limits = limits) +
+        ggplot2::scale_x_continuous(limits = domain_limits) +
         ggplot2::scale_y_continuous(limits = c(0, 1),
             breaks = c(0, 0.5, 1)) +
         ggplot2::labs(
@@ -486,9 +536,22 @@ plot_k1_operating_domain <- function(location) {
             y = "Calibration probability"
         ) +
         theme_landscapeR(square = FALSE)
-    status_text <- if (identical(location$status, "out_of_domain")) {
-        paste("The experiment is out of domain:", location$reason,
-            "and the locator does not extrapolate a probability")
+    ratio_text <- paste(format(ratio, digits = 4), collapse = " to ")
+    has_domain <- nrow(display) > 0L
+    status_text <- if (identical(location$status, "out_of_domain") &&
+            !has_domain) {
+        paste(
+            "The experiment is out of domain:", location$reason,
+            "and no compatible calibration domain can be shown; the locator",
+            "does not extrapolate a probability"
+        )
+    } else if (identical(location$status, "out_of_domain")) {
+        paste(
+            "The experiment ratio", ratio_text, "is out of domain:",
+            location$reason,
+            "and is marked at the nearest calibrated boundary; the locator",
+            "does not extrapolate a probability"
+        )
     } else if (identical(location$status, "located_region")) {
         paste("The red dashed boundaries show the experiment uncertainty",
             "region; red triangles summarize only its exact supporting cells")
@@ -507,8 +570,14 @@ plot_k1_operating_domain <- function(location) {
         ),
         encodings = c(
             "Black circles are exact compatible calibration-cell summaries",
-            paste("The pale grey band is the calibrated signal/noise domain;",
-                "red dashed lines are the declared experiment point or interval"),
+            if (has_domain) paste(
+                "The pale grey band is the calibrated signal/noise domain;",
+                "red dashed lines are the declared experiment point or interval"
+            ) else paste(
+                "No compatible calibration cells or domain band are available;",
+                "the red dashed line shows only the declared diagnostic",
+                "position on an uncalibrated axis"
+            ),
             status_text
         ),
         design = sprintf(
@@ -521,10 +590,13 @@ plot_k1_operating_domain <- function(location) {
             "One diagnostic value is a point; two values define an interval",
             "whose supporting calibration cells are retained"
         ),
-        threshold = paste(
+        threshold = if (has_domain) paste(
             "The calibrated-domain boundary is the observed feature, design,",
             "covariance, and effective signal/noise range; no interpolation",
             "creates new evidence"
+        ) else paste(
+            "A boundary cannot be defined without compatible calibration",
+            "evidence; no interpolation or extrapolation creates new evidence"
         ),
         claim_boundary = paste(
             "This is an operating-characteristic locator, not a biological",
@@ -534,7 +606,12 @@ plot_k1_operating_domain <- function(location) {
             "abstention" else "calibrated"
     )
     plot <- .with_scientific_caption(plot, .build_scientific_caption(caption))
-    attr(plot, "landscapeR_k1_operating_domain_data") <- display
+    attr(plot, "landscapeR_k1_operating_domain_data") <- list(
+        calibration_points = display,
+        support_points = support_rows,
+        experiment_bounds = experiment_rows,
+        domain_bands = domain_rows
+    )
     attr(plot, "landscapeR_k1_operating_domain_design_cells") <-
         location$design_cells
     plot

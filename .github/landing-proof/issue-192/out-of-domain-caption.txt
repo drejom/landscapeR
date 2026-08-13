@@ -3,10 +3,11 @@ diagnostics experiment to assess the declared K=1 target axis target. (A) Target
 probability in compatible calibration cells. (B) Downstream estimability probability after
 target-axis recovery. Black circles are exact compatible calibration-cell summaries; The pale
 grey band is the calibrated signal/noise domain; red dashed lines are the declared experiment
-point or interval; The experiment is out of domain: signal_noise_out_of_range and the locator
-does not extrapolate a probability. The analysis unit is independent_time_course; the design is
-1 exact design cells and 0 of 4 compatible signal cells support placement. One diagnostic value
-is a point; two values define an interval whose supporting calibration cells are retained. The
-calibrated-domain boundary is the observed feature, design, covariance, and effective
-signal/noise range; no interpolation creates new evidence. This is an operating-characteristic
-locator, not a biological state-space projection or quasi-potential landscape.
+point or interval; The experiment ratio 3.25 is out of domain: signal_noise_out_of_range and is
+marked at the nearest calibrated boundary; the locator does not extrapolate a probability. The
+analysis unit is independent_time_course; the design is 1 exact design cells and 0 of 4
+compatible signal cells support placement. One diagnostic value is a point; two values define
+an interval whose supporting calibration cells are retained. The calibrated-domain boundary is
+the observed feature, design, covariance, and effective signal/noise range; no interpolation
+creates new evidence. This is an operating-characteristic locator, not a biological state-space
+projection or quasi-potential landscape.
