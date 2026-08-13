@@ -229,6 +229,31 @@ test_that("operating evidence separates recovery, identifiability, and model sup
         )
     }
 
+    invalid_statuses <- list(
+        recovery = c("recovery", "status"),
+        model = c("repeated_subject_model", "status"),
+        nomination = c("metadata_nomination", "status")
+    )
+    for (path in invalid_statuses) {
+        contradictory <- assessment
+        contradictory$execution$values[[1L]]$evidence[[path[[1L]]]][
+            path[[2L]]
+        ] <- "garbage"
+        execution_payload <- contradictory$execution[
+            c("values", "account", "provenance")
+        ]
+        contradictory$execution$digest <- digest::digest(
+            execution_payload, algo = "sha256", serialize = TRUE
+        )
+        payload <- unclass(contradictory)
+        payload$digest <- NULL
+        contradictory$digest <- digest::digest(payload, algo = "sha256")
+        expect_error(
+            plot_k1_repeated_subject_calibration(contradictory),
+            class = "landscapeR_validation_error"
+        )
+    }
+
     contradictory_account <- assessment
     contradictory_account$execution$account$completed[[1L]] <- FALSE
     execution_payload <- contradictory_account$execution[

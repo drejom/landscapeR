@@ -695,6 +695,60 @@ k1_repeated_subject_control_info <- function(x) {
             identical(evidence$n_completed, as.integer(sum(completed))) &&
             identical(evidence$mean_absolute_similarity, observed_mean)
     }
+    valid_recovery <- function(evidence) {
+        if (!is.list(evidence) || !identical(names(evidence), c(
+                "status", "target_loading_cosine", "threshold", "met"
+            )) || !evidence$status %in% c("estimable", "not_estimable") ||
+                !is.numeric(evidence$target_loading_cosine) ||
+                length(evidence$target_loading_cosine) != 1L ||
+                !is.numeric(evidence$threshold) ||
+                length(evidence$threshold) != 1L ||
+                !is.finite(evidence$threshold) ||
+                !is.logical(evidence$met) || length(evidence$met) != 1L ||
+                is.na(evidence$met)) return(FALSE)
+        if (identical(evidence$status, "estimable")) {
+            is.finite(evidence$target_loading_cosine) &&
+                identical(evidence$met,
+                    evidence$target_loading_cosine >= evidence$threshold)
+        } else {
+            is.na(evidence$target_loading_cosine) && !evidence$met
+        }
+    }
+    valid_nomination <- function(evidence) {
+        if (!is.list(evidence) || !identical(names(evidence), c(
+                "status", "nominated_component", "agrees_with_planted_target"
+            )) || !evidence$status %in% c(
+                "proposal", "abstention", "not_estimable"
+            ) || !is.logical(evidence$agrees_with_planted_target) ||
+                length(evidence$agrees_with_planted_target) != 1L) return(FALSE)
+        if (identical(evidence$status, "proposal")) {
+            .is_whole_number(evidence$nominated_component, 1L) &&
+                evidence$nominated_component <= 2L &&
+                !is.na(evidence$agrees_with_planted_target) &&
+                identical(evidence$agrees_with_planted_target,
+                    evidence$nominated_component == 2L)
+        } else {
+            is.integer(evidence$nominated_component) &&
+                length(evidence$nominated_component) == 1L &&
+                is.na(evidence$nominated_component) &&
+                is.na(evidence$agrees_with_planted_target)
+        }
+    }
+    valid_model <- function(evidence) {
+        if (!is.list(evidence) || !identical(names(evidence), c(
+                "status", "diagnostic", "effect_magnitude"
+            )) || !evidence$status %in% c("estimable", "not_estimable") ||
+                !is.character(evidence$diagnostic) ||
+                length(evidence$diagnostic) != 1L ||
+                is.na(evidence$diagnostic) ||
+                !is.numeric(evidence$effect_magnitude) ||
+                length(evidence$effect_magnitude) != 1L) return(FALSE)
+        if (identical(evidence$status, "estimable")) {
+            is.finite(evidence$effect_magnitude)
+        } else {
+            is.na(evidence$effect_magnitude)
+        }
+    }
     completed_values_match <- vapply(seq_len(nrow(x$replicates)), function(i) {
         value <- x$execution$values[[i]]
         if (!x$replicates$execution_completed[[i]]) return(is.null(value))
@@ -717,6 +771,7 @@ k1_repeated_subject_control_info <- function(x) {
             identical(value$evidence$template, template) &&
             identical(value$evidence$outcome,
                 as.character(observed$outcome[[1L]])) &&
+            valid_recovery(recovery) &&
             identical(recovery$target_loading_cosine,
                 observed$target_loading_cosine[[1L]]) &&
             identical(recovery$status == "estimable",
@@ -732,10 +787,12 @@ k1_repeated_subject_control_info <- function(x) {
                 observed$axis_refits_requested[[1L]]) &&
             identical(identifiability$n_completed,
                 observed$axis_refits_completed[[1L]]) &&
+            valid_nomination(nomination) &&
             identical(nomination$nominated_component,
                 observed$nominated_component[[1L]]) &&
             identical(nomination$agrees_with_planted_target,
                 observed$nomination_agrees_with_target[[1L]]) &&
+            valid_model(model) &&
             identical(model$status == "estimable",
                 observed$model_estimable[[1L]]) &&
             identical(model$diagnostic %||% identifiability$reason %||% "",
