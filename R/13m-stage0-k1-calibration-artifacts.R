@@ -11,6 +11,13 @@
 
 .k1_calibration_atomic_move <- function(from, to) file.rename(from, to)
 
+.k1_calibration_read_or_abort <- function(expression, message) {
+    suppressWarnings(tryCatch(
+        force(expression),
+        error = function(condition) .k1_acceptance_runner_abort(message)
+    ))
+}
+
 .k1_design_calibration_artifact_manifest <- function(
     artifact, governed, messages
 ) {
@@ -19,8 +26,11 @@
     if (!dir.exists(artifact) || !file.exists(manifest_path)) {
         .k1_acceptance_runner_abort(messages$incomplete)
     }
-    manifest <- utils::read.delim(
-        manifest_path, stringsAsFactors = FALSE, check.names = FALSE
+    manifest <- .k1_calibration_read_or_abort(
+        utils::read.delim(
+            manifest_path, stringsAsFactors = FALSE, check.names = FALSE
+        ),
+        messages$invalid
     )
     actual <- list.files(
         artifact, recursive = TRUE, all.files = TRUE,
@@ -53,8 +63,12 @@
     manifest <- .k1_design_calibration_artifact_manifest(
         artifact, governed, messages
     )
-    assessment <- readRDS(file.path(artifact, "assessment.rds"))
-    environment <- readRDS(file.path(artifact, "environment.rds"))
+    assessment <- .k1_calibration_read_or_abort(
+        readRDS(file.path(artifact, "assessment.rds")), messages$invalid
+    )
+    environment <- .k1_calibration_read_or_abort(
+        readRDS(file.path(artifact, "environment.rds")), messages$invalid
+    )
     validator(assessment)
     .k1_acceptance_validate_identity(environment$runtime_identity)
 
@@ -73,9 +87,12 @@
         readLines(expected, warn = FALSE),
         readLines(observed, warn = FALSE)
     )
-    caption <- paste(readLines(
-        file.path(artifact, "operating-map-caption.txt"), warn = FALSE
-    ), collapse = "\n")
+    caption <- .k1_calibration_read_or_abort(
+        paste(readLines(
+            file.path(artifact, "operating-map-caption.txt"), warn = FALSE
+        ), collapse = "\n"),
+        messages$derivatives
+    )
     expected_environment <- list(
         assessment_digest = assessment$digest,
         runtime_identity = environment$runtime_identity,
