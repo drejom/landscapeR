@@ -694,8 +694,8 @@ bodies may state dependencies but do not change this ordering.
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | queued — blocked by #189–#191; does not block acceptance |
 | [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; v4 protocol merged, runner adaptation in progress, then independent HPC execution after runner merge |
-| [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | active next after #204; does not block #191 or #193 |
-| [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete on merge; then resume #198 |
+| [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
+| [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 <!-- issue-map:end -->
 
 ---

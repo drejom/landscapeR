@@ -1081,99 +1081,38 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
     plot
 }
 
-.k1_independent_time_artifact_files <- function() c(
-    "assessment.rds", "replicates.csv", "cell-summary.csv",
-    "operating-map-data.csv", "operating-map.png",
-    "operating-map-caption.txt", "environment.rds"
+.k1_independent_time_artifact_files <- .k1_calibration_artifact_files
+
+.k1_independent_time_artifact_messages <- function() list(
+    incomplete = "independent time-course calibration artifact is incomplete",
+    invalid = paste(
+        "independent time-course artifact manifest or digests are invalid,",
+        "or the artifact contains undeclared files"
+    ),
+    derivatives = paste(
+        "independent time-course artifact derivatives, address, or provenance",
+        "do not reproduce"
+    ),
+    atomic = "could not atomically publish independent time-course artifact"
 )
 
+.k1_independent_time_display <- function(display) {
+    display$evidence <- as.character(display$evidence)
+    display$template_label <- as.character(display$template_label)
+    display$template_axis_label <- as.character(display$template_axis_label)
+    display
+}
+
 .verify_k1_independent_time_artifact <- function(artifact) {
-    artifact <- path.expand(artifact)
-    manifest_path <- file.path(artifact, "MANIFEST.tsv")
-    if (!dir.exists(artifact) || !file.exists(manifest_path)) {
-        .k1_acceptance_runner_abort(
-            "independent time-course calibration artifact is incomplete"
-        )
-    }
-    manifest <- utils::read.delim(manifest_path,
-        stringsAsFactors = FALSE, check.names = FALSE)
-    governed <- .k1_independent_time_artifact_files()
-    if (!identical(manifest$file, governed) ||
-            !identical(names(manifest), c("file", "sha256")) ||
-            anyNA(manifest) || anyDuplicated(manifest$file) ||
-            any(grepl("(^|/)\\.\\.(/|$)|^/", manifest$file))) {
-        .k1_acceptance_runner_abort(
-            "independent time-course artifact manifest is invalid"
-        )
-    }
-    actual_files <- list.files(artifact, recursive = TRUE, all.files = TRUE,
-        no.. = TRUE, include.dirs = FALSE)
-    if (!setequal(actual_files, c("MANIFEST.tsv", governed))) {
-        .k1_acceptance_runner_abort(
-            "independent time-course artifact contains undeclared files"
-        )
-    }
-    observed <- unname(vapply(file.path(artifact, governed),
-        .k1_acceptance_file_digest, character(1L)))
-    if (!identical(observed, manifest$sha256)) {
-        .k1_acceptance_runner_abort(
-            "independent time-course artifact digest verification failed"
-        )
-    }
-    assessment <- readRDS(file.path(artifact, "assessment.rds"))
-    environment <- readRDS(file.path(artifact, "environment.rds"))
-    .validate_k1_independent_time_assessment(assessment)
-    .k1_acceptance_validate_identity(environment$runtime_identity)
-    plot <- plot_k1_independent_time_course_calibration(assessment)
-    expected_map <- attr(plot, "landscapeR_k1_operating_map_data")
-    expected_replicates <- tempfile(fileext = ".csv")
-    expected_cells <- tempfile(fileext = ".csv")
-    expected_display <- tempfile(fileext = ".csv")
-    on.exit(unlink(c(expected_replicates, expected_cells, expected_display)),
-        add = TRUE)
-    utils::write.csv(assessment$replicates, expected_replicates,
-        row.names = FALSE)
-    utils::write.csv(assessment$cells, expected_cells, row.names = FALSE)
-    expected_map$evidence <- as.character(expected_map$evidence)
-    expected_map$template_label <- as.character(expected_map$template_label)
-    expected_map$template_axis_label <-
-        as.character(expected_map$template_axis_label)
-    utils::write.csv(expected_map, expected_display, row.names = FALSE)
-    derivatives_reproduce <- function(expected, observed) identical(
-        readLines(expected, warn = FALSE),
-        readLines(observed, warn = FALSE)
+    .k1_design_calibration_verify_artifact(
+        artifact,
+        .validate_k1_independent_time_assessment,
+        plot_k1_independent_time_course_calibration,
+        "landscapeR_k1_operating_map_data",
+        .k1_independent_time_display,
+        .k1_independent_time_artifact_files(),
+        .k1_independent_time_artifact_messages()
     )
-    if (!derivatives_reproduce(expected_replicates,
-            file.path(artifact, "replicates.csv")) ||
-            !derivatives_reproduce(expected_cells,
-                file.path(artifact, "cell-summary.csv")) ||
-            !derivatives_reproduce(expected_display,
-                file.path(artifact, "operating-map-data.csv")) ||
-            !identical(
-                readLines(file.path(artifact, "operating-map-caption.txt"),
-                    warn = FALSE),
-                strsplit(scientific_caption(plot), "\n", fixed = TRUE)[[1L]]
-            )) {
-        .k1_acceptance_runner_abort(
-            "independent time-course artifact derivatives do not reproduce"
-        )
-    }
-    expected_environment <- list(
-        assessment_digest = assessment$digest,
-        runtime_identity = environment$runtime_identity,
-        claim_status = assessment$claim_status
-    )
-    artifact_digest <- .k1_acceptance_artifact_digest(manifest)
-    expected_name <- paste0(
-        assessment$version, "-", substr(artifact_digest, 1L, 16L)
-    )
-    if (!identical(environment, expected_environment) ||
-            !identical(basename(artifact), expected_name)) {
-        .k1_acceptance_runner_abort(
-            "independent time-course artifact address or provenance is inconsistent"
-        )
-    }
-    invisible(TRUE)
 }
 
 #' Publish independent destructive-time-course calibration evidence
@@ -1189,57 +1128,17 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
 publish_k1_independent_time_course_calibration <- function(
     artifact_root, assessment
 ) {
-    .validate_k1_independent_time_assessment(assessment)
-    if (!.is_scalar_nonempty_text(artifact_root)) {
-        .stop_landscapeR_validation("artifact_root must be one non-empty path")
-    }
-    artifact_root <- path.expand(artifact_root)
-    dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
-    staging <- tempfile(".k1-independent-time-tmp-", tmpdir = artifact_root)
-    dir.create(staging, recursive = TRUE, showWarnings = FALSE)
-    on.exit(if (dir.exists(staging)) unlink(staging, recursive = TRUE), add = TRUE)
-    plot <- plot_k1_independent_time_course_calibration(assessment)
-    saveRDS(assessment, file.path(staging, "assessment.rds"))
-    utils::write.csv(assessment$replicates,
-        file.path(staging, "replicates.csv"), row.names = FALSE)
-    utils::write.csv(assessment$cells,
-        file.path(staging, "cell-summary.csv"), row.names = FALSE)
-    display <- attr(plot, "landscapeR_k1_operating_map_data")
-    utils::write.csv(display,
-        file.path(staging, "operating-map-data.csv"), row.names = FALSE)
-    ggplot2::ggsave(file.path(staging, "operating-map.png"), plot,
-        width = 180, height = 100, units = "mm", dpi = 450, bg = "white")
-    writeLines(scientific_caption(plot),
-        file.path(staging, "operating-map-caption.txt"))
-    saveRDS(list(
-        assessment_digest = assessment$digest,
-        runtime_identity = .k1_calibration_runtime_identity(),
-        claim_status = assessment$claim_status
-    ), file.path(staging, "environment.rds"))
-    governed <- .k1_independent_time_artifact_files()
-    file_manifest <- data.frame(
-        file = governed,
-        sha256 = vapply(file.path(staging, governed),
-            .k1_acceptance_file_digest, character(1L)),
-        stringsAsFactors = FALSE
+    .k1_calibration_publish_artifact(
+        artifact_root, assessment,
+        .validate_k1_independent_time_assessment,
+        plot_k1_independent_time_course_calibration,
+        "landscapeR_k1_operating_map_data",
+        .k1_independent_time_display,
+        width = 180, height = 100,
+        staging_prefix = ".k1-independent-time-tmp-",
+        governed = .k1_independent_time_artifact_files(),
+        messages = .k1_independent_time_artifact_messages()
     )
-    artifact_digest <- .k1_acceptance_artifact_digest(file_manifest)
-    artifact <- file.path(artifact_root, paste0(
-        assessment$version, "-", substr(artifact_digest, 1L, 16L)
-    ))
-    if (dir.exists(artifact)) {
-        .verify_k1_independent_time_artifact(artifact)
-        return(artifact)
-    }
-    utils::write.table(file_manifest, file.path(staging, "MANIFEST.tsv"),
-        sep = "\t", quote = FALSE, row.names = FALSE)
-    if (!file.rename(staging, artifact)) {
-        .k1_acceptance_runner_abort(
-            "could not atomically publish independent time-course artifact"
-        )
-    }
-    .verify_k1_independent_time_artifact(artifact)
-    artifact
 }
 
 #' Verify independent destructive-time-course calibration evidence

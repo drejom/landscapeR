@@ -20,6 +20,7 @@ is built under `.scratch/site/` and deployed by CI; it is not committed here.
 | [`architecture/visual-evidence.md`](architecture/visual-evidence.md) | Single typed figure-consumer seam, Stage storage adapter, total unavailable states, and renderer authority | Scientific estimator or threshold choice |
 | [`architecture/core-construction-and-provenance.md`](architecture/core-construction-and-provenance.md) | Supported constructors, typed Stage result access, scientific input hashes, and RNG identity | Algorithm-specific estimators or scheduling |
 | [`architecture/resampling-and-execution.md`](architecture/resampling-and-execution.md) | Future-backed repetition seam, deterministic task execution, accounting, and backend ownership | Scientific resampling design or scheduler selection |
+| [`architecture/k1-calibration-modules.md`](architecture/k1-calibration-modules.md) | K=1 calibration scientific-module responsibilities and shared content-addressed publication seam | Generic scientific-result abstractions or calibration thresholds |
 | [`architecture/stage-pipeline.md`](architecture/stage-pipeline.md) | Stage boundary validation, typed outcomes, artifact dependency direction, and orchestration boundary | Algorithm choice, current support, or scheduling |
 | [`archive/`](archive/) | Completed audits and superseded planning context | Current package priority |
 | [`agents/`](agents/) | Agent workflow and issue/triage guidance | Scientific decisions |
