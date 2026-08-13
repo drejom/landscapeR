@@ -134,6 +134,9 @@ test_that("high-dimensional operating evidence is exact and captioned", {
     expect_match(caption, "independent synthetic biological observation")
     expect_false(grepl(caption,
         paste(capture.output(print(plot)), collapse = "\n"), fixed = TRUE))
+    line_layer <- ggplot2::layer_data(plot, 2L)
+    expect_true(all(is.finite(line_layer$y)))
+    expect_false(any(line_layer$y == 0.03))
 })
 
 test_that("fixed signal stays fixed while the noise reference grows", {

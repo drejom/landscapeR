@@ -87,8 +87,9 @@ k1_high_dimensional_regime <- function(id = NULL) {
 #' Generate a governed high-dimensional K=1 control
 #'
 #' Separates total feature count from the number of biologically informative
-#' features. The planted loading and analytic white-noise reference are retained
-#' as calibration evidence; neither constitutes a biological sample-size rule.
+#' features. The planted loading and covariance-aware noise reference are
+#' retained as calibration evidence; neither constitutes a biological
+#' sample-size rule.
 #'
 #' @param regime governed regime or identifier.
 #' @param n number of independent biological observations.
@@ -778,7 +779,9 @@ plot_k1_high_dimensional_calibration <- function(assessment) {
     )) +
         ggplot2::geom_vline(xintercept = 1, colour = semantic[["structure"]],
             linewidth = 0.45) +
-        ggplot2::geom_line(ggplot2::aes(linetype = factor(.data$p)),
+        ggplot2::geom_line(
+            data = display[is.finite(display$value), , drop = FALSE],
+            ggplot2::aes(linetype = factor(.data$p)),
             colour = semantic[["ink"]], linewidth = 0.35) +
         ggplot2::geom_point(ggplot2::aes(
             shape = .data$state, fill = .data$state

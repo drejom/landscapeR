@@ -683,6 +683,7 @@ bodies may state dependencies but do not change this ordering.
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | queued — blocked by #189–#191; does not block acceptance |
 | [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — blocked by #189–#191 |
+| [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | queued before another calibration module; does not block #191 or #193 |
 <!-- issue-map:end -->
 
 ---

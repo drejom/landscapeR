@@ -37,6 +37,7 @@ A cross-sectional \code{StateTransitionData} with known truth.
 }
 \description{
 Separates total feature count from the number of biologically informative
-features. The planted loading and analytic white-noise reference are retained
-as calibration evidence; neither constitutes a biological sample-size rule.
+features. The planted loading and covariance-aware noise reference are
+retained as calibration evidence; neither constitutes a biological
+sample-size rule.
 }
