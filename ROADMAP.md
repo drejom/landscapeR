@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#189 map independent destructive time
-courses with sparse and unequal biological replication**.
+**Next task after this change lands:** **#190 map complete and incomplete
+repeated-subject trajectories**.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -677,9 +677,9 @@ bodies may state dependencies but do not change this ordering.
 | [#178](https://github.com/drejom/landscapeR/issues/178) | Independent time-course extension: shared baseline controls | parked; human method decision; non-blocking |
 | [#181](https://github.com/drejom/landscapeR/issues/181) | Maintenance — R lint baseline and ratcheting enforcement | queued; standalone maintenance lane |
 | [#187](https://github.com/drejom/landscapeR/issues/187) | K=1 design-aware calibration and operating maps | active — parent specification |
-| [#188](https://github.com/drejom/landscapeR/issues/188) | K=1 calibration semantics | complete on merge |
-| [#189](https://github.com/drejom/landscapeR/issues/189) | K=1 destructive-time-course operating map | active — next task after #188 |
-| [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | active — ready after #188 |
+| [#188](https://github.com/drejom/landscapeR/issues/188) | K=1 calibration semantics | complete |
+| [#189](https://github.com/drejom/landscapeR/issues/189) | K=1 destructive-time-course operating map | complete on merge |
+| [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | active — next task after #189 |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | active — ready after #188 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | queued — blocked by #189–#191; does not block acceptance |
 | [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — blocked by #189–#191 |

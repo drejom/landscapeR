@@ -1,0 +1,18 @@
+Operating evidence for independent destructive time courses. The Synthetic independent
+destructive time course experiment to assess the declared condition target contrasts CM with
+CTL. (A) Target-axis recovery probability among replicates with evaluable loading cosine. (B)
+Support for the independent condition-by-time estimand among replicates whose target axis was
+recovered. Red circles are estimated probabilities; crosses mark designs with no eligible
+denominator; grey triangles mark incomplete execution. The analysis unit is one independently
+collected animal; the design is different biological animals in every retained condition-time
+cell; complete, unequal_declared_cells, isolated_library_failure,
+missing_internal_condition_time_cell; the estimand is standardized condition-by-time
+interaction; time is recorded as collection_time (days 0, 1, 2, 3) in days; adjustment uses
+batch. 5 deterministic calibration replicates were requested per design. Declared cell sizes
+and missing observations are retained without imputation or rebalancing. One animal per
+condition-time cell; Two animals per condition-time cell; Three animals per condition-time
+cell; Unequal one-to-three-animal cells; Three-animal cells with one failed library removes
+replicate 3 from CM at day 2; Two-animal cells with one internal cell absent leaves CM at day 2
+absent. Recovery uses one absolute loading-cosine threshold of 0.90. This is disclosed
+calibration evidence under the shown synthetic regime, not an acceptance result or universal
+sample-size rule.
