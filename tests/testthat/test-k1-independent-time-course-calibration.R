@@ -339,7 +339,10 @@ test_that("scientific calibration is invariant across future backends", {
         pkgload::is_dev_package("landscapeR"),
         "multisession requires the installed-package check context"
     )
-    available <- multisession_worker_available()
+    available <- suppressWarnings(tryCatch({
+        future::plan(future::multisession, workers = 2L)
+        identical(future::value(future::future(TRUE)), TRUE)
+    }, error = function(condition) FALSE))
     if (!available) {
         if (nzchar(Sys.getenv("CI"))) {
             testthat::fail("CI must provide a working multisession backend")

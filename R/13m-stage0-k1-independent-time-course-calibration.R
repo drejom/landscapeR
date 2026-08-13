@@ -910,12 +910,12 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
     display <- rbind(
         transform(cells,
             evidence = "A  Target-axis recovery",
-            probability = recovery_probability,
-            denominator = n_recovery_evaluable),
+            probability = cells$recovery_probability,
+            denominator = cells$n_recovery_evaluable),
         transform(cells,
             evidence = "B  Estimability after recovery",
-            probability = downstream_estimability_probability,
-            denominator = n_downstream_evaluable)
+            probability = cells$downstream_estimability_probability,
+            denominator = cells$n_downstream_evaluable)
     )
     display$evidence <- factor(display$evidence, levels = c(
         "A  Target-axis recovery",
@@ -957,11 +957,13 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
     ] <- 0.04
     semantic <- landscapeR_palette("semantic")
     plot <- ggplot2::ggplot(display, ggplot2::aes(
-        x = plotted_probability,
-        y = template_axis_label,
-        group = evidence
+        x = .data$plotted_probability,
+        y = .data$template_axis_label,
+        group = .data$evidence
     )) +
-        ggplot2::geom_point(ggplot2::aes(shape = state, fill = state),
+        ggplot2::geom_point(ggplot2::aes(
+            shape = .data$state, fill = .data$state
+        ),
             size = 2.4, stroke = 0.45, colour = semantic[["ink"]]) +
         ggplot2::geom_point(
             data = display[display$execution_state == "Partial execution", ,
@@ -973,7 +975,7 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
             inherit.aes = FALSE, size = 2.4, stroke = 0.45,
             colour = semantic[["ink"]]
         ) +
-        ggplot2::facet_wrap(~ evidence, nrow = 1L) +
+        ggplot2::facet_wrap(~ .data$evidence, nrow = 1L) +
         ggplot2::scale_shape_manual(values = c(
             "Estimated" = 21, "Not estimable" = 4,
             "Partial execution" = 24
