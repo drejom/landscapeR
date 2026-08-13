@@ -115,8 +115,8 @@ graph, typed result contract, operating-map renderer, and artifact verifier.
 Version 3 cannot execute or publish scientific evidence: its seed set was
 retired after development smoke tests exercised four tasks before runner review.
 Version 4 refreezes the identical scientific protocol with reproducible
-historical RNG manifests and a new seed reveal delayed until its protocol merge.
-The runner must still be reviewed separately before HPC execution. The committed
+historical RNG manifests and a merge-derived, disjoint seed set. The runner
+must still merge separately before HPC execution. The committed
 operating maps are implementation fixtures, not acceptance results or
 sample-size recommendations.
 

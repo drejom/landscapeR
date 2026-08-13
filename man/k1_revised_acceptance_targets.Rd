@@ -2,7 +2,7 @@
 % Please edit documentation in R/13p-stage0-k1-revised-acceptance.R
 \name{k1_revised_acceptance_targets}
 \alias{k1_revised_acceptance_targets}
-\title{Inspect the retired version 3 K=1 acceptance targets graph}
+\title{Build the revised K=1 acceptance targets graph}
 \usage{
 k1_revised_acceptance_targets(
   phase_a_merge_commit,
@@ -12,7 +12,7 @@ k1_revised_acceptance_targets(
 )
 }
 \arguments{
-\item{phase_a_merge_commit}{reviewed version 3 protocol merge SHA-1.}
+\item{phase_a_merge_commit}{reviewed version 3 or 4 protocol merge SHA-1.}
 
 \item{runner_revision}{reviewed runner merge SHA-1.}
 
@@ -21,12 +21,11 @@ k1_revised_acceptance_targets(
 \item{controller}{named crew controller configured by the caller.}
 }
 \value{
-Audit-only list of targets objects whose preflight always stops for
-the retired version 3 protocol.
+List of targets objects. Version 4 is executable only after the
+supplied runner revision is installed; version 3 remains audit-only.
 }
 \description{
-This audit-only graph records the intended one-branch-per-replicate topology,
-but its preflight deliberately stops because version 3 seeds were retired
-during runner development. It cannot execute scientific work. Version 4 must
-be frozen and explicitly supported before production scheduling.
+Version 4 provides the reviewed one-branch-per-replicate production graph.
+Passing the retired version 3 merge commit returns the audit-only version 3
+topology whose preflight deliberately stops before any task can execute.
 }
