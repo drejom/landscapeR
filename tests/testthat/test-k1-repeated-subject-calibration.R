@@ -424,6 +424,10 @@ test_that("repeated-subject operating map has exact data and separate caption", 
 
 test_that("repeated-subject future execution matches sequential evidence", {
     skip_if_not_installed("future")
+    skip_if(
+        pkgload::is_dev_package("landscapeR"),
+        "multisession requires the installed-package check context"
+    )
     old_plan <- future::plan()
     on.exit(future::plan(old_plan), add = TRUE)
     backend_available <- tryCatch({
