@@ -312,6 +312,106 @@ test_that("calibration artifacts reproduce typed and visual derivatives", {
         vapply(pipeline, function(target) target$settings$name, character(1L)),
         c("k1_independent_time_assessment", "k1_independent_time_artifact")
     )
+    undeclared <- file.path(artifact, "undeclared.txt")
+    writeLines("not governed", undeclared)
+    expect_error(
+        verify_k1_independent_time_course_calibration(artifact),
+        "undeclared files",
+        class = "k1_acceptance_runner_error"
+    )
+    unlink(undeclared)
+
+    environment_path <- file.path(artifact, "environment.rds")
+    manifest_path <- file.path(artifact, "MANIFEST.tsv")
+    environment <- readRDS(environment_path)
+    original_environment <- environment
+    original_manifest <- readLines(manifest_path, warn = FALSE)
+    environment$runtime_identity$source_revision <- "invalid"
+    saveRDS(environment, environment_path)
+    manifest <- utils::read.delim(manifest_path,
+        stringsAsFactors = FALSE, check.names = FALSE)
+    manifest$sha256[manifest$file == "environment.rds"] <-
+        landscapeR:::.k1_acceptance_file_digest(environment_path)
+    utils::write.table(manifest, manifest_path, sep = "\t", quote = FALSE,
+        row.names = FALSE)
+    expect_error(
+        verify_k1_independent_time_course_calibration(artifact),
+        class = "k1_acceptance_runner_error"
+    )
+    saveRDS(original_environment, environment_path)
+    writeLines(original_manifest, manifest_path)
+
+    derivatives_path <- file.path(artifact, "cell-summary.csv")
+    original_derivatives <- readLines(derivatives_path, warn = FALSE)
+    writeLines(c(original_derivatives, "changed"), derivatives_path)
+    manifest <- utils::read.delim(manifest_path,
+        stringsAsFactors = FALSE, check.names = FALSE)
+    manifest$sha256[manifest$file == "cell-summary.csv"] <-
+        landscapeR:::.k1_acceptance_file_digest(derivatives_path)
+    utils::write.table(manifest, manifest_path, sep = "\t", quote = FALSE,
+        row.names = FALSE)
+    expect_error(
+        verify_k1_independent_time_course_calibration(artifact),
+        "derivatives",
+        class = "k1_acceptance_runner_error"
+    )
+    writeLines(original_derivatives, derivatives_path)
+    writeLines(original_manifest, manifest_path)
+
+    writeLines(c("file\tsha256", '"unterminated'), manifest_path)
+    expect_error(
+        verify_k1_independent_time_course_calibration(artifact),
+        "manifest or digests are invalid",
+        class = "k1_acceptance_runner_error"
+    )
+    writeLines(original_manifest, manifest_path)
+
+    assessment_path <- file.path(artifact, "assessment.rds")
+    original_assessment <- readBin(
+        assessment_path, what = "raw", n = file.info(assessment_path)$size
+    )
+    writeLines("not an RDS payload", assessment_path)
+    manifest <- utils::read.delim(manifest_path,
+        stringsAsFactors = FALSE, check.names = FALSE)
+    manifest$sha256[manifest$file == "assessment.rds"] <-
+        landscapeR:::.k1_acceptance_file_digest(assessment_path)
+    utils::write.table(manifest, manifest_path, sep = "\t", quote = FALSE,
+        row.names = FALSE)
+    expect_error(
+        verify_k1_independent_time_course_calibration(artifact),
+        "manifest or digests are invalid",
+        class = "k1_acceptance_runner_error"
+    )
+    writeBin(original_assessment, assessment_path)
+    writeLines(original_manifest, manifest_path)
+
+    saveRDS("not an environment envelope", environment_path)
+    manifest <- utils::read.delim(manifest_path,
+        stringsAsFactors = FALSE, check.names = FALSE)
+    manifest$sha256[manifest$file == "environment.rds"] <-
+        landscapeR:::.k1_acceptance_file_digest(environment_path)
+    utils::write.table(manifest, manifest_path, sep = "\t", quote = FALSE,
+        row.names = FALSE)
+    expect_error(
+        verify_k1_independent_time_course_calibration(artifact),
+        "manifest or digests are invalid",
+        class = "k1_acceptance_runner_error"
+    )
+    saveRDS(original_environment, environment_path)
+    writeLines(original_manifest, manifest_path)
+
+    testthat::local_mocked_bindings(
+        .k1_calibration_atomic_move = function(from, to) FALSE,
+        .package = "landscapeR"
+    )
+    expect_error(
+        publish_k1_independent_time_course_calibration(
+            tempfile("k1-atomic-failure-"), assessment
+        ),
+        "atomically publish",
+        class = "k1_acceptance_runner_error"
+    )
+
     changed <- readRDS(file.path(artifact, "assessment.rds"))
     changed$replicates$diagnostic[[1L]] <- "changed"
     payload <- unclass(changed)

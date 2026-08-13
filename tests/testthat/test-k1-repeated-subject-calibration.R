@@ -400,6 +400,14 @@ test_that("repeated-subject calibration preserves caller RNG state", {
 })
 
 test_that("repeated-subject operating map has exact data and separate caption", {
+    testthat::local_mocked_bindings(
+        .k1_calibration_runtime_identity = function() list(
+            source_revision = strrep("1", 40L),
+            r_version = "4.5",
+            package_versions = c(landscapeR = "0.0.0.9000")
+        ),
+        .package = "landscapeR"
+    )
     assessment <- run_k1_repeated_subject_calibration(
         template_ids = c("complete", "terminal_dropout"),
         replicates = 1L, p = 20L, axis_resamples = 1L,
@@ -420,6 +428,23 @@ test_that("repeated-subject operating map has exact data and separate caption", 
     expect_match(caption, "crosses mark a scientific quantity")
     expect_false(grepl(caption, paste(capture.output(print(plot)), collapse = "\n"),
         fixed = TRUE))
+
+    root <- tempfile("k1-repeated-subject-artifacts-")
+    dir.create(root)
+    artifact <- publish_k1_repeated_subject_calibration(root, assessment)
+    stored <- readRDS(file.path(artifact, "assessment.rds"))
+    stored_display <- utils::read.csv(
+        file.path(artifact, "operating-map-data.csv"),
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+    expected_display <- display
+    expected_display[] <- lapply(expected_display, function(column) {
+        if (is.factor(column)) as.character(column) else column
+    })
+
+    expect_true(verify_k1_repeated_subject_calibration(artifact))
+    expect_identical(stored$digest, assessment$digest)
+    expect_equal(stored_display, expected_display, ignore_attr = TRUE)
 })
 
 test_that("repeated-subject future execution matches sequential evidence", {

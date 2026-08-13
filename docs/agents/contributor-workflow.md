@@ -15,6 +15,9 @@ not define scientific methods, architecture, or scheduling.
 - [`docs/agents/review-ratchet.md`](review-ratchet.md) owns the merge-gate
   sequence and incident-backed review lessons.
 - [`docs/agents/repo-hygiene.md`](repo-hygiene.md) owns transient-output policy.
+- Contributors adding a design-aware K=1 calibration module follow the
+  scientific-module and shared publication boundaries in
+  [`docs/architecture/k1-calibration-modules.md`](../architecture/k1-calibration-modules.md).
 
 ## Install the safeguards
 

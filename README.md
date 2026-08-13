@@ -120,6 +120,11 @@ must still merge separately before HPC execution. The committed
 operating maps are implementation fixtures, not acceptance results or
 sample-size recommendations.
 
+All K=1 calibration modules publish and verify governed artifacts through one
+internal content-addressed seam. Each design still owns its scientific
+validation, displayed data, caption, and treatment of non-estimable results;
+the shared machinery does not make the three scientific designs interchangeable.
+
 In revised K=1 operating maps, red is reserved for a declared supported cell
 or threshold. Continuous recovery probability uses the package's ordered,
 colour-vision-robust Cividis scale. Shape continues to identify the typed cell

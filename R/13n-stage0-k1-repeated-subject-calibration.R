@@ -1168,79 +1168,24 @@ plot_k1_repeated_subject_calibration <- function(assessment) {
     plot
 }
 
-.k1_repeated_artifact_files <- function() c(
-    "assessment.rds", "replicates.csv", "cell-summary.csv",
-    "operating-map-data.csv", "operating-map.png",
-    "operating-map-caption.txt", "environment.rds"
+.k1_repeated_artifact_files <- .k1_calibration_artifact_files
+
+.k1_repeated_artifact_messages <- function() list(
+    incomplete = "repeated-subject calibration artifact is incomplete",
+    invalid = "repeated-subject artifact manifest or files are invalid",
+    derivatives = "repeated-subject artifact derivatives do not reproduce",
+    atomic = "could not atomically publish repeated-subject artifact"
 )
 
 .verify_k1_repeated_artifact <- function(artifact) {
-    artifact <- path.expand(artifact)
-    manifest_path <- file.path(artifact, "MANIFEST.tsv")
-    if (!dir.exists(artifact) || !file.exists(manifest_path)) {
-        .k1_acceptance_runner_abort(
-            "repeated-subject calibration artifact is incomplete"
-        )
-    }
-    manifest <- utils::read.delim(manifest_path,
-        stringsAsFactors = FALSE, check.names = FALSE)
-    governed <- .k1_repeated_artifact_files()
-    actual <- list.files(artifact, recursive = TRUE, all.files = TRUE,
-        no.. = TRUE, include.dirs = FALSE)
-    if (!identical(names(manifest), c("file", "sha256")) ||
-            !identical(manifest$file, governed) ||
-            !setequal(actual, c("MANIFEST.tsv", governed)) ||
-            !identical(unname(vapply(file.path(artifact, governed),
-                .k1_acceptance_file_digest, character(1L))),
-                manifest$sha256)) {
-        .k1_acceptance_runner_abort(
-            "repeated-subject artifact manifest or files are invalid"
-        )
-    }
-    assessment <- readRDS(file.path(artifact, "assessment.rds"))
-    environment <- readRDS(file.path(artifact, "environment.rds"))
-    .validate_k1_repeated_assessment(assessment)
-    .k1_acceptance_validate_identity(environment$runtime_identity)
-    plot <- plot_k1_repeated_subject_calibration(assessment)
-    expected_replicates <- tempfile(fileext = ".csv")
-    expected_cells <- tempfile(fileext = ".csv")
-    expected_display <- tempfile(fileext = ".csv")
-    on.exit(unlink(c(expected_replicates, expected_cells, expected_display)),
-        add = TRUE)
-    utils::write.csv(assessment$replicates, expected_replicates,
-        row.names = FALSE)
-    utils::write.csv(assessment$cells, expected_cells, row.names = FALSE)
-    display <- attr(plot, "landscapeR_k1_repeated_map_data")
-    utils::write.csv(display, expected_display, row.names = FALSE)
-    derivatives_reproduce <- function(expected, observed) identical(
-        readLines(expected, warn = FALSE),
-        readLines(observed, warn = FALSE)
+    .k1_design_calibration_verify_artifact(
+        artifact,
+        .validate_k1_repeated_assessment,
+        plot_k1_repeated_subject_calibration,
+        "landscapeR_k1_repeated_map_data",
+        governed = .k1_repeated_artifact_files(),
+        messages = .k1_repeated_artifact_messages()
     )
-    caption <- paste(readLines(
-        file.path(artifact, "operating-map-caption.txt"), warn = FALSE
-    ), collapse = "\n")
-    artifact_digest <- .k1_acceptance_artifact_digest(manifest)
-    expected_environment <- list(
-        assessment_digest = assessment$digest,
-        runtime_identity = environment$runtime_identity,
-        claim_status = assessment$claim_status
-    )
-    if (!derivatives_reproduce(expected_replicates,
-            file.path(artifact, "replicates.csv")) ||
-            !derivatives_reproduce(expected_cells,
-                file.path(artifact, "cell-summary.csv")) ||
-            !derivatives_reproduce(expected_display,
-                file.path(artifact, "operating-map-data.csv")) ||
-            !identical(caption, scientific_caption(plot)) ||
-            !identical(environment, expected_environment) ||
-            !identical(basename(artifact), paste0(
-                assessment$version, "-", substr(artifact_digest, 1L, 16L)
-            ))) {
-        .k1_acceptance_runner_abort(
-            "repeated-subject artifact derivatives do not reproduce"
-        )
-    }
-    invisible(TRUE)
 }
 
 #' Publish incomplete repeated-subject calibration evidence
@@ -1252,56 +1197,16 @@ plot_k1_repeated_subject_calibration <- function(assessment) {
 publish_k1_repeated_subject_calibration <- function(
     artifact_root, assessment
 ) {
-    .validate_k1_repeated_assessment(assessment)
-    if (!.is_scalar_nonempty_text(artifact_root)) {
-        .stop_landscapeR_validation("artifact_root must be one non-empty path")
-    }
-    artifact_root <- path.expand(artifact_root)
-    dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
-    staging <- tempfile(".k1-repeated-tmp-", tmpdir = artifact_root)
-    dir.create(staging, recursive = TRUE, showWarnings = FALSE)
-    on.exit(if (dir.exists(staging)) unlink(staging, recursive = TRUE), add = TRUE)
-    plot <- plot_k1_repeated_subject_calibration(assessment)
-    saveRDS(assessment, file.path(staging, "assessment.rds"))
-    utils::write.csv(assessment$replicates,
-        file.path(staging, "replicates.csv"), row.names = FALSE)
-    utils::write.csv(assessment$cells,
-        file.path(staging, "cell-summary.csv"), row.names = FALSE)
-    utils::write.csv(attr(plot, "landscapeR_k1_repeated_map_data"),
-        file.path(staging, "operating-map-data.csv"), row.names = FALSE)
-    ggplot2::ggsave(file.path(staging, "operating-map.png"), plot,
-        width = 100, height = 100, units = "mm", dpi = 450, bg = "white")
-    writeLines(scientific_caption(plot),
-        file.path(staging, "operating-map-caption.txt"))
-    saveRDS(list(
-        assessment_digest = assessment$digest,
-        runtime_identity = .k1_calibration_runtime_identity(),
-        claim_status = assessment$claim_status
-    ), file.path(staging, "environment.rds"))
-    governed <- .k1_repeated_artifact_files()
-    file_manifest <- data.frame(
-        file = governed,
-        sha256 = vapply(file.path(staging, governed),
-            .k1_acceptance_file_digest, character(1L)),
-        stringsAsFactors = FALSE
+    .k1_calibration_publish_artifact(
+        artifact_root, assessment,
+        .validate_k1_repeated_assessment,
+        plot_k1_repeated_subject_calibration,
+        "landscapeR_k1_repeated_map_data",
+        width = 100, height = 100,
+        staging_prefix = ".k1-repeated-tmp-",
+        governed = .k1_repeated_artifact_files(),
+        messages = .k1_repeated_artifact_messages()
     )
-    artifact_digest <- .k1_acceptance_artifact_digest(file_manifest)
-    artifact <- file.path(artifact_root, paste0(
-        assessment$version, "-", substr(artifact_digest, 1L, 16L)
-    ))
-    if (dir.exists(artifact)) {
-        .verify_k1_repeated_artifact(artifact)
-        return(artifact)
-    }
-    utils::write.table(file_manifest, file.path(staging, "MANIFEST.tsv"),
-        sep = "\t", quote = FALSE, row.names = FALSE)
-    if (!file.rename(staging, artifact)) {
-        .k1_acceptance_runner_abort(
-            "could not atomically publish repeated-subject artifact"
-        )
-    }
-    .verify_k1_repeated_artifact(artifact)
-    artifact
 }
 
 #' Verify incomplete repeated-subject calibration evidence
