@@ -96,6 +96,7 @@ Collate:
     '13l-stage0-k1-calibration-outcomes.R'
     '13m-stage0-k1-independent-time-course-calibration.R'
     '13n-stage0-k1-repeated-subject-calibration.R'
+    '13o-stage0-k1-high-dimensional-regimes.R'
     '14-stage1-plots.R'
     '15-stage2-kde.R'
     '16-stage2-plots.R'
