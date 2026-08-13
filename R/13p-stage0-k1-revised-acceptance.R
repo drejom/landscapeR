@@ -1038,6 +1038,7 @@ plot_k1_revised_acceptance <- function(
     .validate_k1_revised_summary(summary)
     view <- match.arg(view)
     cells <- summary$cells
+    semantic <- landscapeR_palette("semantic")
     if (identical(view, "sampling_design")) {
         display <- cells[cells$control %in% c(
             "independent_time_course", "repeated_subject"
@@ -1074,24 +1075,25 @@ plot_k1_revised_acceptance <- function(
             group = design_id
         )) +
             ggplot2::geom_hline(
-                yintercept = 0.90, colour = "#B2182B", linewidth = 0.45,
+                yintercept = 0.90, colour = semantic[["focal"]], linewidth = 0.45,
                 linetype = "dashed"
             ) +
             ggplot2::geom_line(
-                colour = "#777777", linewidth = 0.45, alpha = 0.65
+                colour = semantic[["nuisance"]], linewidth = 0.45, alpha = 0.65
             ) +
             ggplot2::geom_linerange(ggplot2::aes(
                 ymin = wilson_95_lower, ymax = wilson_95_upper
-            ), colour = "#555555", linewidth = 0.35) +
+            ), colour = semantic[["nuisance"]], linewidth = 0.35) +
             ggplot2::geom_point(ggplot2::aes(
                 fill = decision, shape = decision
-            ), colour = "#1A1A1A", size = 2.5, stroke = 0.4) +
+            ), colour = semantic[["ink"]], size = 2.5, stroke = 0.4) +
             ggplot2::facet_wrap(
                 ggplot2::vars(facet_label), ncol = 5, scales = "free_x"
             ) +
             ggplot2::scale_fill_manual(values = c(
-                supported = "#B2182B", unsupported = "white",
-                indeterminate = "#BDBDBD"
+                supported = semantic[["focal"]],
+                unsupported = semantic[["paper"]],
+                indeterminate = semantic[["structure"]]
             ), drop = FALSE) +
             ggplot2::scale_shape_manual(values = c(
                 supported = 21, unsupported = 21, indeterminate = 22
@@ -1177,14 +1179,18 @@ plot_k1_revised_acceptance <- function(
             x = signal_ratio_label, y = feature_count,
             fill = recovery_probability
         )) +
-            ggplot2::geom_tile(colour = "white", linewidth = 0.8) +
+            ggplot2::geom_tile(
+                colour = semantic[["paper"]], linewidth = 0.8
+            ) +
             ggplot2::geom_point(ggplot2::aes(shape = decision),
-                colour = "#1A1A1A", fill = "white", size = 2.2, stroke = 0.5) +
+                colour = semantic[["ink"]], fill = semantic[["paper"]],
+                size = 2.2, stroke = 0.5) +
             ggplot2::facet_wrap(
                 ggplot2::vars(regime_label), ncol = 3, scales = "free_x"
             ) +
             ggplot2::scale_fill_gradient(
-                low = "white", high = "#B2182B", limits = c(0, 1),
+                low = semantic[["paper"]], high = semantic[["focal"]],
+                limits = c(0, 1),
                 name = "Recovery"
             ) +
             ggplot2::scale_shape_manual(values = c(
@@ -1318,10 +1324,10 @@ plot_k1_revised_acceptance <- function(
     )
     ggplot2::ggsave(file.path(staging, "sampling-design-map.png"),
         sampling_plot, width = 180, height = 130, units = "mm", dpi = 450,
-        bg = "white")
+        bg = landscapeR_palette("semantic")[["paper"]])
     ggplot2::ggsave(file.path(staging, "signal-regime-map.png"),
         signal_plot, width = 160, height = 140, units = "mm", dpi = 450,
-        bg = "white")
+        bg = landscapeR_palette("semantic")[["paper"]])
     writeLines(scientific_caption(sampling_plot),
         file.path(staging, "sampling-design-map-caption.txt"))
     writeLines(scientific_caption(signal_plot),
