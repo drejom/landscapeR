@@ -3,7 +3,7 @@
 `repeated-subject-operating-map.png` is the public
 `plot_k1_repeated_subject_calibration()` surface for four governed longitudinal
 sampling templates. Panel A reports recovery of the planted feature-space
-target. Panel B reports recurrence of the nominated axis when complete mice are
+target. Panel B reports recurrence of the planted target axis when complete mice are
 resampled within condition. Panel C reports whether the declared
 random-intercept-plus-slope condition-by-time model remains estimable after
 target recovery.

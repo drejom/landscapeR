@@ -196,6 +196,35 @@ test_that("operating evidence separates recovery, identifiability, and model sup
         class = "landscapeR_validation_error"
     )
 
+    invented_draws <- assessment
+    nested <- invented_draws$execution$values[[1L]]$evidence$identifiability
+    nested$replicates[[1L]]$source_primary[] <- "invented_sample"
+    nested$replicates[[1L]]$replicate_subject[] <- "invented_subject"
+    observed_draws <- lapply(nested$replicates, function(replicate) list(
+        source_primary = replicate$source_primary,
+        replicate_subject = replicate$replicate_subject
+    ))
+    nested$plan_digest <- digest::digest(list(
+        method = nested$resampling_method,
+        unit = nested$resampling_unit,
+        n_requested = nested$n_requested,
+        draws = observed_draws
+    ), algo = "sha256", serialize = TRUE)
+    invented_draws$execution$values[[1L]]$evidence$identifiability <- nested
+    execution_payload <- invented_draws$execution[
+        c("values", "account", "provenance")
+    ]
+    invented_draws$execution$digest <- digest::digest(
+        execution_payload, algo = "sha256", serialize = TRUE
+    )
+    payload <- unclass(invented_draws)
+    payload$digest <- NULL
+    invented_draws$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_repeated_subject_calibration(invented_draws),
+        class = "landscapeR_validation_error"
+    )
+
     nested_row_mismatches <- list(
         recovery = function(x) {
             x$replicates$target_loading_cosine[[1L]] <- 0.123

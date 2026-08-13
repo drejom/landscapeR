@@ -285,6 +285,38 @@ k1_repeated_subject_control_info <- function(x) {
     )
 }
 
+.k1_repeated_expected_draws <- function(template, n_resamples, seed) {
+    .validate_k1_repeated_template(template)
+    retained <- template$retained_observations
+    subject_order <- c(paste0("ctl", 1:4), paste0("cm", 1:4))
+    ordered_rows <- unlist(lapply(subject_order, function(subject) {
+        which(retained$mouse_id == subject)[order(
+            retained$weeks[retained$mouse_id == subject]
+        )]
+    }), use.names = FALSE)
+    primary <- sprintf("sample_%03d", seq_along(ordered_rows))
+    names(primary) <- retained$mouse_id[ordered_rows]
+    subject_primary <- split(unname(primary), names(primary))
+    strata <- list(CM = paste0("cm", 1:4), CTL = paste0("ctl", 1:4))
+    .resampling_policy_with_seed(seed, function() {
+        lapply(seq_len(n_resamples), function(replicate_index) {
+            sampled <- unlist(lapply(strata, function(ids) {
+                sample(ids, length(ids), replace = TRUE)
+            }), use.names = FALSE)
+            source_primary <- unlist(subject_primary[sampled], use.names = FALSE)
+            replicate_subject <- unlist(lapply(seq_along(sampled), function(i) {
+                rep(sprintf(
+                    "bootstrap_%04d_subject_%04d", replicate_index, i
+                ), length(subject_primary[[sampled[[i]]]]))
+            }), use.names = FALSE)
+            list(
+                source_primary = source_primary,
+                replicate_subject = replicate_subject
+            )
+        })
+    })
+}
+
 .k1_repeated_target_identifiability <- function(
     control, fitted, config, n_resamples, seed
 ) {
@@ -292,6 +324,7 @@ k1_repeated_subject_control_info <- function(x) {
         return(list(
             status = "not_requested", mean_absolute_similarity = NA_real_,
             n_requested = 0L, n_completed = 0L,
+            plan_seed = as.integer(seed),
             resampling_method =
                 "condition-stratified-subject-trajectory-bootstrap",
             resampling_unit = "complete-subject-trajectory",
@@ -301,9 +334,16 @@ k1_repeated_subject_control_info <- function(x) {
     }
     reference <- stage_artifact(fitted, "stage1")
     reference_loadings <- dr_V_k(reference)
+    template <- k1_repeated_subject_control_info(control)$template
     plan <- .identifiability_resampling_plan(
         fitted, config@analysis, n_resamples, seed
     )
+    expected_draws <- .k1_repeated_expected_draws(
+        template, n_resamples, seed
+    )
+    if (!identical(plan$draws, expected_draws)) {
+        stop("governed target-axis resampling plan does not match its template")
+    }
     replicates <- lapply(seq_len(n_resamples), function(index) {
         draw <- plan$draws[[index]]
         sampled <- .resample_state_transition_data(
@@ -368,6 +408,7 @@ k1_repeated_subject_control_info <- function(x) {
         },
         n_requested = as.integer(n_resamples),
         n_completed = as.integer(sum(completed)),
+        plan_seed = as.integer(seed),
         resampling_method = plan$method,
         resampling_unit = plan$unit,
         plan_digest = digest::digest(list(
@@ -600,16 +641,17 @@ k1_repeated_subject_control_info <- function(x) {
         )
     }
     execution_payload <- x$execution[c("values", "account", "provenance")]
-    valid_identifiability <- function(evidence) {
+    valid_identifiability <- function(evidence, template) {
         required <- c(
             "status", "mean_absolute_similarity", "n_requested",
-            "n_completed", "resampling_method", "resampling_unit",
+            "n_completed", "plan_seed", "resampling_method", "resampling_unit",
             "plan_digest", "replicates", "reason"
         )
         if (!is.list(evidence) ||
                 !all(required %in% names(evidence)) ||
                 !.is_whole_number(evidence$n_requested, 0L) ||
                 !.is_whole_number(evidence$n_completed, 0L) ||
+                !.is_whole_number(evidence$plan_seed, 0L) ||
                 evidence$n_completed > evidence$n_requested ||
                 length(evidence$replicates) != evidence$n_requested ||
                 !identical(evidence$resampling_method,
@@ -649,6 +691,7 @@ k1_repeated_subject_control_info <- function(x) {
                     length(replicate$assignment_margin) == 1L &&
                     is.finite(replicate$assignment_margin) &&
                     replicate$assignment_margin >= 0 &&
+                    replicate$assignment_margin <= 1 &&
                     !nzchar(replicate$diagnostic)
             } else {
                 is.na(replicate$target_absolute_similarity) &&
@@ -677,20 +720,29 @@ k1_repeated_subject_control_info <- function(x) {
         } else {
             "not_estimable"
         }
+        expected_draws <- if (evidence$n_requested) {
+            .k1_repeated_expected_draws(
+                template, evidence$n_requested, evidence$plan_seed
+            )
+        } else {
+            list()
+        }
+        observed_draws <- lapply(evidence$replicates, function(replicate) list(
+            source_primary = replicate$source_primary,
+            replicate_subject = replicate$replicate_subject
+        ))
         expected_plan_digest <- if (evidence$n_requested) {
             digest::digest(list(
                 method = evidence$resampling_method,
                 unit = evidence$resampling_unit,
                 n_requested = evidence$n_requested,
-                draws = lapply(evidence$replicates, function(replicate) list(
-                    source_primary = replicate$source_primary,
-                    replicate_subject = replicate$replicate_subject
-                ))
+                draws = expected_draws
             ), algo = "sha256", serialize = TRUE)
         } else {
             NULL
         }
         identical(evidence$status, expected_status) &&
+            identical(observed_draws, expected_draws) &&
             identical(evidence$plan_digest, expected_plan_digest) &&
             identical(evidence$n_completed, as.integer(sum(completed))) &&
             identical(evidence$mean_absolute_similarity, observed_mean)
@@ -778,7 +830,9 @@ k1_repeated_subject_control_info <- function(x) {
                 observed$recovery_evaluable[[1L]]) &&
             identical(recovery$met, observed$recovery_met[[1L]]) &&
             identical(recovery$threshold, x$recovery_threshold) &&
-            valid_identifiability(identifiability) &&
+            valid_identifiability(identifiability, template) &&
+            identical(identifiability$plan_seed,
+                as.integer(x$execution$provenance$task_streams[[i]][[2L]] + 3L)) &&
             identical(is.finite(identifiability$mean_absolute_similarity),
                 observed$axis_identifiability_evaluable[[1L]]) &&
             identical(identifiability$mean_absolute_similarity,
@@ -1103,7 +1157,10 @@ plot_k1_repeated_subject_calibration <- function(assessment) {
             "This is disclosed synthetic calibration evidence, not an",
             "acceptance result or universal sample-size rule"
         ),
-        state = if (any(cells$n_execution_failure > 0L)) "partial" else "calibrated"
+        state = if (any(
+            cells$n_execution_failure > 0L |
+                cells$n_axis_refits_completed < cells$n_axis_refits_requested
+        )) "partial" else "calibrated"
     )
     plot <- .with_scientific_caption(plot,
         .build_scientific_caption(caption_view))
