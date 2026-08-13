@@ -680,7 +680,7 @@ bodies may state dependencies but do not change this ordering.
 | [#188](https://github.com/drejom/landscapeR/issues/188) | K=1 calibration semantics | complete |
 | [#189](https://github.com/drejom/landscapeR/issues/189) | K=1 destructive-time-course operating map | complete on merge |
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
-| [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | active — next task after #190 |
+| [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | queued — blocked by #189–#191; does not block acceptance |
 | [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — blocked by #189–#191 |
 <!-- issue-map:end -->

@@ -1,0 +1,113 @@
+"regime_id","regime_label","boundary_position","n","p","informative_feature_count","informative_feature_fraction","covariance_regime","signal_strength","noise_sd","recovery_boundary","n_requested","n_execution_completed","recovery_probability","mean_axis_similarity","proposal_probability","downstream_estimability_probability","effective_signal_ratio","panel","value","regime_axis_label","state","plotted_value"
+"correlated_modules","Correlated feature modules","below",24,100,10,0.1,"block-correlated-gaussian",0,1,6.99927102316117,3,3,0,0.640339578353342,1,1,0,"A  Target-axis recovery",0,"Correlated feature
+modules","Estimated",0
+"correlated_modules","Correlated feature modules","below",24,100,10,0.1,"block-correlated-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.755337423768131,0.666666666666667,1,0.75,"A  Target-axis recovery",0,"Correlated feature
+modules","Estimated",0
+"correlated_modules","Correlated feature modules","above",24,100,10,0.1,"block-correlated-gaussian",8.74908877895146,1,6.99927102316117,3,3,0,0.794035608936058,1,1,1.25,"A  Target-axis recovery",0,"Correlated feature
+modules","Estimated",0
+"correlated_modules","Correlated feature modules","below",24,500,10,0.02,"block-correlated-gaussian",0,1,10.4663513939211,3,3,0,0.486798063089099,1,1,0,"A  Target-axis recovery",0,"Correlated feature
+modules","Estimated",0
+"correlated_modules","Correlated feature modules","below",24,500,10,0.02,"block-correlated-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.456274575335093,1,1,0.75,"A  Target-axis recovery",0,"Correlated feature
+modules","Estimated",0
+"correlated_modules","Correlated feature modules","above",24,500,10,0.02,"block-correlated-gaussian",13.0829392424013,1,10.4663513939211,3,3,0,0.522183677123361,1,1,1.25,"A  Target-axis recovery",0,"Correlated feature
+modules","Estimated",0
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.499169638049797,1,1,0,"A  Target-axis recovery",0,"Fixed sparse
+informative set","Estimated",0
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.511185010711245,1,1,0.75,"A  Target-axis recovery",0,"Fixed sparse
+informative set","Estimated",0
+"fixed_sparse","Fixed sparse informative set with added noise features","above",24,100,10,0.1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,0,0.630011274355604,1,1,1.25,"A  Target-axis recovery",0,"Fixed sparse
+informative set","Estimated",0
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.292372889225804,1,1,0,"A  Target-axis recovery",0,"Fixed sparse
+informative set","Estimated",0
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,500,10,0.02,"independent-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.3746111108403,1,1,0.75,"A  Target-axis recovery",0,"Fixed sparse
+informative set","Estimated",0
+"fixed_sparse","Fixed sparse informative set with added noise features","above",24,500,10,0.02,"independent-gaussian",13.0829392424013,1,10.4663513939211,3,3,0,0.411467434787672,1,1,1.25,"A  Target-axis recovery",0,"Fixed sparse
+informative set","Estimated",0
+"fixed_total_spike","Fixed total signal with added noise features","below",24,100,100,1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.533791363682142,1,1,0,"A  Target-axis recovery",0,"Fixed total signal
+with added noise","Estimated",0
+"fixed_total_spike","Fixed total signal with added noise features","below",24,100,100,1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.528576088758114,1,1,0.75,"A  Target-axis recovery",0,"Fixed total signal
+with added noise","Estimated",0
+"fixed_total_spike","Fixed total signal with added noise features","above",24,100,100,1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,0,0.611519394418567,1,1,1.25,"A  Target-axis recovery",0,"Fixed total signal
+with added noise","Estimated",0
+"fixed_total_spike","Fixed total signal with added noise features","below",24,500,500,1,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.308330749844536,1,1,0,"A  Target-axis recovery",0,"Fixed total signal
+with added noise","Estimated",0
+"fixed_total_spike","Fixed total signal with added noise features","below",24,500,500,1,"independent-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.379278066405853,1,1,0.75,"A  Target-axis recovery",0,"Fixed total signal
+with added noise","Estimated",0
+"fixed_total_spike","Fixed total signal with added noise features","above",24,500,500,1,"independent-gaussian",13.0829392424013,1,10.4663513939211,3,3,0,0.417499581848733,1,1,1.25,"A  Target-axis recovery",0,"Fixed total signal
+with added noise","Estimated",0
+"growing_coherent","Growing coherent informative set","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.500244646843305,1,1,0,"A  Target-axis recovery",0,"Growing coherent
+information","Estimated",0
+"growing_coherent","Growing coherent informative set","above",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.839448762799085,1,1,2.37170824512628,"A  Target-axis recovery",0,"Growing coherent
+information","Estimated",0
+"growing_coherent","Growing coherent informative set","above",24,100,10,0.1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,1,0.94335691344319,1,1,3.95284707521047,"A  Target-axis recovery",1,"Growing coherent
+information","Estimated",1
+"growing_coherent","Growing coherent informative set","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.357286399000041,1,1,0,"A  Target-axis recovery",0,"Growing coherent
+information","Estimated",0
+"growing_coherent","Growing coherent informative set","above",24,500,10,0.02,"independent-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.676559722198201,1,1,2.37170824512628,"A  Target-axis recovery",0,"Growing coherent
+information","Estimated",0
+"growing_coherent","Growing coherent informative set","above",24,500,10,0.02,"independent-gaussian",13.0829392424013,1,10.4663513939211,3,3,0,0.846980425227364,1,1,3.95284707521047,"A  Target-axis recovery",0,"Growing coherent
+information","Estimated",0
+"null_near_null","Null or near-null signal","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.297308504907679,0.666666666666667,1,0,"A  Target-axis recovery",0,"Null or near-null
+signal","Estimated",0
+"null_near_null","Null or near-null signal","below",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.435324210768356,1,1,0.75,"A  Target-axis recovery",0,"Null or near-null
+signal","Estimated",0
+"null_near_null","Null or near-null signal","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.422886031312271,1,1,0,"A  Target-axis recovery",0,"Null or near-null
+signal","Estimated",0
+"null_near_null","Null or near-null signal","below",24,500,10,0.02,"independent-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.37739962967865,0.666666666666667,1,0.75,"A  Target-axis recovery",0,"Null or near-null
+signal","Estimated",0
+"correlated_modules","Correlated feature modules","below",24,100,10,0.1,"block-correlated-gaussian",0,1,6.99927102316117,3,3,0,0.640339578353342,1,1,0,"B  Axis identifiability",0.640339578353342,"Correlated feature
+modules","Estimated",0.640339578353342
+"correlated_modules","Correlated feature modules","below",24,100,10,0.1,"block-correlated-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.755337423768131,0.666666666666667,1,0.75,"B  Axis identifiability",0.755337423768131,"Correlated feature
+modules","Estimated",0.755337423768131
+"correlated_modules","Correlated feature modules","above",24,100,10,0.1,"block-correlated-gaussian",8.74908877895146,1,6.99927102316117,3,3,0,0.794035608936058,1,1,1.25,"B  Axis identifiability",0.794035608936058,"Correlated feature
+modules","Estimated",0.794035608936058
+"correlated_modules","Correlated feature modules","below",24,500,10,0.02,"block-correlated-gaussian",0,1,10.4663513939211,3,3,0,0.486798063089099,1,1,0,"B  Axis identifiability",0.486798063089099,"Correlated feature
+modules","Estimated",0.486798063089099
+"correlated_modules","Correlated feature modules","below",24,500,10,0.02,"block-correlated-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.456274575335093,1,1,0.75,"B  Axis identifiability",0.456274575335093,"Correlated feature
+modules","Estimated",0.456274575335093
+"correlated_modules","Correlated feature modules","above",24,500,10,0.02,"block-correlated-gaussian",13.0829392424013,1,10.4663513939211,3,3,0,0.522183677123361,1,1,1.25,"B  Axis identifiability",0.522183677123361,"Correlated feature
+modules","Estimated",0.522183677123361
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.499169638049797,1,1,0,"B  Axis identifiability",0.499169638049797,"Fixed sparse
+informative set","Estimated",0.499169638049797
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.511185010711245,1,1,0.75,"B  Axis identifiability",0.511185010711245,"Fixed sparse
+informative set","Estimated",0.511185010711245
+"fixed_sparse","Fixed sparse informative set with added noise features","above",24,100,10,0.1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,0,0.630011274355604,1,1,1.25,"B  Axis identifiability",0.630011274355604,"Fixed sparse
+informative set","Estimated",0.630011274355604
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.292372889225804,1,1,0,"B  Axis identifiability",0.292372889225804,"Fixed sparse
+informative set","Estimated",0.292372889225804
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,500,10,0.02,"independent-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.3746111108403,1,1,0.75,"B  Axis identifiability",0.3746111108403,"Fixed sparse
+informative set","Estimated",0.3746111108403
+"fixed_sparse","Fixed sparse informative set with added noise features","above",24,500,10,0.02,"independent-gaussian",13.0829392424013,1,10.4663513939211,3,3,0,0.411467434787672,1,1,1.25,"B  Axis identifiability",0.411467434787672,"Fixed sparse
+informative set","Estimated",0.411467434787672
+"fixed_total_spike","Fixed total signal with added noise features","below",24,100,100,1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.533791363682142,1,1,0,"B  Axis identifiability",0.533791363682142,"Fixed total signal
+with added noise","Estimated",0.533791363682142
+"fixed_total_spike","Fixed total signal with added noise features","below",24,100,100,1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.528576088758114,1,1,0.75,"B  Axis identifiability",0.528576088758114,"Fixed total signal
+with added noise","Estimated",0.528576088758114
+"fixed_total_spike","Fixed total signal with added noise features","above",24,100,100,1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,0,0.611519394418567,1,1,1.25,"B  Axis identifiability",0.611519394418567,"Fixed total signal
+with added noise","Estimated",0.611519394418567
+"fixed_total_spike","Fixed total signal with added noise features","below",24,500,500,1,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.308330749844536,1,1,0,"B  Axis identifiability",0.308330749844536,"Fixed total signal
+with added noise","Estimated",0.308330749844536
+"fixed_total_spike","Fixed total signal with added noise features","below",24,500,500,1,"independent-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.379278066405853,1,1,0.75,"B  Axis identifiability",0.379278066405853,"Fixed total signal
+with added noise","Estimated",0.379278066405853
+"fixed_total_spike","Fixed total signal with added noise features","above",24,500,500,1,"independent-gaussian",13.0829392424013,1,10.4663513939211,3,3,0,0.417499581848733,1,1,1.25,"B  Axis identifiability",0.417499581848733,"Fixed total signal
+with added noise","Estimated",0.417499581848733
+"growing_coherent","Growing coherent informative set","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.500244646843305,1,1,0,"B  Axis identifiability",0.500244646843305,"Growing coherent
+information","Estimated",0.500244646843305
+"growing_coherent","Growing coherent informative set","above",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.839448762799085,1,1,2.37170824512628,"B  Axis identifiability",0.839448762799085,"Growing coherent
+information","Estimated",0.839448762799085
+"growing_coherent","Growing coherent informative set","above",24,100,10,0.1,"independent-gaussian",8.74908877895146,1,6.99927102316117,3,3,1,0.94335691344319,1,1,3.95284707521047,"B  Axis identifiability",0.94335691344319,"Growing coherent
+information","Estimated",0.94335691344319
+"growing_coherent","Growing coherent informative set","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.357286399000041,1,1,0,"B  Axis identifiability",0.357286399000041,"Growing coherent
+information","Estimated",0.357286399000041
+"growing_coherent","Growing coherent informative set","above",24,500,10,0.02,"independent-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.676559722198201,1,1,2.37170824512628,"B  Axis identifiability",0.676559722198201,"Growing coherent
+information","Estimated",0.676559722198201
+"growing_coherent","Growing coherent informative set","above",24,500,10,0.02,"independent-gaussian",13.0829392424013,1,10.4663513939211,3,3,0,0.846980425227364,1,1,3.95284707521047,"B  Axis identifiability",0.846980425227364,"Growing coherent
+information","Estimated",0.846980425227364
+"null_near_null","Null or near-null signal","below",24,100,10,0.1,"independent-gaussian",0,1,6.99927102316117,3,3,0,0.297308504907679,0.666666666666667,1,0,"B  Axis identifiability",0.297308504907679,"Null or near-null
+signal","Estimated",0.297308504907679
+"null_near_null","Null or near-null signal","below",24,100,10,0.1,"independent-gaussian",5.24945326737087,1,6.99927102316117,3,3,0,0.435324210768356,1,1,0.75,"B  Axis identifiability",0.435324210768356,"Null or near-null
+signal","Estimated",0.435324210768356
+"null_near_null","Null or near-null signal","below",24,500,10,0.02,"independent-gaussian",0,1,10.4663513939211,3,3,0,0.422886031312271,1,1,0,"B  Axis identifiability",0.422886031312271,"Null or near-null
+signal","Estimated",0.422886031312271
+"null_near_null","Null or near-null signal","below",24,500,10,0.02,"independent-gaussian",7.84976354544079,1,10.4663513939211,3,3,0,0.37739962967865,0.666666666666667,1,0.75,"B  Axis identifiability",0.37739962967865,"Null or near-null
+signal","Estimated",0.37739962967865
