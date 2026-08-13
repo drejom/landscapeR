@@ -61,6 +61,29 @@ k1_high_dimensional_regime <- function(id = NULL) {
     if (ratio > 1.1) "above" else if (ratio >= 0.9) "near" else "below"
 }
 
+.k1_high_dimensional_noise_reference <- function(
+    regime, n, p, noise_sd, module_correlation
+) {
+    if (is.character(regime)) regime <- k1_high_dimensional_regime(regime)
+    covariance_scale <- 1
+    if (identical(regime$covariance_regime,
+            "block-correlated-gaussian")) {
+        module_size <- min(20L, as.integer(p))
+        covariance_scale <- sqrt(1 + (module_size - 1) * module_correlation)
+    }
+    noise_sd * (n * p)^0.25 * covariance_scale
+}
+
+.k1_high_dimensional_child_seed <- function(stream, task_id) {
+    if (!is.integer(stream) || length(stream) != 7L ||
+            !.is_scalar_nonempty_text(task_id)) {
+        .stop_landscapeR_validation("high-dimensional task stream is invalid")
+    }
+    hash <- digest::digest(list(stream = stream, task_id = task_id),
+        algo = "sha256", serialize = TRUE)
+    as.integer(strtoi(substr(hash, 1L, 7L), base = 16L))
+}
+
 #' Generate a governed high-dimensional K=1 control
 #'
 #' Separates total feature count from the number of biologically informative
@@ -141,7 +164,9 @@ synthetic_k1_high_dimensional_control <- function(
     dimnames(expression) <- list(feature_ids, assay_ids)
     names(score) <- sample_ids
     names(loading) <- feature_ids
-    boundary <- noise_sd * (n * p)^0.25
+    boundary <- .k1_high_dimensional_noise_reference(
+        regime, n, p, noise_sd, module_correlation
+    )
     experiment <- SummarizedExperiment::SummarizedExperiment(
         assays = list(logcounts = expression)
     )
@@ -233,14 +258,25 @@ k1_high_dimensional_control_info <- function(x) {
 }
 
 .k1_high_dimensional_assess_one <- function(
-    regime_id, n, p, informative_features, signal_ratio, noise_sd,
-    module_correlation, axis_resamples, seed, recovery_threshold
+    regime_id, n, p, informative_features, signal_strength, noise_sd,
+    module_correlation, axis_resamples, task_stream, task_id,
+    recovery_threshold
 ) {
-    boundary <- noise_sd * (n * p)^0.25
-    signal_strength <- signal_ratio * boundary
+    generator_seed <- .k1_high_dimensional_child_seed(
+        task_stream, paste0(task_id, ":generator")
+    )
+    association_seed <- .k1_high_dimensional_child_seed(
+        task_stream, paste0(task_id, ":association")
+    )
+    proposal_seed <- .k1_high_dimensional_child_seed(
+        task_stream, paste0(task_id, ":proposal")
+    )
+    resampling_seed <- .k1_high_dimensional_child_seed(
+        task_stream, paste0(task_id, ":resampling")
+    )
     control <- synthetic_k1_high_dimensional_control(
         regime_id, n, p, informative_features, signal_strength,
-        noise_sd, module_correlation, seed
+        noise_sd, module_correlation, generator_seed
     )
     info <- k1_high_dimensional_control_info(control)
     config <- .k1_high_dimensional_config()
@@ -259,11 +295,12 @@ k1_high_dimensional_control_info <- function(x) {
     target_cosine <- cosines[[target_component]]
     atlas <- associate_metadata(
         fitted, specification = config@analysis,
-        n_resamples = 0L, seed = seed + 1L, sequential_internal = TRUE
+        n_resamples = 0L, seed = association_seed,
+        sequential_internal = TRUE
     )
     proposal <- if (is(atlas, "MetadataAssociationAtlas")) {
         propose_component(
-            atlas, n_permutations = 0L, seed = seed + 2L,
+            atlas, n_permutations = 0L, seed = proposal_seed,
             sequential_internal = TRUE
         )
     } else NULL
@@ -282,7 +319,7 @@ k1_high_dimensional_control_info <- function(x) {
         target_rows$proposal_eligible & is.finite(target_rows$effect_magnitude)
     )
     plan <- .identifiability_resampling_plan(
-        fitted, config@analysis, axis_resamples, seed + 3L
+        fitted, config@analysis, axis_resamples, resampling_seed
     )
     similarities <- vapply(seq_len(axis_resamples), function(index) {
         draw <- plan$draws[[index]]
@@ -330,9 +367,30 @@ k1_high_dimensional_control_info <- function(x) {
     )
     evidence <- list(
         version = "k1-high-dimensional-replicate-v1",
-        generator = info, target_component = target_component,
-        bootstrap_plan_digest = plan$digest,
-        bootstrap_similarities = similarities,
+        generator = info,
+        rng = list(
+            task_id = task_id, task_stream = task_stream,
+            child_seeds = c(
+                generator = generator_seed, association = association_seed,
+                proposal = proposal_seed, resampling = resampling_seed
+            )
+        ),
+        target_recovery = list(
+            target_component = target_component,
+            target_loading_cosine = target_cosine,
+            threshold = recovery_threshold,
+            met = target_cosine >= recovery_threshold
+        ),
+        component_interpretation = list(atlas = atlas, proposal = proposal),
+        axis_identifiability = list(
+            plan_digest = plan$digest, similarities = similarities,
+            n_requested = as.integer(axis_resamples),
+            n_completed = as.integer(sum(completed))
+        ),
+        downstream_estimability = list(
+            estimable = downstream_estimable,
+            target_associations = target_rows
+        ),
         row = row
     )
     list(row = row, evidence = evidence)
@@ -390,8 +448,10 @@ k1_high_dimensional_control_info <- function(x) {
     loading_norm <- if (identical(regime$id, "growing_coherent")) {
         sqrt(informative)
     } else 1
-    boundary <- noise_sd * (n * p)^0.25
-    signal <- task$signal_ratio[[1L]] * boundary
+    boundary <- .k1_high_dimensional_noise_reference(
+        regime, n, p, noise_sd, module_correlation
+    )
+    signal <- task$signal_strength[[1L]]
     data.frame(
         task_id = task_id,
         replicate_index = task$replicate_index[[1L]],
@@ -483,7 +543,7 @@ k1_high_dimensional_control_info <- function(x) {
         expected <- value$row
         rownames(expected) <- NULL
         rownames(observed) <- NULL
-        similarities <- value$evidence$bootstrap_similarities
+        similarities <- value$evidence$axis_identifiability$similarities
         completed <- is.finite(similarities)
         generator <- value$evidence$generator
         valid_generator <- is.list(generator) &&
@@ -502,7 +562,26 @@ k1_high_dimensional_control_info <- function(x) {
             identical(generator$boundary_position,
                 observed$boundary_position[[1L]]) &&
             is.list(generator$planted_answer_key)
-        identical(expected, observed) && valid_generator &&
+        interpretation <- value$evidence$component_interpretation
+        recovery <- value$evidence$target_recovery
+        downstream <- value$evidence$downstream_estimability
+        rng <- value$evidence$rng
+        valid_evidence <- is.list(interpretation) &&
+            is(interpretation$atlas, "MetadataAssociationAtlas") &&
+            (is(interpretation$proposal, "ComponentProposal") ||
+                is(interpretation$proposal, "ComponentAbstention")) &&
+            identical(recovery$target_loading_cosine,
+                observed$target_loading_cosine[[1L]]) &&
+            identical(recovery$threshold, x$recovery_threshold) &&
+            identical(recovery$met, observed$recovery_met[[1L]]) &&
+            identical(downstream$estimable,
+                observed$downstream_estimable[[1L]]) &&
+            is.data.frame(downstream$target_associations) &&
+            identical(rng$task_id, observed$task_id[[1L]]) &&
+            identical(rng$task_stream,
+                x$execution$provenance$task_streams[[index]]) &&
+            is.integer(rng$child_seeds) && length(rng$child_seeds) == 4L
+        identical(expected, observed) && valid_generator && valid_evidence &&
             identical(value$evidence$generator$regime_id,
                 observed$regime_id[[1L]]) &&
             identical(as.integer(sum(completed)),
@@ -522,9 +601,9 @@ k1_high_dimensional_control_info <- function(x) {
 #'
 #' @param regime_ids governed regime identifiers.
 #' @param feature_counts total feature counts.
-#' @param signal_ratios planted per-loading coefficient relative to the
-#'   analytic white-noise boundary. The effective signal also reflects loading
-#'   norm, so it grows only in the coherent-information regime.
+#' @param signal_ratios planted coefficients relative to the noise reference at
+#'   the smallest feature count. Coefficients remain fixed as feature count
+#'   grows; only the coherent-information regime increases its loading norm.
 #' @param replicates deterministic repetitions per cell.
 #' @param n biological observations per dataset.
 #' @param informative_features informative features for sparse regimes.
@@ -548,17 +627,36 @@ run_k1_high_dimensional_calibration <- function(
 ) {
     regimes <- k1_high_dimensional_regime()
     if (!is.character(regime_ids) || !length(regime_ids) ||
+            anyNA(regime_ids) || anyDuplicated(regime_ids) ||
             any(!regime_ids %in% names(regimes)) ||
             !is.numeric(feature_counts) || !length(feature_counts) ||
             any(!vapply(feature_counts, .is_whole_number, logical(1L), 2L)) ||
+            anyDuplicated(feature_counts) ||
             !is.numeric(signal_ratios) || !length(signal_ratios) ||
             any(!is.finite(signal_ratios)) || any(signal_ratios < 0) ||
+            anyDuplicated(signal_ratios) ||
             !.is_whole_number(replicates, 1L) ||
-            !.is_whole_number(axis_resamples, 1L)) {
+            !.is_whole_number(n, 4L) ||
+            !.is_whole_number(informative_features, 1L) ||
+            !is.numeric(noise_sd) || length(noise_sd) != 1L ||
+            !is.finite(noise_sd) || noise_sd <= 0 ||
+            !is.numeric(module_correlation) ||
+            length(module_correlation) != 1L ||
+            !is.finite(module_correlation) || module_correlation < 0 ||
+            module_correlation >= 1 ||
+            !is.numeric(recovery_threshold) ||
+            length(recovery_threshold) != 1L ||
+            !is.finite(recovery_threshold) || recovery_threshold <= 0 ||
+            recovery_threshold > 1 ||
+            !.is_whole_number(axis_resamples, 1L) ||
+            !.is_whole_number(seed, 0L) ||
+            !is.logical(sequential_internal) ||
+            length(sequential_internal) != 1L || is.na(sequential_internal)) {
         .stop_landscapeR_validation(
             "high-dimensional calibration grid is invalid"
         )
     }
+    reference_p <- min(as.integer(feature_counts))
     grid <- expand.grid(
         regime_id = regime_ids, p = as.integer(feature_counts),
         signal_ratio = signal_ratios, replicate_index = seq_len(replicates),
@@ -568,6 +666,12 @@ run_k1_high_dimensional_calibration <- function(
         grid$regime_id != "null_near_null" | grid$signal_ratio <= 0.75,
         , drop = FALSE
     ]
+    grid$signal_strength <- vapply(seq_len(nrow(grid)), function(index) {
+        regime <- regimes[[grid$regime_id[[index]]]]
+        grid$signal_ratio[[index]] * .k1_high_dimensional_noise_reference(
+            regime, n, reference_p, noise_sd, module_correlation
+        )
+    }, numeric(1L))
     task_ids <- sprintf(
         "regime=%s;p=%d;ratio=%g;replicate=%04d",
         grid$regime_id, grid$p, grid$signal_ratio, grid$replicate_index
@@ -581,8 +685,8 @@ run_k1_high_dimensional_calibration <- function(
             count <- min(as.integer(informative_features), task$p[[1L]])
             result <- .k1_high_dimensional_assess_one(
                 task$regime_id[[1L]], n, task$p[[1L]], count,
-                task$signal_ratio[[1L]], noise_sd, module_correlation,
-                axis_resamples, as.integer(stream[[2L]]), recovery_threshold
+                task$signal_strength[[1L]], noise_sd, module_correlation,
+                axis_resamples, stream, task_id, recovery_threshold
             )
             result$row <- cbind(
                 task_id = task_id,
@@ -612,7 +716,10 @@ run_k1_high_dimensional_calibration <- function(
         scientific_context = list(
             sampling_unit = "independent synthetic biological observation",
             target_field = "condition",
-            boundary = "noise_sd * (n * p)^(1/4) white-noise reference"
+            boundary = paste(
+                "noise_sd * (n * p)^(1/4), multiplied by the square root",
+                "of the largest block-covariance eigenvalue when correlated"
+            )
         ),
         execution = execution, replicates = rows,
         cells = .k1_high_dimensional_cell_summary(rows)
@@ -681,7 +788,7 @@ plot_k1_high_dimensional_calibration <- function(assessment) {
             "Estimated" = 21, "Not estimable" = 4
         )) +
         ggplot2::scale_fill_manual(values = c(
-            "Estimated" = semantic[["focal"]], "Not estimable" = NA
+            "Estimated" = semantic[["paper"]], "Not estimable" = NA
         )) +
         ggplot2::scale_linetype_discrete(labels = function(x) {
             format(as.integer(x), big.mark = ",")
@@ -692,7 +799,7 @@ plot_k1_high_dimensional_calibration <- function(assessment) {
         ggplot2::scale_y_continuous(limits = c(0, 1),
             breaks = c(0, 0.5, 1)) +
         ggplot2::labs(
-            x = "Effective signal relative to the recovery boundary",
+            x = "Effective signal relative to the noise reference",
             y = "Observed probability or similarity", linetype = "Features",
             shape = NULL, fill = NULL
         ) +
@@ -714,9 +821,9 @@ plot_k1_high_dimensional_calibration <- function(assessment) {
                 "under target-stratified biological-unit bootstrap")
         ),
         encodings = c(
-            paste("Red circles show exact cell summaries and black lines join",
+            paste("Black-outlined circles show exact cell summaries and lines join",
                 "equal feature counts within a signal regime"),
-            paste("The pale vertical line marks the analytic white-noise",
+            paste("The pale vertical line marks the covariance-adjusted noise",
                 "reference; crosses mark quantities that were not estimable")
         ),
         estimand = "recovery of a planted feature-loading direction",
@@ -727,7 +834,7 @@ plot_k1_high_dimensional_calibration <- function(assessment) {
         uncertainty = sprintf(
             "%d outer executions and %d of %d target-axis refits completed",
             sum(cells$n_execution_completed),
-            sum(cells$n_execution_completed * assessment$axis_resamples),
+            sum(assessment$replicates$axis_refits_completed),
             sum(cells$n_requested * assessment$axis_resamples)
         ),
         threshold = sprintf(
@@ -739,7 +846,7 @@ plot_k1_high_dimensional_calibration <- function(assessment) {
             "exact cell table but are not repeated on this primary recovery map"
         ),
         claim_boundary = paste(
-            "The analytic white-noise reference is a disclosed simulation",
+            "The covariance-adjusted noise reference is a disclosed simulation",
             "coordinate, not a biological acceptance threshold or universal",
             "sample-size rule"
         ),

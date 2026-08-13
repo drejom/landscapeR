@@ -25,9 +25,9 @@ run_k1_high_dimensional_calibration(
 
 \item{feature_counts}{total feature counts.}
 
-\item{signal_ratios}{planted per-loading coefficient relative to the
-analytic white-noise boundary. The effective signal also reflects loading
-norm, so it grows only in the coherent-information regime.}
+\item{signal_ratios}{planted coefficients relative to the noise reference at
+the smallest feature count. Coefficients remain fixed as feature count
+grows; only the coherent-information regime increases its loading norm.}
 
 \item{replicates}{deterministic repetitions per cell.}
 

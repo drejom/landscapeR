@@ -1,0 +1,51 @@
+---
+title: "Map high-dimensional K=1 recovery"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Map high-dimensional K=1 recovery}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(landscapeR)
+```
+
+This calibration asks a narrow question: when does a planted biological
+direction remain recoverable as the expression matrix becomes wider? It does
+not estimate a universal sample-size requirement and it does not establish
+biological validity.
+
+Five regimes separate different reasons for increasing the number of features.
+The fixed-total and fixed-sparse regimes add noise features without increasing
+the planted signal. The coherent regime adds aligned informative features.
+The correlated-module regime changes the noise covariance, and the null regime
+checks that no target is recovered when no meaningful signal is present.
+
+```{r workflow, eval=FALSE}
+assessment <- run_k1_high_dimensional_calibration(
+  feature_counts = c(100L, 1000L, 10000L),
+  signal_ratios = c(0, 0.75, 1, 1.25),
+  replicates = 20L,
+  axis_resamples = 19L,
+  seed = 42L
+)
+
+operating_map <- plot_k1_high_dimensional_calibration(assessment)
+operating_map
+scientific_caption(operating_map)
+```
+
+Panel A reports how often the known planted loading meets the declared cosine
+threshold. Panel B reports how closely that axis recurs when biological
+observations are resampled within target group. The pale vertical line is a
+simulation reference: the independent-noise BBP value, adjusted by the largest
+block-covariance eigenvalue for the correlated-module regime. It is not an
+acceptance threshold.
+
+The complete assessment retains the exact generator declaration, planted
+answer, target recovery, typed association atlas and proposal or abstention,
+axis-resampling evidence, downstream estimability, execution account, and RNG
+streams. Large runs use the caller's future plan, or can be placed in a
+`targets`/`crew` graph with `k1_high_dimensional_calibration_targets()`.

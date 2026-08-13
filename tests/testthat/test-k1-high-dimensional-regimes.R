@@ -130,10 +130,31 @@ test_that("high-dimensional operating evidence is exact and captioned", {
         names(display)))
     expect_identical(nrow(assessment$cells), 8L)
     expect_match(caption, "fixed sparse informative set", ignore.case = TRUE)
-    expect_match(caption, "analytic white-noise reference")
+    expect_match(caption, "covariance-adjusted noise")
     expect_match(caption, "independent synthetic biological observation")
     expect_false(grepl(caption,
         paste(capture.output(print(plot)), collapse = "\n"), fixed = TRUE))
+})
+
+test_that("fixed signal stays fixed while the noise reference grows", {
+    assessment <- run_k1_high_dimensional_calibration(
+        regime_ids = "fixed_total_spike", feature_counts = c(40L, 160L),
+        signal_ratios = 1.25, replicates = 1L, axis_resamples = 1L,
+        seed = 19107L, sequential_internal = TRUE
+    )
+    expect_length(unique(assessment$replicates$signal_strength), 1L)
+    expect_gt(length(unique(assessment$replicates$recovery_boundary)), 1L)
+    expect_identical(as.character(assessment$replicates$boundary_position),
+        c("above", "below"))
+})
+
+test_that("high-dimensional public arguments fail before scheduling", {
+    expect_error(run_k1_high_dimensional_calibration(
+        n = 1L, sequential_internal = TRUE
+    ), class = "landscapeR_validation_error")
+    expect_error(run_k1_high_dimensional_calibration(
+        recovery_threshold = 2, sequential_internal = TRUE
+    ), class = "landscapeR_validation_error")
 })
 
 test_that("high-dimensional artifacts replay and targets stay backend-neutral", {
@@ -188,4 +209,9 @@ test_that("high-dimensional calibration is deterministic and preserves caller RN
     second <- do.call(run_k1_high_dimensional_calibration, arguments)
     expect_identical(first$replicates, second$replicates)
     expect_identical(first$digest, second$digest)
+    evidence <- first$execution$values[[1L]]$evidence
+    expect_identical(evidence$rng$task_stream,
+        first$execution$provenance$task_streams[[1L]])
+    expect_s4_class(evidence$component_interpretation$atlas,
+        "MetadataAssociationAtlas")
 })

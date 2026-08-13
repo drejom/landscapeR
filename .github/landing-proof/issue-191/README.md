@@ -7,12 +7,12 @@ direction. Panel B reports its recurrence when independent biological
 observations are resampled within target group.
 
 The horizontal coordinate is effective planted signal divided by the disclosed
-analytic white-noise reference. The pale vertical line marks a ratio of one.
-Black line types distinguish total feature counts; red points are exact cell
+covariance-adjusted noise reference. The pale vertical line marks a ratio of one.
+Black line types distinguish total feature counts; outlined points are exact cell
 summaries. Rows deliberately distinguish increasing noise dimensionality from
 growing coherent biological information. The former can leave a fixed spike
 submerged as the number of noise features increases, whereas the latter can
-cross the recovery boundary because added features carry aligned information.
+cross the noise reference because added features carry aligned information.
 
 The exact displayed evidence is in `high-dimensional-operating-map.csv`.
 `high-dimensional-cell-summary.csv` additionally retains component nomination
