@@ -162,6 +162,13 @@
         )
     }
     run_one <- function(i) {
+            condition_code <- function(condition) {
+                if (inherits(condition, "landscapeR_validation_error")) {
+                    "validation-failure"
+                } else {
+                    "task-error"
+                }
+            }
             tryCatch(
                 .with_rng_stream(task_streams[[i]], function() {
                     value <- worker(tasks[[i]], task_ids[[i]], task_streams[[i]])
@@ -177,7 +184,7 @@
                 }),
                 error = function(condition) list(
                     completed = FALSE,
-                    failure_code = .repetition_condition_code(condition),
+                    failure_code = condition_code(condition),
                     value = NULL
                 )
             )
