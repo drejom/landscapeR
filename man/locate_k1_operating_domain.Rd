@@ -28,4 +28,6 @@ A typed \code{K1OperatingDomainLocation}.
 Links observed experiment diagnostics to exact compatible calibration cells.
 The function refuses to extrapolate when design, feature, covariance, or
 signal/noise diagnostics are outside the supplied calibration evidence.
+Sampling-design and high-dimensional recovery and estimability probabilities
+are retained separately; no unvalidated joint probability is calculated.
 }

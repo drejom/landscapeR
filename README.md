@@ -129,6 +129,11 @@ the shared machinery does not make the three scientific designs interchangeable.
 experiment with compatible design-aware and high-dimensional calibration
 cells. It returns the exact cells supporting a point or uncertainty interval,
 or typed out-of-domain evidence without extrapolating a recovery probability.
+Sampling-design recovery and downstream estimability remain separate from the
+corresponding high-dimensional probabilities; the package does not invent a
+joint probability. Destructive designs match total retained samples as well as
+per-cell counts, and the displayed signal domain uses only compatible feature
+counts.
 This locates operating characteristics; it does not project biological samples
 into a synthetic state space or quasi-potential landscape.
 

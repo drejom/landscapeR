@@ -26,6 +26,7 @@ region_diagnostics <- k1_experiment_diagnostics(
     covariance_regime = "independent-gaussian",
     signal_regime = "fixed_sparse",
     design = list(
+        n_retained = c(8, 24),
         minimum_cell_size = c(1, 3),
         maximum_cell_size = c(1, 3),
         mean_retained_per_declared_cell = c(1, 3)
@@ -42,6 +43,7 @@ outside_diagnostics <- k1_experiment_diagnostics(
     covariance_regime = "independent-gaussian",
     signal_regime = "fixed_sparse",
     design = list(
+        n_retained = 8,
         minimum_cell_size = 1,
         maximum_cell_size = 1,
         mean_retained_per_declared_cell = 1

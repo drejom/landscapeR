@@ -134,6 +134,7 @@ k1_experiment_diagnostics <- function(
 
 .k1_locator_design_fields <- list(
     independent_time_course = c(
+        "n_retained",
         "minimum_cell_size", "maximum_cell_size",
         "mean_retained_per_declared_cell"
     ),
@@ -205,10 +206,13 @@ k1_experiment_diagnostics <- function(
     domain <- cells$regime_id == diagnostics$signal_regime &
         cells$covariance_regime == diagnostics$covariance_regime &
         is.finite(effective_signal_ratio)
-    domain_cells <- cells[domain, , drop = FALSE]
+    regime_cells <- cells[domain, , drop = FALSE]
     p_levels <- .k1_locator_support_levels(
-        domain_cells$p, diagnostics$feature_count
+        regime_cells$p, diagnostics$feature_count
     )
+    domain_cells <- regime_cells[
+        regime_cells$p %in% p_levels, , drop = FALSE
+    ]
     ratio_support <- lapply(p_levels, function(p) {
         rows <- domain_cells[domain_cells$p == p, , drop = FALSE]
         levels <- .k1_locator_support_levels(
@@ -234,21 +238,45 @@ k1_experiment_diagnostics <- function(
 
 .k1_empty_locator_cells <- function() data.frame()
 
+.k1_locator_finite_range <- function(cells, field, located) {
+    if (!located || !nrow(cells) || !field %in% names(cells)) return(NA_real_)
+    values <- cells[[field]]
+    values <- values[is.finite(values)]
+    if (length(values)) unique(range(values)) else NA_real_
+}
+
+.k1_locator_design_probability_fields <- function(sampling_design) {
+    if (identical(sampling_design@kind, "independent_time_course")) {
+        c(
+            recovery = "recovery_probability",
+            downstream = "downstream_estimability_probability"
+        )
+    } else {
+        c(
+            recovery = "recovery_probability",
+            downstream = "model_estimability_probability"
+        )
+    }
+}
+
 .new_k1_operating_location <- function(
     status, reason, sampling_design, diagnostics, design_assessment,
     signal_assessment, design_cells, signal_domain_cells, signal_cells
 ) {
     located <- status %in% c("located_point", "located_region")
-    recovery_probability <- if (located && nrow(signal_cells)) {
-        range(signal_cells$recovery_probability, na.rm = TRUE)
-    } else NA_real_
-    if (any(!is.finite(recovery_probability))) recovery_probability <- NA_real_
-    estimability_probability <- if (located && nrow(signal_cells)) {
-        range(signal_cells$downstream_estimability_probability, na.rm = TRUE)
-    } else NA_real_
-    if (any(!is.finite(estimability_probability))) {
-        estimability_probability <- NA_real_
-    }
+    design_fields <- .k1_locator_design_probability_fields(sampling_design)
+    design_recovery_probability <- .k1_locator_finite_range(
+        design_cells, design_fields[["recovery"]], located
+    )
+    design_estimability_probability <- .k1_locator_finite_range(
+        design_cells, design_fields[["downstream"]], located
+    )
+    signal_recovery_probability <- .k1_locator_finite_range(
+        signal_cells, "recovery_probability", located
+    )
+    signal_estimability_probability <- .k1_locator_finite_range(
+        signal_cells, "downstream_estimability_probability", located
+    )
     payload <- list(
         version = .k1_operating_location_version,
         status = status,
@@ -265,8 +293,12 @@ k1_experiment_diagnostics <- function(
         design_cells = design_cells,
         signal_domain_cells = signal_domain_cells,
         signal_cells = signal_cells,
-        recovery_probability = recovery_probability,
-        downstream_estimability_probability = estimability_probability,
+        design_recovery_probability = design_recovery_probability,
+        design_downstream_estimability_probability =
+            design_estimability_probability,
+        signal_recovery_probability = signal_recovery_probability,
+        signal_downstream_estimability_probability =
+            signal_estimability_probability,
         claim_status = "operating_characteristic_location_only"
     )
     structure(c(payload, list(
@@ -284,18 +316,26 @@ k1_experiment_diagnostics <- function(
             "version", "status", "reason", "sampling_design",
             "diagnostics_digest", "design_assessment_digest",
             "signal_assessment_digest", "locator", "design_cells",
-            "signal_domain_cells", "signal_cells", "recovery_probability",
-            "downstream_estimability_probability", "claim_status", "digest"
+            "signal_domain_cells", "signal_cells",
+            "design_recovery_probability",
+            "design_downstream_estimability_probability",
+            "signal_recovery_probability",
+            "signal_downstream_estimability_probability",
+            "claim_status", "digest"
         )) && identical(x$version, .k1_operating_location_version) &&
         x$status %in% statuses && is.character(x$reason) &&
         length(x$reason) == 1L && is.data.frame(x$design_cells) &&
         is.data.frame(x$signal_domain_cells) &&
         is.data.frame(x$signal_cells) && identical(x$claim_status,
             "operating_characteristic_location_only") &&
-        is.numeric(x$recovery_probability) &&
-        length(x$recovery_probability) %in% 1:2 &&
-        is.numeric(x$downstream_estimability_probability) &&
-        length(x$downstream_estimability_probability) %in% 1:2 &&
+        all(vapply(c(
+            "design_recovery_probability",
+            "design_downstream_estimability_probability",
+            "signal_recovery_probability",
+            "signal_downstream_estimability_probability"
+        ), function(field) {
+            is.numeric(x[[field]]) && length(x[[field]]) %in% 1:2
+        }, logical(1L))) &&
         identical(observed_digest, digest::digest(payload, algo = "sha256"))
     if (!valid) {
         .stop_landscapeR_validation(
@@ -303,8 +343,12 @@ k1_experiment_diagnostics <- function(
         )
     }
     if (identical(x$status, "out_of_domain") &&
-            (is.finite(x$recovery_probability) ||
-                is.finite(x$downstream_estimability_probability))) {
+            any(vapply(c(
+                "design_recovery_probability",
+                "design_downstream_estimability_probability",
+                "signal_recovery_probability",
+                "signal_downstream_estimability_probability"
+            ), function(field) any(is.finite(x[[field]])), logical(1L)))) {
         .stop_landscapeR_validation(
             "out-of-domain evidence cannot contain extrapolated probabilities"
         )
@@ -329,6 +373,8 @@ k1_experiment_diagnostics <- function(
 #' Links observed experiment diagnostics to exact compatible calibration cells.
 #' The function refuses to extrapolate when design, feature, covariance, or
 #' signal/noise diagnostics are outside the supplied calibration evidence.
+#' Sampling-design and high-dimensional recovery and estimability probabilities
+#' are retained separately; no unvalidated joint probability is calculated.
 #'
 #' @param sampling_design declared `SamplingDesign` for the experiment.
 #' @param design_assessment compatible independent-time or repeated-subject
@@ -398,7 +444,18 @@ locate_k1_operating_domain <- function(
         "signal_noise_out_of_range"
     } else if (!signal_support$rectangular_coverage) {
         "insufficient_calibration_coverage"
-    } else ""
+    } else if (!all(is.finite(c(
+        signal_support$support$recovery_probability,
+        signal_support$support$downstream_estimability_probability
+    )))) {
+        "insufficient_probability_evidence"
+    } else {
+        design_fields <- .k1_locator_design_probability_fields(sampling_design)
+        if (!all(is.finite(c(
+            design_cells[[design_fields[["recovery"]]]],
+            design_cells[[design_fields[["downstream"]]]]
+        )))) "insufficient_probability_evidence" else ""
+    }
     if (nzchar(reason)) {
         return(.new_k1_operating_location(
             "out_of_domain", reason, sampling_design, diagnostics,
@@ -561,8 +618,8 @@ plot_k1_operating_domain <- function(location) {
     }
     caption <- .new_scientific_caption_view(
         title = "Experiment location within calibrated K=1 operating evidence",
-        experiment_label = "Declared real-experiment diagnostics",
-        target_field = "K=1 target axis",
+        experiment_label = "declared real-data",
+        target_field = "K=1 coordinate",
         sampling_unit = location$sampling_design$kind,
         panels = c(
             A = "Target-axis recovery probability in compatible calibration cells",

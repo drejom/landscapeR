@@ -27,6 +27,7 @@ test_that("an in-domain experiment is linked to exact supporting cells", {
         covariance_regime = "independent-gaussian",
         signal_regime = "fixed_sparse",
         design = list(
+            n_retained = 8,
             minimum_cell_size = 1,
             maximum_cell_size = 1,
             mean_retained_per_declared_cell = 1
@@ -42,6 +43,10 @@ test_that("an in-domain experiment is linked to exact supporting cells", {
     expect_identical(location$design_cells$template_id, "balanced_1")
     expect_identical(nrow(location$signal_cells), 1L)
     expect_identical(location$diagnostics_digest, diagnostics$digest)
+    expect_equal(location$design_recovery_probability, 1)
+    expect_equal(location$design_downstream_estimability_probability, 0)
+    expect_equal(location$signal_recovery_probability, 0)
+    expect_equal(location$signal_downstream_estimability_probability, 1)
 })
 
 test_that("an uncertainty region retains every supporting boundary cell", {
@@ -57,6 +62,7 @@ test_that("an uncertainty region retains every supporting boundary cell", {
         covariance_regime = "independent-gaussian",
         signal_regime = "fixed_sparse",
         design = list(
+            n_retained = c(8, 24),
             minimum_cell_size = c(1, 3),
             maximum_cell_size = c(1, 3),
             mean_retained_per_declared_cell = c(1, 3)
@@ -124,6 +130,7 @@ test_that("malformed design assessments fail through the public boundary", {
         covariance_regime = "independent-gaussian",
         signal_regime = "fixed_sparse",
         design = list(
+            n_retained = 8,
             minimum_cell_size = 1,
             maximum_cell_size = 1,
             mean_retained_per_declared_cell = 1
@@ -167,6 +174,36 @@ test_that("a repeated-subject experiment uses only repeated-subject cells", {
     expect_identical(location$status, "located_point")
     expect_identical(location$design_cells$template_id, "complete")
     expect_identical(location$sampling_design$kind, "longitudinal")
+    expect_true(all(is.finite(location$design_recovery_probability)))
+    expect_true(all(is.finite(
+        location$design_downstream_estimability_probability
+    )))
+    expect_true(all(is.finite(location$signal_recovery_probability)))
+    expect_true(all(is.finite(
+        location$signal_downstream_estimability_probability
+    )))
+})
+
+test_that("independent designs require compatible total retained samples", {
+    fixture <- locator_fixture()
+    diagnostics <- k1_experiment_diagnostics(
+        feature_count = 20L, spectral_signal = 1, noise_reference = 1,
+        covariance_regime = "independent-gaussian",
+        signal_regime = "fixed_sparse",
+        design = list(
+            n_retained = 80,
+            minimum_cell_size = 1,
+            maximum_cell_size = 1,
+            mean_retained_per_declared_cell = 1
+        )
+    )
+    location <- locate_k1_operating_domain(
+        independent_time_course("collection_time", "days"),
+        fixture$independent, fixture$signal, diagnostics
+    )
+
+    expect_identical(location$status, "out_of_domain")
+    expect_identical(location$reason, "design_out_of_range")
 })
 
 test_that("out-of-range signal evidence is not extrapolated", {
@@ -176,6 +213,7 @@ test_that("out-of-range signal evidence is not extrapolated", {
         covariance_regime = "independent-gaussian",
         signal_regime = "fixed_sparse",
         design = list(
+            n_retained = 8,
             minimum_cell_size = 1,
             maximum_cell_size = 1,
             mean_retained_per_declared_cell = 1
@@ -188,7 +226,7 @@ test_that("out-of-range signal evidence is not extrapolated", {
 
     expect_identical(location$status, "out_of_domain")
     expect_identical(location$reason, "signal_noise_out_of_range")
-    expect_true(is.na(location$recovery_probability))
+    expect_true(is.na(location$signal_recovery_probability))
 
     plot <- plot_k1_operating_domain(location)
     plot_data <- attr(plot, "landscapeR_k1_operating_domain_data")
@@ -213,6 +251,69 @@ test_that("out-of-range signal evidence is not extrapolated", {
         ignore.case = TRUE)
 })
 
+test_that("feature-specific domains cannot borrow another feature count", {
+    fixture <- locator_fixture()
+    p40 <- fixture$signal$cells[fixture$signal$cells$p == 40L, , drop = FALSE]
+    p40_ratio <- p40$signal_strength / p40$recovery_boundary
+    p20 <- fixture$signal$cells[fixture$signal$cells$p == 20L, , drop = FALSE]
+    p20_ratio <- p20$signal_strength / p20$recovery_boundary
+    outside_p40 <- mean(c(max(p40_ratio), max(p20_ratio)))
+    diagnostics <- k1_experiment_diagnostics(
+        feature_count = 40L, spectral_signal = outside_p40,
+        noise_reference = 1, covariance_regime = "independent-gaussian",
+        signal_regime = "fixed_sparse",
+        design = list(
+            n_retained = 8,
+            minimum_cell_size = 1,
+            maximum_cell_size = 1,
+            mean_retained_per_declared_cell = 1
+        )
+    )
+    location <- locate_k1_operating_domain(
+        independent_time_course("collection_time", "days"),
+        fixture$independent, fixture$signal, diagnostics
+    )
+    plot_data <- attr(plot_k1_operating_domain(location),
+        "landscapeR_k1_operating_domain_data")
+
+    expect_identical(location$reason, "signal_noise_out_of_range")
+    expect_true(all(location$signal_domain_cells$p == 40L))
+    expect_true(all(plot_data$experiment_bounds$clipped == "above"))
+})
+
+test_that("non-evaluable supporting cells produce typed refusal", {
+    fixture <- locator_fixture()
+    non_evaluable_design <- run_k1_independent_time_course_calibration(
+        template_ids = "balanced_1", replicates = 1L, p = 20L,
+        recovery_threshold = 1, seed = 19204L,
+        sequential_internal = TRUE
+    )
+    expect_true(is.na(
+        non_evaluable_design$cells$downstream_estimability_probability
+    ))
+    diagnostics <- k1_experiment_diagnostics(
+        feature_count = 20L,
+        spectral_signal = fixture$signal$cells$signal_strength[[1L]],
+        noise_reference = fixture$signal$cells$recovery_boundary[[1L]],
+        covariance_regime = "independent-gaussian",
+        signal_regime = "fixed_sparse",
+        design = list(
+            n_retained = 8,
+            minimum_cell_size = 1,
+            maximum_cell_size = 1,
+            mean_retained_per_declared_cell = 1
+        )
+    )
+
+    location <- locate_k1_operating_domain(
+        independent_time_course("collection_time", "days"),
+        non_evaluable_design, fixture$signal, diagnostics
+    )
+
+    expect_identical(location$status, "out_of_domain")
+    expect_identical(location$reason, "insufficient_probability_evidence")
+})
+
 test_that("plot data reproduce every visible operating-domain layer", {
     fixture <- locator_fixture()
     diagnostics <- k1_experiment_diagnostics(
@@ -220,6 +321,7 @@ test_that("plot data reproduce every visible operating-domain layer", {
         noise_reference = 1, covariance_regime = "independent-gaussian",
         signal_regime = "fixed_sparse",
         design = list(
+            n_retained = c(8, 24),
             minimum_cell_size = c(1, 3),
             maximum_cell_size = c(1, 3),
             mean_retained_per_declared_cell = c(1, 3)
