@@ -980,7 +980,9 @@ plot_k1_revised_acceptance <- function(
         display$facet_label <- unname(design_labels[display$design_id])
         display$feature_count <- factor(
             display$p, levels = sort(unique(display$p)),
-            labels = scales::label_comma()(sort(unique(display$p)))
+            labels = format(
+                sort(unique(display$p)), big.mark = ",", scientific = FALSE
+            )
         )
         plot <- ggplot2::ggplot(display, ggplot2::aes(
             x = feature_count, y = recovery_probability,
@@ -1068,7 +1070,10 @@ plot_k1_revised_acceptance <- function(
         ), , drop = FALSE]
         display$feature_count <- factor(
             display$p, levels = rev(sort(unique(display$p))),
-            labels = scales::label_comma()(rev(sort(unique(display$p))))
+            labels = format(
+                rev(sort(unique(display$p))),
+                big.mark = ",", scientific = FALSE
+            )
         )
         display$signal_ratio_label <- factor(
             display$signal_ratio,
