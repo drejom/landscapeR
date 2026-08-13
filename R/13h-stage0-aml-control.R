@@ -63,6 +63,10 @@
 #' @param disease_signal singular-score scale for the non-dominant target axis
 #' @param dropout_subjects optional subject IDs whose final observation is
 #'   removed
+#' @param removed_observations optional data frame with `mouse_id`, `weeks`,
+#'   and `reason` columns declaring exact observations removed before
+#'   expression is generated; this supports auditable incomplete-trajectory
+#'   calibration without imputing or reclassifying observations
 #' @param seed reproducibility seed
 #' @return a repeated-subject \code{StateTransitionData} with
 #'   \code{SubspaceGroundTruth} and AML control metadata
@@ -75,6 +79,10 @@ synthetic_k1_aml_longitudinal_control <- function(
     time_signal = 8,
     disease_signal = 3,
     dropout_subjects = character(),
+    removed_observations = data.frame(
+        mouse_id = character(), weeks = numeric(), reason = character(),
+        stringsAsFactors = FALSE
+    ),
     seed = 42L
 ) {
     validation_message <- .aml_k1_control_validation(
@@ -89,6 +97,20 @@ synthetic_k1_aml_longitudinal_control <- function(
         .stop_landscapeR_validation(
             "dropout_subjects must be a character vector without missing values"
         )
+    if (!is.data.frame(removed_observations) ||
+            !identical(names(removed_observations),
+                c("mouse_id", "weeks", "reason")) ||
+            !is.character(removed_observations$mouse_id) ||
+            !is.numeric(removed_observations$weeks) ||
+            !is.character(removed_observations$reason) ||
+            anyNA(removed_observations) ||
+            any(!nzchar(removed_observations$mouse_id)) ||
+            any(!nzchar(removed_observations$reason))) {
+        .stop_landscapeR_validation(paste(
+            "removed_observations must be a complete data frame with",
+            "mouse_id, numeric weeks, and non-empty reason columns"
+        ))
+    }
 
     setup_rng(seed)
     conditions <- c("CTL", "CM")
@@ -102,23 +124,56 @@ synthetic_k1_aml_longitudinal_control <- function(
             "dropout_subjects contains unknown subject IDs: ",
             paste(unknown_dropout, collapse = ", ")
         ))
+    unknown_removed_subject <- setdiff(
+        removed_observations$mouse_id, subjects
+    )
+    unknown_removed_time <- setdiff(removed_observations$weeks, times)
+    removal_keys <- paste(
+        removed_observations$mouse_id,
+        removed_observations$weeks,
+        sep = "\r"
+    )
+    if (length(unknown_removed_subject) || length(unknown_removed_time) ||
+            anyDuplicated(removal_keys)) {
+        .stop_landscapeR_validation(paste(
+            "removed_observations must identify unique declared",
+            "subject-time observations"
+        ))
+    }
     subject_condition <- rep(conditions, each = subjects_per_condition)
+    if (length(dropout_subjects) && length(times) < 4L) {
+        .stop_landscapeR_validation(
+            "dropout requires at least four declared time points"
+        )
+    }
+    legacy_removals <- data.frame(
+        mouse_id = dropout_subjects,
+        weeks = rep(max(times), length(dropout_subjects)),
+        reason = rep("terminal_dropout", length(dropout_subjects)),
+        stringsAsFactors = FALSE
+    )
+    declared_removals <- rbind(removed_observations, legacy_removals)
+    declared_keys <- paste(
+        declared_removals$mouse_id, declared_removals$weeks, sep = "\r"
+    )
+    if (anyDuplicated(declared_keys)) {
+        .stop_landscapeR_validation(
+            "dropout_subjects and removed_observations overlap"
+        )
+    }
     rows <- do.call(rbind, lapply(seq_along(subjects), function(i) {
-        observed <- times
-        if (subjects[[i]] %in% dropout_subjects) {
-            if (length(observed) < 4L)
-                .stop_landscapeR_validation(
-                    "dropout requires at least four declared time points"
-                )
-            observed <- observed[-length(observed)]
-        }
         data.frame(
             mouse_id = subjects[[i]],
             condition = subject_condition[[i]],
-            weeks = observed,
+            weeks = times,
             stringsAsFactors = FALSE
         )
     }))
+    intended_n <- nrow(rows)
+    if (nrow(declared_removals)) {
+        observed_keys <- paste(rows$mouse_id, rows$weeks, sep = "\r")
+        rows <- rows[!observed_keys %in% declared_keys, , drop = FALSE]
+    }
     rows$condition <- factor(rows$condition, levels = conditions)
     n <- nrow(rows)
 
@@ -218,6 +273,9 @@ synthetic_k1_aml_longitudinal_control <- function(
         nuisance_axis = "collection-time confounder",
         target_orientation = truth@target_orientation,
         dropout_subjects = dropout_subjects,
+        removed_observations = declared_removals,
+        n_intended = as.integer(intended_n),
+        n_retained = as.integer(n),
         time_signal = time_signal,
         disease_signal = disease_signal,
         noise_sd = noise_sd,

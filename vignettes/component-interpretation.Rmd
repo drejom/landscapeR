@@ -399,6 +399,42 @@ scientific call behind the existing targets and crew controller boundary, so a
 local controller or an hprcc Slurm controller changes deployment rather than
 the scientific graph.
 
+### Incomplete repeated-subject operating evidence
+
+Repeated-subject designs keep the mouse, condition, and observed time attached
+to every retained observation. `k1_repeated_subject_template()` declares four
+mice per condition observed at four intended times, then applies no loss, one
+missed internal visit, terminal dropout in one disease mouse, or terminal
+dropout in two disease mice. The removals remain part of the sampling audit;
+they are not imputed or treated as independent animals.
+
+```{r k1-repeated-subject-calibration, eval=FALSE}
+assessment <- run_k1_repeated_subject_calibration(
+  replicates = 20L,
+  p = 100L,
+  axis_resamples = 19L,
+  seed = 19000L
+)
+operating_map <- plot_k1_repeated_subject_calibration(assessment)
+operating_map
+scientific_caption(operating_map)
+
+artifact <- publish_k1_repeated_subject_calibration(
+  artifact_root = "/absolute/shared/evidence",
+  assessment = assessment
+)
+verify_k1_repeated_subject_calibration(artifact)
+```
+
+Panel A asks whether the planted feature-space target was recovered. Panel B
+asks whether complete-subject bootstrap refits recover the nominated axis.
+Panel C asks whether the required random-intercept-plus-slope model remains
+estimable after recovery. A cross is typed scientific non-estimability, not a
+probability of zero. When the random slope is not identifiable, the method does
+not fall back to a random-intercept-only model or observation-level
+independence. `k1_repeated_subject_calibration_targets()` retains the same
+scientific graph under local crew and hprcc Slurm controllers.
+
 Before a known-truth calibration is frozen, the structured outcome is
 `not-calibrated` and the evidence remains
 `estimable-exploratory-only`. Singular-value gaps are visible diagnostics, not
