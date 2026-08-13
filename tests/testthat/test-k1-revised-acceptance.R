@@ -110,7 +110,7 @@ test_that("revised acceptance manifest is revision-bound and immutable", {
     )
     expect_error(
         k1_revised_acceptance_manifest(
-            protocol_merge_v3(), protocol_merge_v3()
+            protocol_merge_v4(), protocol_merge_v4()
         ),
         "must differ",
         class = "k1_acceptance_runner_error"
