@@ -1,0 +1,11 @@
+Recovery across declared longitudinal sampling designs. The synthetic K=1 assessment
+experiment. Red filled circles denote supported cells, open circles denote unsupported cells,
+and grey squares denote cells with incomplete or non-evaluable execution. The dashed red line
+marks the predeclared 0.90 recovery-probability gate. The analysis unit is one independently
+collected synthetic animal or one repeatedly observed synthetic mouse; the design is
+Independent designs resample one destructively collected animal; repeated designs resample
+complete subject trajectories. SVD used 2 components and no metadata during decomposition.
+Vertical intervals are Wilson 95% confidence intervals for recovery among all 100 requested
+replicates per complete cell. Support requires recovery of at least 0.9 , a Wilson lower bound
+of at least 0.8 , and complete evaluability. Claim status is implementation proof only ;
+results apply only to the displayed synthetic designs and are not a universal sample-size rule.

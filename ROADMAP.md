@@ -9,7 +9,10 @@ and architecture; neither independently changes the schedule.
 source-document boundary.
 
 **Next task after this change lands:** **#193 revised K=1 acceptance**.
-Post-merge execution must use the version 3 merge-derived disjoint seed set.
+Version 3 execution infrastructure must land first. Its seed set is retired
+because four task rows were exercised during runner development. A protocol-only
+version 4 freeze must retain the version 3 scientific settings unchanged and
+derive a fresh post-merge seed set before any production execution.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -141,8 +144,14 @@ The milestone is complete only when:
                               sampling map         sampling map        regimes
                                       └──────────────────┼──────────────────┘
                                                          v
-                                             #193 refreeze + independent
-                                                  acceptance execution
+                                             #193 v3 runner infrastructure
+                                                         │
+                                                         v
+                                             #193 protocol-only v4 refreeze
+                                                         │
+                                                         v
+                                             #193 v4 runner adaptation +
+                                                  independent execution
                                                          │
                                                          v
                                              #51 phase B: aggregate/finalize
@@ -682,7 +691,7 @@ bodies may state dependencies but do not change this ordering.
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | queued — blocked by #189–#191; does not block acceptance |
-| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; v3 freeze, then post-merge HPC execution |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; v3 runner infrastructure, then protocol-only v4 refreeze and reviewed v4 adaptation before HPC execution |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | queued before another calibration module; does not block #191 or #193 |
 <!-- issue-map:end -->
 
