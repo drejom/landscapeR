@@ -1,0 +1,9 @@
+"panel","task_id","direction","x","y","xend","yend"
+"A  Axis recovered
+Downstream interpretation not estimable","outcome-1","Planted reference axis",0,0,1,0
+"B  Axis agreement below threshold
+Downstream not evaluated","outcome-3","Planted reference axis",0,0,1,0
+"A  Axis recovered
+Downstream interpretation not estimable","outcome-1","Cosine-derived unsigned angle",0,0,0.98,0.198997487421324
+"B  Axis agreement below threshold
+Downstream not evaluated","outcome-3","Cosine-derived unsigned angle",0,0,0.7,0.714142842854285
