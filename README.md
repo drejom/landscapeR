@@ -120,6 +120,11 @@ must still merge separately before HPC execution. The committed
 operating maps are implementation fixtures, not acceptance results or
 sample-size recommendations.
 
+In revised K=1 operating maps, red is reserved for a declared supported cell
+or threshold. Continuous recovery probability uses the package's ordered,
+colour-vision-robust Cividis scale. Shape continues to identify the typed cell
+decision, so colour is not the only way to read the result.
+
 Contributors should install the repository safeguards and use the documented
 local/CI parity workflow in
 [`docs/agents/contributor-workflow.md`](docs/agents/contributor-workflow.md).

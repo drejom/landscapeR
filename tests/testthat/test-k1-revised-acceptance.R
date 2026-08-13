@@ -313,6 +313,7 @@ test_that("revised acceptance maps use established encodings and captions", {
     )
     sampling <- plot_k1_revised_acceptance(summary, "sampling_design")
     signal <- plot_k1_revised_acceptance(summary, "signal_regime")
+    semantic <- landscapeR_palette("semantic")
 
     expect_s3_class(sampling, "ggplot")
     expect_s3_class(signal, "ggplot")
@@ -333,6 +334,20 @@ test_that("revised acceptance maps use established encodings and captions", {
         scientific_caption(signal),
         paste(capture.output(print(signal)), collapse = "\n"), fixed = TRUE
     ))
+    expect_identical(
+        unname(sampling$scales$get_scales("fill")$palette(3L)),
+        unname(semantic[c("focal", "paper", "structure")])
+    )
+    expect_identical(
+        unname(vapply(sampling$layers[seq_len(4L)], function(layer) {
+            layer$aes_params$colour
+        }, character(1L))),
+        unname(semantic[c("focal", "nuisance", "nuisance", "ink")])
+    )
+    expect_identical(
+        signal$scales$get_scales("fill")$palette(c(0, 1)),
+        c("#FFEA46", "#00204D")
+    )
 })
 
 test_that("version 3 historical streams are recorded but not authenticated", {
