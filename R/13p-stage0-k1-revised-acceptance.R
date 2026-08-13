@@ -1188,9 +1188,8 @@ plot_k1_revised_acceptance <- function(
             ggplot2::facet_wrap(
                 ggplot2::vars(regime_label), ncol = 3, scales = "free_x"
             ) +
-            ggplot2::scale_fill_gradient(
-                low = semantic[["paper"]], high = semantic[["focal"]],
-                limits = c(0, 1),
+            scale_fill_landscapeR(
+                "continuous", limits = c(0, 1),
                 name = "Recovery"
             ) +
             ggplot2::scale_shape_manual(values = c(

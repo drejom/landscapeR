@@ -17,9 +17,10 @@ thresholds, decisions, and fabricated proof data are unchanged.
 | ![Before signal map](before-signal-operating-map.png) | ![After signal map](after-signal-operating-map.png) |
 
 Cold-reader conclusion: both public views retain identical scientific
-encodings while using the canonical, package-owned red and neutral roles. The
-signal-map change is visible as the corrected focal-red gradient; the sampling
-map change is intentionally subtle.
+encodings while using package-owned semantic roles. The signal-map change is
+visible as the colour-vision-robust Cividis scale for continuous recovery; the
+sampling map uses focal red only for supported cells and is intentionally a
+subtler correction.
 
 Reproduce with `Rscript scripts/render-issue-204-proof.R before` on the parent
 revision and `Rscript scripts/render-issue-204-proof.R after` on this revision.
