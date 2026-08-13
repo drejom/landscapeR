@@ -24,9 +24,11 @@ triangle rows are in
 
 ![Out-of-domain experiment](out-of-domain.png)
 
-The red dashed line lies beyond the pale calibrated domain. No red supporting
-triangles or experiment probability are shown. The typed result is
-`out_of_domain` with reason `signal_noise_out_of_range`. The full caption is in
+The red dashed line and arrow mark the nearest calibrated boundary in the
+direction of the out-of-range experiment; the exact experiment ratio remains
+in the plot data and caption. No red supporting triangles or experiment
+probability are shown. The typed result is `out_of_domain` with reason
+`signal_noise_out_of_range`. The full caption is in
 [`out-of-domain-caption.txt`](out-of-domain-caption.txt), and the compatible
 domain cells are retained in
 [`out-of-domain-compatible-domain.csv`](out-of-domain-compatible-domain.csv).
