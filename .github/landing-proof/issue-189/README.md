@@ -7,6 +7,11 @@ the planted feature-space target. The lower panel reports whether the declared
 condition-by-time estimand was supported after recovery. Crosses are typed
 abstentions, not zero recovery.
 
+One named task carries a declared scheduler interruption in the assessment's
+execution provenance. It is excluded from the scientific denominators and
+exists solely to verify the public partial-execution encoding at the canonical
+100 mm review size.
+
 The proof deliberately includes one animal per condition-time cell, a sparse
 but complete three-animal design, one failed sequencing library, and one absent
 internal condition-time cell. The failed library remains a removal from an

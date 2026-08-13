@@ -78,14 +78,20 @@ test_that("missing internal cells remain absent without imputation or rebalancin
     expect_identical(observed["CM", "2"], 0L)
     expect_identical(
         k1_independent_time_course_control_info(control)$sampling$
-            effective_sampling_information,
-        0
+            mean_retained_per_declared_cell,
+        1.75
     )
 })
 
 test_that("destructive control validation rejects invalid scientific inputs", {
     expect_error(
         synthetic_k1_independent_time_course_control(p = 1L),
+        class = "landscapeR_validation_error"
+    )
+    expect_error(
+        run_k1_independent_time_course_calibration(
+            p = 1L, replicates = 1L
+        ),
         class = "landscapeR_validation_error"
     )
     expect_error(
@@ -143,7 +149,73 @@ test_that("governed calibration separates recovery from downstream estimability"
         assessment$cells$template_id == "missing_internal_cell", ,
         drop = FALSE
     ]
-    expect_identical(missing$effective_sampling_information, 0)
+    expect_identical(missing$mean_retained_per_declared_cell, 1.75)
+
+    contradictory_audit <- assessment
+    contradictory_audit$sampling_audit$balanced_1 <-
+        k1_independent_time_course_template("balanced_2")
+    payload <- unclass(contradictory_audit)
+    payload$digest <- NULL
+    contradictory_audit$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_independent_time_course_calibration(contradictory_audit),
+        class = "landscapeR_validation_error"
+    )
+
+    inconsistent <- assessment
+    inconsistent$cells$recovery_probability[[1L]] <- 0.123
+    payload <- unclass(inconsistent)
+    payload$digest <- NULL
+    inconsistent$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_independent_time_course_calibration(inconsistent),
+        class = "landscapeR_validation_error"
+    )
+
+    contradictory_outcome <- assessment
+    recovered <- which(contradictory_outcome$replicates$recovery_met %in% TRUE)[[1L]]
+    contradictory_outcome$replicates$outcome[[recovered]] <-
+        "recovery_below_threshold"
+    contradictory_outcome$cells <-
+        landscapeR:::.k1_independent_time_cell_summary(
+            contradictory_outcome$replicates
+        )
+    payload <- unclass(contradictory_outcome)
+    payload$digest <- NULL
+    contradictory_outcome$digest <- digest::digest(payload, algo = "sha256")
+    expect_error(
+        plot_k1_independent_time_course_calibration(contradictory_outcome),
+        class = "landscapeR_validation_error"
+    )
+})
+
+test_that("typed association abstention remains scientific non-estimability", {
+    testthat::local_mocked_bindings(
+        associate_metadata = function(...) structure(
+            list(diagnostic = "declared design is non-identifiable"),
+            class = "mock_association_abstention"
+        ),
+        is = function(object, class2) {
+            if (identical(class2, "AssociationAbstention") &&
+                    inherits(object, "mock_association_abstention")) {
+                return(TRUE)
+            }
+            methods::is(object, class2)
+        },
+        association_abstention_diagnostic = function(abstention) {
+            abstention$diagnostic
+        },
+        .package = "landscapeR"
+    )
+    result <- landscapeR:::.k1_independent_time_assess_one(
+        "balanced_3", p = 20L, noise_sd = 0.03,
+        time_signal = 8, condition_time_signal = 3,
+        seed = 18908L, recovery_threshold = 0
+    )
+
+    expect_true(result$execution_completed)
+    expect_identical(result$outcome, "recovered_downstream_nonestimable")
+    expect_identical(result$diagnostic, "declared design is non-identifiable")
 })
 
 test_that("operating map exposes exact evidence and a separate scientific caption", {
@@ -165,8 +237,10 @@ test_that("operating map exposes exact evidence and a separate scientific captio
         c("balanced_1", "isolated_library_failure"))
     expect_match(caption, "independently\\s+collected animal")
     expect_match(caption, "isolated_library_failure")
-    expect_match(caption, "without imputation or rebalancing")
-    expect_match(caption, "not an acceptance result")
+    expect_match(caption, "without imputation")
+    expect_match(caption, "or rebalancing")
+    expect_match(caption, "not an")
+    expect_match(caption, "acceptance result")
     expect_false(grepl(caption, paste(capture.output(print(plot)), collapse = " "),
         fixed = TRUE))
 })
@@ -210,6 +284,16 @@ test_that("calibration artifacts reproduce typed and visual derivatives", {
         vapply(pipeline, function(target) target$settings$name, character(1L)),
         c("k1_independent_time_assessment", "k1_independent_time_artifact")
     )
+    changed <- readRDS(file.path(artifact, "assessment.rds"))
+    changed$replicates$diagnostic[[1L]] <- "changed"
+    payload <- unclass(changed)
+    payload$digest <- NULL
+    changed$digest <- digest::digest(payload, algo = "sha256")
+    saveRDS(changed, file.path(artifact, "assessment.rds"))
+    expect_error(
+        verify_k1_independent_time_course_calibration(artifact),
+        class = "k1_acceptance_runner_error"
+    )
 })
 
 test_that("scientific calibration is invariant across future backends", {
@@ -223,8 +307,17 @@ test_that("scientific calibration is invariant across future backends", {
     future::plan(future::sequential)
     sequential <- do.call(run_k1_independent_time_course_calibration,
         arguments)
-    if (!future::supportsMulticore()) skip("multicore backend unavailable")
-    future::plan(future::multicore, workers = 2L)
+    skip_if(
+        pkgload::is_dev_package("landscapeR"),
+        "multisession requires the installed-package check context"
+    )
+    available <- multisession_worker_available()
+    if (!available) {
+        if (nzchar(Sys.getenv("CI"))) {
+            testthat::fail("CI must provide a working multisession backend")
+        }
+        skip("multisession workers are unavailable in this test context")
+    }
     parallel <- do.call(run_k1_independent_time_course_calibration,
         arguments)
 

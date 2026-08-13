@@ -381,9 +381,9 @@ synthetic_k1_independent_time_course_control <- function(
         missingness = template$missingness,
         n_intended = as.integer(sum(template$intended_cells)),
         n_retained = as.integer(sum(template$retained_cells)),
-        effective_sampling_information = if (any(
-                template$retained_cells == 0L)) 0 else
-            1 / mean(1 / as.numeric(template$retained_cells)),
+        mean_retained_per_declared_cell = as.numeric(sum(
+            template$retained_cells
+        ) / length(template$retained_cells)),
         sampling_design = template$sampling_design,
         biological_unit = template$biological_unit
     )
@@ -490,8 +490,8 @@ k1_independent_time_course_control_info <- function(x) {
         n_retained = info$sampling$n_retained,
         minimum_cell_size = as.integer(min(info$sampling$retained_cells)),
         maximum_cell_size = as.integer(max(info$sampling$retained_cells)),
-        effective_sampling_information = as.numeric(
-            info$sampling$effective_sampling_information
+        mean_retained_per_declared_cell = as.numeric(
+            info$sampling$mean_retained_per_declared_cell
         ),
         execution_completed = FALSE,
         target_loading_cosine = NA_real_,
@@ -513,17 +513,15 @@ k1_independent_time_course_control_info <- function(x) {
         sqrt(sum(truth^2) * sum(estimate^2)))
     recovery_evaluable <- is.finite(cosine)
     recovery_met <- recovery_evaluable && cosine >= recovery_threshold
-    atlas <- tryCatch(
-        associate_metadata(
-            fitted,
-            specification = config@analysis,
-            non_analytical_fields = c("biological_unit", "batch"),
-            n_resamples = 0L,
-            seed = seed + 1L,
-            sequential_internal = TRUE
-        ),
-        error = function(condition) condition
+    atlas <- associate_metadata(
+        fitted,
+        specification = config@analysis,
+        non_analytical_fields = c("biological_unit", "batch"),
+        n_resamples = 0L,
+        seed = seed + 1L,
+        sequential_internal = TRUE
     )
+    atlas_abstained <- is(atlas, "AssociationAbstention")
     target_rows <- if (is(atlas, "MetadataAssociationAtlas")) {
         associations <- atlas_associations(atlas)
         associations[
@@ -531,7 +529,11 @@ k1_independent_time_course_control_info <- function(x) {
                 associations$proposal_eligible,
             , drop = FALSE
         ]
-    } else data.frame()
+    } else if (atlas_abstained) {
+        data.frame()
+    } else {
+        stop("associate_metadata() returned an unsupported result")
+    }
     downstream_estimable <- nrow(target_rows) > 0L &&
         any(is.finite(target_rows$effect_magnitude))
     diagnostic <- if (!recovery_evaluable) {
@@ -539,10 +541,10 @@ k1_independent_time_course_control_info <- function(x) {
     } else if (!recovery_met) {
         "target-loading cosine below the disclosed calibration threshold"
     } else if (!downstream_estimable) {
-        if (inherits(atlas, "condition")) conditionMessage(atlas) else {
-            provenance <- if (is(atlas, "MetadataAssociationAtlas")) {
-                atlas_provenance(atlas)
-            } else list()
+        if (atlas_abstained) {
+            association_abstention_diagnostic(atlas)
+        } else {
+            provenance <- atlas_provenance(atlas)
             missing <- provenance$time_course_missing_cell_count %||%
                 info$sampling$missingness
             paste("independent time-course estimand not supported;",
@@ -585,8 +587,8 @@ k1_independent_time_course_control_info <- function(x) {
             n_retained = x$n_retained[[1L]],
             minimum_cell_size = x$minimum_cell_size[[1L]],
             maximum_cell_size = x$maximum_cell_size[[1L]],
-            effective_sampling_information =
-                x$effective_sampling_information[[1L]],
+            mean_retained_per_declared_cell =
+                x$mean_retained_per_declared_cell[[1L]],
             n_requested = nrow(x),
             n_execution_completed = sum(x$execution_completed),
             n_execution_failure = sum(!x$execution_completed),
@@ -614,8 +616,8 @@ k1_independent_time_course_control_info <- function(x) {
     if (!inherits(x, "K1IndependentTimeCourseAssessment") ||
             !is.list(x) || !identical(names(x), c(
                 "version", "claim_status", "recovery_threshold",
-                "scientific_context", "execution", "replicates", "cells",
-                "digest"
+                "scientific_context", "sampling_audit", "execution",
+                "replicates", "cells", "digest"
             ))) {
         .stop_landscapeR_validation(
             "independent time-course calibration assessment is invalid"
@@ -627,6 +629,125 @@ k1_independent_time_course_control_info <- function(x) {
     if (!identical(digest, digest::digest(payload, algo = "sha256"))) {
         .stop_landscapeR_validation(
             "independent time-course calibration assessment digest is invalid"
+        )
+    }
+    expected_replicates <- c(
+        "task_id", "replicate_index", "template_id", "template_label",
+        "missingness", "p", "n_intended", "n_retained",
+        "minimum_cell_size", "maximum_cell_size",
+        "mean_retained_per_declared_cell", "execution_completed",
+        "target_loading_cosine", "recovery_evaluable", "recovery_met",
+        "downstream_estimable", "missing_cell_count", "diagnostic", "outcome"
+    )
+    expected_cells <- c(
+        "template_id", "template_label", "missingness", "p", "n_intended",
+        "n_retained", "minimum_cell_size", "maximum_cell_size",
+        "mean_retained_per_declared_cell", "n_requested",
+        "n_execution_completed", "n_execution_failure",
+        "n_recovery_evaluable", "n_recovered", "recovery_probability",
+        "n_downstream_evaluable", "n_downstream_estimable",
+        "downstream_estimability_probability"
+    )
+    context <- payload$scientific_context
+    sampling_audit <- payload$sampling_audit
+    execution <- payload$execution
+    replicates <- payload$replicates
+    cells <- payload$cells
+    if (!identical(payload$version,
+            "k1-independent-time-course-calibration-v1") ||
+            !identical(payload$claim_status, "disclosed_calibration_only") ||
+            !is.numeric(payload$recovery_threshold) ||
+            length(payload$recovery_threshold) != 1L ||
+            !is.finite(payload$recovery_threshold) ||
+            payload$recovery_threshold <= 0 ||
+            payload$recovery_threshold > 1 ||
+            !is.list(context) || !identical(names(context), c(
+                "experiment_label", "target_field", "oriented_levels",
+                "sampling_unit", "time_field", "time_unit", "nuisance_fields"
+            )) ||
+            !is.list(sampling_audit) || !length(sampling_audit) ||
+            is.null(names(sampling_audit)) || anyDuplicated(names(sampling_audit)) ||
+            any(!vapply(sampling_audit, function(template) {
+                tryCatch({
+                    .validate_k1_independent_time_template(template)
+                    TRUE
+                }, error = function(condition) FALSE)
+            }, logical(1L))) ||
+            !setequal(names(sampling_audit), unique(replicates$template_id)) ||
+            any(vapply(names(sampling_audit), function(template_id) {
+                template <- sampling_audit[[template_id]]
+                rows <- replicates$template_id == template_id
+                !identical(template$id, template_id) || !any(rows) ||
+                    !all(replicates$template_id[rows] == template$id) ||
+                    !all(replicates$template_label[rows] == template$label) ||
+                    !all(replicates$missingness[rows] == template$missingness) ||
+                    !all(replicates$n_intended[rows] ==
+                        sum(template$intended_cells)) ||
+                    !all(replicates$n_retained[rows] ==
+                        sum(template$retained_cells)) ||
+                    !all(replicates$minimum_cell_size[rows] ==
+                        min(template$retained_cells)) ||
+                    !all(replicates$maximum_cell_size[rows] ==
+                        max(template$retained_cells)) ||
+                    !all(replicates$mean_retained_per_declared_cell[rows] ==
+                        sum(template$retained_cells) /
+                            length(template$retained_cells))
+            }, logical(1L))) ||
+            !is.list(execution) || !setequal(names(execution),
+                c("values", "account", "provenance", "digest")) ||
+            !is.data.frame(replicates) ||
+            !identical(names(replicates), expected_replicates) ||
+            !is.data.frame(cells) || !identical(names(cells), expected_cells) ||
+            !nrow(replicates) || !nrow(cells) ||
+            anyNA(replicates$task_id) || any(!nzchar(replicates$task_id)) ||
+            anyDuplicated(replicates$task_id) ||
+            any(!as.character(replicates$outcome) %in%
+                .k1_calibration_outcome_levels) ||
+            !identical(.k1_independent_time_cell_summary(replicates), cells)) {
+        .stop_landscapeR_validation(
+            "independent time-course calibration evidence contract is invalid"
+        )
+    }
+    execution_payload <- execution[c("values", "account", "provenance")]
+    derived_outcome <- ifelse(
+        !replicates$execution_completed, "execution_failure",
+        ifelse(!replicates$recovery_evaluable, "recovery_not_evaluable",
+            ifelse(!(replicates$recovery_met %in% TRUE),
+                "recovery_below_threshold",
+                ifelse(replicates$downstream_estimable %in% TRUE,
+                    "recovered_and_estimable",
+                    "recovered_downstream_nonestimable")))
+    )
+    completed_values_match <- vapply(seq_len(nrow(replicates)), function(i) {
+        value <- execution$values[[i]]
+        if (!replicates$execution_completed[[i]]) return(is.null(value))
+        is.list(value) && identical(value$task_id, replicates$task_id[[i]]) &&
+            identical(as.integer(value$replicate_index),
+                as.integer(replicates$replicate_index[[i]])) &&
+            identical(value$template_id, replicates$template_id[[i]])
+    }, logical(1L))
+    invalid_outcomes <-
+        any(replicates$recovery_met %in% TRUE &
+            !replicates$recovery_evaluable) ||
+        any(replicates$outcome == "recovered_and_estimable" &
+            !(replicates$recovery_met %in% TRUE &
+                replicates$downstream_estimable %in% TRUE)) ||
+        any(replicates$outcome == "execution_failure" &
+            replicates$execution_completed) ||
+        !identical(as.character(replicates$outcome), derived_outcome) ||
+        any(!completed_values_match)
+    if (!identical(execution$digest, digest::digest(
+            execution_payload, algo = "sha256", serialize = TRUE
+        )) ||
+            !identical(execution$account$n_requested,
+                as.integer(nrow(replicates))) ||
+            !identical(execution$account$n_completed,
+                as.integer(sum(replicates$execution_completed))) ||
+            !identical(execution$account$n_failed,
+                as.integer(sum(!replicates$execution_completed))) ||
+            invalid_outcomes) {
+        .stop_landscapeR_validation(
+            "independent time-course calibration outcome invariants are invalid"
         )
     }
     invisible(TRUE)
@@ -678,6 +799,16 @@ run_k1_independent_time_course_calibration <- function(
             "replicates and recovery_threshold are invalid"
         )
     }
+    scientific_validation <- .k1_independent_time_validate_generator(
+        templates[[template_ids[[1L]]]], p, noise_sd, time_signal,
+        condition_time_signal, seed
+    )
+    if (!is.null(scientific_validation)) {
+        .stop_landscapeR_validation(paste0(
+            "run_k1_independent_time_course_calibration(): ",
+            scientific_validation
+        ))
+    }
     tasks <- unlist(lapply(template_ids, function(template_id) {
         lapply(seq_len(replicates), function(replicate_index) list(
             template_id = template_id,
@@ -721,9 +852,9 @@ run_k1_independent_time_course_calibration <- function(
             n_retained = sum(template$retained_cells),
             minimum_cell_size = min(template$retained_cells),
             maximum_cell_size = max(template$retained_cells),
-            effective_sampling_information = if (
-                any(template$retained_cells == 0L)) 0 else
-                1 / mean(1 / as.numeric(template$retained_cells)),
+            mean_retained_per_declared_cell = as.numeric(sum(
+                template$retained_cells
+            ) / length(template$retained_cells)),
             execution_completed = FALSE,
             target_loading_cosine = NA_real_, recovery_evaluable = FALSE,
             recovery_met = NA, downstream_estimable = NA,
@@ -750,7 +881,8 @@ run_k1_independent_time_course_calibration <- function(
             time_unit = "days",
             nuisance_fields = "batch"
         ),
-        execution = execution[c("account", "provenance", "digest")],
+        sampling_audit = templates[template_ids],
+        execution = execution,
         replicates = replicate_rows,
         cells = .k1_independent_time_cell_summary(replicate_rows)
     )
@@ -776,20 +908,20 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
             probability = recovery_probability,
             denominator = n_recovery_evaluable),
         transform(cells,
-            evidence = "B  Downstream estimability after recovery",
+            evidence = "B  Estimability after recovery",
             probability = downstream_estimability_probability,
             denominator = n_downstream_evaluable)
     )
     display$evidence <- factor(display$evidence, levels = c(
         "A  Target-axis recovery",
-        "B  Downstream estimability after recovery"
+        "B  Estimability after recovery"
     ))
     display$template_label <- factor(
         display$template_label,
         levels = unique(cells$template_label)
     )
     display$template_axis_label <- sprintf(
-        "%s\n%.2g effective",
+        "%s\n%.2g mean retained",
         c(
             balanced_1 = "1 per cell",
             balanced_2 = "2 per cell",
@@ -798,20 +930,24 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
             isolated_library_failure = "One library lost",
             missing_internal_cell = "One cell absent"
         )[display$template_id],
-        display$effective_sampling_information
+        display$mean_retained_per_declared_cell
     )
     display$template_axis_label <- factor(display$template_axis_label,
         levels = unique(display$template_axis_label))
     downstream_abstention <-
-        display$evidence == "B  Downstream estimability after recovery" &
+        display$evidence == "B  Estimability after recovery" &
         display$n_downstream_evaluable > 0L &
         display$n_downstream_estimable == 0L
     display$state <- ifelse(
-        display$n_execution_failure > 0L, "Incomplete execution",
+        display$n_execution_failure > 0L, "Partial execution",
         ifelse(display$denominator == 0L | downstream_abstention,
             "Not estimable", "Estimated")
     )
     display$plotted_probability <- display$probability
+    display$plotted_probability[
+        display$state == "Partial execution" &
+            !is.finite(display$plotted_probability)
+    ] <- 0.04
     display$plotted_probability[
         display$state == "Not estimable" &
             !is.finite(display$plotted_probability)
@@ -827,23 +963,22 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
         ggplot2::facet_wrap(~ evidence, nrow = 1L) +
         ggplot2::scale_shape_manual(values = c(
             "Estimated" = 21, "Not estimable" = 4,
-            "Incomplete execution" = 24
+            "Partial execution" = 24
         )) +
         ggplot2::scale_fill_manual(values = c(
             "Estimated" = semantic[["focal"]],
-            "Not estimable" = NA, "Incomplete execution" = semantic[["missing"]]
+            "Not estimable" = NA, "Partial execution" = semantic[["missing"]]
         )) +
         ggplot2::scale_x_continuous(limits = c(0, 1),
             breaks = c(0, 0.5, 1)) +
         ggplot2::labs(
             x = "Probability across calibration replicates",
-            y = "Declared sampling template and effective information",
+            y = "Sampling template and mean retained animals per declared cell",
             shape = NULL, fill = NULL
         ) +
         theme_landscapeR(square = FALSE) +
         ggplot2::theme(legend.position = "bottom")
-    templates <- k1_independent_time_course_template()
-    present_templates <- templates[unique(cells$template_id)]
+    present_templates <- assessment$sampling_audit[unique(cells$template_id)]
     missingness_text <- paste(vapply(present_templates, function(template) {
         if (identical(template$id, "isolated_library_failure")) {
             removal <- template$removed_observations[1L, , drop = FALSE]
@@ -888,8 +1023,11 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
         ),
         encodings = c(
             "Red circles are estimated probabilities",
-            "crosses mark designs with no eligible denominator",
-            "grey triangles mark incomplete execution"
+            paste(
+                "crosses mark either no eligible denominator or universal",
+                "downstream model abstention after recovery"
+            ),
+            "hollow triangles mark probabilities estimated from partial execution"
         ),
         estimand = "standardized condition-by-time interaction",
         design = paste(
@@ -905,8 +1043,14 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
             assessment$recovery_threshold
         ),
         uncertainty = sprintf(
-            "%d deterministic calibration replicates were requested per design",
-            cells$n_requested[[1L]]
+            paste(
+                "%d deterministic calibration replicates were requested per",
+                "design; %d of %d executions completed across the displayed",
+                "designs"
+            ),
+            cells$n_requested[[1L]],
+            sum(cells$n_execution_completed),
+            sum(cells$n_requested)
         ),
         claim_boundary = paste(
             "This is disclosed calibration evidence under the shown synthetic",
@@ -926,6 +1070,7 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
 )
 
 .verify_k1_independent_time_artifact <- function(artifact) {
+    artifact <- path.expand(artifact)
     manifest_path <- file.path(artifact, "MANIFEST.tsv")
     if (!dir.exists(artifact) || !file.exists(manifest_path)) {
         .k1_acceptance_runner_abort(
@@ -936,9 +1081,18 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
         stringsAsFactors = FALSE, check.names = FALSE)
     governed <- .k1_independent_time_artifact_files()
     if (!identical(manifest$file, governed) ||
-            !identical(names(manifest), c("file", "sha256"))) {
+            !identical(names(manifest), c("file", "sha256")) ||
+            anyNA(manifest) || anyDuplicated(manifest$file) ||
+            any(grepl("(^|/)\\.\\.(/|$)|^/", manifest$file))) {
         .k1_acceptance_runner_abort(
             "independent time-course artifact manifest is invalid"
+        )
+    }
+    actual_files <- list.files(artifact, recursive = TRUE, all.files = TRUE,
+        no.. = TRUE, include.dirs = FALSE)
+    if (!setequal(actual_files, c("MANIFEST.tsv", governed))) {
+        .k1_acceptance_runner_abort(
+            "independent time-course artifact contains undeclared files"
         )
     }
     observed <- unname(vapply(file.path(artifact, governed),
@@ -949,25 +1103,56 @@ plot_k1_independent_time_course_calibration <- function(assessment) {
         )
     }
     assessment <- readRDS(file.path(artifact, "assessment.rds"))
+    environment <- readRDS(file.path(artifact, "environment.rds"))
     .validate_k1_independent_time_assessment(assessment)
+    .k1_acceptance_validate_identity(environment$runtime_identity)
     plot <- plot_k1_independent_time_course_calibration(assessment)
     expected_map <- attr(plot, "landscapeR_k1_operating_map_data")
-    observed_map <- utils::read.csv(
-        file.path(artifact, "operating-map-data.csv"),
-        stringsAsFactors = FALSE
-    )
+    expected_replicates <- tempfile(fileext = ".csv")
+    expected_cells <- tempfile(fileext = ".csv")
+    expected_display <- tempfile(fileext = ".csv")
+    on.exit(unlink(c(expected_replicates, expected_cells, expected_display)),
+        add = TRUE)
+    utils::write.csv(assessment$replicates, expected_replicates,
+        row.names = FALSE)
+    utils::write.csv(assessment$cells, expected_cells, row.names = FALSE)
     expected_map$evidence <- as.character(expected_map$evidence)
     expected_map$template_label <- as.character(expected_map$template_label)
     expected_map$template_axis_label <-
         as.character(expected_map$template_axis_label)
-    if (!isTRUE(all.equal(observed_map, expected_map,
-            check.attributes = FALSE)) ||
+    utils::write.csv(expected_map, expected_display, row.names = FALSE)
+    derivatives_reproduce <- function(expected, observed) identical(
+        readLines(expected, warn = FALSE),
+        readLines(observed, warn = FALSE)
+    )
+    if (!derivatives_reproduce(expected_replicates,
+            file.path(artifact, "replicates.csv")) ||
+            !derivatives_reproduce(expected_cells,
+                file.path(artifact, "cell-summary.csv")) ||
+            !derivatives_reproduce(expected_display,
+                file.path(artifact, "operating-map-data.csv")) ||
             !identical(
-                readLines(file.path(artifact, "operating-map-caption.txt")),
+                readLines(file.path(artifact, "operating-map-caption.txt"),
+                    warn = FALSE),
                 strsplit(scientific_caption(plot), "\n", fixed = TRUE)[[1L]]
             )) {
         .k1_acceptance_runner_abort(
             "independent time-course artifact derivatives do not reproduce"
+        )
+    }
+    expected_environment <- list(
+        assessment_digest = assessment$digest,
+        runtime_identity = environment$runtime_identity,
+        claim_status = assessment$claim_status
+    )
+    artifact_digest <- .k1_acceptance_artifact_digest(manifest)
+    expected_name <- paste0(
+        assessment$version, "-", substr(artifact_digest, 1L, 16L)
+    )
+    if (!identical(environment, expected_environment) ||
+            !identical(basename(artifact), expected_name)) {
+        .k1_acceptance_runner_abort(
+            "independent time-course artifact address or provenance is inconsistent"
         )
     }
     invisible(TRUE)
