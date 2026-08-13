@@ -242,6 +242,12 @@ test_that("renderer and exception registries are explicit and valid", {
         ],
         "caption-required"
     )
+    expect_identical(
+        registry$policy[
+            registry$renderer == "plot_k1_repeated_subject_calibration"
+        ],
+        "caption-required"
+    )
     pending <- registry[registry$policy == "migration-pending", ]
     expect_equal(nrow(pending), 0L)
     expect_identical(
