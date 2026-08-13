@@ -7,8 +7,9 @@
 k1_acceptance_protocol(version = "2")
 }
 \arguments{
-\item{version}{readable protocol version. Version 2 is the current protocol;
-version 1 remains available as superseded historical evidence.}
+\item{version}{readable protocol version. Version 2 remains the default for
+the historical runner; version 3 is the frozen revised protocol awaiting
+post-merge execution support, and version 1 remains readable.}
 }
 \value{
 A digest-bound \code{K1AcceptanceProtocol} list containing the frozen

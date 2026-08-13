@@ -241,6 +241,57 @@ It requires a 2D or time-aware estimator and a separate ADR.
 
 ---
 
+## Revised independent acceptance after design-aware calibration
+
+**Amendment (2026-08-12).** Issues #189, #190, and #191 completed the
+disclosed calibration required after the historical version 2 acceptance run.
+That evidence does not erase or reclassify the verified negative artifact from
+#67. It shows why a revised independent protocol is necessary:
+
+- absolute loading cosine and the corresponding one-dimensional principal
+  angle are two representations of the same recovery property and must not be
+  separate gates;
+- decomposition recovery and downstream estimability are distinct outcomes;
+- destructive time courses, repeated-subject time courses, and
+  high-dimensional signal regimes cannot be averaged into one sample-size
+  result; and
+- fixed total signal with increasing noise remains a useful adversarial
+  regime, but coherent, sparse, correlated, and null regimes are also required
+  to interpret its boundary.
+
+Version 3 therefore uses **absolute loading cosine of at least 0.90** as the
+single canonical target-axis recovery criterion. The equivalent principal
+angle remains descriptive. Multidimensional principal angles remain valid for
+genuinely multidimensional subspaces and are not affected by this decision.
+
+Every replicate has one typed outcome: recovered and downstream estimable;
+recovered but downstream non-estimable; recovery below threshold; recovery not
+evaluable; or execution failure. A strict model abstention is evidence about
+the downstream design, not evidence that SVD failed. In particular, terminal
+or condition-dependent dropout may preserve the planted axis while making the
+required random-slope model non-estimable. No weaker model is substituted.
+
+The frozen version 3 grid crosses the governed destructive and repeated
+sampling templates with 100, 1,000, and 10,000 features. It separately crosses
+the four positive high-dimensional regimes with signal ratios below, near, and
+above the covariance-adjusted noise reference, and retains null and near-null
+controls. One hundred independent replicates are requested per declared cell.
+Support is cell-specific: a cell requires at least 0.90 recovery probability
+and a Wilson 95% lower bound of at least 0.80. Null cells require recovery
+probability no greater than 0.05 and a Wilson 95% upper bound no greater than
+0.10. These rules describe only the declared design, feature-count, signal,
+covariance, and missingness regimes. They cannot yield a universal sample-size
+rule.
+
+The protocol is frozen before its merge-derived seeds are knowable. Its 7,200
+acceptance replicates use new disjoint streams and preserve all calibration and
+historical acceptance streams as reserved. Results cannot tune version 3.
+A complete negative result is valid. Exploratory real-data K=1 work advances
+only if a real experiment lies inside a supported, design-compatible cell and
+the complete artifact, null controls, accounting, and provenance verify.
+
+---
+
 ## References
 
 - AML data: `data-raw/README.md`, GSE133642, Cancer Research 2020

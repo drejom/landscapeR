@@ -1,0 +1,5 @@
+Protocol: k1-stage0-acceptance-v3
+Digest: f55acb7d5d37b3d96d6737c20b086f03dfcb1b89a3f2ab548320d8fdde7a9cf0
+Requested replicates: 7200
+Acceptance results inspected: FALSE
+Execution available before merge: FALSE

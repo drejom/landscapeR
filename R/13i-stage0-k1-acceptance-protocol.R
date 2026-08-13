@@ -27,8 +27,321 @@
                 stringsAsFactors = FALSE
             )
         )
+    } else if (identical(version, "3")) {
+        plan <- data.frame(
+            control = c(
+                "independent_time_course", "repeated_subject",
+                "high_dimensional_signal", "high_dimensional_null"
+            ),
+            replicates_per_grid_cell = rep(100L, 4L),
+            stringsAsFactors = FALSE
+        )
     }
     plan
+}
+
+.k1_acceptance_protocol_v3_payload <- function() {
+    independent_templates <- c(
+        "balanced_1", "balanced_2", "balanced_3", "unequal_1_2_3",
+        "isolated_library_failure", "missing_internal_cell"
+    )
+    repeated_templates <- c(
+        "complete", "isolated_observation_loss", "terminal_dropout",
+        "condition_dependent_loss"
+    )
+    signal_regimes <- c(
+        "fixed_total_spike", "fixed_sparse", "growing_coherent",
+        "correlated_modules"
+    )
+    feature_counts <- c(100L, 1000L, 10000L)
+    signal_ratios <- c(0.75, 1, 1.25)
+    null_ratios <- c(0, 0.75)
+    replicate_count <- 100L
+    workload <- c(
+        independent_time_course = length(independent_templates) *
+            length(feature_counts),
+        repeated_subject = length(repeated_templates) *
+            length(feature_counts),
+        high_dimensional_signal = length(signal_regimes) *
+            length(feature_counts) * length(signal_ratios),
+        high_dimensional_null = length(feature_counts) * length(null_ratios)
+    ) * replicate_count
+    reserved <- sort(unique(c(
+        42:45, 50:51, 6701:6705,
+        18900:18909, 19000:19009, 19100:19109,
+        867530900:867530907
+    )))
+    list(
+        artifact_version = "3",
+        protocol_id = "k1-stage0-acceptance-v3",
+        protocol_status = "frozen_before_acceptance",
+        claim_status = "predeclared_acceptance_protocol_only",
+        governing_decisions = c("ADR-0002", "ADR-0016", "ADR-0020"),
+        calibration_evidence = list(
+            reviewed_issues = c(189L, 190L, 191L),
+            historical_negative_acceptance_issue = 67L,
+            historical_artifact =
+                "k1-stage0-acceptance-v2-780f4b10ea21923a",
+            review_conclusion = paste(
+                "sampling design, high-dimensional signal regime, target-axis",
+                "recovery, and downstream estimability require separate",
+                "evidence; historical version 2 remains unchanged"
+            )
+        ),
+        strategies = list(
+            decomposer = "svd",
+            component_interpretation =
+                "registered_sampling_design_strategy"
+        ),
+        execution_contracts = list(
+            version = "k1-stage0-revised-acceptance-runner-v1",
+            parameter_resolution = paste(
+                "use these normalized values exactly; package defaults and",
+                "caller overrides are forbidden"
+            ),
+            svd = list(center = TRUE, k_components = 2L),
+            backend = paste(
+                "backend-independent targets graph with future, crew, hprcc,",
+                "and Slurm; one outer task per independent replicate"
+            ),
+            internal_parallelism = "sequential within each outer task"
+        ),
+        grids = list(
+            independent_time_course = list(
+                template_ids = independent_templates,
+                feature_counts = feature_counts,
+                fixed = list(
+                    noise_sd = 0.15, time_signal = 8,
+                    condition_time_signal = 3
+                )
+            ),
+            repeated_subject = list(
+                template_ids = repeated_templates,
+                feature_counts = feature_counts,
+                fixed = list(
+                    noise_sd = 0.03, time_signal = 8,
+                    condition_time_signal = 3
+                )
+            ),
+            high_dimensional_signal = list(
+                regime_ids = signal_regimes,
+                feature_counts = feature_counts,
+                signal_ratios = signal_ratios,
+                signal_parameterization = list(
+                    reference_p = 100L,
+                    coefficient = paste(
+                        "signal_strength = signal_ratio times the",
+                        "regime-specific covariance-adjusted noise reference",
+                        "evaluated at n=24 and reference_p=100"
+                    ),
+                    effective_ratio = paste(
+                        "signal_strength times planted loading norm divided by",
+                        "the regime-specific recovery boundary at the executed p"
+                    )
+                ),
+                fixed = list(
+                    n = 24L, informative_features = 10L, noise_sd = 1,
+                    module_correlation = 0.6
+                )
+            ),
+            high_dimensional_null = list(
+                regime_ids = "null_near_null",
+                feature_counts = feature_counts,
+                signal_ratios = null_ratios,
+                signal_parameterization = list(
+                    reference_p = 100L,
+                    coefficient = paste(
+                        "signal_strength = signal_ratio times the independent",
+                        "Gaussian noise reference at n=24 and reference_p=100"
+                    ),
+                    effective_ratio = paste(
+                        "signal_strength divided by the independent-Gaussian",
+                        "recovery boundary at the executed p"
+                    )
+                ),
+                fixed = list(
+                    n = 24L, informative_features = 10L, noise_sd = 1,
+                    module_correlation = 0.6
+                )
+            )
+        ),
+        thresholds = list(
+            target_axis_recovery = list(
+                canonical_metric = "absolute_loading_cosine",
+                minimum = 0.90,
+                principal_angle_role = "descriptive_equivalent_only"
+            ),
+            supported_cell = list(
+                minimum_recovery_probability = 0.90,
+                minimum_wilson_95_lower_bound = 0.80
+            ),
+            null_control = list(
+                maximum_recovery_probability = 0.05,
+                maximum_wilson_95_upper_bound = 0.10
+            )
+        ),
+        outcome_states = c(
+            "recovered_and_estimable",
+            "recovered_downstream_nonestimable",
+            "recovery_below_threshold",
+            "recovery_not_evaluable",
+            "execution_failure"
+        ),
+        pass_rules = list(
+            execution = paste(
+                "every requested replicate remains in immutable accounting;",
+                "support requires completion and recovery evaluability rates",
+                "of 1.00; an execution failure is never excluded or scientific",
+                "evidence"
+            ),
+            recovery = paste(
+                "classify each declared cell using absolute loading cosine",
+                "alone; a principal angle may describe the same one-dimensional",
+                "property but cannot impose a second gate; recovery probability",
+                "and its Wilson interval use all requested replicates as the",
+                "denominator, with unevaluable or failed tasks not recovered"
+            ),
+            downstream_nonestimability = paste(
+                "report a typed downstream non-estimability rate separately",
+                "and only among replicates whose planted axis was recovered;",
+                "it is not decomposition failure"
+            ),
+            operating_region = paste(
+                "a supported cell meets both supported-cell recovery bounds;",
+                "a null cell must meet both null-control bounds; all other",
+                "executed cells are unsupported or indeterminate as stated"
+            ),
+            design_expectations = list(
+                repeated_estimable = c(
+                    "complete", "isolated_observation_loss"
+                ),
+                repeated_typed_nonestimable = c(
+                    "terminal_dropout", "condition_dependent_loss"
+                ),
+                independent = paste(
+                    "estimability is empirical and conditional on recovery;",
+                    "no thin or damaged template is presumed supported"
+                )
+            ),
+            advancement = paste(
+                "exploratory real-data K=1 advances only for an experiment",
+                "inside at least one supported, design-compatible cell after",
+                "all null controls and artifact verification pass"
+            ),
+            out_of_domain = paste(
+                "designs, feature counts, signal regimes, covariance regimes,",
+                "or missingness patterns outside the declared grid remain",
+                "out of domain; no universal sample-size rule is inferred"
+            ),
+            negative_result = paste(
+                "no supported compatible cell is a valid structured negative",
+                "result and cannot trigger changes on these seeds"
+            )
+        ),
+        resampling = list(
+            repeated_axis_resamples = 19L,
+            high_dimensional_axis_resamples = 19L,
+            independent_biological_unit =
+                "one independently collected synthetic animal",
+            repeated_biological_unit =
+                "one repeatedly observed synthetic mouse",
+            repeated_resampling_unit = "complete subject trajectory"
+        ),
+        seed_plan = .k1_acceptance_seed_plan("3"),
+        seed_derivation = list(
+            reveal_value = "reviewed version 3 protocol merge commit SHA-1",
+            hidden_until = "version 3 protocol merge",
+            algorithm = "sha256-merge-commit-indexed-block-v3",
+            task_order = paste(
+                "frozen control order; template or regime order; feature-count",
+                "order; signal-ratio order; ascending replicate index"
+            ),
+            block_stride = 8L,
+            minimum_seed_root = 200000L,
+            collision_rule = paste(
+                "each task receives one disjoint eight-integer block; every",
+                "derived task stream and child seed must avoid every stream in",
+                "the digest-bound calibration manifests and every historical",
+                "acceptance stream or validation fails"
+            )
+        ),
+        separation = list(
+            reserved_calibration_rng_streams = as.integer(reserved),
+            calibration_stream_manifests = data.frame(
+                issue = c(189L, 190L, 191L),
+                run_seed = c(18900L, 19000L, 19100L),
+                task_count = c(30L, 20L, 84L),
+                task_seed_scheme = rep(
+                    "sha256-lecuyer-rejection-state-v2", 3L
+                ),
+                child_seed_derivation = c(
+                    "generator seed is task-stream state element 2",
+                    "generator/association/proposal/resampling are task-stream state element 2 plus 0:3",
+                    "sha256 task-stream plus task-id and child-name"
+                ),
+                stream_manifest_digest = c(
+                    "df1f0b0fc79d1fb2f7df9a272b85f5c45e3bd3946daccd554b13298df29cf610",
+                    "ac136b9e0cab29f7a24b797910a4771cfe8129dde12d9a0e33c6aeb18a8b834b",
+                    "ea41582cda89d34cc3a301f7f0a0f4d510b8794a868b87bef964f190678ac5b8"
+                ),
+                source_script_sha256 = c(
+                    "4f7cd7fcb598fd7e637015f8eed068df68be61a6cc594cb42531f72fd3b7cdb8",
+                    "5b14bc7854cb60028a6c69950ecb455adb632b01f74166b32d62447d4c760ea7",
+                    "ff3719eca4c9105c6419869bdf2b05dabafcab10cda7e71c772af219a3b29163"
+                ),
+                stringsAsFactors = FALSE
+            ),
+            reserved_historical_acceptance_ranges = data.frame(
+                protocol_id = "k1-stage0-acceptance-v2",
+                first_stream = 1505953920L,
+                last_stream = 1506021917L,
+                manifest_digest = paste0(
+                    "ce5b129f09cdc7c0e4a50ad929f0b640b7db8ae6b6d406293",
+                    "b5e7b81a247417c"
+                ),
+                stringsAsFactors = FALSE
+            ),
+            historical_acceptance_protocols = c(
+                "k1-stage0-acceptance-v1", "k1-stage0-acceptance-v2"
+            ),
+            rule = paste(
+                "version 3 roots are unknowable before its reviewed merge;",
+                "#67 and versions 1-2 remain immutable historical evidence;",
+                "derived blocks must not overlap the recorded historical range"
+            )
+        ),
+        workload = list(
+            replicates_by_control = stats::setNames(
+                as.list(as.integer(workload)), names(workload)
+            ),
+            total_replicates = as.integer(sum(workload))
+        ),
+        evidence_requirements = c(
+            "replicate evidence", "typed cell summaries", "operating maps",
+            "separate scientific captions", "runtime environment",
+            "worker and collector provenance", "content hashes"
+        ),
+        provenance = list(
+            stage = "freeze_protocol",
+            contract = "K1AcceptanceProtocol",
+            implementation = "k1_stage0_acceptance_v3",
+            source_issue = 193L,
+            source_specification =
+                "docs/specs/k1-stage0-acceptance-protocol-v3.md",
+            evidence_inputs = c(
+                "issue-189 disclosed destructive-time-course calibration",
+                "issue-190 disclosed repeated-subject calibration",
+                "issue-191 disclosed high-dimensional calibration",
+                "issue-67 immutable historical negative acceptance"
+            ),
+            acceptance_results_inspected = FALSE
+        ),
+        execution = list(
+            phase = "definition_only",
+            acceptance_execution_available = FALSE,
+            publication = "post-merge immutable content-addressed artifact"
+        )
+    )
 }
 
 .k1_acceptance_protocol_v1_payload <- function() {
@@ -417,15 +730,17 @@
 
 .k1_acceptance_protocol_payload <- function(version = "2") {
     if (!is.character(version) || length(version) != 1L || is.na(version) ||
-            !version %in% c("1", "2")) {
+            !version %in% c("1", "2", "3")) {
         .k1_acceptance_protocol_abort(
-            "version must identify readable K=1 acceptance protocol 1 or 2"
+            "version must identify readable K=1 acceptance protocol 1, 2, or 3"
         )
     }
     if (identical(version, "1")) {
         .k1_acceptance_protocol_v1_payload()
-    } else {
+    } else if (identical(version, "2")) {
         .k1_acceptance_protocol_v2_payload()
+    } else {
+        .k1_acceptance_protocol_v3_payload()
     }
 }
 
@@ -434,8 +749,9 @@
 #' This function exposes a complete reviewed protocol required by ADR 0016.
 #' Constructing or validating it does not execute any acceptance replicate.
 #'
-#' @param version readable protocol version. Version 2 is the current protocol;
-#'   version 1 remains available as superseded historical evidence.
+#' @param version readable protocol version. Version 2 remains the default for
+#'   the historical runner; version 3 is the frozen revised protocol awaiting
+#'   post-merge execution support, and version 1 remains readable.
 #' @return A digest-bound `K1AcceptanceProtocol` list containing the frozen
 #'   grids, metrics, thresholds, pass rules, and delayed seed-derivation plan.
 #' @export
@@ -467,6 +783,7 @@ validate_k1_acceptance_protocol <- function(
         observed$protocol_id,
         `k1-stage0-acceptance-v1` = "1",
         `k1-stage0-acceptance-v2` = "2",
+        `k1-stage0-acceptance-v3` = "3",
         .k1_acceptance_protocol_abort(
             "protocol does not identify a readable frozen definition"
         )
