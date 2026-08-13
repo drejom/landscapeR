@@ -1,0 +1,13 @@
+Experiment location within calibrated K=1 operating evidence. The declared real-data experiment
+to assess the declared K=1 coordinate target. (A) Target-axis recovery probability in
+compatible calibration cells. (B) Downstream estimability probability after target-axis
+recovery. Black circles are exact compatible calibration-cell summaries; The pale grey band is
+the calibrated signal/noise domain; red dashed lines are the declared experiment point or
+interval; The red dashed boundaries show the experiment uncertainty region; red triangles
+summarize only its exact supporting cells. The analysis unit is independent_time_course; the
+design is 2 exact design cells and 4 of 4 compatible signal cells support placement. One
+diagnostic value is a point; two values define an interval whose supporting calibration cells
+are retained. The calibrated-domain boundary is the observed feature, design, covariance, and
+effective signal/noise range; no interpolation creates new evidence. This is an
+operating-characteristic locator, not a biological state-space projection or quasi-potential
+landscape.

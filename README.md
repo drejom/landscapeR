@@ -125,6 +125,18 @@ internal content-addressed seam. Each design still owns its scientific
 validation, displayed data, caption, and treatment of non-estimable results;
 the shared machinery does not make the three scientific designs interchangeable.
 
+`locate_k1_operating_domain()` can compare versioned diagnostics from a real
+experiment with compatible design-aware and high-dimensional calibration
+cells. It returns the exact cells supporting a point or uncertainty interval,
+or typed out-of-domain evidence without extrapolating a recovery probability.
+Sampling-design recovery and downstream estimability remain separate from the
+corresponding high-dimensional probabilities; the package does not invent a
+joint probability. Destructive designs match total retained samples as well as
+per-cell counts, and the displayed signal domain uses only compatible feature
+counts.
+This locates operating characteristics; it does not project biological samples
+into a synthetic state space or quasi-potential landscape.
+
 In revised K=1 operating maps, red is reserved for a declared supported cell
 or threshold. Continuous recovery probability uses the package's ordered,
 colour-vision-robust Cividis scale. Shape continues to identify the typed cell

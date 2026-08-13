@@ -99,6 +99,7 @@ Collate:
     '13n-stage0-k1-repeated-subject-calibration.R'
     '13o-stage0-k1-high-dimensional-regimes.R'
     '13o-stage0-k1-high-dimensional-calibration.R'
+    '13o-stage0-k1-operating-domain-locator.R'
     '13p-stage0-k1-revised-acceptance.R'
     '14-stage1-plots.R'
     '15-stage2-kde.R'

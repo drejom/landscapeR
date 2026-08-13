@@ -24,3 +24,22 @@ module-specific validator, caption, typed non-estimability, or plotting rules.
 
 The shared helper is internal. Public APIs and serialized assessment and
 artifact formats remain module-specific and unchanged.
+
+`locate_k1_operating_domain()` is a separate public comparison seam. It accepts
+a declared sampling design, one compatible design assessment, a
+high-dimensional assessment, and versioned observed diagnostics. Its typed
+result retains the exact calibration cells that bracket an experiment point or
+uncertainty interval. It returns out-of-domain evidence without a recovery
+probability when design, feature count, signal/noise range, covariance regime,
+or diagnostic coverage is incompatible. This compares operating
+characteristics; it never projects biological observations into a synthetic
+state space or quasi-potential landscape.
+
+The locator keeps sampling-design and high-dimensional probabilities as four
+separate ranges: recovery and downstream estimability from each calibration
+module. It does not combine them because no scientifically validated rule yet
+defines a joint probability. For destructive time courses, exact design
+matching includes total retained biological samples as well as the minimum,
+maximum, and mean retained count per declared condition-time cell. A displayed
+signal domain is restricted to the feature-count cells that bracket the
+experiment; calibration evidence from another feature count cannot enlarge it.

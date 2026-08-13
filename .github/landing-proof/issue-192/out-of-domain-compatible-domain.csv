@@ -1,0 +1,3 @@
+"regime_id","regime_label","boundary_position","n","p","informative_feature_count","informative_feature_fraction","covariance_regime","signal_strength","noise_sd","recovery_boundary","n_requested","n_execution_completed","recovery_probability","mean_axis_similarity","proposal_probability","downstream_estimability_probability","effective_signal_ratio"
+"fixed_sparse","Fixed sparse informative set with added noise features","below",24,20,8,0.4,"independent-gaussian",3.51052097898107,1,4.68069463864143,2,2,0,0.668614683560816,1,1,0.75
+"fixed_sparse","Fixed sparse informative set with added noise features","above",24,20,8,0.4,"independent-gaussian",5.85086829830179,1,4.68069463864143,2,2,0,0.735790353651175,1,1,1.25
