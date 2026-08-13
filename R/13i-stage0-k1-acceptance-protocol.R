@@ -27,7 +27,7 @@
                 stringsAsFactors = FALSE
             )
         )
-    } else if (identical(version, "3")) {
+    } else if (version %in% c("3", "4")) {
         plan <- data.frame(
             control = c(
                 "independent_time_course", "repeated_subject",
@@ -38,6 +38,145 @@
         )
     }
     plan
+}
+
+.k1_calibration_manifest_payload <- function(issue) {
+    specification <- switch(as.character(issue),
+        `189` = list(
+            run_seed = 18900L,
+            task_id = unlist(lapply(c(
+                "balanced_1", "balanced_2", "balanced_3", "unequal_1_2_3",
+                "isolated_library_failure", "missing_internal_cell"
+            ), function(id) sprintf("template=%s;replicate=%04d", id, 1:5))),
+            child_scheme = paste(
+                "generator and association seeds are task-stream state",
+                "element 2 plus 0:1"
+            ),
+            source_sha256 =
+                "4f7cd7fcb598fd7e637015f8eed068df68be61a6cc594cb42531f72fd3b7cdb8"
+        ),
+        `190` = list(
+            run_seed = 19000L,
+            task_id = unlist(lapply(c(
+                "complete", "isolated_observation_loss", "terminal_dropout",
+                "condition_dependent_loss"
+            ), function(id) sprintf("template=%s;replicate=%04d", id, 1:5))),
+            child_scheme = paste(
+                "generator, association, proposal, and resampling seeds are",
+                "task-stream state element 2 plus 0:3"
+            ),
+            source_sha256 =
+                "5b14bc7854cb60028a6c69950ecb455adb632b01f74166b32d62447d4c760ea7"
+        ),
+        `191` = {
+            grid <- expand.grid(
+                regime_id = c(
+                    "fixed_total_spike", "fixed_sparse", "growing_coherent",
+                    "correlated_modules", "null_near_null"
+                ),
+                p = c(100L, 500L), signal_ratio = c(0, 0.75, 1.25),
+                replicate_index = 1:3,
+                KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+            )
+            grid <- grid[
+                grid$regime_id != "null_near_null" |
+                    grid$signal_ratio <= 0.75, , drop = FALSE
+            ]
+            list(
+                run_seed = 19100L,
+                task_id = sprintf(
+                    "regime=%s;p=%d;ratio=%g;replicate=%04d",
+                    grid$regime_id, grid$p, grid$signal_ratio,
+                    grid$replicate_index
+                ),
+                child_scheme = paste(
+                    "sha256 task-stream plus task-id and each of generator,",
+                    "association, proposal, and resampling"
+                ),
+                source_sha256 =
+                    "ff3719eca4c9105c6419869bdf2b05dabafcab10cda7e71c772af219a3b29163"
+            )
+        },
+        .k1_acceptance_protocol_abort("unknown calibration manifest issue")
+    )
+    streams <- lapply(
+        specification$task_id,
+        function(id) .derive_task_stream(specification$run_seed, id)
+    )
+    child_seeds <- switch(as.character(issue),
+        `189` = lapply(streams, function(stream) {
+            stats::setNames(
+                as.integer(stream[[2L]] + 0:1),
+                c("generator", "association")
+            )
+        }),
+        `190` = lapply(streams, function(stream) {
+            stats::setNames(
+                as.integer(stream[[2L]] + 0:3),
+                c("generator", "association", "proposal", "resampling")
+            )
+        }),
+        `191` = Map(function(stream, id) {
+            children <- c("generator", "association", "proposal", "resampling")
+            stats::setNames(vapply(children, function(child) {
+                .k1_high_dimensional_child_seed(
+                    stream, paste0(id, ":", child)
+                )
+            }, integer(1L)), children)
+        }, streams, specification$task_id)
+    )
+    payload <- list(
+        schema_version = "k1-calibration-rng-manifest-v1",
+        issue = as.integer(issue),
+        run_seed = specification$run_seed,
+        task_count = length(specification$task_id),
+        task_seed_scheme = "sha256-lecuyer-rejection-state-v2",
+        task_id = specification$task_id,
+        task_stream = streams,
+        child_seed_scheme = specification$child_scheme,
+        child_seeds = child_seeds,
+        source_script_sha256_assertion = specification$source_sha256,
+        digest_contract = "sha256 of this ordered R list before manifest_digest"
+    )
+    c(payload, list(manifest_digest = digest::digest(payload, algo = "sha256")))
+}
+
+.k1_validate_calibration_manifest_payload <- function(payload) {
+    required <- c(
+        "schema_version", "issue", "run_seed", "task_count",
+        "task_seed_scheme", "task_id", "task_stream", "child_seed_scheme",
+        "child_seeds", "source_script_sha256_assertion", "digest_contract",
+        "manifest_digest"
+    )
+    if (!is.list(payload) || !identical(names(payload), required) ||
+            !identical(payload$schema_version,
+                "k1-calibration-rng-manifest-v1") ||
+            !payload$issue %in% c(189L, 190L, 191L) ||
+            !identical(payload$task_count, length(payload$task_id)) ||
+            !identical(payload$task_count, length(payload$task_stream)) ||
+            !identical(payload$task_count, length(payload$child_seeds)) ||
+            anyDuplicated(payload$task_id)) {
+        .k1_acceptance_protocol_abort(
+            "calibration RNG manifest structure is invalid"
+        )
+    }
+    expected <- .k1_calibration_manifest_payload(payload$issue)
+    if (!identical(payload, expected)) {
+        .k1_acceptance_protocol_abort(
+            "calibration RNG manifest does not reproduce from its contract"
+        )
+    }
+    unsigned <- payload
+    observed_digest <- unsigned$manifest_digest
+    unsigned$manifest_digest <- NULL
+    if (!identical(
+            digest::digest(unsigned, algo = "sha256"), observed_digest
+        )) {
+        .k1_acceptance_protocol_abort(
+            "calibration RNG manifest digest does not verify"
+        )
+    }
+    invisible(TRUE)
 }
 
 .k1_acceptance_protocol_v3_payload <- function() {
@@ -342,6 +481,79 @@
             publication = "post-merge immutable content-addressed artifact"
         )
     )
+}
+
+.k1_acceptance_protocol_v4_payload <- function() {
+    payload <- .k1_acceptance_protocol_v3_payload()
+    calibration_payloads <- lapply(
+        c(189L, 190L, 191L), .k1_calibration_manifest_payload
+    )
+    invisible(lapply(
+        calibration_payloads, .k1_validate_calibration_manifest_payload
+    ))
+    payload$artifact_version <- "4"
+    payload$protocol_id <- "k1-stage0-acceptance-v4"
+    payload$calibration_evidence$review_conclusion <- paste(
+        "version 4 retains every version 3 scientific setting unchanged;",
+        "only the retired acceptance seed set and historical RNG manifest",
+        "authentication contract change"
+    )
+    payload$seed_derivation$reveal_value <-
+        "reviewed version 4 protocol merge commit SHA-1"
+    payload$seed_derivation$hidden_until <- "version 4 protocol merge"
+    payload$seed_derivation$algorithm <-
+        "sha256-merge-commit-indexed-block-v4"
+    payload$separation$calibration_stream_manifests <- data.frame(
+        issue = c(189L, 190L, 191L),
+        run_seed = vapply(calibration_payloads, `[[`, integer(1L), "run_seed"),
+        task_count = vapply(
+            calibration_payloads, `[[`, integer(1L), "task_count"
+        ),
+        task_seed_scheme = vapply(
+            calibration_payloads, `[[`, character(1L), "task_seed_scheme"
+        ),
+        stream_manifest_digest = vapply(
+            calibration_payloads, `[[`, character(1L), "manifest_digest"
+        ),
+        source_script_sha256_assertion = vapply(
+            calibration_payloads, `[[`, character(1L),
+            "source_script_sha256_assertion"
+        ),
+        stringsAsFactors = FALSE
+    )
+    payload$separation$calibration_stream_manifests$manifest_payload <-
+        I(calibration_payloads)
+    payload$separation$historical_stream_authentication <- paste(
+        "task IDs, L'Ecuyer states, and named child seeds reproduce from the",
+        "self-describing payload before v4 seed reveal; source-script hashes",
+        "are pinned historical assertions, not independent runtime identity"
+    )
+    payload$separation$retired_version3_seed_block <- list(
+        protocol_merge_commit =
+            "4d2ee67653c7de2f7caf2e52da4a8f7fa05ab111",
+        protocol_digest = digest::digest(
+            .k1_acceptance_protocol_v3_payload(), algo = "sha256"
+        ),
+        derivation_algorithm = "sha256-merge-commit-indexed-block-v3",
+        first_seed_root = 664979464L,
+        last_reserved_scalar_seed = 665037063L,
+        task_count = 7200L,
+        block_stride = 8L,
+        status = "retired_after_early_task_execution"
+    )
+    payload$separation$rule <- paste(
+        "version 4 roots are unknowable before its reviewed merge; version 3",
+        "is retired in full and its disclosed scalar block, task identities,",
+        "and derived streams remain reserved alongside #67 and calibrations"
+    )
+    payload$provenance$implementation <- "k1_stage0_acceptance_v4"
+    payload$provenance$source_specification <-
+        "docs/specs/k1-stage0-acceptance-protocol-v4.md"
+    payload$provenance$evidence_inputs <- c(
+        payload$provenance$evidence_inputs,
+        "version 3 runner incident; no scientific outcomes used"
+    )
+    payload
 }
 
 .k1_acceptance_protocol_v1_payload <- function() {
@@ -730,17 +942,19 @@
 
 .k1_acceptance_protocol_payload <- function(version = "2") {
     if (!is.character(version) || length(version) != 1L || is.na(version) ||
-            !version %in% c("1", "2", "3")) {
+            !version %in% c("1", "2", "3", "4")) {
         .k1_acceptance_protocol_abort(
-            "version must identify readable K=1 acceptance protocol 1, 2, or 3"
+            "version must identify readable K=1 acceptance protocol 1, 2, 3, or 4"
         )
     }
     if (identical(version, "1")) {
         .k1_acceptance_protocol_v1_payload()
     } else if (identical(version, "2")) {
         .k1_acceptance_protocol_v2_payload()
-    } else {
+    } else if (identical(version, "3")) {
         .k1_acceptance_protocol_v3_payload()
+    } else {
+        .k1_acceptance_protocol_v4_payload()
     }
 }
 
@@ -750,8 +964,9 @@
 #' Constructing or validating it does not execute any acceptance replicate.
 #'
 #' @param version readable protocol version. Version 2 remains the default for
-#'   the historical runner; version 3 is the frozen revised protocol awaiting
-#'   post-merge execution support, and version 1 remains readable.
+#'   the historical runner; version 4 is the protocol-only refreeze of the
+#'   revised acceptance science, versions 1 and 2 remain historical, and
+#'   version 3 is readable but its complete seed set is retired.
 #' @return A digest-bound `K1AcceptanceProtocol` list containing the frozen
 #'   grids, metrics, thresholds, pass rules, and delayed seed-derivation plan.
 #' @export
@@ -784,6 +999,7 @@ validate_k1_acceptance_protocol <- function(
         `k1-stage0-acceptance-v1` = "1",
         `k1-stage0-acceptance-v2` = "2",
         `k1-stage0-acceptance-v3` = "3",
+        `k1-stage0-acceptance-v4` = "4",
         .k1_acceptance_protocol_abort(
             "protocol does not identify a readable frozen definition"
         )

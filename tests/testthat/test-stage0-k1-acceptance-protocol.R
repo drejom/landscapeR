@@ -57,7 +57,7 @@ test_that("K=1 acceptance protocol v2 extends the lower tail and preserves v1", 
         )
     )
     expect_error(
-        k1_acceptance_protocol("4"),
+        k1_acceptance_protocol("5"),
         class = "k1_acceptance_protocol_error"
     )
 })
@@ -170,6 +170,104 @@ test_that("K=1 acceptance protocol v3 freezes revised design-aware evidence", {
         revised$separation$calibration_stream_manifests$
             stream_manifest_digest
     )))
+})
+
+test_that("K=1 acceptance protocol v4 refreezes identical science only", {
+    retired <- k1_acceptance_protocol("3")
+    refrozen <- k1_acceptance_protocol("4")
+
+    expect_identical(refrozen$protocol_id, "k1-stage0-acceptance-v4")
+    expect_identical(refrozen$artifact_version, "4")
+    expect_true(validate_k1_acceptance_protocol(refrozen))
+    expect_false(refrozen$execution$acceptance_execution_available)
+    expect_identical(refrozen$execution$phase, "definition_only")
+    expect_false(refrozen$provenance$acceptance_results_inspected)
+    expect_identical(refrozen$grids, retired$grids)
+    expect_identical(refrozen$thresholds, retired$thresholds)
+    expect_identical(refrozen$outcome_states, retired$outcome_states)
+    expect_identical(refrozen$pass_rules, retired$pass_rules)
+    expect_identical(refrozen$resampling, retired$resampling)
+    expect_identical(refrozen$seed_plan, retired$seed_plan)
+    expect_identical(refrozen$workload, retired$workload)
+    expect_identical(refrozen$execution_contracts, retired$execution_contracts)
+    expect_identical(
+        refrozen$seed_derivation$hidden_until,
+        "version 4 protocol merge"
+    )
+    expect_false("seed" %in% names(refrozen$seed_plan))
+    expect_match(refrozen$separation$rule, "version 3")
+    expect_match(refrozen$separation$rule, "retired")
+})
+
+test_that("K=1 acceptance protocol v4 authenticates historical RNG payloads", {
+    refrozen <- k1_acceptance_protocol("4")
+    manifests <- refrozen$separation$calibration_stream_manifests
+
+    expect_identical(manifests$issue, c(189L, 190L, 191L))
+    expect_true(all(vapply(
+        manifests$manifest_payload, is.list, logical(1L)
+    )))
+    expect_true(all(vapply(
+        manifests$manifest_payload, function(payload) {
+            observed <- payload$manifest_digest
+            payload$manifest_digest <- NULL
+            identical(
+                digest::digest(payload, algo = "sha256"),
+                observed
+            )
+        }, logical(1L)
+    )))
+    expect_true(all(vapply(
+        manifests$manifest_payload, function(payload) {
+            is.character(payload$task_id) &&
+                length(payload$task_id) == payload$task_count &&
+                length(payload$task_stream) == payload$task_count &&
+                all(vapply(payload$task_stream, function(stream) {
+                    is.integer(stream) && length(stream) == 7L &&
+                        identical(stream[[1L]], 10407L)
+                }, logical(1L)))
+        }, logical(1L)
+    )))
+    expect_match(
+        refrozen$separation$historical_stream_authentication,
+        "named child seeds reproduce"
+    )
+    expect_match(
+        refrozen$separation$historical_stream_authentication,
+        "pinned historical assertions"
+    )
+    expect_identical(
+        names(manifests$manifest_payload[[1L]]$child_seeds[[1L]]),
+        c("generator", "association")
+    )
+    expect_identical(
+        unname(manifests$manifest_payload[[1L]]$child_seeds[[1L]]),
+        as.integer(
+            manifests$manifest_payload[[1L]]$task_stream[[1L]][[2L]] + 0:1
+        )
+    )
+    retired <- refrozen$separation$retired_version3_seed_block
+    expect_identical(retired$first_seed_root, 664979464L)
+    expect_identical(retired$last_reserved_scalar_seed, 665037063L)
+    expect_identical(retired$task_count, 7200L)
+})
+
+test_that("K=1 acceptance protocol v4 pins the committed calibration scripts", {
+    manifests <- k1_acceptance_protocol("4")$separation$
+        calibration_stream_manifests
+    source_paths <- file.path(
+        test_path("..", "..", "scripts"),
+        sprintf("render-issue-%d-proof.R", manifests$issue)
+    )
+
+    skip_if_not(
+        all(file.exists(source_paths)),
+        "repository-only proof scripts are absent from the installed package"
+    )
+    expect_identical(
+        unname(tools::sha256sum(source_paths)),
+        manifests$source_script_sha256_assertion
+    )
 })
 
 test_that("K=1 acceptance seeds remain hidden until their protocol merge", {

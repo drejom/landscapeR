@@ -169,11 +169,14 @@ correct boundary result, not a failed decomposition. No longitudinal dynamics,
 direction, onset-time, or causal trajectory claim follows from K=1 recovery.
 
 The earlier well-location, barrier-height, and negative-control criteria remain
-historical version 1 and version 2 evidence. Version 3 does not silently
-reinterpret them or use the consumed #67 seeds. Final Stage 2 acceptance status
-can change only after the new content-addressed artifact is verified and its
-cell-specific results are recorded here. Until then this ADR remains
-provisional-accepted and the real-data stop rule in ADR 0016 remains active.
+historical version 1 and version 2 evidence. Version 4 preserves version 3's
+scientific rules exactly, but replaces its complete seed set after four tasks
+were exercised before runner review. It does not reinterpret historical
+evidence or use the consumed #67 or retired version 3 seeds. Final Stage 2
+acceptance status can change only after the new content-addressed artifact is
+verified and its cell-specific results are recorded here. Until then this ADR
+remains provisional-accepted and the real-data stop rule in ADR 0016 remains
+active.
 
 ## Review trigger
 

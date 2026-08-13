@@ -283,10 +283,15 @@ probability no greater than 0.05 and a Wilson 95% upper bound no greater than
 covariance, and missingness regimes. They cannot yield a universal sample-size
 rule.
 
-The protocol is frozen before its merge-derived seeds are knowable. Its 7,200
-acceptance replicates use new disjoint streams and preserve all calibration and
-historical acceptance streams as reserved. Results cannot tune version 3.
-A complete negative result is valid. Exploratory real-data K=1 work advances
+The version 3 scientific protocol was frozen before its merge-derived seeds
+were knowable. Four version 3 task rows were then exercised prematurely during
+runner integration, so that complete seed set is retired under RR-017. Version
+4 refreezes the identical grids, estimands, thresholds, pass rules, and 7,200
+replicate workload. It adds self-describing historical calibration RNG
+manifests and reserves the entire revealed version 3 block before its own merge
+can reveal new seeds. No observed version 3 outcome informed version 4.
+A complete negative result is valid. Results cannot tune version 4.
+Exploratory real-data K=1 work advances
 only if a real experiment lies inside a supported, design-compatible cell and
 the complete artifact, null controls, accounting, and provenance verify.
 
