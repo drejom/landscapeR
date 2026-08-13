@@ -17,6 +17,9 @@ summarize_k1_revised_acceptance(
 \item{tasks}{rows from a validated revised manifest.}
 
 \item{protocol}{frozen version 3 protocol.}
+
+\item{manifest}{optional complete validated manifest. Publication summaries
+require it; implementation fixtures may omit it and remain non-publishable.}
 }
 \value{
 Digest-bound \code{K1RevisedAcceptanceSummary}.

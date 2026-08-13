@@ -775,6 +775,8 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
 #' @param results one typed result for every row in `tasks`.
 #' @param tasks rows from a validated revised manifest.
 #' @param protocol frozen version 3 protocol.
+#' @param manifest optional complete validated manifest. Publication summaries
+#'   require it; implementation fixtures may omit it and remain non-publishable.
 #' @return Digest-bound `K1RevisedAcceptanceSummary`.
 #' @export
 summarize_k1_revised_acceptance <- function(
