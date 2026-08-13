@@ -1,12 +1,6 @@
-# Audit-only Gemini _targets.R profile for the retired version 3 graph.
-# This file documents the intended scheduler topology. It is deliberately not
-# runnable and must not be copied into an execution directory. A separately
-# reviewed version 4 profile is required before any scientific scheduling.
-
-stop(
-    "Audit only: version 3 acceptance seeds are retired; do not execute this ",
-    "profile. Freeze and review version 4 first."
-)
+# Gemini _targets.R profile for the reviewed version 4 graph. Do not schedule
+# this profile until the runner revision containing it has merged and that exact
+# revision is installed on every worker.
 
 protocol_merge <- Sys.getenv("LANDSCAPER_K1_PROTOCOL_MERGE")
 runner_merge <- Sys.getenv("LANDSCAPER_K1_RUNNER_MERGE")

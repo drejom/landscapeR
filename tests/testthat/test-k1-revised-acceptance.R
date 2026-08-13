@@ -4,6 +4,12 @@ protocol_merge_v3 <- function() {
 
 runner_revision_v3 <- function() strrep("a", 40L)
 
+protocol_merge_v4 <- function() {
+    "92db509aa1724cbeac62ac79d4e4858c94e5aa20"
+}
+
+runner_revision_v4 <- function() strrep("b", 40L)
+
 revised_identity_v3 <- function() list(
     source_revision = runner_revision_v3(),
     r_version = paste(R.version$major, R.version$minor, sep = "."),
@@ -14,7 +20,7 @@ revised_identity_v3 <- function() list(
 
 test_that("revised acceptance manifest exactly expands the frozen grid", {
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), k1_acceptance_protocol("3")
     )
 
     expect_s3_class(manifest, "K1RevisedAcceptanceManifest")
@@ -33,8 +39,67 @@ test_that("revised acceptance manifest exactly expands the frozen grid", {
     expect_identical(
         manifest,
         k1_revised_acceptance_manifest(
-            protocol_merge_v3(), runner_revision_v3()
+            protocol_merge_v3(), runner_revision_v3(),
+            k1_acceptance_protocol("3")
         )
+    )
+})
+
+test_that("version 4 manifest is authenticated and disjoint before execution", {
+    protocol <- k1_acceptance_protocol("4")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v4(), runner_revision_v4(), protocol
+    )
+
+    expect_true(validate_k1_revised_acceptance_manifest(manifest))
+    expect_identical(manifest$protocol_id, "k1-stage0-acceptance-v4")
+    expect_identical(manifest$artifact_version, "4")
+    expect_identical(nrow(manifest$tasks), 7200L)
+    expect_true(manifest$historical_stream_authentication$
+        authenticated_for_execution)
+    expect_identical(
+        manifest$historical_stream_authentication$schema_version,
+        "k1-calibration-rng-manifest-v1"
+    )
+    retired <- protocol$separation$retired_version3_seed_block
+    scalar <- unlist(manifest$tasks$stream_seeds, use.names = FALSE)
+    expect_false(any(
+        scalar >= retired$first_seed_root &
+            scalar <= retired$last_reserved_scalar_seed
+    ))
+    expect_false(any(scalar %in%
+        protocol$separation$reserved_calibration_rng_streams))
+    calibration_children <- unlist(lapply(
+        protocol$separation$calibration_stream_manifests$manifest_payload,
+        function(payload) unlist(payload$child_seeds, use.names = FALSE)
+    ), use.names = FALSE)
+    expect_false(any(scalar %in% calibration_children))
+    expect_true(any(grepl(
+        "association",
+        names(protocol$separation$calibration_stream_manifests$
+            manifest_payload[[1L]]$child_seeds[[1L]])
+    )))
+    retired_manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v3(), strrep("0", 40L), k1_acceptance_protocol("3")
+    )
+    stream_key <- function(streams) vapply(
+        streams, paste, collapse = ":", character(1L)
+    )
+    expect_false(any(
+        stream_key(manifest$tasks$task_stream) %in%
+            stream_key(retired_manifest$tasks$task_stream)
+    ))
+    good_identity <- revised_identity_v3()
+    good_identity$source_revision <- runner_revision_v4()
+    expect_true(landscapeR:::.k1_validate_runtime_revision(
+        good_identity, manifest
+    ))
+    bad_identity <- good_identity
+    bad_identity$source_revision <- strrep("c", 40L)
+    expect_error(
+        landscapeR:::.k1_validate_runtime_revision(bad_identity, manifest),
+        "must equal the reviewed runner revision",
+        class = "k1_acceptance_runner_error"
     )
 })
 
@@ -45,14 +110,14 @@ test_that("revised acceptance manifest is revision-bound and immutable", {
     )
     expect_error(
         k1_revised_acceptance_manifest(
-            protocol_merge_v3(), protocol_merge_v3()
+            protocol_merge_v4(), protocol_merge_v4()
         ),
         "must differ",
         class = "k1_acceptance_runner_error"
     )
 
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), k1_acceptance_protocol("3")
     )
     manifest$tasks$seed_root[[1L]] <- manifest$tasks$seed_root[[1L]] + 1L
     expect_error(
@@ -95,7 +160,7 @@ test_that("revised acceptance manifest is revision-bound and immutable", {
 test_that("cell decisions retain failures and apply both Wilson gates", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     positive <- manifest$tasks[
         manifest$tasks$canonical_cell ==
@@ -132,7 +197,7 @@ test_that("cell decisions retain failures and apply both Wilson gates", {
 test_that("an incomplete cell is indeterminate rather than supported", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     tasks <- manifest$tasks[
         manifest$tasks$canonical_cell ==
@@ -180,10 +245,41 @@ test_that("revised acceptance targets expose one branch per replicate", {
     )
 })
 
+test_that("version 4 targets expose the reviewed executable topology", {
+    skip_if_not_installed("targets")
+    graph <- k1_revised_acceptance_targets(
+        phase_a_merge_commit = protocol_merge_v4(),
+        runner_revision = runner_revision_v4(),
+        artifact_root = tempfile("k1-revised-v4-")
+    )
+
+    expect_identical(vapply(graph, `[[`, character(1L), "name"), c(
+        "k1_v4_protocol", "k1_v4_manifest", "k1_v4_identity",
+        "k1_v4_preflight", "k1_v4_tasks", "k1_v4_task",
+        "k1_v4_result", "k1_v4_results", "k1_v4_artifact",
+        "k1_v4_artifact_verified", "k1_v4_evidence"
+    ))
+    expect_match(
+        paste(capture.output(print(graph[[4L]])), collapse = "\n"),
+        "k1_revised_assert_execution_authorized"
+    )
+    expect_match(deparse(graph[[7L]]$settings$pattern), "map\\(k1_v4_task\\)")
+    expect_identical(graph[[7L]]$settings$error, "null")
+    expect_error(
+        k1_revised_acceptance_targets(
+            phase_a_merge_commit = strrep("c", 40L),
+            runner_revision = runner_revision_v4(),
+            artifact_root = tempfile("k1-revised-unknown-")
+        ),
+        "not a reviewed revised protocol merge",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
 test_that("retired version 3 tasks cannot execute", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     expect_error(
         landscapeR:::.k1_revised_run_task(
@@ -197,7 +293,7 @@ test_that("retired version 3 tasks cannot execute", {
 test_that("revised acceptance maps use established encodings and captions", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     keep <- manifest$tasks$canonical_cell %in% c(
         unique(manifest$tasks$canonical_cell[
@@ -240,8 +336,9 @@ test_that("revised acceptance maps use established encodings and captions", {
 })
 
 test_that("version 3 historical streams are recorded but not authenticated", {
+    protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     authentication <- manifest$historical_stream_authentication
 
@@ -260,7 +357,7 @@ test_that("retired or fabricated evidence cannot publish acceptance artifacts", 
     )
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     recovered <- with(manifest$tasks,
         control != "high_dimensional_null")
@@ -281,7 +378,7 @@ test_that("retired or fabricated evidence cannot publish acceptance artifacts", 
 test_that("collector rejects incoherent typed results", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     task <- manifest$tasks[1L, , drop = FALSE]
     result <- .revised_fixture_results(task, TRUE)[[1L]]
@@ -306,7 +403,7 @@ test_that("collector rejects incoherent typed results", {
 test_that("collector retains a missing scheduler branch as a typed failure", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     task <- manifest$tasks[1L, , drop = FALSE]
     result <- landscapeR:::.k1_revised_collect(
@@ -322,7 +419,7 @@ test_that("collector retains a missing scheduler branch as a typed failure", {
 test_that("control-specific evidence cannot drift from its manifest task", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     task <- manifest$tasks[
         manifest$tasks$control == "independent_time_course",
@@ -384,7 +481,7 @@ test_that("control-specific evidence cannot drift from its manifest task", {
 test_that("every control has an exact manifest-derived execution contract", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
-        protocol_merge_v3(), runner_revision_v3()
+        protocol_merge_v3(), runner_revision_v3(), protocol
     )
     tasks <- manifest$tasks[match(
         c(

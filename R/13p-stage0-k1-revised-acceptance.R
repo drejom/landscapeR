@@ -2,6 +2,11 @@
 
 .k1_revised_acceptance_version <- "k1-revised-acceptance-runner-v1"
 
+.k1_revised_protocol_merges <- c(
+    `3` = "4d2ee67653c7de2f7caf2e52da4a8f7fa05ab111",
+    `4` = "92db509aa1724cbeac62ac79d4e4858c94e5aa20"
+)
+
 .k1_revised_acceptance_controls <- c(
     "independent_time_course", "repeated_subject",
     "high_dimensional_signal", "high_dimensional_null"
@@ -114,6 +119,34 @@
     )
 }
 
+.k1_revised_authenticated_historical_rng <- function(protocol) {
+    manifests <- protocol$separation$calibration_stream_manifests$
+        manifest_payload
+    if (is.null(manifests) || length(manifests) != 3L) {
+        .k1_acceptance_runner_abort(
+            "version 4 calibration RNG manifests are unavailable"
+        )
+    }
+    invisible(lapply(
+        manifests, .k1_validate_calibration_manifest_payload
+    ))
+    list(
+        stream_keys = unlist(lapply(manifests, function(manifest) {
+            vapply(
+                manifest$task_stream, paste, collapse = ":", character(1L)
+            )
+        }), use.names = FALSE),
+        scalar_seeds = unique(as.integer(unlist(lapply(
+            manifests, function(manifest) unlist(
+                manifest$child_seeds, use.names = FALSE
+            )
+        ), use.names = FALSE))),
+        manifest_digests = vapply(
+            manifests, `[[`, character(1L), "manifest_digest"
+        )
+    )
+}
+
 .k1_revised_seed_base <- function(protocol, merge_commit, total_tasks) {
     stride <- protocol$seed_derivation$block_stride
     minimum <- protocol$seed_derivation$minimum_seed_root
@@ -132,14 +165,22 @@
     phase_a_merge_commit, runner_revision, protocol
 ) {
     validate_k1_acceptance_protocol(protocol)
-    if (!identical(protocol$artifact_version, "3")) {
+    if (!protocol$artifact_version %in% c("3", "4")) {
         .k1_acceptance_runner_abort(
-            "revised acceptance requires frozen protocol version 3"
+            "revised acceptance requires frozen protocol version 3 or 4"
         )
     }
     phase_a_merge_commit <- .k1_acceptance_validate_merge_commit(
         phase_a_merge_commit
     )
+    expected_merge <- .k1_revised_protocol_merges[[protocol$artifact_version]]
+    if (is.null(expected_merge) || !identical(
+            phase_a_merge_commit, unname(expected_merge)
+        )) {
+        .k1_acceptance_runner_abort(
+            "phase_a_merge_commit is not the reviewed merge of this protocol"
+        )
+    }
     runner_revision <- .k1_acceptance_validate_merge_commit(runner_revision)
     if (identical(phase_a_merge_commit, runner_revision)) {
         .k1_acceptance_runner_abort(
@@ -150,7 +191,7 @@
     replicate_count <- unique(protocol$seed_plan$replicates_per_grid_cell)
     if (!identical(replicate_count, 100L)) {
         .k1_acceptance_runner_abort(
-            "version 3 requires exactly 100 replicates in every cell"
+            "revised acceptance requires exactly 100 replicates in every cell"
         )
     }
     cells <- vapply(seq_len(nrow(grid)), function(index) {
@@ -196,13 +237,32 @@
         "canonical_cell", "stream_seeds", "task_stream"
     )]
     rownames(tasks) <- NULL
-    historical <- .k1_revised_historical_rng()
+    historical <- if (identical(protocol$artifact_version, "4")) {
+        .k1_revised_authenticated_historical_rng(protocol)
+    } else .k1_revised_historical_rng()
     scalar_seeds <- unlist(tasks$stream_seeds, use.names = FALSE)
     task_stream_keys <- vapply(
         tasks$task_stream, paste, collapse = ":", character(1L)
     )
     historical_range <- protocol$separation$
         reserved_historical_acceptance_ranges
+    retired_v3 <- protocol$separation$retired_version3_seed_block
+    retired_v3_stream_keys <- character()
+    if (!is.null(retired_v3)) {
+        retired_protocol <- k1_acceptance_protocol("3")
+        retired_manifest <- .k1_revised_manifest_payload(
+            unname(.k1_revised_protocol_merges[["3"]]),
+            strrep("0", 40L), retired_protocol
+        )
+        retired_v3_stream_keys <- vapply(
+            retired_manifest$tasks$task_stream,
+            paste, collapse = ":", character(1L)
+        )
+    }
+    collides_retired_v3 <- !is.null(retired_v3) && any(
+        scalar_seeds >= retired_v3$first_seed_root &
+            scalar_seeds <= retired_v3$last_reserved_scalar_seed
+    )
     collision <- anyDuplicated(scalar_seeds) ||
         anyDuplicated(task_stream_keys) ||
         any(scalar_seeds %in% historical$scalar_seeds) ||
@@ -211,9 +271,11 @@
             scalar_seeds <= historical_range$last_stream) ||
         any(scalar_seeds %in%
             protocol$separation$reserved_calibration_rng_streams)
+    collision <- collision || collides_retired_v3 ||
+        any(task_stream_keys %in% retired_v3_stream_keys)
     if (collision) {
         .k1_acceptance_runner_abort(
-            "version 3 RNG blocks collide with reserved evidence streams"
+            "revised acceptance RNG blocks collide with reserved evidence streams"
         )
     }
     list(
@@ -224,7 +286,16 @@
         phase_a_merge_commit = phase_a_merge_commit,
         runner_revision = runner_revision,
         seed_derivation = protocol$seed_derivation$algorithm,
-        historical_stream_authentication = list(
+        historical_stream_authentication = if (
+            identical(protocol$artifact_version, "4")
+        ) list(
+            schema_version = "k1-calibration-rng-manifest-v1",
+            manifest_digests = historical$manifest_digests,
+            reconstructed_stream_digest = digest::digest(
+                historical, algo = "sha256"
+            ),
+            authenticated_for_execution = TRUE
+        ) else list(
             source_scripts_sha256 = protocol$separation$
                 calibration_stream_manifests$source_script_sha256,
             frozen_manifest_digests = protocol$separation$
@@ -245,14 +316,15 @@
 
 #' Reveal the deterministic revised K=1 acceptance manifest
 #'
-#' @param phase_a_merge_commit reviewed version 3 protocol merge SHA-1.
+#' @param phase_a_merge_commit reviewed version 3 or 4 protocol merge SHA-1.
 #' @param runner_revision reviewed runner merge SHA-1.
-#' @param protocol frozen version 3 protocol.
+#' @param protocol frozen revised protocol. Version 4 is the executable
+#'   protocol; version 3 remains readable but retired.
 #' @return Digest-bound `K1RevisedAcceptanceManifest`.
 #' @export
 k1_revised_acceptance_manifest <- function(
     phase_a_merge_commit, runner_revision,
-    protocol = k1_acceptance_protocol("3")
+    protocol = k1_acceptance_protocol("4")
 ) {
     .k1_acceptance_public_boundary({
         payload <- .k1_revised_manifest_payload(
@@ -276,9 +348,17 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
                 "manifest must inherit from K1RevisedAcceptanceManifest"
             )
         }
+        protocol <- switch(
+            manifest$protocol_id,
+            `k1-stage0-acceptance-v3` = k1_acceptance_protocol("3"),
+            `k1-stage0-acceptance-v4` = k1_acceptance_protocol("4"),
+            .k1_acceptance_runner_abort(
+                "manifest protocol is not a supported revised definition"
+            )
+        )
         expected <- k1_revised_acceptance_manifest(
             manifest$phase_a_merge_commit, manifest$runner_revision,
-            k1_acceptance_protocol("3")
+            protocol
         )
         if (!identical(manifest, expected)) {
             .k1_acceptance_runner_abort(
@@ -305,9 +385,12 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
             "new protocol version before scientific execution"
         ))
     }
-    .k1_acceptance_runner_abort(
-        "this runner does not implement the supplied acceptance protocol"
-    )
+    if (!identical(protocol$artifact_version, "4")) {
+        .k1_acceptance_runner_abort(
+            "this runner does not implement the supplied acceptance protocol"
+        )
+    }
+    invisible(TRUE)
 }
 
 .k1_revised_failure <- function(task, condition, runtime_identity = NULL) {
@@ -1412,19 +1495,18 @@ verify_k1_revised_acceptance_artifact <- function(artifact) {
     )
 }
 
-#' Inspect the retired version 3 K=1 acceptance targets graph
+#' Build the revised K=1 acceptance targets graph
 #'
-#' This audit-only graph records the intended one-branch-per-replicate topology,
-#' but its preflight deliberately stops because version 3 seeds were retired
-#' during runner development. It cannot execute scientific work. Version 4 must
-#' be frozen and explicitly supported before production scheduling.
+#' Version 4 provides the reviewed one-branch-per-replicate production graph.
+#' Passing the retired version 3 merge commit returns the audit-only version 3
+#' topology whose preflight deliberately stops before any task can execute.
 #'
-#' @param phase_a_merge_commit reviewed version 3 protocol merge SHA-1.
+#' @param phase_a_merge_commit reviewed version 3 or 4 protocol merge SHA-1.
 #' @param runner_revision reviewed runner merge SHA-1.
 #' @param artifact_root absolute publication directory.
 #' @param controller named crew controller configured by the caller.
-#' @return Audit-only list of targets objects whose preflight always stops for
-#'   the retired version 3 protocol.
+#' @return List of targets objects. Version 4 is executable only after the
+#'   supplied runner revision is installed; version 3 remains audit-only.
 #' @export
 k1_revised_acceptance_targets <- function(
     phase_a_merge_commit, runner_revision, artifact_root,
@@ -1444,66 +1526,120 @@ k1_revised_acceptance_targets <- function(
             "artifact_root must be absolute and controller must be non-empty"
         )
     }
-    list(
+    protocol_version <- names(.k1_revised_protocol_merges)[match(
+        phase_a_merge_commit, unname(.k1_revised_protocol_merges)
+    )]
+    if (is.na(protocol_version)) {
+        .k1_acceptance_runner_abort(
+            "phase_a_merge_commit is not a reviewed revised protocol merge"
+        )
+    }
+    prefix <- paste0("k1_v", protocol_version)
+    protocol_name <- paste0(prefix, "_protocol")
+    manifest_name <- paste0(prefix, "_manifest")
+    identity_name <- paste0(prefix, "_identity")
+    preflight_name <- paste0(prefix, "_preflight")
+    tasks_name <- paste0(prefix, "_tasks")
+    task_name <- paste0(prefix, "_task")
+    result_name <- paste0(prefix, "_result")
+    results_name <- paste0(prefix, "_results")
+    artifact_name <- paste0(prefix, "_artifact")
+    verified_name <- paste0(prefix, "_artifact_verified")
+    evidence_name <- paste0(prefix, "_evidence")
+    graph <- list(
         .k1_acceptance_target(
-            "k1_v3_protocol", quote(landscapeR::k1_acceptance_protocol("3"))
+            protocol_name, substitute(
+                landscapeR::k1_acceptance_protocol(V),
+                list(V = protocol_version)
+            )
         ),
         .k1_acceptance_target(
-            "k1_v3_manifest",
+            manifest_name,
             substitute(landscapeR::k1_revised_acceptance_manifest(
-                PROTOCOL, RUNNER, k1_v3_protocol
-            ), list(PROTOCOL = phase_a_merge_commit, RUNNER = runner_revision))
+                PROTOCOL, RUNNER, PROTOCOL_OBJECT
+            ), list(
+                PROTOCOL = phase_a_merge_commit, RUNNER = runner_revision,
+                PROTOCOL_OBJECT = as.name(protocol_name)
+            ))
         ),
         .k1_acceptance_target(
-            "k1_v3_identity", quote(landscapeR:::.k1_acceptance_worker_identity())
+            identity_name, quote(landscapeR:::.k1_acceptance_worker_identity())
         ),
-        .k1_acceptance_target("k1_v3_preflight", quote({
+        .k1_acceptance_target(preflight_name, substitute({
             landscapeR:::.k1_revised_assert_execution_authorized(
-                k1_v3_protocol
+                PROTOCOL_OBJECT
             )
             landscapeR:::.k1_validate_runtime_revision(
-                k1_v3_identity, k1_v3_manifest
+                IDENTITY, MANIFEST
             )
             TRUE
-        })),
-        .k1_acceptance_target("k1_v3_tasks", quote({
-            k1_v3_preflight
-            k1_v3_manifest$tasks
-        })),
+        }, list(
+            PROTOCOL_OBJECT = as.name(protocol_name),
+            IDENTITY = as.name(identity_name), MANIFEST = as.name(manifest_name)
+        ))),
+        .k1_acceptance_target(tasks_name, substitute({
+            PREFLIGHT
+            MANIFEST$tasks
+        }, list(
+            PREFLIGHT = as.name(preflight_name), MANIFEST = as.name(manifest_name)
+        ))),
         .k1_acceptance_target(
-            "k1_v3_task", quote(landscapeR:::.k1_revised_task_rows(k1_v3_tasks)),
+            task_name, substitute(
+                landscapeR:::.k1_revised_task_rows(TASKS),
+                list(TASKS = as.name(tasks_name))
+            ),
             iteration = "list"
         ),
         .k1_acceptance_target(
-            "k1_v3_result", quote(landscapeR:::.k1_revised_run_task(
-                k1_v3_task, k1_v3_protocol,
-                expected_identity = k1_v3_identity
-            )), deployment = "worker", pattern = quote(map(k1_v3_task)),
+            result_name, substitute(landscapeR:::.k1_revised_run_task(
+                TASK, PROTOCOL_OBJECT,
+                expected_identity = IDENTITY
+            ), list(
+                TASK = as.name(task_name),
+                PROTOCOL_OBJECT = as.name(protocol_name),
+                IDENTITY = as.name(identity_name)
+            )), deployment = "worker",
+            pattern = substitute(map(TASK), list(TASK = as.name(task_name))),
             controller = controller, packages = "landscapeR",
             iteration = "list", error = "null"
         ),
         .k1_acceptance_target(
-            "k1_v3_results", quote(landscapeR:::.k1_revised_collect(
-                k1_v3_result, k1_v3_tasks, k1_v3_protocol,
-                k1_v3_manifest$runner_revision
+            results_name, substitute(landscapeR:::.k1_revised_collect(
+                RESULT, TASKS, PROTOCOL_OBJECT,
+                MANIFEST$runner_revision
+            ), list(
+                RESULT = as.name(result_name), TASKS = as.name(tasks_name),
+                PROTOCOL_OBJECT = as.name(protocol_name),
+                MANIFEST = as.name(manifest_name)
             ))
         ),
         .k1_acceptance_target(
-            "k1_v3_artifact", substitute(
+            artifact_name, substitute(
                 landscapeR:::.k1_revised_publish(
-                    ROOT, k1_v3_protocol, k1_v3_manifest,
-                    k1_v3_tasks, k1_v3_results, k1_v3_identity
-                ), list(ROOT = path.expand(artifact_root))
+                    ROOT, PROTOCOL_OBJECT, MANIFEST,
+                    TASKS, RESULTS, IDENTITY
+                ), list(
+                    ROOT = path.expand(artifact_root),
+                    PROTOCOL_OBJECT = as.name(protocol_name),
+                    MANIFEST = as.name(manifest_name),
+                    TASKS = as.name(tasks_name), RESULTS = as.name(results_name),
+                    IDENTITY = as.name(identity_name)
+                )
             ), format = "file"
         ),
-        .k1_acceptance_target("k1_v3_artifact_verified", quote({
-            landscapeR:::.k1_revised_verify_artifact(k1_v3_artifact)
-            k1_v3_artifact
-        })),
-        .k1_acceptance_target("k1_v3_evidence", quote(structure(list(
-            artifact = k1_v3_artifact_verified, verified = TRUE,
-            protocol_digest = k1_v3_protocol$digest,
-            manifest_digest = k1_v3_manifest$digest
-        ), class = c("K1RevisedAcceptanceWorkflowResult", "list"))))
+        .k1_acceptance_target(verified_name, substitute({
+            landscapeR:::.k1_revised_verify_artifact(ARTIFACT)
+            ARTIFACT
+        }, list(ARTIFACT = as.name(artifact_name)))),
+        .k1_acceptance_target(evidence_name, substitute(structure(list(
+            artifact = VERIFIED, verified = TRUE,
+            protocol_digest = PROTOCOL_OBJECT$digest,
+            manifest_digest = MANIFEST$digest
+        ), class = c("K1RevisedAcceptanceWorkflowResult", "list")), list(
+            VERIFIED = as.name(verified_name),
+            PROTOCOL_OBJECT = as.name(protocol_name),
+            MANIFEST = as.name(manifest_name)
+        )))
     )
+    graph
 }

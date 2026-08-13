@@ -148,11 +148,12 @@ The milestone is complete only when:
                                                          │
                                                          v
                                              #193 protocol-only v4 refreeze
-                                                  in progress
+                                                  complete
                                                          │
                                                          v
                                              #193 v4 runner adaptation +
-                                                  independent execution
+                                                  in progress; execution only
+                                                  after runner merge
                                                          │
                                                          v
                                              #51 phase B: aggregate/finalize
@@ -692,7 +693,7 @@ bodies may state dependencies but do not change this ordering.
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | queued — blocked by #189–#191; does not block acceptance |
-| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; v3 runner infrastructure merged, protocol-only v4 refreeze in progress, then reviewed v4 adaptation before HPC execution |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; v4 protocol merged, runner adaptation in progress, then independent HPC execution after runner merge |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | queued before another calibration module; does not block #191 or #193 |
 <!-- issue-map:end -->
 
