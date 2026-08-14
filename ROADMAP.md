@@ -8,7 +8,7 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **resume #193 revised independent K=1
+**Next task after this change lands:** **#193, resume revised independent K=1
 acceptance from its existing internal checkpoint**.
 The maintainer deliberately reopened the architecture-maintenance lane on
 2026-08-14 after a fresh whole-codebase review. Issues #209 and #211 completed
@@ -270,9 +270,10 @@ range. The #67 audit also showed that the validation instrument itself is not
 yet fit for final adjudication: it gates one-dimensional recovery twice using
 inconsistent cosine/angle cutoffs, cannot evaluate some declared small-sample
 cells, assumes complete repeated trajectories, and tests only one
-fixed-total-signal high-dimensional regime. The next task is #188, followed by
-the revised calibration sequence in #189–#191 and a newly frozen independent
-acceptance in #193. Issue labels do not independently change this schedule.
+fixed-total-signal high-dimensional regime. That audit was addressed by #188,
+followed by the revised calibration sequence in #189–#191 and a newly frozen
+independent acceptance in #193. Issue labels do not independently change this
+schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -704,7 +705,7 @@ bodies may state dependencies but do not change this ordering.
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | complete on merge; does not block acceptance |
-| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — paused during deliberate architecture deepening loop; resume without internal reordering |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; resume from the existing internal checkpoint |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete |

@@ -389,7 +389,11 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     partial_resampling <- display_state$partial_resampling
     panel_letters <- .publication_panel_letters(nrow(summaries))
     panel_labels <- stats::setNames(
-        paste(panel_letters, summaries$component_label),
+        if (repeated) {
+            paste(panel_letters, summaries$component_label)
+        } else {
+            summaries$component_label
+        },
         summaries$component_label
     )
     panel_terms <- stats::setNames(
