@@ -706,7 +706,7 @@ bodies may state dependencies but do not change this ordering.
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete on merge; then #211 |
-| [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | queued after #211 |
+| [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | active — next |
 | [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | complete on merge; then #210 |
 | [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | queued; blocked by #210 |
 | [#213](https://github.com/drejom/landscapeR/issues/213) | Architecture deepening — durable HPC evidence orchestration | queued; blocked by #211 and Gemini availability for final proof |
