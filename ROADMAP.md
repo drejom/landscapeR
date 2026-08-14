@@ -716,6 +716,7 @@ bodies may state dependencies but do not change this ordering.
 | [#214](https://github.com/drejom/landscapeR/issues/214) | Architecture deepening — component-decision evidence interface | queued; blocked by #212 and #97 |
 | [#215](https://github.com/drejom/landscapeR/issues/215) | Architecture deepening — remaining evidence orchestration | queued; blocked by #213 |
 | [#216](https://github.com/drejom/landscapeR/issues/216) | Architecture deepening — acceptance-control adapter deletion test | queued; blocked by #215 |
+| [#220](https://github.com/drejom/landscapeR/issues/220) | Interpretation visual standards — independent time-course panel labels | queued; standalone follow-up; does not reorder #193 |
 <!-- issue-map:end -->
 
 ---
