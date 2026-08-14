@@ -1,7 +1,7 @@
-# Shared publication machinery for design-aware K=1 calibration artifacts.
-# Scientific validators, plots, captions, and displayed data remain owned by
-# each calibration module; this file owns only the repeated governed-file and
-# atomic-publication contract.
+# Design-aware K=1 calibration adapters for shared artifact publication.
+# Scientific validators, plots, captions, displayed data, and the retained
+# failure-injection seam remain here; filesystem publication is owned by the
+# shared artifact module.
 
 .k1_calibration_artifact_files <- function() c(
     "assessment.rds", "replicates.csv", "cell-summary.csv",
