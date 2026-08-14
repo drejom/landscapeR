@@ -92,6 +92,12 @@ test_that("repeated refits preserve seeded results across future backends", {
         seed = 212L,
         sequential_internal = FALSE
     )
+    sequential_proposal <- propose_component(
+        sequential,
+        n_permutations = 3L,
+        seed = 213L,
+        sequential_internal = FALSE
+    )
     future::plan(future::multisession, workers = 2L)
     parallel <- associate_metadata(
         repeated_time_course_fixture(),
@@ -99,6 +105,12 @@ test_that("repeated refits preserve seeded results across future backends", {
         non_analytical_fields = c("mouse_id", "batch"),
         n_resamples = 3L,
         seed = 212L,
+        sequential_internal = FALSE
+    )
+    parallel_proposal <- propose_component(
+        parallel,
+        n_permutations = 3L,
+        seed = 213L,
         sequential_internal = FALSE
     )
 
@@ -113,5 +125,9 @@ test_that("repeated refits preserve seeded results across future backends", {
     expect_identical(
         atlas_provenance(parallel)$resampling_plan$replicate_subject_ids,
         atlas_provenance(sequential)$resampling_plan$replicate_subject_ids
+    )
+    expect_identical(
+        proposal_permutation_evidence(parallel_proposal),
+        proposal_permutation_evidence(sequential_proposal)
     )
 })

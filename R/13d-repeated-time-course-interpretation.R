@@ -850,22 +850,13 @@ register_strategy(
         run_seed = plan$seed,
         compute_tier = "standard",
         worker = function(task, task_id, task_stream) {
-            index <- task$index
-            result <- refit_association(
+            .repeated_bootstrap_refit(
+                task,
                 strategy,
                 scores,
                 target,
-                as.integer(index),
-                context = list(
-                    subject = task$subject,
-                    orientation_multiplier = orientation_multiplier
-                )
+                orientation_multiplier
             )
-            if (identical(result$status, "estimable")) {
-                result$estimate
-            } else {
-                .repetition_failure("model-not-estimable", NA_real_)
-            }
         },
         sequential_internal = sequential_internal,
         future_scheduling = future_scheduling
@@ -882,6 +873,30 @@ register_strategy(
     summary$bootstrap_estimates <- estimates
     summary$execution <- execution
     summary
+}
+
+.repeated_bootstrap_refit <- function(
+    task,
+    strategy,
+    scores,
+    target,
+    orientation_multiplier
+) {
+    result <- refit_association(
+        strategy,
+        scores,
+        target,
+        as.integer(task$index),
+        context = list(
+            subject = task$subject,
+            orientation_multiplier = orientation_multiplier
+        )
+    )
+    if (identical(result$status, "estimable")) {
+        result$estimate
+    } else {
+        .repetition_failure("model-not-estimable", NA_real_)
+    }
 }
 
 .repeated_display_lines <- function(
@@ -1576,6 +1591,36 @@ register_strategy(
     structure(policy$draws, resampling_policy = policy)
 }
 
+.repeated_permutation_max <- function(
+    permuted,
+    score_matrix,
+    observed_time,
+    subject,
+    nuisance_values,
+    reference_level,
+    comparison_level,
+    time_range
+) {
+    effects <- apply(score_matrix, 2L, function(scores) {
+        result <- .fit_repeated_time_course(
+            scores,
+            factor(permuted, levels = c(reference_level, comparison_level)),
+            observed_time,
+            subject,
+            nuisance_values,
+            reference_level,
+            comparison_level,
+            study_time_range = time_range
+        )
+        if (identical(result$status, "estimable")) {
+            result$estimate
+        } else {
+            NA_real_
+        }
+    })
+    if (all(is.finite(effects))) max(abs(effects)) else NA_real_
+}
+
 .compute_repeated_time_permutation_evidence <- function(
     atlas,
     target,
@@ -1690,30 +1735,16 @@ register_strategy(
         run_seed = seed,
         compute_tier = "standard",
         worker = function(permuted, task_id, task_stream) {
-        effects <- apply(score_matrix, 2L, function(scores) {
-            result <- .fit_repeated_time_course(
-                scores,
-                factor(
-                    permuted,
-                    levels = c(
-                        atlas@provenance$reference_level,
-                        atlas@provenance$comparison_level
-                    )
-                ),
+            .repeated_permutation_max(
+                permuted,
+                score_matrix,
                 observed_time,
                 subject,
                 nuisance_values,
                 atlas@provenance$reference_level,
                 atlas@provenance$comparison_level,
-                study_time_range = atlas@provenance$time_range
+                atlas@provenance$time_range
             )
-            if (identical(result$status, "estimable")) {
-                result$estimate
-            } else {
-                NA_real_
-            }
-        })
-        if (all(is.finite(effects))) max(abs(effects)) else NA_real_
         },
         sequential_internal = sequential_internal,
         future_scheduling = future_scheduling,
