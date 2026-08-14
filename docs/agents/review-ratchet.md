@@ -44,11 +44,11 @@ found that body-only fingerprints, incomplete closure environments, and
 assign-before-record ordering could hide behavior changes or leave an
 unprovenanced registry mutation.
 ### RR-006 — Verify that visual encodings carry independent meaning
-Verify that plotted quantities are not deterministic transforms and semantic
-highlight colours retain their role rather than marking selected extremes.
-**Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) initially
-plotted one-dimensional principal angle against its exact absolute-cosine
-transform and used the focal red for the three largest observed rotations.
+Verify plotted quantities are independent and semantic colours retain their role;
+captions must match rendered marks, omit absent encodings, and narrate each panel.
+**Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) plotted an
+exact cosine transform and misused focal red; issue #212 review found endpoint
+and A/B panel caption mismatches.
 ### RR-007 — Keep transient roots outside package builds
 Exclude repo scratch from Git and R package builds. Before trusting a package
 check, verify that generated sites, bundles, and prior checks missed the tarball.
