@@ -436,6 +436,7 @@ test_that("artifact verification translates malformed serialized input", {
         verify_k1_acceptance_artifact(artifact),
         class = "k1_acceptance_runner_error"
     )
+
 })
 
 test_that("acceptance targets graph has one scheduler-owned parallel layer", {
@@ -785,8 +786,17 @@ test_that("published artifacts bind runtime identity and semantic contents", {
         list(result),
         identity
     )
+    repeated <- landscapeR:::.k1_acceptance_publish(
+        root,
+        protocol,
+        manifest,
+        tasks,
+        list(result),
+        identity
+    )
 
     expect_true(verify_k1_acceptance_artifact(artifact))
+    expect_identical(repeated, artifact)
     environment <- readRDS(file.path(artifact, "environment.rds"))
     expect_identical(environment$runtime_identity, identity)
     expect_identical(environment$collector_identity, identity)
@@ -870,6 +880,53 @@ test_that("published artifacts bind runtime identity and semantic contents", {
     expect_error(
         verify_k1_acceptance_artifact(artifact),
         class = "k1_acceptance_runner_error"
+    )
+
+    interrupted_root <- tempfile("k1-artifact-interrupted-")
+    expect_error(
+        testthat::with_mocked_bindings(
+            landscapeR:::.k1_acceptance_publish(
+                interrupted_root,
+                protocol,
+                manifest,
+                tasks,
+                list(result),
+                identity
+            ),
+            .artifact_atomic_move = function(from, to) FALSE,
+            .package = "landscapeR"
+        ),
+        class = "k1_acceptance_runner_error"
+    )
+    expect_length(
+        list.files(interrupted_root, all.files = TRUE, no.. = TRUE),
+        0L
+    )
+
+    rejected_root <- tempfile("k1-artifact-rejected-")
+    expect_error(
+        testthat::with_mocked_bindings(
+            landscapeR:::.k1_acceptance_publish(
+                rejected_root,
+                protocol,
+                manifest,
+                tasks,
+                list(result),
+                identity
+            ),
+            .k1_acceptance_verify_artifact = function(artifact) {
+                landscapeR:::.k1_acceptance_runner_abort(
+                    "synthetic semantic rejection"
+                )
+            },
+            .package = "landscapeR"
+        ),
+        "synthetic semantic rejection",
+        class = "k1_acceptance_runner_error"
+    )
+    expect_length(
+        list.files(rejected_root, all.files = TRUE, no.. = TRUE),
+        0L
     )
 })
 

@@ -1,0 +1,4 @@
+artifact_family	publisher	verifier	reproducible_test	publication_verified
+K=1 calibration outcomes	publish_k1_calibration_outcomes()	verify_k1_calibration_outcomes()	test-k1-calibration-outcomes.R	TRUE
+K=1 acceptance	.k1_acceptance_publish()	verify_k1_acceptance_artifact()	test-k1-stage0-acceptance-runner.R	TRUE
+Full Stage 1 evidence	.stage1_write_full_artifact()	verify_stage1_evidence_artifact()	test-stage1-evidence.R	TRUE

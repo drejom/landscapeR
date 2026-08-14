@@ -1759,9 +1759,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
     do.call(rbind, rows)
 }
 
-.k1_acceptance_file_digest <- function(path) {
-    digest::digest(file = path, algo = "sha256", serialize = FALSE)
-}
+.k1_acceptance_file_digest <- .artifact_file_digest
 
 .k1_acceptance_governed_files <- function(claim_status = NULL) {
     core <- c(
@@ -1784,15 +1782,17 @@ print.K1AcceptanceManifest <- function(x, ...) {
     c(core, figures, "environment.rds")
 }
 
-.k1_acceptance_artifact_digest <- function(file_manifest) {
-    digest::digest(
-        list(
-            file = as.character(file_manifest$file),
-            sha256 = as.character(file_manifest$sha256)
-        ),
-        algo = "sha256"
-    )
-}
+.k1_acceptance_artifact_errors <- function() list(
+    incomplete = "acceptance artifact is incomplete",
+    missing_manifest = "acceptance artifact has no MANIFEST.tsv",
+    missing_payload = "acceptance artifact is incomplete",
+    invalid = "acceptance file manifest is invalid",
+    undeclared = "acceptance artifact contains undeclared files",
+    digest = "acceptance artifact digest verification failed",
+    atomic = "could not atomically publish acceptance artifact"
+)
+
+.k1_acceptance_artifact_digest <- .artifact_digest
 
 .k1_acceptance_payload_digest <- function(
     protocol,
@@ -1874,27 +1874,6 @@ print.K1AcceptanceManifest <- function(x, ...) {
         identity,
         collector_identity
     )
-    artifact_root <- path.expand(artifact_root)
-    dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
-    staging <- tempfile(
-        pattern = paste0(".", protocol$protocol_id, "-tmp-"),
-        tmpdir = artifact_root
-    )
-    dir.create(staging, recursive = TRUE, showWarnings = FALSE)
-    saveRDS(protocol, file.path(staging, "protocol.rds"))
-    saveRDS(manifest, file.path(staging, "seed-manifest.rds"))
-    saveRDS(results, file.path(staging, "replicates.rds"))
-    saveRDS(summary, file.path(staging, "summary.rds"))
-    utils::write.csv(
-        .k1_acceptance_flatten_results(results),
-        file.path(staging, "replicates.csv"),
-        row.names = FALSE
-    )
-    utils::write.csv(
-        summary$cells,
-        file.path(staging, "cell-summary.csv"),
-        row.names = FALSE
-    )
     aml_only <- identical(
         summary$claim_status,
         "independent_aml_acceptance_summary"
@@ -1907,32 +1886,6 @@ print.K1AcceptanceManifest <- function(x, ...) {
     } else plot_k1_acceptance_summary(summary, "false_positive")
     pass_name <- if (aml_only) "aml-pass-rate" else "pass-rate"
     second_name <- if (aml_only) "aml-recovery" else "false-positive"
-    ggplot2::ggsave(
-        file.path(staging, paste0(pass_name, ".png")),
-        pass_rate_plot,
-        width = 100,
-        height = 100,
-        units = "mm",
-        dpi = 450,
-        bg = "white"
-    )
-    ggplot2::ggsave(
-        file.path(staging, paste0(second_name, ".png")),
-        second_plot,
-        width = 100,
-        height = 100,
-        units = "mm",
-        dpi = 450,
-        bg = "white"
-    )
-    writeLines(
-        scientific_caption(pass_rate_plot),
-        file.path(staging, paste0(pass_name, "-caption.txt"))
-    )
-    writeLines(
-        scientific_caption(second_plot),
-        file.path(staging, paste0(second_name, "-caption.txt"))
-    )
     environment <- list(
         artifact_version = protocol$artifact_version,
         claim_status = summary$claim_status,
@@ -1943,40 +1896,41 @@ print.K1AcceptanceManifest <- function(x, ...) {
         runtime_identity = identity,
         collector_identity = collector_identity
     )
-    saveRDS(environment, file.path(staging, "environment.rds"))
     governed <- .k1_acceptance_governed_files(summary$claim_status)
-    file_manifest <- data.frame(
-        file = governed,
-        sha256 = vapply(
-            file.path(staging, governed),
-            .k1_acceptance_file_digest,
-            character(1L)
-        ),
-        stringsAsFactors = FALSE
-    )
-    artifact_digest <- .k1_acceptance_artifact_digest(file_manifest)
-    artifact <- file.path(
-        artifact_root,
-        paste0(protocol$protocol_id, "-", substr(artifact_digest, 1L, 16L))
-    )
-    if (dir.exists(artifact)) {
-        unlink(staging, recursive = TRUE)
-        .k1_acceptance_verify_artifact(artifact)
-        return(artifact)
+    write_payload <- function(staging) {
+        saveRDS(protocol, file.path(staging, "protocol.rds"))
+        saveRDS(manifest, file.path(staging, "seed-manifest.rds"))
+        saveRDS(results, file.path(staging, "replicates.rds"))
+        saveRDS(summary, file.path(staging, "summary.rds"))
+        utils::write.csv(.k1_acceptance_flatten_results(results),
+            file.path(staging, "replicates.csv"), row.names = FALSE)
+        utils::write.csv(summary$cells,
+            file.path(staging, "cell-summary.csv"), row.names = FALSE)
+        ggplot2::ggsave(file.path(staging, paste0(pass_name, ".png")),
+            pass_rate_plot, width = 100, height = 100, units = "mm",
+            dpi = 450, bg = "white")
+        ggplot2::ggsave(file.path(staging, paste0(second_name, ".png")),
+            second_plot, width = 100, height = 100, units = "mm",
+            dpi = 450, bg = "white")
+        writeLines(scientific_caption(pass_rate_plot),
+            file.path(staging, paste0(pass_name, "-caption.txt")))
+        writeLines(scientific_caption(second_plot),
+            file.path(staging, paste0(second_name, "-caption.txt")))
+        saveRDS(environment, file.path(staging, "environment.rds"))
     }
-    utils::write.table(
-        file_manifest,
-        file.path(staging, "MANIFEST.tsv"),
-        sep = "\t",
-        quote = FALSE,
-        row.names = FALSE
+    .artifact_publish(
+        artifact_root = artifact_root,
+        address_prefix = protocol$protocol_id,
+        governed = governed,
+        write_payload = write_payload,
+        semantic_verifier = .k1_acceptance_verify_artifact,
+        abort = .k1_acceptance_runner_abort,
+        messages = .k1_acceptance_artifact_errors(),
+        staging_prefix = paste0(".", protocol$protocol_id, "-tmp-"),
+        preserve_condition = function(condition) {
+            inherits(condition, "k1_acceptance_runner_error")
+        }
     )
-    if (!file.rename(staging, artifact)) {
-        unlink(staging, recursive = TRUE)
-        .k1_acceptance_runner_abort("could not atomically publish acceptance artifact")
-    }
-    .k1_acceptance_verify_artifact(artifact)
-    artifact
 }
 
 .k1_acceptance_verify_artifact <- function(artifact) {
@@ -1996,14 +1950,12 @@ print.K1AcceptanceManifest <- function(x, ...) {
             any(grepl("(^|/)\\.\\.(/|$)|^/", files$file))) {
         .k1_acceptance_runner_abort("acceptance file manifest is invalid")
     }
-    paths <- file.path(artifact, files$file)
-    if (any(!file.exists(paths))) {
-        .k1_acceptance_runner_abort("acceptance artifact is incomplete")
-    }
-    observed <- vapply(paths, .k1_acceptance_file_digest, character(1L))
-    if (!identical(unname(observed), files$sha256)) {
-        .k1_acceptance_runner_abort("acceptance artifact digest verification failed")
-    }
+    files <- .artifact_verify_payload(
+        artifact,
+        files$file,
+        .k1_acceptance_runner_abort,
+        .k1_acceptance_artifact_errors()
+    )
     protocol <- readRDS(file.path(artifact, "protocol.rds"))
     manifest <- readRDS(file.path(artifact, "seed-manifest.rds"))
     results <- readRDS(file.path(artifact, "replicates.rds"))

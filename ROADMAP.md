@@ -8,11 +8,11 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#211 migrate remaining
-scientific-artifact publishers**.
+**Next task after this change lands:** **#210 normalize association
+execution**.
 The maintainer deliberately reopened the architecture-maintenance lane on
-2026-08-14 after a fresh whole-codebase review. Issue #209 completes on merge;
-#211 finishes that publication lane before #210 begins the association lane.
+2026-08-14 after a fresh whole-codebase review. Issues #209 and #211 complete
+the publication lane before #210 begins the association lane.
 The scientific #193 sequence remains paused, not superseded.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
@@ -707,7 +707,7 @@ bodies may state dependencies but do not change this ordering.
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete on merge; then #211 |
 | [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | queued after #211 |
-| [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | active — next; blocked by #209 until merge |
+| [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | complete on merge; then #210 |
 | [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | queued; blocked by #210 |
 | [#213](https://github.com/drejom/landscapeR/issues/213) | Architecture deepening — durable HPC evidence orchestration | queued; blocked by #211 and Gemini availability for final proof |
 | [#214](https://github.com/drejom/landscapeR/issues/214) | Architecture deepening — component-decision evidence interface | queued; blocked by #212 and #97 |

@@ -280,17 +280,68 @@ test_that("full evidence artifact verifier rejects undeclared and altered payloa
     holdout_rows <- stage1_evidence_fixture("holdout")
     holdout_rows <- holdout_rows[holdout_rows$candidate == selection$selected_candidate, , drop = FALSE]
     holdout <- assess_stage1_holdout(selection$selected_candidate, holdout_rows)
+    all_results <- rbind(calibration, stage1_evidence_fixture("holdout"))
     root <- tempfile("stage1-evidence-root-")
     artifact <- landscapeR:::.stage1_write_full_artifact(root, manifest,
-        rbind(calibration, stage1_evidence_fixture("holdout")), selection, holdout,
+        all_results, selection, holdout,
+        workers = 1L, source_commit = paste(rep("a", 40L), collapse = ""))
+    repeated <- landscapeR:::.stage1_write_full_artifact(root, manifest,
+        all_results, selection, holdout,
         workers = 1L, source_commit = paste(rep("a", 40L), collapse = ""))
     expect_true(verify_stage1_evidence_artifact(artifact))
+    expect_identical(repeated, artifact)
     expect_identical(read_stage1_evidence_artifact(artifact)$selection$selected_candidate,
                      "C1_symmetric_consensus")
+
+    interrupted_root <- tempfile("stage1-evidence-interrupted-")
+    expect_error(
+        testthat::with_mocked_bindings(
+            landscapeR:::.stage1_write_full_artifact(
+                interrupted_root, manifest,
+                all_results, selection, holdout, workers = 1L,
+                source_commit = paste(rep("a", 40L), collapse = "")
+            ),
+            .artifact_atomic_move = function(from, to) FALSE,
+            .package = "landscapeR"
+        ),
+        class = "stage1_evidence_error"
+    )
+    expect_length(
+        list.files(interrupted_root, all.files = TRUE, no.. = TRUE),
+        0L
+    )
+
+    rejected_root <- tempfile("stage1-evidence-rejected-")
+    expect_error(
+        testthat::with_mocked_bindings(
+            landscapeR:::.stage1_write_full_artifact(
+                rejected_root, manifest,
+                all_results, selection, holdout, workers = 1L,
+                source_commit = paste(rep("a", 40L), collapse = "")
+            ),
+            .stage1_verify_current_artifact = function(artifact_dir) {
+                landscapeR:::.stage1_evidence_abort(
+                    "synthetic semantic rejection"
+                )
+            },
+            .package = "landscapeR"
+        ),
+        "synthetic semantic rejection",
+        class = "stage1_evidence_error"
+    )
+    expect_length(
+        list.files(rejected_root, all.files = TRUE, no.. = TRUE),
+        0L
+    )
 
     file.create(file.path(artifact, "undeclared.txt"))
     expect_error(verify_stage1_evidence_artifact(artifact), class = "stage1_evidence_error")
     unlink(file.path(artifact, "undeclared.txt"))
+    missing <- file.path(artifact, "holdout-summary.csv")
+    backup <- readBin(missing, "raw", n = file.info(missing)$size)
+    unlink(missing)
+    expect_error(verify_stage1_evidence_artifact(artifact), class = "stage1_evidence_error")
+    writeBin(backup, missing)
     cat("tampered", file = file.path(artifact, "results.csv"), append = TRUE)
     expect_error(verify_stage1_evidence_artifact(artifact), class = "stage1_evidence_error")
 })
