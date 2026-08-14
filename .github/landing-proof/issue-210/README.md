@@ -14,24 +14,36 @@ component traversal, accounting, multiplicity, abstention propagation, and
 atlas assembly. The kernel does not choose an estimand or exchangeability rule.
 
 [`evidence-equivalence.tsv`](evidence-equivalence.tsv) records exact atlas
-digests for the rank-only cross-sectional fixtures and portable scientific
-fingerprints for the fitted time-course fixtures, plus the typed
-non-identifiable outcome. The portable fingerprint retains the complete
+digests for the rank-only cross-sectional fixtures and complete scientific
+payload comparisons for the fitted time-course fixtures, plus the typed
+non-identifiable outcome. The retained payload fixtures cover the complete
 scientific provenance tree, evidence tables, cohort membership, fitted model
 summaries, rankings, resampling plan, and identity fields. Only the original
 raw evidence digests, repetition-result byte digests, and runtime model-engine
 version are removed. Their normalized underlying evidence, repetition values,
 declared model engine, RNG identity, and scientific summaries remain in the
-fingerprint. Numeric values are quantized by rounding to five decimal places.
-This is not a distance tolerance:
-even a very small change can alter the fingerprint when it crosses a rounding
-boundary, and the tests make that behavior explicit. The supported Linux and
-macOS CI jobs independently recompute the fixtures and must place every value
-in the same five-decimal bin before the frozen fingerprint can pass. Six
-decimal places failed that supported-platform comparison; five decimals retain
-the test's ability to detect scientific changes of `1e-4`. This transparent
-quantization rule, rather than an opaque raw digest difference, defines the
-portable comparison.
+comparison. Text, structure, identities, and nonnumeric scientific values must
+match exactly. Floating-point values use an absolute tolerance of `1e-6`.
+The comparison checks every retained field recursively instead of reducing the
+payload to a rounded digest. Tests show that platform-scale perturbations inside
+the declared tolerance compare equal, while scientific changes of `1e-4` and
+changes to formulas, specifications, resampling, fitted models, or association
+evidence do not.
+
+The fitted reference payloads come from the pinned pre-migration revision
+
+`e8e0c5284156bcf2d5f7f8612d096738db7a1daa`. Their human-readable manifest is
+[`association-execution-manifest.tsv`](../../../tests/testthat/fixtures/association-execution-manifest.tsv).
+Regenerate them deliberately with:
+
+```sh
+Rscript tests/testthat/fixtures/generate-association-execution-reference.R
+```
+
+Changing the pinned revision changes the scientific baseline and therefore
+requires explicit review; ordinary proof regeneration only reads these
+fixtures.
+
 Regenerate both artifacts from the repository root with:
 
 ```sh

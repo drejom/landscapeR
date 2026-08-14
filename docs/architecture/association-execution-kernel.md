@@ -54,16 +54,22 @@ The package-owned design adapter supplies the surrounding execution mechanics.
 
 `tests/testthat/test-association-execution-kernel.R` freezes exact atlas digests
 for successful and partial rank-only cross-sectional analyses. Fitted
-independent-time-course analyses use a portable scientific fingerprint that
+independent-time-course analyses use a complete portable payload comparison that
 retains normalized evidence, the declared model engine, fitted scientific
 summaries, RNG identity, and the scientific provenance tree. It excludes the
 runtime model-engine version and raw byte digests whose normalized underlying
 evidence or repetition records are already retained. The test also freezes the
 non-identifiable time-course abstention and proves that changes to the
 specification, model formula, model engine, resampling plan, fitted model,
-repetition values, or association evidence alter the fingerprint. The landing
-proof uses five-decimal quantization: six decimals failed the supported
-macOS/Linux fixture comparison, while changes of `1e-4` remain detectable.
+repetition values, or association evidence fail the comparison. Nonnumeric
+values and structure match exactly; floating-point values use an absolute
+tolerance of `1e-6`, and changes of `1e-4` remain detectable.
+The fitted reference payloads and their manifest are generated from the pinned
+pre-migration revision by
+`tests/testthat/fixtures/generate-association-execution-reference.R`;
+changing that revision is an explicit scientific-baseline change, not routine
+proof maintenance. The generator is included in built-package tests so the
+manifest's code identity remains verifiable during `R CMD check`.
 The landing proof in
 `.github/landing-proof/issue-210/` renders the shared workflow and records
 those identities.

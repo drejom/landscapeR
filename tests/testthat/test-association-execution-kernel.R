@@ -82,10 +82,7 @@ test_that("association execution preserves successful evidence identities", {
                 "ceafb3b56ebb332ba7df955f583084d0106e9c0bbdb4aea5e17a1269c4877f9d"
         )
     )
-    expect_identical(
-        .assoc_exec_fingerprint(independent),
-        "2926e00771749c145c84b5a9a78a1e4c77a3c4eb4a706cb125c002156bc7e4c9"
-    )
+    expect_true(.assoc_exec_matches_fixture(independent, "success"))
 })
 
 test_that("association execution preserves partial-case evidence identities", {
@@ -115,10 +112,7 @@ test_that("association execution preserves partial-case evidence identities", {
         atlas_digest(cross),
         "44bc45c654ca7761513643ca2992af8c6382668014960a5ea43e8f11e33a9d04"
     )
-    expect_identical(
-        .assoc_exec_fingerprint(independent),
-        "d1f6d0db0019a7df5badaddd02ba28eddde969d306db2be41e0a2646c0b1107d"
-    )
+    expect_true(.assoc_exec_matches_fixture(independent, "partial"))
 })
 
 test_that("association execution preserves typed abstention", {
@@ -140,7 +134,7 @@ test_that("association execution preserves typed abstention", {
     expect_match(result@diagnostic, "fewer than two finite values")
 })
 
-test_that("portable fingerprints retain scientific provenance and evidence", {
+test_that("portable payloads retain scientific provenance and evidence", {
     atlas <- associate_metadata(
         independent_time_course_fixture(),
         specification = independent_time_course_specification("batch"),
@@ -150,21 +144,24 @@ test_that("portable fingerprints retain scientific provenance and evidence", {
         seed = 17L,
         sequential_internal = TRUE
     )
-    baseline <- .assoc_exec_fingerprint(atlas)
+    baseline <- .assoc_exec_payload(atlas)
 
     changed_formula <- atlas
     formula_provenance <- atlas_provenance(changed_formula)
     formula_provenance$model_formula_digest <- paste(rep("0", 64L), collapse = "")
     changed_formula@provenance <- formula_provenance
-    expect_false(identical(.assoc_exec_fingerprint(changed_formula), baseline))
+    expect_false(.assoc_exec_payload_equal(
+        .assoc_exec_payload(changed_formula),
+        baseline
+    ))
 
     changed_specification <- atlas
     specification_provenance <- atlas_provenance(changed_specification)
     specification_provenance$analysis_specification_digest <-
         paste(rep("1", 64L), collapse = "")
     changed_specification@provenance <- specification_provenance
-    expect_false(identical(
-        .assoc_exec_fingerprint(changed_specification),
+    expect_false(.assoc_exec_payload_equal(
+        .assoc_exec_payload(changed_specification),
         baseline
     ))
 
@@ -173,8 +170,8 @@ test_that("portable fingerprints retain scientific provenance and evidence", {
     resampling_provenance$resampling_plan$digest <-
         paste(rep("2", 64L), collapse = "")
     changed_resampling@provenance <- resampling_provenance
-    expect_false(identical(
-        .assoc_exec_fingerprint(changed_resampling),
+    expect_false(.assoc_exec_payload_equal(
+        .assoc_exec_payload(changed_resampling),
         baseline
     ))
 
@@ -183,13 +180,19 @@ test_that("portable fingerprints retain scientific provenance and evidence", {
     model_provenance$time_course_models[[1L]]$unadjusted$estimate <-
         model_provenance$time_course_models[[1L]]$unadjusted$estimate + 1e-4
     changed_model@provenance <- model_provenance
-    expect_false(identical(.assoc_exec_fingerprint(changed_model), baseline))
+    expect_false(.assoc_exec_payload_equal(
+        .assoc_exec_payload(changed_model),
+        baseline
+    ))
 
     changed_engine <- atlas
     engine_provenance <- atlas_provenance(changed_engine)
     engine_provenance$model_engine <- "stats::glm"
     changed_engine@provenance <- engine_provenance
-    expect_false(identical(.assoc_exec_fingerprint(changed_engine), baseline))
+    expect_false(.assoc_exec_payload_equal(
+        .assoc_exec_payload(changed_engine),
+        baseline
+    ))
 
     changed_runtime <- atlas
     runtime_provenance <- atlas_provenance(changed_runtime)
@@ -198,7 +201,10 @@ test_that("portable fingerprints retain scientific provenance and evidence", {
         unadjusted_uncertainty$execution$digest <-
         paste(rep("3", 64L), collapse = "")
     changed_runtime@provenance <- runtime_provenance
-    expect_identical(.assoc_exec_fingerprint(changed_runtime), baseline)
+    expect_true(.assoc_exec_payload_equal(
+        .assoc_exec_payload(changed_runtime),
+        baseline
+    ))
 
     changed_execution <- atlas
     execution_provenance <- atlas_provenance(changed_execution)
@@ -207,25 +213,96 @@ test_that("portable fingerprints retain scientific provenance and evidence", {
         execution_provenance$time_course_models[[1L]]$
         unadjusted_uncertainty$execution$values[[1L]] + 1e-4
     changed_execution@provenance <- execution_provenance
-    expect_false(identical(
-        .assoc_exec_fingerprint(changed_execution),
+    expect_false(.assoc_exec_payload_equal(
+        .assoc_exec_payload(changed_execution),
         baseline
     ))
 
     changed_association <- atlas
     changed_association@associations$estimate[[1L]] <-
         changed_association@associations$estimate[[1L]] + 1e-4
-    expect_false(identical(
-        .assoc_exec_fingerprint(changed_association),
+    expect_false(.assoc_exec_payload_equal(
+        .assoc_exec_payload(changed_association),
         baseline
     ))
 })
 
-test_that("portable fingerprint uses explicit five-decimal quantization", {
-    expect_identical(.assoc_exec_normalize(1 + 4e-6), 1)
-    expect_identical(.assoc_exec_normalize(1 + 6e-5), 1.00006)
-    expect_false(identical(
-        .assoc_exec_normalize(1.0000049),
-        .assoc_exec_normalize(1.0000051)
+test_that("portable payload comparison uses a true numeric tolerance", {
+    baseline <- list(value = 1, label = "effect")
+    expect_true(.assoc_exec_payload_equal(
+        baseline,
+        list(value = 1 + 5e-7, label = "effect")
     ))
+    expect_false(.assoc_exec_payload_equal(
+        baseline,
+        list(value = 1 + 2e-6, label = "effect")
+    ))
+    expect_false(.assoc_exec_payload_equal(
+        baseline,
+        list(value = 1, label = "different")
+    ))
+    expect_false(.assoc_exec_payload_equal(
+        list(value = c(0, 0, 0)),
+        list(value = c(1.1e-6, 0.1e-6, 0.1e-6))
+    ))
+    expect_true(.assoc_exec_payload_equal(
+        list(value = c(0, 0, 0)),
+        list(value = c(0.9e-6, 0.1e-6, 0.1e-6))
+    ))
+})
+
+test_that("reference fixture provenance is verified before comparison", {
+    expect_true(file.exists(.assoc_exec_repo_path(
+        "tests", "testthat", "fixtures",
+        "generate-association-execution-reference.R"
+    )))
+    source_dir <- testthat::test_path("fixtures")
+    fixture_dir <- tempfile("issue-210-fixtures-")
+    dir.create(fixture_dir)
+    fixture_files <- c(
+        "association-execution-success.hex",
+        "association-execution-partial.hex",
+        "association-execution-manifest.tsv"
+    )
+    expect_true(all(file.copy(
+        file.path(source_dir, fixture_files),
+        fixture_dir
+    )))
+
+    success_path <- file.path(
+        fixture_dir,
+        "association-execution-success.hex"
+    )
+    write("00", success_path, append = TRUE)
+    expect_error(
+        .assoc_exec_fixture("success", fixture_dir),
+        "payload digest"
+    )
+
+    expect_true(file.copy(
+        file.path(source_dir, "association-execution-success.hex"),
+        success_path,
+        overwrite = TRUE
+    ))
+    manifest_path <- file.path(
+        fixture_dir,
+        "association-execution-manifest.tsv"
+    )
+    manifest <- utils::read.delim(
+        manifest_path,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+    )
+    manifest$source_revision[[1L]] <- paste(rep("0", 40L), collapse = "")
+    utils::write.table(
+        manifest,
+        manifest_path,
+        sep = "\t",
+        quote = FALSE,
+        row.names = FALSE
+    )
+    expect_error(
+        .assoc_exec_fixture("success", fixture_dir),
+        "source revision"
+    )
 })
