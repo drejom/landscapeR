@@ -14,9 +14,27 @@
 
 .assoc_exec_fingerprint <- function(atlas) {
     provenance <- atlas_provenance(atlas)
+    provenance$model_engine_version <- NULL
     if (is.list(provenance$evidence_contract)) {
         provenance$evidence_contract$digests <- NULL
     }
+    provenance$time_course_models <- lapply(
+        provenance$time_course_models,
+        function(model) {
+            for (variant in c(
+                "unadjusted_uncertainty",
+                "adjusted_uncertainty"
+            )) {
+                if (
+                    is.list(model[[variant]]) &&
+                        is.list(model[[variant]]$execution)
+                ) {
+                    model[[variant]]$execution$digest <- NULL
+                }
+            }
+            model
+        }
+    )
     evidence <- list(
         version = atlas@version,
         dataset_id = atlas@dataset_id,

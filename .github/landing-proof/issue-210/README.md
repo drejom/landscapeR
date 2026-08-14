@@ -19,9 +19,11 @@ fingerprints for the fitted time-course fixtures, plus the typed
 non-identifiable outcome. The portable fingerprint retains the complete
 scientific provenance tree, evidence tables, cohort membership, fitted model
 summaries, rankings, resampling plan, and identity fields. Only the original
-raw evidence digests are removed because they encode the platform-dependent
-floating-point bytes replaced by the normalized content. Numeric values are
-quantized by rounding to six decimal places. This is not a distance tolerance:
+raw evidence digests, repetition-result byte digests, and runtime model-engine
+version are removed. Their normalized underlying evidence, repetition values,
+declared model engine, RNG identity, and scientific summaries remain in the
+fingerprint. Numeric values are quantized by rounding to six decimal places.
+This is not a distance tolerance:
 even a very small change can alter the fingerprint when it crosses a rounding
 boundary, and the tests make that behavior explicit. The supported Linux and
 macOS CI jobs independently recompute the fixtures and must place every value

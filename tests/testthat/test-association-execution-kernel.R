@@ -84,7 +84,7 @@ test_that("association execution preserves successful evidence identities", {
     )
     expect_identical(
         .assoc_exec_fingerprint(independent),
-        "16c45f5022c0fe1bbfbb2c8a432caaa61111d089a5ac7b72b19b32a67853155e"
+        "ceebfccce6d0beb6affa639cee17c6a442203c9d87e98d764937c14549175780"
     )
 })
 
@@ -117,7 +117,7 @@ test_that("association execution preserves partial-case evidence identities", {
     )
     expect_identical(
         .assoc_exec_fingerprint(independent),
-        "35f20dbb3676a011af5a1419400bff34961c3dcfbbebd91abfb4484f4af7c9da"
+        "8869e089769e5f244830a838bb65c526f5e6d2f39df701c3c962a76edb943647"
     )
 })
 
@@ -184,6 +184,33 @@ test_that("portable fingerprints retain scientific provenance and evidence", {
         model_provenance$time_course_models[[1L]]$unadjusted$estimate + 1e-4
     changed_model@provenance <- model_provenance
     expect_false(identical(.assoc_exec_fingerprint(changed_model), baseline))
+
+    changed_engine <- atlas
+    engine_provenance <- atlas_provenance(changed_engine)
+    engine_provenance$model_engine <- "stats::glm"
+    changed_engine@provenance <- engine_provenance
+    expect_false(identical(.assoc_exec_fingerprint(changed_engine), baseline))
+
+    changed_runtime <- atlas
+    runtime_provenance <- atlas_provenance(changed_runtime)
+    runtime_provenance$model_engine_version <- "different-runtime-version"
+    runtime_provenance$time_course_models[[1L]]$
+        unadjusted_uncertainty$execution$digest <-
+        paste(rep("3", 64L), collapse = "")
+    changed_runtime@provenance <- runtime_provenance
+    expect_identical(.assoc_exec_fingerprint(changed_runtime), baseline)
+
+    changed_execution <- atlas
+    execution_provenance <- atlas_provenance(changed_execution)
+    execution_provenance$time_course_models[[1L]]$
+        unadjusted_uncertainty$execution$values[[1L]] <-
+        execution_provenance$time_course_models[[1L]]$
+        unadjusted_uncertainty$execution$values[[1L]] + 1e-4
+    changed_execution@provenance <- execution_provenance
+    expect_false(identical(
+        .assoc_exec_fingerprint(changed_execution),
+        baseline
+    ))
 
     changed_association <- atlas
     changed_association@associations$estimate[[1L]] <-

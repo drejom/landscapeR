@@ -55,10 +55,13 @@ The package-owned design adapter supplies the surrounding execution mechanics.
 `tests/testthat/test-association-execution-kernel.R` freezes exact atlas digests
 for successful and partial rank-only cross-sectional analyses. Fitted
 independent-time-course analyses use a portable scientific fingerprint that
-retains normalized evidence and the complete scientific provenance tree while
-excluding only the raw platform-dependent evidence digests. The test also
-freezes the non-identifiable time-course abstention and proves that changes to
-the specification, model formula, resampling plan, fitted model, or association
-evidence alter the fingerprint. The landing proof in
+retains normalized evidence, the declared model engine, fitted scientific
+summaries, RNG identity, and the scientific provenance tree. It excludes the
+runtime model-engine version and raw byte digests whose normalized underlying
+evidence or repetition records are already retained. The test also freezes the
+non-identifiable time-course abstention and proves that changes to the
+specification, model formula, model engine, resampling plan, fitted model,
+repetition values, or association evidence alter the fingerprint. The landing
+proof in
 `.github/landing-proof/issue-210/` renders the shared workflow and records
 those identities.
