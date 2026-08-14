@@ -507,38 +507,216 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
     commit
 }
 
+.stage1_evidence_governed_files <- function() c(
+    "manifest.rds", "seed-manifest.csv", "results.csv",
+    "calibration-selection.rds", "holdout-report.rds",
+    "holdout-summary.csv", "environment.rds",
+    "figures/shared_recovery_error.png",
+    "figures/projection_error.png"
+)
+
+.stage1_evidence_artifact_errors <- function() list(
+    incomplete = "Stage 1 evidence artifact is incomplete",
+    missing_manifest = "Stage 1 evidence artifact has no MANIFEST.tsv",
+    missing_payload = "Stage 1 evidence artifact is incomplete",
+    invalid = "Stage 1 evidence artifact manifest is invalid",
+    undeclared = "Stage 1 evidence artifact contains undeclared files",
+    digest = "Stage 1 evidence artifact payload hash mismatch",
+    atomic = "could not atomically publish evidence artifact"
+)
+
+.stage1_evidence_identity_digest <- function(file_manifest, artifact_dir) {
+    manifest <- readRDS(file.path(artifact_dir, "manifest.rds"))
+    results <- utils::read.csv(
+        file.path(artifact_dir, "results.csv"), stringsAsFactors = FALSE
+    )
+    selection <- readRDS(
+        file.path(artifact_dir, "calibration-selection.rds")
+    )
+    holdout <- readRDS(file.path(artifact_dir, "holdout-report.rds"))
+    environment <- readRDS(file.path(artifact_dir, "environment.rds"))
+    stable_environment <- environment[
+        c("commit", "r_version", "package_version")
+    ]
+    digest::digest(list(
+        manifest = manifest,
+        results = .stage1_scientific_results(results),
+        selection = .stage1_scientific_selection(selection),
+        holdout = .stage1_scientific_holdout(holdout),
+        environment = stable_environment
+    ), algo = "sha256")
+}
+
+.stage1_compare_derivatives <- function(artifact_dir, manifest, holdout) {
+    expected <- tempfile("stage1-evidence-replay-")
+    dir.create(expected, recursive = TRUE, showWarnings = FALSE)
+    on.exit(unlink(expected, recursive = TRUE, force = TRUE), add = TRUE)
+    utils::write.csv(
+        manifest$seeds,
+        file.path(expected, "seed-manifest.csv"),
+        row.names = FALSE
+    )
+    utils::write.csv(
+        holdout$summary,
+        file.path(expected, "holdout-summary.csv"),
+        row.names = FALSE
+    )
+    derivatives <- c("seed-manifest.csv", "holdout-summary.csv")
+    matches <- vapply(derivatives, function(path) {
+        identical(
+            .artifact_file_digest(file.path(expected, path)),
+            .artifact_file_digest(file.path(artifact_dir, path))
+        )
+    }, logical(1L))
+    if (!all(matches)) {
+        .stage1_evidence_abort(
+            "Stage 1 evidence derivatives do not reproduce"
+        )
+    }
+    invisible(TRUE)
+}
+
+.stage1_verify_current_artifact <- function(artifact_dir) {
+    artifact_dir <- path.expand(artifact_dir)
+    files <- .artifact_verify_payload(
+        artifact_dir,
+        .stage1_evidence_governed_files(),
+        .stage1_evidence_abort,
+        .stage1_evidence_artifact_errors()
+    )
+    manifest <- tryCatch(
+        readRDS(file.path(artifact_dir, "manifest.rds")),
+        error = function(condition) {
+            .stage1_evidence_abort("Stage 1 evidence manifest is invalid")
+        }
+    )
+    validate_stage1_benchmark_manifest(manifest)
+    results <- tryCatch(
+        utils::read.csv(
+            file.path(artifact_dir, "results.csv"),
+            stringsAsFactors = FALSE
+        ),
+        error = function(condition) {
+            .stage1_evidence_abort("Stage 1 evidence results are invalid")
+        }
+    )
+    selection <- tryCatch(
+        readRDS(file.path(artifact_dir, "calibration-selection.rds")),
+        error = function(condition) {
+            .stage1_evidence_abort(
+                "Stage 1 calibration selection is invalid"
+            )
+        }
+    )
+    holdout <- tryCatch(
+        readRDS(file.path(artifact_dir, "holdout-report.rds")),
+        error = function(condition) {
+            .stage1_evidence_abort("Stage 1 holdout report is invalid")
+        }
+    )
+    .stage1_require_results(results)
+    protocol_digest <- .protocol_digest(manifest)
+    if (!is.list(selection) || !is.list(holdout) ||
+            !identical(selection$protocol_digest, protocol_digest) ||
+            !identical(holdout$protocol_digest, protocol_digest)) {
+        .stage1_evidence_abort(
+            "Stage 1 evidence artifact reports an inconsistent protocol digest"
+        )
+    }
+    calibration <- results[
+        results$split == "calibration", , drop = FALSE
+    ]
+    reproduced_selection <- select_stage1_candidate(calibration)
+    holdout_rows <- results[
+        results$split == "holdout" &
+            results$candidate == selection$selected_candidate,
+        ,
+        drop = FALSE
+    ]
+    reproduced_holdout <- assess_stage1_holdout(
+        selection$selected_candidate, holdout_rows
+    )
+    selection_matches <- isTRUE(all.equal(
+        .stage1_scientific_selection(selection),
+        .stage1_scientific_selection(reproduced_selection)
+    ))
+    holdout_matches <- isTRUE(all.equal(
+        .stage1_scientific_holdout(holdout),
+        .stage1_scientific_holdout(reproduced_holdout)
+    ))
+    if (!selection_matches || !holdout_matches) {
+        .stage1_evidence_abort(
+            "Stage 1 evidence selection or holdout does not reproduce"
+        )
+    }
+    .stage1_compare_derivatives(artifact_dir, manifest, holdout)
+    identity_digest <- .stage1_evidence_identity_digest(
+        files, artifact_dir
+    )
+    expected_name <- paste0(
+        manifest$protocol_id, "-", substr(identity_digest, 1L, 16L)
+    )
+    if (!identical(basename(artifact_dir), expected_name)) {
+        .stage1_evidence_abort(
+            "Stage 1 evidence artifact name does not match its payload digest"
+        )
+    }
+    environment <- tryCatch(
+        readRDS(file.path(artifact_dir, "environment.rds")),
+        error = function(condition) {
+            .stage1_evidence_abort(
+                "Stage 1 evidence environment record is invalid"
+            )
+        }
+    )
+    if (!is.list(environment) ||
+            !is.character(environment$commit) ||
+            length(environment$commit) != 1L ||
+            !grepl("^[0-9a-f]{40}$", environment$commit)) {
+        .stage1_evidence_abort(
+            "Stage 1 evidence artifact has no exact source commit"
+        )
+    }
+    invisible(TRUE)
+}
+
 .stage1_write_full_artifact <- function(artifact_root, manifest, results, selection, holdout,
                                         workers, source_commit = .stage1_source_commit(FALSE),
                                         execution = NULL) {
-    if (!dir.exists(artifact_root) && !dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE))
-        .stage1_evidence_abort("could not create benchmark artifact root")
-    stage <- tempfile(".stage1-evidence-", tmpdir = artifact_root)
-    if (!dir.create(stage)) .stage1_evidence_abort("could not create artifact staging directory")
-    on.exit(unlink(stage, recursive = TRUE, force = TRUE), add = TRUE)
-    saveRDS(manifest, file.path(stage, "manifest.rds"))
-    utils::write.csv(manifest$seeds, file.path(stage, "seed-manifest.csv"), row.names = FALSE)
-    utils::write.csv(results, file.path(stage, "results.csv"), row.names = FALSE)
-    saveRDS(selection, file.path(stage, "calibration-selection.rds"))
-    saveRDS(holdout, file.path(stage, "holdout-report.rds"))
-    utils::write.csv(holdout$summary, file.path(stage, "holdout-summary.csv"), row.names = FALSE)
     environment <- list(
         commit = source_commit,
         r_version = R.version.string,
         package_version = as.character(utils::packageVersion("landscapeR")),
-        executed_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
         workers = workers
     )
     if (!is.null(execution)) environment$execution <- execution
-    saveRDS(environment, file.path(stage, "environment.rds"))
-    .stage1_write_figures(stage, holdout)
-    hashes <- .stage1_payload_hashes(stage)
-    payload_digest <- .stage1_payload_digest(hashes)
-    utils::write.csv(hashes, file.path(stage, "hashes.csv"), row.names = FALSE)
-    destination <- file.path(artifact_root, paste(manifest$protocol_id, payload_digest, sep = "-"))
-    if (file.exists(destination)) .stage1_evidence_abort("content-addressed artifact already exists")
-    if (!file.rename(stage, destination)) .stage1_evidence_abort("could not atomically publish evidence artifact")
-    on.exit(NULL, add = FALSE)
-    destination
+    write_payload <- function(stage) {
+        saveRDS(manifest, file.path(stage, "manifest.rds"))
+        utils::write.csv(manifest$seeds,
+            file.path(stage, "seed-manifest.csv"), row.names = FALSE)
+        utils::write.csv(results,
+            file.path(stage, "results.csv"), row.names = FALSE)
+        saveRDS(selection, file.path(stage, "calibration-selection.rds"))
+        saveRDS(holdout, file.path(stage, "holdout-report.rds"))
+        utils::write.csv(holdout$summary,
+            file.path(stage, "holdout-summary.csv"), row.names = FALSE)
+        saveRDS(environment, file.path(stage, "environment.rds"))
+        .stage1_write_figures(stage, holdout)
+    }
+    .artifact_publish(
+        artifact_root = artifact_root,
+        address_prefix = manifest$protocol_id,
+        governed = .stage1_evidence_governed_files(),
+        write_payload = write_payload,
+        semantic_verifier = .stage1_verify_current_artifact,
+        abort = .stage1_evidence_abort,
+        messages = .stage1_evidence_artifact_errors(),
+        staging_prefix = ".stage1-evidence-",
+        preserve_condition = function(condition) {
+            inherits(condition, "stage1_evidence_error")
+        },
+        identity_digest = .stage1_evidence_identity_digest
+    )
 }
 
 #' Verify a full Stage 1 evidence artifact
@@ -547,6 +725,9 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
 #' @return `TRUE` when the complete payload and content-addressed name verify.
 #' @export
 verify_stage1_evidence_artifact <- function(artifact_dir) {
+    if (file.exists(file.path(artifact_dir, "MANIFEST.tsv"))) {
+        return(.stage1_verify_current_artifact(artifact_dir))
+    }
     hash_path <- file.path(artifact_dir, "hashes.csv")
     if (!dir.exists(artifact_dir) || !file.exists(hash_path))
         .stage1_evidence_abort("Stage 1 evidence artifact hash manifest does not exist")

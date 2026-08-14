@@ -33,6 +33,9 @@ artifact_test_publish <- function(
     semantic_verifier = artifact_test_verify,
     preserve_condition = function(condition) {
         inherits(condition, "landscapeR_validation_error")
+    },
+    identity_digest = function(manifest, artifact) {
+        landscapeR:::.artifact_digest(manifest)
     }
 ) {
     landscapeR:::.artifact_publish(
@@ -45,7 +48,8 @@ artifact_test_publish <- function(
         messages = artifact_test_messages(),
         staging_prefix = ".fixture-tmp-",
         atomic_move = atomic_move,
-        preserve_condition = preserve_condition
+        preserve_condition = preserve_condition,
+        identity_digest = identity_digest
     )
 }
 
@@ -73,6 +77,49 @@ test_that("scientific artifacts publish deterministically and verify", {
         "candidate replay failed"
     )
     expect_true(artifact_test_verify(artifact))
+})
+
+test_that("scientific identity can exclude runtime telemetry", {
+    root <- tempfile("scientific-artifact-identity-")
+    dir.create(root)
+    scientific_identity <- function(manifest, artifact) {
+        landscapeR:::.artifact_file_digest(file.path(artifact, "alpha.txt"))
+    }
+    first <- artifact_test_publish(
+        root,
+        writer = function(staging) {
+            writeLines("alpha", file.path(staging, "alpha.txt"))
+            writeLines("one worker", file.path(staging, "beta.txt"))
+        },
+        identity_digest = scientific_identity
+    )
+    repeated <- artifact_test_publish(
+        root,
+        writer = function(staging) {
+            writeLines("alpha", file.path(staging, "alpha.txt"))
+            writeLines("four workers", file.path(staging, "beta.txt"))
+        },
+        identity_digest = scientific_identity
+    )
+
+    expect_identical(repeated, first)
+    expect_identical(
+        readLines(file.path(first, "beta.txt"), warn = FALSE),
+        "one worker"
+    )
+    expect_true(artifact_test_verify(first))
+})
+
+test_that("generic verification selects an exact governed variant", {
+    artifact <- artifact_test_publish(tempfile("scientific-artifact-variant-"))
+    observed <- landscapeR:::.artifact_verify_payload(
+        artifact,
+        list(c("alpha.txt"), c("alpha.txt", "beta.txt")),
+        artifact_test_abort,
+        artifact_test_messages()
+    )
+
+    expect_identical(observed$file, c("alpha.txt", "beta.txt"))
 })
 
 test_that("scientific artifact setup failures use the adapter error", {

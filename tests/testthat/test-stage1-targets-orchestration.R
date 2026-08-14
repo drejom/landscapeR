@@ -197,7 +197,7 @@ test_that("scientific holdout payload excludes backend timing", {
     )
     scientific <- landscapeR:::.stage1_scientific_holdout(holdout)
     expect_identical(scientific$summary$metric, "shared_recovery_error")
-    expect_identical(names(scientific$bootstrap_measurements), "stratum:shared_recovery_error")
+    expect_null(scientific$bootstrap_measurements)
     altered <- holdout
     altered$summary$estimate[altered$summary$metric == "elapsed_sec"] <- 999
     expect_identical(

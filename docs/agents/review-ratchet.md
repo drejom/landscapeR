@@ -29,7 +29,6 @@ requested asynchronous reviewer and inspect all threads before merge.
 **Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137)
 received two actionable findings after internal review; [PR #139](https://github.com/drejom/landscapeR/pull/139)
 required repeated manual prompts while Copilot reviews were pending.
-
 ### RR-002 — Send Markdown API bodies from files
 Use a file-backed request body; never interpolate Markdown containing backticks.
 **Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137) had a review reply corrupted by shell interpolation.
@@ -131,6 +130,10 @@ protocol without changing scientific settings in response to its outcomes.
 tasks locally while checking integration. Although labelled as a smoke test,
 their outcomes were observed before runner review, so the entire version 3 seed
 set was retired before production execution.
+### RR-018 — Preserve public call sequences during infrastructure migrations
+Retain arguments, paths, return shape, and verifier sequence, or provide a tested
+migration path. Exact-path compatibility must preserve raced destination data.
+**Incident:** [PR #218](https://github.com/drejom/landscapeR/pull/218) reinterpreted `write_stage1_benchmark_artifact(path)` as a content-addressed root.
 ## Verify, never assume
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A
 wrong “fix” is worse than a declined comment: respond with evidence when a
@@ -143,6 +146,5 @@ against current code. Consolidate near 150 lines.
 - **Deduplicate:** search before adding; consolidate overlapping rules.
 - **Graduate:** move mechanical rules into checks and recurring decisions into ADRs.
 - **Report:** select one disposition and give a substantive rationale.
-
 This document is only for review knowledge; other concerns belong to their
 existing authorities.

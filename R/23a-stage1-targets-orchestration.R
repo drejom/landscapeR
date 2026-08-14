@@ -237,44 +237,6 @@ stage1_crew_controller <- function(
     )
 }
 
-.stage1_scientific_results <- function(results) {
-    operational <- intersect(
-        c("elapsed_sec", "peak_vcells_bytes", "completed_at_utc"),
-        names(results)
-    )
-    results[setdiff(names(results), operational)]
-}
-
-.stage1_scientific_selection <- function(selection) {
-    selection[c(
-        "protocol_id", "protocol_digest", "generator_digest", "split",
-        "decision", "selected_candidate", "eligible", "conditions",
-        "shared_recovery_difference", "shared_recovery_ci",
-        "exclusive_leakage_difference", "projection_difference",
-        "bootstrap_measurements"
-    )]
-}
-
-.stage1_scientific_holdout <- function(holdout) {
-    operational_metrics <- c("elapsed_sec", "peak_vcells_bytes")
-    summary <- holdout$summary
-    if (is.data.frame(summary)) {
-        summary <- summary[!summary$metric %in% operational_metrics, , drop = FALSE]
-    }
-    measurements <- holdout$bootstrap_measurements
-    if (is.list(measurements) && length(measurements)) {
-        measurements <- measurements[!grepl(
-            paste(operational_metrics, collapse = "|"), names(measurements)
-        )]
-    }
-    holdout[c(
-        "protocol_id", "protocol_digest", "generator_digest", "split",
-        "selected_candidate", "all_gates_passed", "thresholds_passed",
-        "decision", "rules"
-    )] |>
-        c(list(summary = summary, bootstrap_measurements = measurements))
-}
-
 .stage1_target_publication <- function(
     artifact_root,
     manifest,

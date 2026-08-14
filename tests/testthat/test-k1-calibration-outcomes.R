@@ -398,11 +398,15 @@ test_that("calibration artifacts replay their typed assessment", {
         ),
         .package = "landscapeR"
     )
+    root <- tempfile("k1-calibration-artifacts-")
     artifact <- publish_k1_calibration_outcomes(
-        tempfile("k1-calibration-artifacts-"), fixture$results,
+        root, fixture$results,
         fixture$tasks, fixture$protocol)
+    repeated <- publish_k1_calibration_outcomes(
+        root, fixture$results, fixture$tasks, fixture$protocol)
 
     expect_true(dir.exists(artifact))
+    expect_identical(repeated, artifact)
     expect_true(file.exists(file.path(artifact, "MANIFEST.tsv")))
     expect_true(verify_k1_calibration_outcomes(artifact))
     environment <- readRDS(file.path(artifact, "environment.rds"))
@@ -420,6 +424,58 @@ test_that("calibration artifacts replay their typed assessment", {
     )
 })
 
+test_that("calibration artifact publication cleans interrupted candidates", {
+    fixture <- calibration_outcome_fixture()
+    testthat::local_mocked_bindings(
+        .k1_calibration_runtime_identity = function() list(
+            source_revision = strrep("a", 40L),
+            r_version = "4.5.2",
+            package_versions = c(landscapeR = "0.3.0")
+        ),
+        .artifact_atomic_move = function(from, to) FALSE,
+        .package = "landscapeR"
+    )
+    root <- tempfile("k1-calibration-interrupted-")
+
+    expect_error(
+        publish_k1_calibration_outcomes(
+            root, fixture$results, fixture$tasks, fixture$protocol
+        ),
+        class = "k1_acceptance_runner_error"
+    )
+    expect_length(list.files(root, all.files = TRUE, no.. = TRUE), 0L)
+})
+
+test_that("calibration artifact publication cleans semantic rejection", {
+    fixture <- calibration_outcome_fixture()
+    testthat::local_mocked_bindings(
+        .k1_calibration_runtime_identity = function() list(
+            source_revision = strrep("a", 40L),
+            r_version = "4.5.2",
+            package_versions = c(landscapeR = "0.3.0")
+        ),
+        .package = "landscapeR"
+    )
+    root <- tempfile("k1-calibration-rejected-")
+
+    expect_error(
+        testthat::with_mocked_bindings(
+            publish_k1_calibration_outcomes(
+                root, fixture$results, fixture$tasks, fixture$protocol
+            ),
+            .k1_calibration_verify_artifact = function(artifact) {
+                landscapeR:::.k1_acceptance_runner_abort(
+                    "synthetic semantic rejection"
+                )
+            },
+            .package = "landscapeR"
+        ),
+        "synthetic semantic rejection",
+        class = "k1_acceptance_runner_error"
+    )
+    expect_length(list.files(root, all.files = TRUE, no.. = TRUE), 0L)
+})
+
 test_that("calibration artifact verification detects tampering", {
     fixture <- calibration_outcome_fixture()
     testthat::local_mocked_bindings(
@@ -435,6 +491,28 @@ test_that("calibration artifact verification detects tampering", {
         fixture$protocol
     )
     writeLines("changed", file.path(artifact, "outcome-map-caption.txt"))
+
+    expect_error(
+        verify_k1_calibration_outcomes(artifact),
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("calibration artifact verification detects missing payload", {
+    fixture <- calibration_outcome_fixture()
+    testthat::local_mocked_bindings(
+        .k1_calibration_runtime_identity = function() list(
+            source_revision = strrep("a", 40L), r_version = "4.5.2",
+            package_versions = c(landscapeR = "0.3.0")
+        ), .package = "landscapeR"
+    )
+    artifact <- publish_k1_calibration_outcomes(
+        tempfile("k1-calibration-artifacts-"),
+        fixture$results,
+        fixture$tasks,
+        fixture$protocol
+    )
+    unlink(file.path(artifact, "assessment.rds"))
 
     expect_error(
         verify_k1_calibration_outcomes(artifact),

@@ -18,8 +18,9 @@ filesystem publication mechanism described in
 Each scientific module supplies its own assessment validator, plot function,
 display-data attribute and any factor-to-character normalization needed for
 stable CSV output. It also owns replay comparison for CSV derivatives,
-captions, environment identity, and the content-addressed directory name, and
-retains its public publish and verify functions.
+captions, environment identity, and the scientific address prefix, and retains
+its public publish and verify functions. The shared module derives the digest
+suffix and completes the content-addressed directory name.
 Contributors adding a new calibration design should reuse this publication
 mechanism, but must not create a generic scientific-result class or weaken the
 module-specific validator, caption, typed non-estimability, or plotting rules.

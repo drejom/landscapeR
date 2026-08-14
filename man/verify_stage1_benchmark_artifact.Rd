@@ -2,16 +2,18 @@
 % Please edit documentation in R/21-stage1-benchmark.R
 \name{verify_stage1_benchmark_artifact}
 \alias{verify_stage1_benchmark_artifact}
-\title{Verify a Stage 1 benchmark artifact hash manifest}
+\title{Verify a Stage 1 benchmark artifact}
 \usage{
 verify_stage1_benchmark_artifact(artifact_dir)
 }
 \arguments{
-\item{artifact_dir}{artifact directory written by \code{write_stage1_benchmark_artifact()}.}
+\item{artifact_dir}{artifact directory written by
+\code{\link[=write_stage1_benchmark_artifact]{write_stage1_benchmark_artifact()}} or returned by
+\code{\link[=publish_stage1_benchmark_artifact]{publish_stage1_benchmark_artifact()}}.}
 }
 \value{
 \code{TRUE} when every recorded hash matches.
 }
 \description{
-Verify a Stage 1 benchmark artifact hash manifest
+Verify a Stage 1 benchmark artifact
 }

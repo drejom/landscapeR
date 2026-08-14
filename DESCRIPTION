@@ -107,6 +107,7 @@ Collate:
     '16-stage2-plots.R'
     '17-project.R'
     '20-stage1-prototype-smoke.R'
+    '20a-stage1-scientific-identity.R'
     '21-stage1-benchmark.R'
     '22-stage1-evidence.R'
     '23-stage1-execution.R'

@@ -920,49 +920,24 @@ plot_k1_calibration_outcomes <- function(assessment, task_ids = NULL) {
     )
 }
 
+.k1_calibration_artifact_errors <- function() list(
+    incomplete = "calibration artifact is incomplete",
+    missing_manifest = "calibration artifact has no MANIFEST.tsv",
+    missing_payload = "calibration artifact is incomplete",
+    invalid = "calibration artifact file manifest is invalid",
+    undeclared = "calibration artifact contains undeclared files",
+    digest = "calibration artifact digest verification failed",
+    atomic = "could not atomically publish calibration artifact"
+)
+
 .k1_calibration_verify_artifact <- function(artifact) {
     artifact <- path.expand(artifact)
-    manifest_path <- file.path(artifact, "MANIFEST.tsv")
-    if (!file.exists(manifest_path)) {
-        .k1_acceptance_runner_abort(
-            "calibration artifact has no MANIFEST.tsv"
-        )
-    }
-    files <- utils::read.delim(manifest_path, stringsAsFactors = FALSE)
-    if (!identical(names(files), c("file", "sha256")) ||
-            !identical(files$file, .k1_calibration_governed_files()) ||
-            anyNA(files) || anyDuplicated(files$file) ||
-            any(grepl("(^|/)\\.\\.(/|$)|^/", files$file))) {
-        .k1_acceptance_runner_abort(
-            "calibration artifact file manifest is invalid"
-        )
-    }
-    paths <- file.path(artifact, files$file)
-    actual_files <- list.files(
+    files <- .artifact_verify_payload(
         artifact,
-        recursive = TRUE,
-        all.files = TRUE,
-        no.. = TRUE,
-        include.dirs = FALSE
+        .k1_calibration_governed_files(),
+        .k1_acceptance_runner_abort,
+        .k1_calibration_artifact_errors()
     )
-    if (!setequal(actual_files, c("MANIFEST.tsv", files$file))) {
-        .k1_acceptance_runner_abort(
-            "calibration artifact contains undeclared files"
-        )
-    }
-    if (any(!file.exists(paths))) {
-        .k1_acceptance_runner_abort("calibration artifact is incomplete")
-    }
-    observed <- vapply(
-        paths,
-        .k1_acceptance_file_digest,
-        character(1L)
-    )
-    if (!identical(unname(observed), files$sha256)) {
-        .k1_acceptance_runner_abort(
-            "calibration artifact digest verification failed"
-        )
-    }
     protocol <- readRDS(file.path(artifact, "protocol.rds"))
     results <- readRDS(file.path(artifact, "source-results.rds"))
     tasks <- readRDS(file.path(artifact, "source-tasks.rds"))
@@ -1053,40 +1028,6 @@ publish_k1_calibration_outcomes <- function(
         plot <- plot_k1_calibration_outcomes(assessment)
         runtime_identity <- .k1_calibration_runtime_identity()
         .k1_acceptance_validate_identity(runtime_identity)
-        artifact_root <- path.expand(artifact_root)
-        dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
-        staging <- tempfile(
-            pattern = paste0(".", assessment$semantics_version, "-tmp-"),
-            tmpdir = artifact_root
-        )
-        dir.create(staging, recursive = TRUE, showWarnings = FALSE)
-        saveRDS(protocol, file.path(staging, "protocol.rds"))
-        saveRDS(results, file.path(staging, "source-results.rds"))
-        saveRDS(tasks, file.path(staging, "source-tasks.rds"))
-        saveRDS(assessment, file.path(staging, "assessment.rds"))
-        utils::write.csv(
-            assessment$replicates,
-            file.path(staging, "replicates.csv"),
-            row.names = FALSE
-        )
-        utils::write.csv(
-            assessment$cells,
-            file.path(staging, "cell-summary.csv"),
-            row.names = FALSE
-        )
-        ggplot2::ggsave(
-            file.path(staging, "outcome-map.png"),
-            plot,
-            width = 100,
-            height = 100,
-            units = "mm",
-            dpi = 450,
-            bg = "white"
-        )
-        writeLines(
-            scientific_caption(plot),
-            file.path(staging, "outcome-map-caption.txt")
-        )
         environment <- list(
             semantics_version = assessment$semantics_version,
             claim_status = assessment$claim_status,
@@ -1096,46 +1037,38 @@ publish_k1_calibration_outcomes <- function(
             assessment_digest = assessment$digest,
             runtime_identity = runtime_identity
         )
-        saveRDS(environment, file.path(staging, "environment.rds"))
         governed <- .k1_calibration_governed_files()
-        file_manifest <- data.frame(
-            file = governed,
-            sha256 = vapply(
-                file.path(staging, governed),
-                .k1_acceptance_file_digest,
-                character(1L)
+        write_payload <- function(staging) {
+            saveRDS(protocol, file.path(staging, "protocol.rds"))
+            saveRDS(results, file.path(staging, "source-results.rds"))
+            saveRDS(tasks, file.path(staging, "source-tasks.rds"))
+            saveRDS(assessment, file.path(staging, "assessment.rds"))
+            utils::write.csv(assessment$replicates,
+                file.path(staging, "replicates.csv"), row.names = FALSE)
+            utils::write.csv(assessment$cells,
+                file.path(staging, "cell-summary.csv"), row.names = FALSE)
+            ggplot2::ggsave(file.path(staging, "outcome-map.png"), plot,
+                width = 100, height = 100, units = "mm", dpi = 450,
+                bg = "white")
+            writeLines(scientific_caption(plot),
+                file.path(staging, "outcome-map-caption.txt"))
+            saveRDS(environment, file.path(staging, "environment.rds"))
+        }
+        .artifact_publish(
+            artifact_root = artifact_root,
+            address_prefix = assessment$semantics_version,
+            governed = governed,
+            write_payload = write_payload,
+            semantic_verifier = .k1_calibration_verify_artifact,
+            abort = .k1_acceptance_runner_abort,
+            messages = .k1_calibration_artifact_errors(),
+            staging_prefix = paste0(
+                ".", assessment$semantics_version, "-tmp-"
             ),
-            stringsAsFactors = FALSE
+            preserve_condition = function(condition) {
+                inherits(condition, "k1_acceptance_runner_error")
+            }
         )
-        artifact_digest <- .k1_acceptance_artifact_digest(file_manifest)
-        artifact <- file.path(
-            artifact_root,
-            paste0(
-                assessment$semantics_version,
-                "-",
-                substr(artifact_digest, 1L, 16L)
-            )
-        )
-        if (dir.exists(artifact)) {
-            unlink(staging, recursive = TRUE)
-            .k1_calibration_verify_artifact(artifact)
-            return(artifact)
-        }
-        utils::write.table(
-            file_manifest,
-            file.path(staging, "MANIFEST.tsv"),
-            sep = "\t",
-            quote = FALSE,
-            row.names = FALSE
-        )
-        if (!file.rename(staging, artifact)) {
-            unlink(staging, recursive = TRUE)
-            .k1_acceptance_runner_abort(
-                "could not atomically publish calibration artifact"
-            )
-        }
-        .k1_calibration_verify_artifact(artifact)
-        artifact
     }, "could not publish K=1 calibration outcomes")
 }
 

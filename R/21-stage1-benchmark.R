@@ -185,13 +185,17 @@ run_stage1_benchmark_replicate <- function(manifest = stage1_benchmark_manifest(
     out
 }
 
-#' Write an immutable Stage 1 benchmark artifact
+#' Write a Stage 1 benchmark artifact to an exact directory
 #'
-#' @param artifact_dir new destination directory.
+#' This compatibility entry point preserves the original direct-directory
+#' contract. For content-addressed publication, use
+#' [publish_stage1_benchmark_artifact()].
+#'
+#' @param artifact_dir new or empty destination directory.
 #' @param manifest benchmark manifest.
 #' @param seed seed to execute.
 #' @param stratum one explicit frozen-grid stratum.
-#' @return named character vector of written artifact paths.
+#' @return named character vector of verified artifact paths.
 #' @export
 write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benchmark_manifest(), seed = 1001L,
                                             stratum = list(n = 20L, K = 2L,
@@ -200,37 +204,122 @@ write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benc
                                                 missing_block_rate = 0,
                                                 sample_order = "permuted", feature_order = "permuted",
                                                 projection_case = "exact_ids")) {
-    validate_stage1_benchmark_manifest(manifest)
-    if (file.exists(artifact_dir) && !dir.exists(artifact_dir))
-        .stage1_benchmark_abort("benchmark artifact path exists but is not a directory")
-    if (dir.exists(artifact_dir) && length(list.files(artifact_dir, all.files = TRUE, no.. = TRUE)))
-        .stage1_benchmark_abort("benchmark artifact directory must be new or empty")
-    if (!dir.exists(artifact_dir) && !dir.create(artifact_dir, recursive = TRUE, showWarnings = FALSE))
-        .stage1_benchmark_abort("could not create benchmark artifact directory")
-    results <- run_stage1_benchmark_replicate(manifest, seed, stratum)
-    manifest_path <- file.path(artifact_dir, "manifest.rds")
-    seeds_path <- file.path(artifact_dir, "seed-manifest.csv")
-    results_path <- file.path(artifact_dir, "results.csv")
-    env_path <- file.path(artifact_dir, "environment.rds")
-    saveRDS(manifest, manifest_path)
-    utils::write.csv(manifest$seeds, seeds_path, row.names = FALSE)
-    utils::write.csv(results, results_path, row.names = FALSE)
-    saveRDS(list(r_version = R.version.string,
-                 package_version = as.character(utils::packageVersion("landscapeR")),
-                 commit = suppressWarnings(tryCatch(system2("git", c("rev-parse", "HEAD"),
-                     stdout = TRUE, stderr = FALSE), error = function(e) NA_character_))), env_path)
-    paths <- c(manifest = manifest_path, seeds = seeds_path, results = results_path, environment = env_path)
-    hashes <- data.frame(file = basename(paths), sha256 = vapply(paths, digest::digest, character(1L), file = TRUE, algo = "sha256"), stringsAsFactors = FALSE)
-    hash_path <- file.path(artifact_dir, "hashes.csv")
-    utils::write.csv(hashes, hash_path, row.names = FALSE)
-    c(paths, hashes = hash_path)
+    .publish_stage1_benchmark_artifact(
+        dirname(path.expand(artifact_dir)), manifest, seed, stratum,
+        artifact_path = path.expand(artifact_dir), legacy_hashes = TRUE
+    )
 }
 
-#' Verify a Stage 1 benchmark artifact hash manifest
-#' @param artifact_dir artifact directory written by `write_stage1_benchmark_artifact()`.
+#' Publish a content-addressed Stage 1 benchmark artifact
+#'
+#' @param artifact_root root directory for content-addressed artifacts.
+#' @inheritParams write_stage1_benchmark_artifact
+#' @return named character vector of verified artifact paths.
+#' @export
+publish_stage1_benchmark_artifact <- function(artifact_root,
+        manifest = stage1_benchmark_manifest(), seed = 1001L,
+        stratum = list(n = 20L, K = 2L,
+            shared_signal = 24, exclusive_signal = 12,
+            confounder_signal = 12, noise_sd = 1,
+            missing_block_rate = 0,
+            sample_order = "permuted", feature_order = "permuted",
+            projection_case = "exact_ids")) {
+    .publish_stage1_benchmark_artifact(
+        artifact_root, manifest, seed, stratum
+    )
+}
+
+.publish_stage1_benchmark_artifact <- function(
+    artifact_root, manifest, seed, stratum,
+    artifact_path = NULL, legacy_hashes = FALSE
+) {
+    validate_stage1_benchmark_manifest(manifest)
+    results <- run_stage1_benchmark_replicate(manifest, seed, stratum)
+    environment <- .stage1_benchmark_environment()
+    governed <- .stage1_benchmark_governed_files(legacy_hashes)
+    write_payload <- function(staging) {
+        saveRDS(manifest, file.path(staging, "manifest.rds"))
+        utils::write.csv(
+            manifest$seeds,
+            file.path(staging, "seed-manifest.csv"),
+            row.names = FALSE
+        )
+        utils::write.csv(
+            results, file.path(staging, "results.csv"), row.names = FALSE
+        )
+        saveRDS(environment, file.path(staging, "environment.rds"))
+        if (legacy_hashes) {
+            files <- .stage1_benchmark_governed_files(FALSE)
+            hashes <- data.frame(
+                file = files,
+                sha256 = vapply(
+                    file.path(staging, files), .artifact_file_digest,
+                    character(1L)
+                ),
+                stringsAsFactors = FALSE
+            )
+            utils::write.csv(
+                hashes, file.path(staging, "hashes.csv"), row.names = FALSE
+            )
+        }
+    }
+    artifact <- .artifact_publish(
+        artifact_root = artifact_root,
+        address_prefix = paste0(manifest$protocol_id, "-replicate-", seed),
+        governed = governed,
+        write_payload = write_payload,
+        semantic_verifier = .stage1_benchmark_verify_current,
+        abort = .stage1_benchmark_abort,
+        messages = .stage1_benchmark_artifact_errors(),
+        staging_prefix = ".stage1-benchmark-",
+        preserve_condition = function(condition) {
+            inherits(condition, "stage1_benchmark_error")
+        },
+        identity_digest = .stage1_benchmark_identity_digest,
+        artifact_path = artifact_path
+    )
+    payload <- .stage1_benchmark_governed_files(FALSE)
+    paths <- file.path(artifact, payload)
+    hash_path <- if (legacy_hashes) {
+        file.path(artifact, "hashes.csv")
+    } else {
+        file.path(artifact, "MANIFEST.tsv")
+    }
+    stats::setNames(
+        c(paths, hash_path),
+        c("manifest", "seeds", "results", "environment", "hashes")
+    )
+}
+
+.stage1_benchmark_environment <- function() {
+    commit <- tryCatch(
+        landscapeR_revision(),
+        landscapeR_worker_preflight_error = function(condition) "unavailable"
+    )
+    if (!identical(commit, "unavailable") &&
+            (!is.character(commit) || length(commit) != 1L ||
+                is.na(commit) || !grepl("^[0-9a-f]{40}$", commit))) {
+        .stage1_benchmark_abort(
+            "landscapeR installation revision metadata is invalid"
+        )
+    }
+    list(
+        r_version = R.version.string,
+        package_version = as.character(utils::packageVersion("landscapeR")),
+        commit = commit
+    )
+}
+
+#' Verify a Stage 1 benchmark artifact
+#' @param artifact_dir artifact directory written by
+#'   [write_stage1_benchmark_artifact()] or returned by
+#'   [publish_stage1_benchmark_artifact()].
 #' @return `TRUE` when every recorded hash matches.
 #' @export
 verify_stage1_benchmark_artifact <- function(artifact_dir) {
+    if (file.exists(file.path(artifact_dir, "MANIFEST.tsv"))) {
+        return(.stage1_benchmark_verify_current(artifact_dir))
+    }
     hash_path <- file.path(artifact_dir, "hashes.csv")
     if (!dir.exists(artifact_dir) || !file.exists(hash_path))
         .stage1_benchmark_abort("benchmark artifact hash manifest does not exist")
@@ -238,4 +327,173 @@ verify_stage1_benchmark_artifact <- function(artifact_dir) {
                        error = function(e) .stage1_benchmark_abort("benchmark artifact hash manifest is invalid"))
     all(vapply(seq_len(nrow(hashes)), function(i)
         identical(digest::digest(file.path(artifact_dir, hashes$file[[i]]), file = TRUE, algo = "sha256"), hashes$sha256[[i]]), logical(1L)))
+}
+
+.stage1_benchmark_governed_files <- function(legacy_hashes = FALSE) {
+    files <- c(
+        "manifest.rds", "seed-manifest.csv", "results.csv", "environment.rds"
+    )
+    if (legacy_hashes) c(files, "hashes.csv") else files
+}
+
+.stage1_benchmark_artifact_errors <- function() list(
+    incomplete = "Stage 1 benchmark artifact is incomplete",
+    missing_manifest = "Stage 1 benchmark artifact has no MANIFEST.tsv",
+    missing_payload = "Stage 1 benchmark artifact is incomplete",
+    invalid = "Stage 1 benchmark artifact manifest is invalid",
+    undeclared = "Stage 1 benchmark artifact contains undeclared files",
+    digest = "Stage 1 benchmark artifact payload hash mismatch",
+    atomic = "could not atomically publish Stage 1 benchmark artifact"
+)
+
+.stage1_benchmark_identity_digest <- function(file_manifest, artifact_dir) {
+    manifest <- readRDS(file.path(artifact_dir, "manifest.rds"))
+    results <- utils::read.csv(
+        file.path(artifact_dir, "results.csv"), stringsAsFactors = FALSE
+    )
+    environment <- readRDS(file.path(artifact_dir, "environment.rds"))
+    digest::digest(list(
+        manifest = manifest,
+        results = .stage1_scientific_results(results),
+        environment = environment
+    ), algo = "sha256")
+}
+
+.stage1_benchmark_verify_current <- function(
+    artifact_dir,
+    verify_address = !file.exists(file.path(artifact_dir, "hashes.csv"))
+) {
+    files <- .artifact_verify_payload(
+        artifact_dir,
+        list(
+            .stage1_benchmark_governed_files(FALSE),
+            .stage1_benchmark_governed_files(TRUE)
+        ),
+        .stage1_benchmark_abort,
+        .stage1_benchmark_artifact_errors()
+    )
+    legacy_hash_path <- file.path(artifact_dir, "hashes.csv")
+    if (file.exists(legacy_hash_path)) {
+        hashes <- tryCatch(
+            utils::read.csv(legacy_hash_path, stringsAsFactors = FALSE),
+            error = function(condition) {
+                .stage1_benchmark_abort(
+                    "benchmark artifact hash manifest is invalid"
+                )
+            }
+        )
+        valid_hashes <- identical(
+            hashes$file, .stage1_benchmark_governed_files(FALSE)
+        ) && identical(
+            hashes$sha256,
+            unname(vapply(
+                file.path(artifact_dir, hashes$file),
+                .artifact_file_digest,
+                character(1L)
+            ))
+        )
+        if (!valid_hashes) {
+            .stage1_benchmark_abort(
+                "benchmark artifact hash manifest is invalid"
+            )
+        }
+    }
+    manifest <- tryCatch(
+        readRDS(file.path(artifact_dir, "manifest.rds")),
+        error = function(condition) {
+            .stage1_benchmark_abort("benchmark manifest is invalid")
+        }
+    )
+    results <- tryCatch(
+        utils::read.csv(
+            file.path(artifact_dir, "results.csv"),
+            stringsAsFactors = FALSE
+        ),
+        error = function(condition) {
+            .stage1_benchmark_abort("benchmark results are invalid")
+        }
+    )
+    environment <- tryCatch(
+        readRDS(file.path(artifact_dir, "environment.rds")),
+        error = function(condition) {
+            .stage1_benchmark_abort("benchmark environment is invalid")
+        }
+    )
+    validate_stage1_benchmark_manifest(manifest)
+    seeds <- unique(results$seed)
+    valid_commit <- is.character(environment$commit) &&
+        length(environment$commit) == 1L &&
+        !is.na(environment$commit) &&
+        (identical(environment$commit, "unavailable") ||
+            grepl("^[0-9a-f]{40}$", environment$commit))
+    if (length(seeds) != 1L || !is.list(environment) || !valid_commit) {
+        .stage1_benchmark_abort(
+            "benchmark artifact identity is invalid"
+        )
+    }
+    stratum_fields <- c(
+        "n", "K", "shared_signal", "exclusive_signal",
+        "confounder_signal", "noise_sd", "missing_block_rate",
+        "sample_order", "feature_order", "projection_case"
+    )
+    if (!all(stratum_fields %in% names(results))) {
+        .stage1_benchmark_abort("benchmark results are invalid")
+    }
+    stratum <- as.list(results[1L, stratum_fields, drop = FALSE])
+    stratum$n <- as.integer(stratum$n)
+    stratum$K <- as.integer(stratum$K)
+    numeric_fields <- c(
+        "shared_signal", "exclusive_signal", "confounder_signal",
+        "noise_sd", "missing_block_rate"
+    )
+    stratum[numeric_fields] <- lapply(
+        stratum[numeric_fields], as.numeric
+    )
+    reproduced <- run_stage1_benchmark_replicate(
+        manifest, seeds[[1L]], stratum
+    )
+    observed <- .stage1_scientific_results(results)
+    expected <- .stage1_scientific_results(reproduced)
+    observed_file <- tempfile(
+        "stage1-benchmark-observed-", fileext = ".csv"
+    )
+    expected_file <- tempfile(
+        "stage1-benchmark-expected-", fileext = ".csv"
+    )
+    on.exit(unlink(c(observed_file, expected_file)), add = TRUE)
+    utils::write.csv(observed, observed_file, row.names = FALSE)
+    utils::write.csv(expected, expected_file, row.names = FALSE)
+    if (!identical(
+            readLines(observed_file, warn = FALSE),
+            readLines(expected_file, warn = FALSE)
+        )) {
+        .stage1_benchmark_abort(
+            "benchmark results do not reproduce"
+        )
+    }
+    seed_file <- tempfile("stage1-benchmark-seeds-", fileext = ".csv")
+    on.exit(unlink(seed_file), add = TRUE)
+    utils::write.csv(manifest$seeds, seed_file, row.names = FALSE)
+    if (!identical(
+            readLines(seed_file, warn = FALSE),
+            readLines(
+                file.path(artifact_dir, "seed-manifest.csv"),
+                warn = FALSE
+            )
+        )) {
+        .stage1_benchmark_abort(
+            "benchmark seed manifest does not reproduce"
+        )
+    }
+    identity <- .stage1_benchmark_identity_digest(files, artifact_dir)
+    expected_name <- paste0(
+        manifest$protocol_id, "-replicate-", seeds[[1L]], "-",
+        substr(identity, 1L, 16L)
+    )
+    if (verify_address && !identical(basename(artifact_dir), expected_name)) {
+        .stage1_benchmark_abort(
+            "benchmark artifact address is inconsistent"
+        )
+    }
+    invisible(TRUE)
 }
