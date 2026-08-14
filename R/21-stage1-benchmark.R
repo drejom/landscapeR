@@ -292,11 +292,21 @@ publish_stage1_benchmark_artifact <- function(artifact_root,
 }
 
 .stage1_benchmark_environment <- function() {
-    commit <- .stage1_optional_commit()
+    commit <- tryCatch(
+        landscapeR_revision(),
+        landscapeR_worker_preflight_error = function(condition) "unavailable"
+    )
+    if (!identical(commit, "unavailable") &&
+            (!is.character(commit) || length(commit) != 1L ||
+                is.na(commit) || !grepl("^[0-9a-f]{40}$", commit))) {
+        .stage1_benchmark_abort(
+            "landscapeR installation revision metadata is invalid"
+        )
+    }
     list(
         r_version = R.version.string,
         package_version = as.character(utils::packageVersion("landscapeR")),
-        commit = if (is.na(commit)) "unavailable" else commit
+        commit = commit
     )
 }
 

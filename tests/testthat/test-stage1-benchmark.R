@@ -188,17 +188,35 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
         readLines(file.path(raced, "raced.txt")), "preserve me"
     )
 
+    ambient_repo <- tempfile("unrelated-git-repository-")
+    dir.create(ambient_repo)
+    git_status <- suppressWarnings(system2(
+        "git", c("-C", ambient_repo, "init", "--quiet")
+    ))
+    skip_if(git_status != 0L, "git is required for ambient repository test")
+    commit_status <- suppressWarnings(system2(
+        "git", c(
+            "-C", ambient_repo, "-c", "user.name=landscapeR-test",
+            "-c", "user.email=test@example.invalid", "commit", "--quiet",
+            "--allow-empty", "-m", "unrelated"
+        )
+    ))
+    skip_if(commit_status != 0L, "could not create ambient Git commit")
+    ambient_commit <- system2(
+        "git", c("-C", ambient_repo, "rev-parse", "HEAD"), stdout = TRUE
+    )
+    original_directory <- setwd(ambient_repo)
+    on.exit(setwd(original_directory), add = TRUE)
     installed_root <- tempfile("stage1-artifact-installed-")
-    installed_paths <- testthat::with_mocked_bindings(
-        publish_stage1_benchmark_artifact(installed_root, manifest),
-        .stage1_optional_commit = function() NA_character_,
-        .package = "landscapeR"
+    installed_paths <- publish_stage1_benchmark_artifact(
+        installed_root, manifest
     )
     installed_artifact <- dirname(unname(installed_paths[[1L]]))
     installed_environment <- readRDS(
         file.path(installed_artifact, "environment.rds")
     )
     expect_identical(installed_environment$commit, "unavailable")
+    expect_false(identical(installed_environment$commit, ambient_commit))
     expect_true(verify_stage1_benchmark_artifact(installed_artifact))
 
     legacy <- tempfile("stage1-legacy-artifact-")
