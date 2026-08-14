@@ -188,6 +188,19 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
         readLines(file.path(raced, "raced.txt")), "preserve me"
     )
 
+    installed_root <- tempfile("stage1-artifact-installed-")
+    installed_paths <- testthat::with_mocked_bindings(
+        publish_stage1_benchmark_artifact(installed_root, manifest),
+        .stage1_optional_commit = function() NA_character_,
+        .package = "landscapeR"
+    )
+    installed_artifact <- dirname(unname(installed_paths[[1L]]))
+    installed_environment <- readRDS(
+        file.path(installed_artifact, "environment.rds")
+    )
+    expect_identical(installed_environment$commit, "unavailable")
+    expect_true(verify_stage1_benchmark_artifact(installed_artifact))
+
     legacy <- tempfile("stage1-legacy-artifact-")
     dir.create(legacy)
     governed <- landscapeR:::.stage1_benchmark_governed_files()

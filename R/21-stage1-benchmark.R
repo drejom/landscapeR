@@ -292,14 +292,11 @@ publish_stage1_benchmark_artifact <- function(artifact_root,
 }
 
 .stage1_benchmark_environment <- function() {
+    commit <- .stage1_optional_commit()
     list(
         r_version = R.version.string,
         package_version = as.character(utils::packageVersion("landscapeR")),
-        commit = suppressWarnings(tryCatch(
-            system2("git", c("rev-parse", "HEAD"),
-                stdout = TRUE, stderr = FALSE),
-            error = function(condition) NA_character_
-        ))
+        commit = if (is.na(commit)) "unavailable" else commit
     )
 }
 
@@ -414,10 +411,12 @@ verify_stage1_benchmark_artifact <- function(artifact_dir) {
     )
     validate_stage1_benchmark_manifest(manifest)
     seeds <- unique(results$seed)
-    if (length(seeds) != 1L || !is.list(environment) ||
-            !is.character(environment$commit) ||
-            length(environment$commit) != 1L ||
-            !grepl("^[0-9a-f]{40}$", environment$commit)) {
+    valid_commit <- is.character(environment$commit) &&
+        length(environment$commit) == 1L &&
+        !is.na(environment$commit) &&
+        (identical(environment$commit, "unavailable") ||
+            grepl("^[0-9a-f]{40}$", environment$commit))
+    if (length(seeds) != 1L || !is.list(environment) || !valid_commit) {
         .stage1_benchmark_abort(
             "benchmark artifact identity is invalid"
         )
