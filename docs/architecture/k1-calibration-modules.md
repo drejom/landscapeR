@@ -13,13 +13,13 @@ filesystem publication mechanism described in
 
 - the seven governed evidence files and exact manifest shape;
 - rejection of undeclared files, unsafe paths, missing files, and digest drift;
-- replay comparison for CSV derivatives, caption, environment identity, and
-  the content-addressed directory name;
 - staging-directory cleanup and one atomic move into the final address.
 
 Each scientific module supplies its own assessment validator, plot function,
 display-data attribute and any factor-to-character normalization needed for
-stable CSV output. It also retains its public publish and verify functions.
+stable CSV output. It also owns replay comparison for CSV derivatives,
+captions, environment identity, and the content-addressed directory name, and
+retains its public publish and verify functions.
 Contributors adding a new calibration design should reuse this publication
 mechanism, but must not create a generic scientific-result class or weaken the
 module-specific validator, caption, typed non-estimability, or plotting rules.

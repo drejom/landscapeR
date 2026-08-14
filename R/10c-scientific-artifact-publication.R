@@ -37,6 +37,15 @@
     invisible(NULL)
 }
 
+.artifact_attempt <- function(expression, abort, messages, key = "invalid") {
+    tryCatch(
+        force(expression),
+        landscapeR_validation_error = function(condition) stop(condition),
+        k1_acceptance_runner_error = function(condition) stop(condition),
+        error = function(condition) .artifact_fail(abort, messages, key)
+    )
+}
+
 .artifact_validate_files <- function(
     governed, abort, messages
 ) {
@@ -158,15 +167,35 @@
     .artifact_validate_files(governed, abort, messages)
 
     artifact_root <- path.expand(artifact_root)
-    dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
+    if (!dir.exists(artifact_root)) {
+        .artifact_attempt(
+            suppressWarnings(dir.create(
+                artifact_root, recursive = TRUE, showWarnings = FALSE
+            )),
+            abort, messages
+        )
+    }
+    if (!dir.exists(artifact_root)) {
+        .artifact_fail(abort, messages, "invalid")
+    }
     staging <- tempfile(staging_prefix, tmpdir = artifact_root)
     payload <- file.path(staging, "payload")
-    dir.create(payload, recursive = TRUE, showWarnings = FALSE)
+    .artifact_attempt(
+        suppressWarnings(dir.create(
+            payload, recursive = TRUE, showWarnings = FALSE
+        )),
+        abort, messages
+    )
+    if (!dir.exists(payload)) {
+        .artifact_fail(abort, messages, "invalid")
+    }
     on.exit({
-        if (dir.exists(staging)) unlink(staging, recursive = TRUE)
+        if (dir.exists(staging)) {
+            suppressWarnings(unlink(staging, recursive = TRUE))
+        }
     }, add = TRUE)
 
-    write_payload(payload)
+    .artifact_attempt(write_payload(payload), abort, messages)
     actual <- .artifact_inventory(
         payload, governed, abort, messages
     )$files
@@ -176,44 +205,53 @@
     if (any(!actual %in% governed)) {
         .artifact_fail(abort, messages, "undeclared")
     }
-    manifest <- data.frame(
-        file = governed,
-        sha256 = vapply(
-            file.path(payload, governed),
-            .artifact_file_digest,
-            character(1L)
+    manifest <- .artifact_attempt(
+        data.frame(
+            file = governed,
+            sha256 = vapply(
+                file.path(payload, governed),
+                .artifact_file_digest,
+                character(1L)
+            ),
+            stringsAsFactors = FALSE
         ),
-        stringsAsFactors = FALSE
+        abort, messages
     )
     artifact_digest <- .artifact_digest(manifest)
     artifact <- file.path(artifact_root, paste0(
         address_prefix, "-", substr(artifact_digest, 1L, 16L)
     ))
-    if (dir.exists(artifact)) {
-        .artifact_verify_payload(artifact, governed, abort, messages)
-        semantic_verifier(artifact)
-        .artifact_verify_payload(artifact, governed, abort, messages)
-        return(artifact)
-    }
-    utils::write.table(
-        manifest,
-        file.path(payload, .artifact_manifest_name),
-        sep = "\t", quote = FALSE, row.names = FALSE
+    .artifact_attempt(
+        utils::write.table(
+            manifest,
+            file.path(payload, .artifact_manifest_name),
+            sep = "\t", quote = FALSE, row.names = FALSE
+        ),
+        abort, messages
     )
     candidate <- file.path(staging, basename(artifact))
-    if (!file.rename(payload, candidate)) {
+    moved_to_candidate <- .artifact_attempt(
+        suppressWarnings(file.rename(payload, candidate)),
+        abort, messages, "atomic"
+    )
+    if (!moved_to_candidate) {
         .artifact_fail(abort, messages, "atomic")
     }
     .artifact_verify_payload(candidate, governed, abort, messages)
     semantic_verifier(candidate)
     .artifact_verify_payload(candidate, governed, abort, messages)
-    if (!atomic_move(candidate, artifact)) {
-        if (dir.exists(artifact)) {
-            .artifact_verify_payload(artifact, governed, abort, messages)
-            semantic_verifier(artifact)
-            .artifact_verify_payload(artifact, governed, abort, messages)
-            return(artifact)
+    verify_existing <- function() {
+        observed <- .artifact_verify_payload(
+            artifact, governed, abort, messages
+        )
+        if (!identical(.artifact_digest(observed), artifact_digest)) {
+            .artifact_fail(abort, messages, "digest")
         }
+        artifact
+    }
+    if (dir.exists(artifact)) return(verify_existing())
+    if (!atomic_move(candidate, artifact)) {
+        if (dir.exists(artifact)) return(verify_existing())
         .artifact_fail(abort, messages, "atomic")
     }
     artifact

@@ -57,6 +57,28 @@ test_that("scientific artifacts publish deterministically and verify", {
         sort(list.files(artifact)),
         sort(c("alpha.txt", "beta.txt", "MANIFEST.tsv"))
     )
+
+    mutating_verifier <- function(candidate) {
+        writeLines("changed", file.path(candidate, "alpha.txt"))
+        stop("candidate replay failed", call. = FALSE)
+    }
+    expect_error(
+        artifact_test_publish(
+            root, semantic_verifier = mutating_verifier
+        ),
+        "candidate replay failed"
+    )
+    expect_true(artifact_test_verify(artifact))
+})
+
+test_that("scientific artifact setup failures use the adapter error", {
+    root <- tempfile("scientific-artifact-file-")
+    writeLines("not a directory", root)
+
+    expect_error(
+        artifact_test_publish(root),
+        "artifact manifest invalid"
+    )
 })
 
 test_that("scientific artifact manifests reject structural drift", {
@@ -108,7 +130,7 @@ test_that("scientific artifact staging is cleaned after failure", {
     }
     expect_error(
         artifact_test_publish(interrupted_root, interrupted_writer),
-        "writer interrupted"
+        "artifact manifest invalid"
     )
     expect_length(list.files(interrupted_root, all.files = TRUE, no.. = TRUE), 0L)
 
@@ -189,6 +211,11 @@ test_that("scientific artifacts reject links and undeclared directories", {
 test_that("a concurrent valid publisher wins the address race", {
     root <- tempfile("scientific-artifact-")
     dir.create(root)
+    semantic_calls <- 0L
+    counting_verifier <- function(candidate) {
+        semantic_calls <<- semantic_calls + 1L
+        artifact_test_verify(candidate)
+    }
     racing_move <- function(from, to) {
         dir.create(to)
         files <- list.files(from, all.files = TRUE, no.. = TRUE)
@@ -196,9 +223,14 @@ test_that("a concurrent valid publisher wins the address race", {
         FALSE
     }
 
-    artifact <- artifact_test_publish(root, atomic_move = racing_move)
+    artifact <- artifact_test_publish(
+        root,
+        atomic_move = racing_move,
+        semantic_verifier = counting_verifier
+    )
 
     expect_true(artifact_test_verify(artifact))
+    expect_identical(semantic_calls, 1L)
     expect_length(
         list.files(root, all.files = TRUE, no.. = TRUE), 1L
     )
