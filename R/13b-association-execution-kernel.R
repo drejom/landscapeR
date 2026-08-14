@@ -216,10 +216,14 @@
         associations$n_resamples >= 0L &
         associations$resample_failures >= 0L &
         associations$resample_failures <= associations$n_resamples
+    valid_digest <- associations$n_resamples == 0L |
+        (
+            !is.na(associations$resampling_plan_digest) &
+                nzchar(associations$resampling_plan_digest)
+        )
     valid_policy <- !is.na(associations$resampling_method) &
         nzchar(associations$resampling_method) &
-        !is.na(associations$resampling_plan_digest) &
-        nzchar(associations$resampling_plan_digest)
+        valid_digest
     if (any(!valid_counts) || any(!valid_policy)) {
         .stop_association_execution(
             "association execution rows contain invalid resampling accounting"
@@ -367,7 +371,29 @@
     atlas
 }
 
-.execute_association_kernel <- function(adapter, context) {
+.finalize_assoc_execution <- function(adapter, context, execution) {
+    if (!is.list(execution) ||
+            !identical(names(execution), c("plan", "normalized"))) {
+        .stop_association_execution(
+            "association execution finalization requires normalized execution"
+        )
+    }
+    plan <- execution$plan
+    normalized <- execution$normalized
+    blueprint <- .association_execution_attempt(
+        adapter$finalize(
+            context = context,
+            plan = plan,
+            normalized = normalized
+        ),
+        "finalization"
+    )
+    if (is(blueprint, "AssociationAbstention")) return(blueprint)
+    .validate_assoc_blueprint(blueprint, adapter)
+    .assoc_exec_build_atlas(blueprint)
+}
+
+.execute_assoc_components <- function(adapter, context) {
     .validate_assoc_exec_adapter(adapter)
     if (!is.list(context)) {
         .stop_association_execution(
@@ -410,15 +436,11 @@
         results,
         plan$exclusion_rows
     )
-    blueprint <- .association_execution_attempt(
-        adapter$finalize(
-            context = context,
-            plan = plan,
-            normalized = normalized
-        ),
-        "finalization"
-    )
-    if (is(blueprint, "AssociationAbstention")) return(blueprint)
-    .validate_assoc_blueprint(blueprint, adapter)
-    .assoc_exec_build_atlas(blueprint)
+    list(plan = plan, normalized = normalized)
+}
+
+.execute_association_kernel <- function(adapter, context) {
+    execution <- .execute_assoc_components(adapter, context)
+    if (is(execution, "AssociationAbstention")) return(execution)
+    .finalize_assoc_execution(adapter, context, execution)
 }

@@ -897,7 +897,7 @@ register_strategy(
     ]
     reference_level <- specification@reference_level
     comparison_level <- specification@comparison_level
-    plan <- .time_course_resampling_plan(
+    resampling_plan <- .time_course_resampling_plan(
         target,
         observed_time,
         study_time_grid,
@@ -908,136 +908,183 @@ register_strategy(
     if (is.null(component_labels)) {
         component_labels <- paste0("PC", seq_len(ncol(coordinate_matrix)))
     }
-    rows <- list()
-    model_records <- list()
-    observations <- list()
-    display_lines <- list()
     unadjusted_strategy <- preparation$strategy
     adjusted_strategy <- preparation$context$adjusted_strategy
     diagnostic_prefix <- association_contract(
         unadjusted_strategy
     )$diagnostic_prefix
-    for (component in seq_len(ncol(coordinate_matrix))) {
-        scores <- coordinate_matrix[, component]
-        unadjusted_effect <- associate_component(
-            unadjusted_strategy,
-            scores,
-            target
-        )
-        unadjusted <- unadjusted_effect$model_result
-        unadjusted_uncertainty <- .time_course_uncertainty(
-            scores,
-            target,
-            unadjusted_strategy,
+    strategy_contracts <- list(
+        unadjusted = .validated_association_contract(unadjusted_strategy)
+    )
+    if (length(nuisance_values)) {
+        strategy_contracts$adjusted <-
+            .validated_association_contract(adjusted_strategy)
+    }
+    adapter <- .new_assoc_execution_adapter(
+        id = "independent-time-course-linear-v1",
+        sampling_design = "independent_time_course",
+        prepare = function(context) {
+            list(
+                coordinate_matrix = coordinate_matrix,
+                component_labels = component_labels,
+                work_items = list(list(
+                    id = specification@target_field,
+                    metadata_field = specification@target_field
+                )),
+                state = list(),
+                strategy_contracts = strategy_contracts,
+                exclusion_rows = list()
+            )
+        },
+        execute_component = function(
+            context,
             plan,
-            orientation_multiplier = unadjusted$orientation_multiplier,
-            task_identity = paste0(component_labels[[component]], ":unadjusted"),
-            sequential_internal = sequential_internal,
-            future_scheduling = future_scheduling
-        )
-        rows[[length(rows) + 1L]] <- .time_course_pooled_row(
+            work_item,
             component,
-            component_labels[[component]],
-            unadjusted$standardized_scores,
-            target,
-            reference_level,
-            comparison_level
-        )
-        rows[[length(rows) + 1L]] <- .time_course_association_row(
-            component,
-            component_labels[[component]],
-            "time-course-unadjusted",
-            unadjusted,
-            unadjusted_uncertainty,
-            reference_level,
-            comparison_level,
-            diagnostic_prefix = diagnostic_prefix
-        )
-        adjusted <- NULL
-        if (length(nuisance_values)) {
-            adjusted_effect <- associate_component(
-                adjusted_strategy,
+            component_label,
+            scores
+        ) {
+            unadjusted_effect <- associate_component(
+                unadjusted_strategy,
                 scores,
                 target
             )
-            adjusted <- adjusted_effect$model_result
-            adjusted_uncertainty <- .time_course_uncertainty(
+            unadjusted <- unadjusted_effect$model_result
+            unadjusted_uncertainty <- .time_course_uncertainty(
                 scores,
                 target,
-                adjusted_strategy,
-                plan,
-                orientation_multiplier = adjusted$orientation_multiplier,
-                task_identity = paste0(component_labels[[component]], ":adjusted"),
+                unadjusted_strategy,
+                resampling_plan,
+                orientation_multiplier = unadjusted$orientation_multiplier,
+                task_identity = paste0(component_label, ":unadjusted"),
                 sequential_internal = sequential_internal,
                 future_scheduling = future_scheduling
             )
-            rows[[length(rows) + 1L]] <- .time_course_association_row(
+            association_rows <- list(
+                .time_course_pooled_row(
+                    component,
+                    component_label,
+                    unadjusted$standardized_scores,
+                    target,
+                    reference_level,
+                    comparison_level
+                ),
+                .time_course_association_row(
+                    component,
+                    component_label,
+                    "time-course-unadjusted",
+                    unadjusted,
+                    unadjusted_uncertainty,
+                    reference_level,
+                    comparison_level,
+                    diagnostic_prefix = diagnostic_prefix
+                )
+            )
+            adjusted <- NULL
+            adjusted_uncertainty <- NULL
+            if (length(nuisance_values)) {
+                adjusted_effect <- associate_component(
+                    adjusted_strategy,
+                    scores,
+                    target
+                )
+                adjusted <- adjusted_effect$model_result
+                adjusted_uncertainty <- .time_course_uncertainty(
+                    scores,
+                    target,
+                    adjusted_strategy,
+                    resampling_plan,
+                    orientation_multiplier = adjusted$orientation_multiplier,
+                    task_identity = paste0(component_label, ":adjusted"),
+                    sequential_internal = sequential_internal,
+                    future_scheduling = future_scheduling
+                )
+                association_rows[[length(association_rows) + 1L]] <-
+                    .time_course_association_row(
+                        component,
+                        component_label,
+                        "time-course-adjusted",
+                        adjusted,
+                        adjusted_uncertainty,
+                        reference_level,
+                        comparison_level,
+                        nuisance_fields = names(nuisance_values),
+                        diagnostic_prefix = diagnostic_prefix
+                    )
+            }
+            standardized <- unadjusted$standardized_scores
+            observation <- data.frame(
+                metadata_field = specification@target_field,
+                component = component,
+                component_label = component_label,
+                sample_index = seq_along(scores),
+                primary_sample = names(target),
+                metadata_type = "categorical",
+                metadata_value = as.character(target),
+                metadata_numeric = NA_real_,
+                score = standardized,
+                atom_count = as.integer(ave(
+                    rep.int(1L, length(scores)),
+                    paste(
+                        as.character(target),
+                        observed_time,
+                        sprintf("%.17g", standardized),
+                        sep = "\r"
+                    ),
+                    FUN = length
+                )),
+                available = is.finite(standardized) &
+                    !is.na(target) &
+                    is.finite(observed_time),
+                stringsAsFactors = FALSE
+            )
+            primary_model <- if (length(nuisance_values)) {
+                adjusted
+            } else {
+                unadjusted
+            }
+            display_line <- .time_course_display_lines(
+                primary_model,
                 component,
-                component_labels[[component]],
-                "time-course-adjusted",
-                adjusted,
-                adjusted_uncertainty,
+                component_label,
                 reference_level,
                 comparison_level,
-                nuisance_fields = names(nuisance_values),
-                diagnostic_prefix = diagnostic_prefix
+                target,
+                nuisance_values
             )
-        }
-        standardized <- unadjusted$standardized_scores
-        observations[[component]] <- data.frame(
-            metadata_field = specification@target_field,
-            component = as.integer(component),
-            component_label = component_labels[[component]],
-            sample_index = seq_along(scores),
-            primary_sample = names(target),
-            metadata_type = "categorical",
-            metadata_value = as.character(target),
-            metadata_numeric = NA_real_,
-            score = standardized,
-            atom_count = as.integer(ave(
-                rep.int(1L, length(scores)),
-                paste(
-                    as.character(target),
-                    observed_time,
-                    sprintf("%.17g", standardized),
-                    sep = "\r"
-                ),
-                FUN = length
-            )),
-            available = is.finite(standardized) &
-                !is.na(target) &
-                is.finite(observed_time),
-            stringsAsFactors = FALSE
-        )
-        primary_model <- if (length(nuisance_values)) adjusted else unadjusted
-        display_lines[[component]] <- .time_course_display_lines(
-            primary_model,
-            component,
-            component_labels[[component]],
-            reference_level,
-            comparison_level,
-            target,
-            nuisance_values
-        )
-        model_records[[component]] <- list(
-            component = as.integer(component),
-            component_label = component_labels[[component]],
-            orientation_multiplier = unadjusted$orientation_multiplier,
-            unadjusted = unadjusted,
-            adjusted = adjusted,
-            unadjusted_uncertainty = unadjusted_uncertainty,
-            adjusted_uncertainty = if (length(nuisance_values)) {
-                adjusted_uncertainty
-            } else {
-                NULL
+            model_record <- list(
+                component = component,
+                component_label = component_label,
+                orientation_multiplier = unadjusted$orientation_multiplier,
+                unadjusted = unadjusted,
+                adjusted = adjusted,
+                unadjusted_uncertainty = unadjusted_uncertainty,
+                adjusted_uncertainty = adjusted_uncertainty
+            )
+            execution_records <- list(
+                unadjusted = unadjusted_uncertainty$execution
+            )
+            if (length(nuisance_values)) {
+                execution_records$adjusted <- adjusted_uncertainty$execution
             }
-        )
-    }
-    associations <- do.call(rbind, rows)
-    associations <- .adjust_association_multiplicity(associations)
-    observations <- do.call(rbind, observations)
-    rownames(associations) <- NULL
-    rownames(observations) <- NULL
+            list(
+                association_rows = association_rows,
+                observation_rows = observation,
+                execution_records = execution_records,
+                scientific_records = list(model_record),
+                display_records = list(display_line)
+            )
+        },
+        finalize = function(context, plan, normalized) {
+            context$blueprint
+        }
+    )
+    execution <- .execute_assoc_components(adapter, context = list())
+    if (is(execution, "AssociationAbstention")) return(execution)
+    associations <- execution$normalized$associations
+    observations <- execution$normalized$observations
+    model_records <- execution$normalized$scientific_records
+    display_lines <- execution$normalized$display_records
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
     dataset_id <- .time_course_dataset_id(std, input_digest, dataset_id)
@@ -1133,7 +1180,7 @@ register_strategy(
         display_line_table,
         resample_ranks$summary
     )
-    atlas <- .new_time_course_atlas(
+    blueprint <- list(
         module = .independent_time_evidence_version,
         contract_sampling_design = "independent_time_course",
         version = "1.0.0",
@@ -1268,12 +1315,15 @@ register_strategy(
             time_course_display_state = display_state,
             time_course_resample_rankings = resample_ranks$rankings,
             time_course_rank_summary = resample_ranks$summary,
-            resampling_plan = plan
+            resampling_plan = resampling_plan
         ),
         evidence_status = "estimable-exploratory-only"
     )
-    validObject(atlas)
-    atlas
+    .finalize_assoc_execution(
+        adapter,
+        context = list(blueprint = blueprint),
+        execution = execution
+    )
 }
 
 .time_course_permutation_indices <- function(
