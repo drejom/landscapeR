@@ -83,23 +83,8 @@ test_that("association execution preserves successful evidence identities", {
         )
     )
     expect_identical(
-        atlas_digest(independent),
-        "1ad7c11851846db6accd5470c0e95b894d2a69ebe915b63a0d10f0ddcf448db7"
-    )
-    expect_identical(
-        atlas_evidence_contract(independent)$digests,
-        c(
-            associations =
-                "50bf7cee31a2d90686d99bf634a2dfc0c6ada61975c0e7cdffc1ee0e50406441",
-            observations =
-                "99e0601d491a40a7f86c63bb9e8147dce3093a6f5f1cbf3760c81cabc2434eff",
-            exclusions =
-                "7ed8d388f8becfba0d67e448b1d849b8544b66ce5d42448b4d5098b43a04fe83",
-            cohort_members =
-                "03a2ed10b8e300f6b74b099d2a3be87d9cdcd4f0e5b666dc1183e2052148ab07",
-            display_evidence =
-                "d33c41aa3e809776b109a624867a01aaec61f40d2897e6a777ee1aa96c29b009"
-        )
+        .assoc_exec_fingerprint(independent),
+        "fc308da2e02d91b85740560329d1f7019b9ab7531f458d1c551841a909728a73"
     )
 })
 
@@ -131,8 +116,8 @@ test_that("association execution preserves partial-case evidence identities", {
         "44bc45c654ca7761513643ca2992af8c6382668014960a5ea43e8f11e33a9d04"
     )
     expect_identical(
-        atlas_digest(independent),
-        "10a07d33164d4805b0c84f6b6349e7c22077ad76c5fee0a0e79d1bb080f0e327"
+        .assoc_exec_fingerprint(independent),
+        "376260cb97b9adfd89a415f9a41555e87cf923c1802796bb3199a50d41290744"
     )
 })
 

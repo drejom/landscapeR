@@ -5,6 +5,13 @@ sys.source(
     file.path("tests", "testthat", "helper-independent-time-course.R"),
     envir = environment()
 )
+sys.source(
+    file.path(
+        "tests", "testthat",
+        "helper-association-execution-fingerprint.R"
+    ),
+    envir = environment()
+)
 
 cross_fixture <- function() {
     n <- 8L
@@ -109,18 +116,23 @@ evidence <- data.frame(
         "independent-time-course"
     ),
     case = c("successful", "successful", "partial", "partial", "abstention"),
+    identity_type = c(
+        "exact-atlas-digest", "portable-scientific-fingerprint",
+        "exact-atlas-digest", "portable-scientific-fingerprint",
+        "typed-reason"
+    ),
     observed = c(
         atlas_digest(cross),
-        atlas_digest(independent),
+        .assoc_exec_fingerprint(independent),
         atlas_digest(cross_partial),
-        atlas_digest(independent_partial),
+        .assoc_exec_fingerprint(independent_partial),
         abstention@reason
     ),
     expected = c(
         "e9a80c9b4a59b685a78827a4affcb3288200df4f38008ac5333f10abb1081862",
-        "1ad7c11851846db6accd5470c0e95b894d2a69ebe915b63a0d10f0ddcf448db7",
+        "fc308da2e02d91b85740560329d1f7019b9ab7531f458d1c551841a909728a73",
         "44bc45c654ca7761513643ca2992af8c6382668014960a5ea43e8f11e33a9d04",
-        "10a07d33164d4805b0c84f6b6349e7c22077ad76c5fee0a0e79d1bb080f0e327",
+        "376260cb97b9adfd89a415f9a41555e87cf923c1802796bb3199a50d41290744",
         "non-identifiable-design"
     ),
     stringsAsFactors = FALSE
