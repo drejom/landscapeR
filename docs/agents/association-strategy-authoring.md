@@ -29,6 +29,13 @@ runs refits, accounts for failures, adjusts multiplicity, and constructs the
 atlas. A kernel adapter is needed only when package maintainers add a genuinely
 new sampling design with different cohort or exchangeability semantics.
 
+For repeated-subject methods, the strategy must keep each complete subject
+trajectory as the resampling unit and must return its native convergence,
+singularity, and random-effects diagnostics. It must not silently simplify a
+failed random-slope model or replace subject-level assignment permutation with
+observation-level shuffling. The package-owned repeated-design adapter passes
+those scientific results through the same normalized kernel as other designs.
+
 ```mermaid
 flowchart LR
     A[Registered strategy] --> B[Validated contract]

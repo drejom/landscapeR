@@ -1,9 +1,8 @@
 # Normalized association execution kernel
 
 Issue #210 establishes one package-owned execution module for the invariant
-parts of metadata interpretation. Cross-sectional and independent destructive
-time-course analyses use this module. Repeated-subject migration is tracked
-separately in issue #212.
+parts of metadata interpretation. Cross-sectional, independent destructive
+time-course, and repeated-subject time-course analyses use this module.
 
 ## Ownership boundary
 
@@ -19,6 +18,13 @@ separately in issue #212.
 The kernel cannot select a component, alter an estimand, substitute a fallback
 model, reinterpret exchangeability, or create a scientific threshold. Those
 boundaries remain governed by ADR 0020 and the design-specific strategies.
+
+For repeated-subject analyses, the design adapter continues to own complete
+subject trajectories, the random-intercept and random-slope model, singular and
+nonconvergent diagnostics, condition-stratified trajectory resampling, and
+between-subject assignment permutation. The kernel sees completed scientific
+rows and records only. It cannot split a subject trajectory or weaken the
+declared model.
 
 ## Internal adapter contract
 
@@ -73,3 +79,13 @@ manifest's code identity remains verifiable during `R CMD check`.
 The landing proof in
 `.github/landing-proof/issue-210/` renders the shared workflow and records
 those identities.
+
+`tests/testthat/test-repeated-association-execution-kernel.R` records the
+pre-migration repeated-design estimates, eligibility, resampling identity,
+failure accounting, evidence dimensions, and rank recurrence. It also proves
+that identical seeds produce identical scientific results under sequential and
+multisession future backends. The existing repeated-time-course suites retain
+the singular, nonconvergent, partial, invalid-assignment, permutation, dropout,
+and typed-abstention boundaries. The landing proof in
+`.github/landing-proof/issue-212/` shows an estimable repeated trajectory and
+the corresponding visible abstention when the random-slope model is singular.

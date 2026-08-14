@@ -8,13 +8,14 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#212 migrate repeated time-course
-interpretation onto the normalized association execution kernel**.
+**Next task after this change lands:** **resume #193 revised independent K=1
+acceptance from its existing internal checkpoint**.
 The maintainer deliberately reopened the architecture-maintenance lane on
 2026-08-14 after a fresh whole-codebase review. Issues #209 and #211 completed
-the publication lane; #210 establishes the shared association kernel before
-#212 migrates the remaining repeated-subject design.
-The scientific #193 sequence remains paused, not superseded.
+the publication lane; #210 established the shared association kernel and #212
+migrated the remaining repeated-subject design. The maintenance loop is then
+complete. Scheduler-backed #213 still requires Gemini for its final proof, and
+#214 remains blocked by #97.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -709,7 +710,7 @@ bodies may state dependencies but do not change this ordering.
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete |
 | [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | complete on merge; then #212 |
 | [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | complete |
-| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | active — next |
+| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | complete on merge; then resume #193 |
 | [#213](https://github.com/drejom/landscapeR/issues/213) | Architecture deepening — durable HPC evidence orchestration | queued; blocked by #211 and Gemini availability for final proof |
 | [#214](https://github.com/drejom/landscapeR/issues/214) | Architecture deepening — component-decision evidence interface | queued; blocked by #212 and #97 |
 | [#215](https://github.com/drejom/landscapeR/issues/215) | Architecture deepening — remaining evidence orchestration | queued; blocked by #213 |
