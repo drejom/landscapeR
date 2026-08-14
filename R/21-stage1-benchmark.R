@@ -202,15 +202,7 @@ write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benc
                                                 projection_case = "exact_ids")) {
     validate_stage1_benchmark_manifest(manifest)
     results <- run_stage1_benchmark_replicate(manifest, seed, stratum)
-    environment <- list(
-        r_version = R.version.string,
-        package_version = as.character(utils::packageVersion("landscapeR")),
-        commit = suppressWarnings(tryCatch(
-            system2("git", c("rev-parse", "HEAD"),
-                stdout = TRUE, stderr = FALSE),
-            error = function(condition) NA_character_
-        ))
-    )
+    environment <- .stage1_benchmark_environment()
     governed <- .stage1_benchmark_governed_files()
     write_payload <- function(staging) {
         saveRDS(manifest, file.path(staging, "manifest.rds"))
@@ -242,6 +234,18 @@ write_stage1_benchmark_artifact <- function(artifact_dir, manifest = stage1_benc
     stats::setNames(
         c(paths, file.path(artifact, "MANIFEST.tsv")),
         c("manifest", "seeds", "results", "environment", "hashes")
+    )
+}
+
+.stage1_benchmark_environment <- function() {
+    list(
+        r_version = R.version.string,
+        package_version = as.character(utils::packageVersion("landscapeR")),
+        commit = suppressWarnings(tryCatch(
+            system2("git", c("rev-parse", "HEAD"),
+                stdout = TRUE, stderr = FALSE),
+            error = function(condition) NA_character_
+        ))
     )
 }
 

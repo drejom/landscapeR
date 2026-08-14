@@ -257,8 +257,7 @@ stage1_crew_controller <- function(
         "protocol_id", "protocol_digest", "generator_digest", "split",
         "decision", "selected_candidate", "eligible", "conditions",
         "shared_recovery_difference", "shared_recovery_ci",
-        "exclusive_leakage_difference", "projection_difference",
-        "bootstrap_measurements"
+        "exclusive_leakage_difference", "projection_difference"
     )]
 }
 
@@ -268,18 +267,12 @@ stage1_crew_controller <- function(
     if (is.data.frame(summary)) {
         summary <- summary[!summary$metric %in% operational_metrics, , drop = FALSE]
     }
-    measurements <- holdout$bootstrap_measurements
-    if (is.list(measurements) && length(measurements)) {
-        measurements <- measurements[!grepl(
-            paste(operational_metrics, collapse = "|"), names(measurements)
-        )]
-    }
     holdout[c(
         "protocol_id", "protocol_digest", "generator_digest", "split",
         "selected_candidate", "all_gates_passed", "thresholds_passed",
         "decision", "rules"
     )] |>
-        c(list(summary = summary, bootstrap_measurements = measurements))
+        c(list(summary = summary))
 }
 
 .stage1_target_publication <- function(

@@ -286,14 +286,29 @@ test_that("full evidence artifact verifier rejects undeclared and altered payloa
     artifact <- landscapeR:::.stage1_write_full_artifact(root, manifest,
         all_results, selection, holdout,
         workers = 1L, source_commit = paste(rep("a", 40L), collapse = ""))
+    operational_selection <- selection
+    operational_selection$bootstrap_measurements <- list(
+        backend_bytes = data.frame(serialized_execution_bytes = 999999)
+    )
+    operational_holdout <- holdout
+    operational_holdout$bootstrap_measurements <- list(
+        backend_bytes = data.frame(serialized_execution_bytes = 888888)
+    )
     repeated <- landscapeR:::.stage1_write_full_artifact(root, manifest,
-        all_results, selection, holdout,
+        all_results, operational_selection, operational_holdout,
         workers = 4L, source_commit = paste(rep("a", 40L), collapse = ""),
         execution = list(backend = "synthetic-scheduler"))
     expect_true(verify_stage1_evidence_artifact(artifact))
     expect_identical(repeated, artifact)
     expect_identical(read_stage1_evidence_artifact(artifact)$selection$selected_candidate,
                      "C1_symmetric_consensus")
+    expect_true(testthat::with_mocked_bindings(
+        verify_stage1_evidence_artifact(artifact),
+        .stage1_write_figures = function(...) {
+            stop("semantic verification must not rerender PNG files")
+        },
+        .package = "landscapeR"
+    ))
 
     interrupted_root <- tempfile("stage1-evidence-interrupted-")
     expect_error(

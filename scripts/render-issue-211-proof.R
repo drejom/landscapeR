@@ -17,8 +17,23 @@ load_first_assignment <- function(path) {
 load_first_assignment("tests/testthat/test-k1-calibration-outcomes.R")
 load_first_assignment("tests/testthat/test-stage1-evidence.R")
 
-benchmark_paths <- write_stage1_benchmark_artifact(
-    file.path(scratch_root, "stage1-benchmark")
+benchmark_runner <- run_stage1_benchmark_replicate
+benchmark_paths <- testthat::with_mocked_bindings(
+    write_stage1_benchmark_artifact(
+        file.path(scratch_root, "stage1-benchmark")
+    ),
+    .stage1_benchmark_environment = function() list(
+        r_version = "4.5.2",
+        package_version = "0.3.0",
+        commit = strrep("c", 40L)
+    ),
+    run_stage1_benchmark_replicate = function(...) {
+        result <- benchmark_runner(...)
+        result$elapsed_sec <- 0
+        result$peak_vcells_bytes <- 0
+        result
+    },
+    .package = "landscapeR"
 )
 benchmark_artifact <- dirname(unname(benchmark_paths[[1L]]))
 

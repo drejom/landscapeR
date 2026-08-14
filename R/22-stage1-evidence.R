@@ -547,9 +547,7 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
     ), algo = "sha256")
 }
 
-.stage1_compare_derivatives <- function(
-    artifact_dir, manifest, holdout
-) {
+.stage1_compare_derivatives <- function(artifact_dir, manifest, holdout) {
     expected <- tempfile("stage1-evidence-replay-")
     dir.create(expected, recursive = TRUE, showWarnings = FALSE)
     on.exit(unlink(expected, recursive = TRUE, force = TRUE), add = TRUE)
@@ -563,12 +561,7 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
         file.path(expected, "holdout-summary.csv"),
         row.names = FALSE
     )
-    .stage1_write_figures(expected, holdout)
-    derivatives <- c(
-        "seed-manifest.csv", "holdout-summary.csv",
-        "figures/shared_recovery_error.png",
-        "figures/projection_error.png"
-    )
+    derivatives <- c("seed-manifest.csv", "holdout-summary.csv")
     matches <- vapply(derivatives, function(path) {
         identical(
             .artifact_file_digest(file.path(expected, path)),
