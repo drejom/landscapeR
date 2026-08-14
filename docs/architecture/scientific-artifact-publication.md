@@ -26,6 +26,9 @@ An adapter may exclude operational telemetry from its scientific identity
 while retaining that telemetry as governed payload. Generic verification still
 protects every declared byte. The adapter supplies the identity projection,
 and semantic replay confirms that the stored scientific evidence reproduces it.
+Stage 1 adapters and scheduler orchestration share the backend-independent
+projections in `R/20a-stage1-scientific-identity.R`; the scientific layer does
+not depend on the orchestration module.
 
 The scientific adapters are mapped below. Their serialized files, public
 publish and verify functions, scientific validators, plots, captions, and
