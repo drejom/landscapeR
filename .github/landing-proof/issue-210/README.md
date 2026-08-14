@@ -21,11 +21,14 @@ scientific provenance tree, evidence tables, cohort membership, fitted model
 summaries, rankings, resampling plan, and identity fields. Only the original
 raw evidence digests are removed because they encode the platform-dependent
 floating-point bytes replaced by the normalized content. Numeric values are
-rounded to six decimal places: the test treats changes below `5e-7` as
-serialization or BLAS noise and detects changes of `5e-6` or more. CI exposed
-the Linux/macOS raw-byte divergence; this explicit boundary, rather than the
-opaque digest difference, defines the portable comparison. Regenerate both
-artifacts from the repository root with:
+quantized by rounding to six decimal places. This is not a distance tolerance:
+even a very small change can alter the fingerprint when it crosses a rounding
+boundary, and the tests make that behavior explicit. The supported Linux and
+macOS CI jobs independently recompute the fixtures and must place every value
+in the same six-decimal bin before the frozen fingerprint can pass. CI exposed
+the original raw-byte divergence; this transparent quantization rule, rather
+than an opaque raw digest difference, defines the portable comparison.
+Regenerate both artifacts from the repository root with:
 
 ```sh
 Rscript scripts/render-issue-210-proof.R

@@ -194,7 +194,11 @@ test_that("portable fingerprints retain scientific provenance and evidence", {
     ))
 })
 
-test_that("portable fingerprint precision has an explicit boundary", {
+test_that("portable fingerprint uses explicit six-decimal quantization", {
     expect_identical(.assoc_exec_normalize(1 + 4e-7), 1)
     expect_identical(.assoc_exec_normalize(1 + 6e-6), 1.000006)
+    expect_false(identical(
+        .assoc_exec_normalize(1.00000049),
+        .assoc_exec_normalize(1.00000051)
+    ))
 })
