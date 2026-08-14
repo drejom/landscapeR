@@ -9,8 +9,9 @@ flowchart LR
   R[Revised K=1 acceptance adapter] --> P
   P --> S[Complete staged payload]
   S --> M[Exact SHA-256 manifest]
-  M --> A[Atomic content-addressed publish]
-  A --> V[Generic integrity plus adapter semantic verification]
+  M --> V[Generic integrity verification]
+  V --> R2[Adapter semantic replay]
+  R2 --> A[Atomic content-addressed publish]
 ```
 
 The module rejects missing, duplicate, altered, and undeclared files. The

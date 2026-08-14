@@ -91,6 +91,12 @@ test_that("scientific artifacts reject missing and altered payloads", {
     altered <- artifact_test_publish(altered_root)
     writeLines("changed", file.path(altered, "alpha.txt"))
     expect_error(artifact_test_verify(altered), "digest mismatch")
+    expect_error(
+        artifact_test_publish(
+            altered_root, semantic_verifier = function(artifact) TRUE
+        ),
+        "digest mismatch"
+    )
 })
 
 test_that("scientific artifact staging is cleaned after failure", {

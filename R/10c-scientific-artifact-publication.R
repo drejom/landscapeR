@@ -158,6 +158,7 @@
         address_prefix, "-", substr(artifact_digest, 1L, 16L)
     ))
     if (dir.exists(artifact)) {
+        .artifact_verify_payload(artifact, governed, abort, messages)
         semantic_verifier(artifact)
         return(artifact)
     }
