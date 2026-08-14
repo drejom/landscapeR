@@ -1259,6 +1259,20 @@ plot_k1_revised_acceptance <- function(
     "signal-regime-map-caption.txt", "environment.rds"
 )
 
+.k1_revised_artifact_errors <- function() {
+    list(
+        incomplete = "revised acceptance artifact is incomplete",
+        missing_manifest = "revised acceptance artifact has no MANIFEST.tsv",
+        missing_payload = paste(
+            "revised acceptance artifact digest verification failed"
+        ),
+        invalid = "revised acceptance file manifest is invalid",
+        undeclared = "revised acceptance artifact contains undeclared files",
+        digest = "revised acceptance artifact digest verification failed",
+        atomic = "could not atomically publish revised acceptance artifact"
+    )
+}
+
 .k1_revised_flatten <- function(results) do.call(rbind, lapply(results, function(x) {
     data.frame(
         task_id = x$task_id, control = x$control, status = x$status,
@@ -1298,39 +1312,6 @@ plot_k1_revised_acceptance <- function(
     )
     sampling_plot <- plot_k1_revised_acceptance(summary, "sampling_design")
     signal_plot <- plot_k1_revised_acceptance(summary, "signal_regime")
-    artifact_root <- path.expand(artifact_root)
-    dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
-    staging <- tempfile(
-        pattern = paste0(".", protocol$protocol_id, "-tmp-"),
-        tmpdir = artifact_root
-    )
-    dir.create(staging, recursive = TRUE, showWarnings = FALSE)
-    saveRDS(protocol, file.path(staging, "protocol.rds"))
-    saveRDS(manifest, file.path(staging, "seed-manifest.rds"))
-    saveRDS(results, file.path(staging, "replicates.rds"))
-    saveRDS(summary, file.path(staging, "summary.rds"))
-    utils::write.csv(.k1_revised_flatten(results),
-        file.path(staging, "replicates.csv"), row.names = FALSE)
-    utils::write.csv(summary$cells,
-        file.path(staging, "cell-summary.csv"), row.names = FALSE)
-    utils::write.csv(
-        attr(sampling_plot, "landscapeR_k1_revised_map_data"),
-        file.path(staging, "sampling-design-map.csv"), row.names = FALSE
-    )
-    utils::write.csv(
-        attr(signal_plot, "landscapeR_k1_revised_map_data"),
-        file.path(staging, "signal-regime-map.csv"), row.names = FALSE
-    )
-    ggplot2::ggsave(file.path(staging, "sampling-design-map.png"),
-        sampling_plot, width = 180, height = 130, units = "mm", dpi = 450,
-        bg = landscapeR_palette("semantic")[["paper"]])
-    ggplot2::ggsave(file.path(staging, "signal-regime-map.png"),
-        signal_plot, width = 160, height = 140, units = "mm", dpi = 450,
-        bg = landscapeR_palette("semantic")[["paper"]])
-    writeLines(scientific_caption(sampling_plot),
-        file.path(staging, "sampling-design-map-caption.txt"))
-    writeLines(scientific_caption(signal_plot),
-        file.path(staging, "signal-regime-map-caption.txt"))
     worker_identities <- lapply(results, `[[`, "runtime_identity")
     environment <- list(
         version = .k1_revised_acceptance_version,
@@ -1343,69 +1324,60 @@ plot_k1_revised_acceptance <- function(
         ),
         collector_identity = collector_identity
     )
-    saveRDS(environment, file.path(staging, "environment.rds"))
     governed <- .k1_revised_governed_files()
-    file_manifest <- data.frame(
-        file = governed,
-        sha256 = vapply(file.path(staging, governed),
-            .k1_acceptance_file_digest, character(1L)),
-        stringsAsFactors = FALSE
-    )
-    artifact_digest <- .k1_acceptance_artifact_digest(file_manifest)
-    artifact <- file.path(artifact_root, paste0(
-        protocol$protocol_id, "-", substr(artifact_digest, 1L, 16L)
-    ))
-    if (dir.exists(artifact)) {
-        unlink(staging, recursive = TRUE)
-        .k1_revised_verify_artifact(artifact)
-        return(artifact)
-    }
-    utils::write.table(file_manifest, file.path(staging, "MANIFEST.tsv"),
-        sep = "\t", quote = FALSE, row.names = FALSE)
-    if (!file.rename(staging, artifact)) {
-        unlink(staging, recursive = TRUE)
-        .k1_acceptance_runner_abort(
-            "could not atomically publish revised acceptance artifact"
+    write_payload <- function(staging) {
+        saveRDS(protocol, file.path(staging, "protocol.rds"))
+        saveRDS(manifest, file.path(staging, "seed-manifest.rds"))
+        saveRDS(results, file.path(staging, "replicates.rds"))
+        saveRDS(summary, file.path(staging, "summary.rds"))
+        utils::write.csv(.k1_revised_flatten(results),
+            file.path(staging, "replicates.csv"), row.names = FALSE)
+        utils::write.csv(summary$cells,
+            file.path(staging, "cell-summary.csv"), row.names = FALSE)
+        utils::write.csv(
+            attr(sampling_plot, "landscapeR_k1_revised_map_data"),
+            file.path(staging, "sampling-design-map.csv"), row.names = FALSE
         )
+        utils::write.csv(
+            attr(signal_plot, "landscapeR_k1_revised_map_data"),
+            file.path(staging, "signal-regime-map.csv"), row.names = FALSE
+        )
+        ggplot2::ggsave(file.path(staging, "sampling-design-map.png"),
+            sampling_plot, width = 180, height = 130, units = "mm", dpi = 450,
+            bg = landscapeR_palette("semantic")[["paper"]])
+        ggplot2::ggsave(file.path(staging, "signal-regime-map.png"),
+            signal_plot, width = 160, height = 140, units = "mm", dpi = 450,
+            bg = landscapeR_palette("semantic")[["paper"]])
+        writeLines(scientific_caption(sampling_plot),
+            file.path(staging, "sampling-design-map-caption.txt"))
+        writeLines(scientific_caption(signal_plot),
+            file.path(staging, "signal-regime-map-caption.txt"))
+        saveRDS(environment, file.path(staging, "environment.rds"))
     }
-    .k1_revised_verify_artifact(artifact)
-    artifact
+    .artifact_publish(
+        artifact_root = artifact_root,
+        address_prefix = protocol$protocol_id,
+        governed = governed,
+        write_payload = write_payload,
+        semantic_verifier = .k1_revised_verify_artifact,
+        abort = .k1_acceptance_runner_abort,
+        messages = .k1_revised_artifact_errors(),
+        staging_prefix = paste0(".", protocol$protocol_id, "-tmp-"),
+        atomic_move = .artifact_atomic_move,
+        preserve_condition = function(condition) {
+            inherits(condition, "k1_acceptance_runner_error")
+        }
+    )
 }
 
 .k1_revised_verify_artifact <- function(artifact) {
     artifact <- path.expand(artifact)
-    manifest_path <- file.path(artifact, "MANIFEST.tsv")
-    if (!file.exists(manifest_path)) {
-        .k1_acceptance_runner_abort(
-            "revised acceptance artifact has no MANIFEST.tsv"
-        )
-    }
-    files <- utils::read.delim(manifest_path, stringsAsFactors = FALSE)
-    if (!identical(names(files), c("file", "sha256")) ||
-            !identical(files$file, .k1_revised_governed_files()) ||
-            anyNA(files) || anyDuplicated(files$file)) {
-        .k1_acceptance_runner_abort(
-            "revised acceptance file manifest is invalid"
-        )
-    }
-    actual_files <- list.files(
-        artifact, recursive = TRUE, all.files = TRUE, no.. = TRUE,
-        include.dirs = FALSE
+    files <- .artifact_verify_payload(
+        artifact = artifact,
+        governed = .k1_revised_governed_files(),
+        abort = .k1_acceptance_runner_abort,
+        messages = .k1_revised_artifact_errors()
     )
-    if (!setequal(actual_files, c("MANIFEST.tsv", files$file))) {
-        .k1_acceptance_runner_abort(
-            "revised acceptance artifact contains undeclared files"
-        )
-    }
-    paths <- file.path(artifact, files$file)
-    if (any(!file.exists(paths)) || !identical(
-            unname(vapply(paths, .k1_acceptance_file_digest, character(1L))),
-            files$sha256
-        )) {
-        .k1_acceptance_runner_abort(
-            "revised acceptance artifact digest verification failed"
-        )
-    }
     protocol <- readRDS(file.path(artifact, "protocol.rds"))
     manifest <- readRDS(file.path(artifact, "seed-manifest.rds"))
     results <- readRDS(file.path(artifact, "replicates.rds"))

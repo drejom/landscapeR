@@ -18,6 +18,9 @@ not define scientific methods, architecture, or scheduling.
 - Contributors adding a design-aware K=1 calibration module follow the
   scientific-module and shared publication boundaries in
   [`docs/architecture/k1-calibration-modules.md`](../architecture/k1-calibration-modules.md).
+- Contributors publishing a governed scientific artifact use the shared
+  filesystem module and adapter responsibilities in
+  [`docs/architecture/scientific-artifact-publication.md`](../architecture/scientific-artifact-publication.md).
 
 ## Install the safeguards
 

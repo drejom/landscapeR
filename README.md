@@ -124,6 +124,9 @@ All K=1 calibration modules publish and verify governed artifacts through one
 internal content-addressed seam. Each design still owns its scientific
 validation, displayed data, caption, and treatment of non-estimable results;
 the shared machinery does not make the three scientific designs interchangeable.
+Publication completes and verifies the declared payload before one atomic move
+to its immutable address. Existing artifact formats remain supported, while
+missing, altered, linked, or undeclared filesystem entries are rejected.
 
 `locate_k1_operating_domain()` can compare versioned diagnostics from a real
 experiment with compatible design-aware and high-dimensional calibration
