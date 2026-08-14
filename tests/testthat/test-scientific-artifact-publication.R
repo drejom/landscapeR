@@ -29,14 +29,15 @@ artifact_test_verify <- function(artifact) {
 
 artifact_test_publish <- function(
     root, writer = artifact_test_writer,
-    atomic_move = landscapeR:::.artifact_atomic_move
+    atomic_move = landscapeR:::.artifact_atomic_move,
+    semantic_verifier = artifact_test_verify
 ) {
     landscapeR:::.artifact_publish(
         artifact_root = root,
         address_prefix = "fixture-v1",
         governed = c("alpha.txt", "beta.txt"),
         write_payload = writer,
-        semantic_verifier = artifact_test_verify,
+        semantic_verifier = semantic_verifier,
         abort = artifact_test_abort,
         messages = artifact_test_messages(),
         staging_prefix = ".fixture-tmp-",
@@ -114,4 +115,20 @@ test_that("scientific artifact staging is cleaned after failure", {
         "atomic publication failed"
     )
     expect_length(list.files(atomic_root, all.files = TRUE, no.. = TRUE), 0L)
+
+    semantic_root <- tempfile("scientific-artifact-")
+    dir.create(semantic_root)
+    rejecting_verifier <- function(artifact) {
+        artifact_test_verify(artifact)
+        stop("semantic replay failed", call. = FALSE)
+    }
+    expect_error(
+        artifact_test_publish(
+            semantic_root, semantic_verifier = rejecting_verifier
+        ),
+        "semantic replay failed"
+    )
+    expect_length(
+        list.files(semantic_root, all.files = TRUE, no.. = TRUE), 0L
+    )
 })

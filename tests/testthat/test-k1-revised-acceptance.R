@@ -390,6 +390,39 @@ test_that("retired or fabricated evidence cannot publish acceptance artifacts", 
     )
 })
 
+test_that("version 4 revised acceptance publishes and replays through the shared module", {
+    protocol <- k1_acceptance_protocol("4")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v4(), runner_revision_v4(), protocol
+    )
+    identity <- revised_identity_v3()
+    identity$source_revision <- runner_revision_v4()
+    results <- lapply(seq_len(nrow(manifest$tasks)), function(index) {
+        landscapeR:::.k1_revised_failure(
+            manifest$tasks[index, , drop = FALSE],
+            simpleError("declared implementation-proof failure"),
+            identity
+        )
+    })
+    root <- tempfile("k1-revised-artifacts-")
+    dir.create(root)
+
+    artifact <- landscapeR:::.k1_revised_publish(
+        root, protocol, manifest, manifest$tasks, results, identity
+    )
+
+    expect_true(landscapeR:::.k1_revised_verify_artifact(artifact))
+    expect_identical(
+        landscapeR:::.k1_revised_publish(
+            root, protocol, manifest, manifest$tasks, results, identity
+        ),
+        artifact
+    )
+    expect_match(
+        basename(artifact), "^k1-stage0-acceptance-v4-[0-9a-f]{16}$"
+    )
+})
+
 test_that("collector rejects incoherent typed results", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(

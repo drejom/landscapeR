@@ -127,14 +127,15 @@
     artifact_root <- path.expand(artifact_root)
     dir.create(artifact_root, recursive = TRUE, showWarnings = FALSE)
     staging <- tempfile(staging_prefix, tmpdir = artifact_root)
-    dir.create(staging, recursive = TRUE, showWarnings = FALSE)
+    payload <- file.path(staging, "payload")
+    dir.create(payload, recursive = TRUE, showWarnings = FALSE)
     on.exit({
         if (dir.exists(staging)) unlink(staging, recursive = TRUE)
     }, add = TRUE)
 
-    write_payload(staging)
+    write_payload(payload)
     actual <- list.files(
-        staging, recursive = TRUE, all.files = TRUE,
+        payload, recursive = TRUE, all.files = TRUE,
         no.. = TRUE, include.dirs = FALSE
     )
     if (any(!governed %in% actual)) {
@@ -146,7 +147,7 @@
     manifest <- data.frame(
         file = governed,
         sha256 = vapply(
-            file.path(staging, governed),
+            file.path(payload, governed),
             .artifact_file_digest,
             character(1L)
         ),
@@ -162,12 +163,17 @@
     }
     utils::write.table(
         manifest,
-        file.path(staging, .artifact_manifest_name),
+        file.path(payload, .artifact_manifest_name),
         sep = "\t", quote = FALSE, row.names = FALSE
     )
-    if (!atomic_move(staging, artifact)) {
+    candidate <- file.path(staging, basename(artifact))
+    if (!file.rename(payload, candidate)) {
         .artifact_fail(abort, messages, "atomic")
     }
-    semantic_verifier(artifact)
+    .artifact_verify_payload(candidate, governed, abort, messages)
+    semantic_verifier(candidate)
+    if (!atomic_move(candidate, artifact)) {
+        .artifact_fail(abort, messages, "atomic")
+    }
     artifact
 }

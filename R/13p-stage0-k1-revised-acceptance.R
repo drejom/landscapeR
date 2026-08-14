@@ -1259,10 +1259,6 @@ plot_k1_revised_acceptance <- function(
     "signal-regime-map-caption.txt", "environment.rds"
 )
 
-.k1_revised_atomic_move <- function(from, to) {
-    .artifact_atomic_move(from, to)
-}
-
 .k1_revised_artifact_errors <- function() {
     list(
         incomplete = "revised acceptance artifact is incomplete",
@@ -1367,7 +1363,7 @@ plot_k1_revised_acceptance <- function(
         abort = .k1_acceptance_runner_abort,
         messages = .k1_revised_artifact_errors(),
         staging_prefix = paste0(".", protocol$protocol_id, "-tmp-"),
-        atomic_move = .k1_revised_atomic_move
+        atomic_move = .artifact_atomic_move
     )
 }
 
