@@ -75,8 +75,11 @@ version and dependency installation are defined by
 
 Pull-request body checks for visual landing proof and ratchet disposition run in
 CI because the local pre-push hook has no authoritative PR body. Validate a
-prepared body explicitly with `scripts/check-figure-review.py` and
-`scripts/check-review-ratchet.py --pr-body` before opening the PR.
+prepared body after its final commit with
+`scripts/check-figure-review.py PR_BODY_FILE --expected-commit FULL_HEAD_SHA`
+and `scripts/check-review-ratchet.py --pr-body PR_BODY_FILE` before opening or
+updating the PR. Repository-hosted proof links must contain that full head SHA,
+not a feature-branch name, so the review record survives branch deletion.
 
 ## Before requesting merge
 

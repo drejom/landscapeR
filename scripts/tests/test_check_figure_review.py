@@ -96,6 +96,13 @@ class VisualProofCheckerCliTest(unittest.TestCase):
     def _commit_obviously_public_change(self) -> None:
         self._commit_path("NAMESPACE", "export(public_feature)\n")
 
+    def _head_sha(self) -> str:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, check=True,
+            capture_output=True, text=True
+        )
+        return result.stdout.strip()
+
     def _commit_existing_public_r_change(self) -> None:
         self._git("switch", "main")
         source = self.repo / "R" / "public-api.R"
@@ -265,9 +272,10 @@ class VisualProofCheckerCliTest(unittest.TestCase):
 
     def test_rejects_repository_image_link_to_missing_proof_file(self) -> None:
         self._commit_change(current_docs=True)
+        head_sha = self._head_sha()
         image = (
             "![Recovery surface](https://raw.githubusercontent.com/example/repo/"
-            "feature/.github/landing-proof/issue-1/missing-surface.png)"
+            f"{head_sha}/.github/landing-proof/issue-1/missing-surface.png)"
         )
         body = REQUIRED_PROOF.replace(
             "See the before/after table in the Visual review section.",
@@ -276,8 +284,148 @@ class VisualProofCheckerCliTest(unittest.TestCase):
         result = self._run_checker(body)
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("proof images that do not exist", result.stderr)
+        self.assertIn("proof paths that do not exist", result.stderr)
         self.assertIn("missing-surface.png", result.stderr)
+
+    def test_rejects_repository_link_to_missing_proof_file(self) -> None:
+        self._commit_change(current_docs=True)
+        head_sha = self._head_sha()
+        link = (
+            "[Proof record](https://github.com/example/repo/blob/"
+            f"{head_sha}/.github/landing-proof/issue-1/missing.md)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", link
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("proof paths that do not exist", result.stderr)
+        self.assertIn("missing.md", result.stderr)
+
+    def test_rejects_repository_proof_link_pinned_to_feature_branch(self) -> None:
+        self._commit_change(current_docs=True)
+        self._commit_path(
+            ".github/landing-proof/issue-1/recovery-surface.png", "png\n"
+        )
+        image = (
+            "![Recovery surface](https://raw.githubusercontent.com/example/repo/"
+            "feature/issue-1/.github/landing-proof/issue-1/"
+            "recovery-surface.png)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", image
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("current full PR-head commit SHA", result.stderr)
+        self.assertIn("branch links break after deletion", result.stderr)
+
+    def test_rejects_non_image_proof_link_pinned_to_feature_branch(self) -> None:
+        self._commit_change(current_docs=True)
+        self._commit_path(
+            ".github/landing-proof/issue-1/README.md", "# Proof\n"
+        )
+        link = (
+            "[Proof record](https://github.com/example/repo/blob/feature/issue-1/"
+            ".github/landing-proof/issue-1/README.md)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", link
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("current full PR-head commit SHA", result.stderr)
+
+    def test_accepts_repository_proof_link_pinned_to_head_commit(self) -> None:
+        self._commit_change(current_docs=True)
+        self._commit_path(
+            ".github/landing-proof/issue-1/recovery-surface.png", "png\n"
+        )
+        head_sha = self._head_sha()
+        image = (
+            "![Recovery surface](https://raw.githubusercontent.com/example/repo/"
+            f"{head_sha}/.github/landing-proof/issue-1/recovery-surface.png)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", image
+        )
+        result = self._run_checker(body)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_accepts_repository_proof_directory_pinned_to_head_commit(self) -> None:
+        self._commit_change(current_docs=True)
+        self._commit_path(
+            ".github/landing-proof/issue-1/README.md", "# Proof bundle\n"
+        )
+        head_sha = self._head_sha()
+        link = (
+            "[Proof bundle](https://github.com/example/repo/tree/"
+            f"{head_sha}/.github/landing-proof/issue-1)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", link
+        )
+        result = self._run_checker(body)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_rejects_raw_url_for_repository_proof_directory(self) -> None:
+        self._commit_change(current_docs=True)
+        self._commit_path(
+            ".github/landing-proof/issue-1/README.md", "# Proof bundle\n"
+        )
+        head_sha = self._head_sha()
+        link = (
+            "[Proof bundle](https://raw.githubusercontent.com/example/repo/"
+            f"{head_sha}/.github/landing-proof/issue-1)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", link
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("URL type must match", result.stderr)
+
+    def test_rejects_blob_url_for_repository_proof_directory(self) -> None:
+        self._commit_change(current_docs=True)
+        self._commit_path(
+            ".github/landing-proof/issue-1/README.md", "# Proof bundle\n"
+        )
+        head_sha = self._head_sha()
+        link = (
+            "[Proof bundle](https://github.com/example/repo/blob/"
+            f"{head_sha}/.github/landing-proof/issue-1)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", link
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("URL type must match", result.stderr)
+
+    def test_rejects_tree_url_for_repository_proof_file(self) -> None:
+        self._commit_change(current_docs=True)
+        self._commit_path(
+            ".github/landing-proof/issue-1/README.md", "# Proof bundle\n"
+        )
+        head_sha = self._head_sha()
+        link = (
+            "[Proof record](https://github.com/example/repo/tree/"
+            f"{head_sha}/.github/landing-proof/issue-1/README.md)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", link
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("URL type must match", result.stderr)
 
     def test_required_proof_accepts_internal_r_refactor_with_docs_unaffected(self) -> None:
         self._commit_path(

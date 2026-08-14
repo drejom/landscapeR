@@ -17,7 +17,7 @@
 
 **Before:** <!-- Old rendered behavior, or the absence/limitation before this capability. -->
 
-**After or representative output:** <!-- Embed/link the figure, table, or workflow render. -->
+**After or representative output:** <!-- Embed/link the figure, table, or workflow render. Repository-hosted proof links must use the current full PR-head commit SHA, never a branch name. -->
 
 **Cold-reader conclusion:** <!-- What should someone who has not read the code conclude? -->
 
@@ -25,7 +25,7 @@
 
 **Claim status:** <!-- implementation proof | exploratory | calibration-only | accepted evidence, etc. -->
 
-**Artifact:** <!-- Point to the Markdown image, table, or fenced rendered output in Visual review. -->
+**Artifact:** <!-- Point to the Markdown image, table, or fenced rendered output in Visual review. Pin repository links to the current full PR-head commit SHA so they survive branch deletion. -->
 
 ### Current documentation
 

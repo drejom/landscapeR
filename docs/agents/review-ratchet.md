@@ -77,10 +77,17 @@ execution backend and was also used as a candidate-selection gate.
 ### RR-012 — Build and inspect pull-request bodies from the repository template
 Read `.github/pull_request_template.md`, populate it from committed evidence,
 and inspect the rendered GitHub body before review. Required proof must exist,
-and every repository-hosted image path must resolve to its committed file.
+every repository-hosted proof path must resolve to its committed file or proof
+directory, and each link must use the current full PR-head commit SHA. Never use
+a feature-branch URL: deleting the branch after merge must not break the review
+record.
 **Incident:** [PR #167](https://github.com/drejom/landscapeR/pull/167) claimed
 proof in a malformed body while none was visible. In [PR #182](https://github.com/drejom/landscapeR/pull/182),
 two committed PNGs rendered as 404s because the body omitted `-surface`.
+[PR #207](https://github.com/drejom/landscapeR/pull/207) rendered correctly
+before merge but its proof URLs failed after the feature branch was deleted; a
+repository-wide audit then found 46 broken images across 16 merged PRs and
+feature-branch proof references in 42 historical PR bodies.
 ### RR-013 — Replay governed artifacts after schema extensions
 When a typed result or summary gains phase-specific fields, replay every
 committed governed artifact through its semantic verifier before merge. New
