@@ -131,8 +131,8 @@ tasks locally while checking integration. Although labelled as a smoke test,
 their outcomes were observed before runner review, so the entire version 3 seed
 set was retired before production execution.
 ### RR-018 — Preserve public call sequences during infrastructure migrations
-Retain arguments, output paths, return shape, and verifier sequence, or provide
-an explicit new API and tested migration path.
+Retain arguments, paths, return shape, and verifier sequence, or provide a tested
+migration path. Exact-path compatibility must preserve raced destination data.
 **Incident:** [PR #218](https://github.com/drejom/landscapeR/pull/218) reinterpreted `write_stage1_benchmark_artifact(path)` as a content-addressed root.
 ## Verify, never assume
 A reviewer is not an oracle. Treat every finding as a claim to investigate. A

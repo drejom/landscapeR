@@ -171,6 +171,23 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
         class = "stage1_benchmark_error"
     )
 
+    raced <- tempfile("stage1-artifact-raced-")
+    dir.create(raced)
+    expect_error(
+        testthat::with_mocked_bindings(
+            write_stage1_benchmark_artifact(raced, manifest),
+            .stage1_benchmark_verify_current = function(path) {
+                writeLines("preserve me", file.path(raced, "raced.txt"))
+                invisible(TRUE)
+            },
+            .package = "landscapeR"
+        ),
+        class = "stage1_benchmark_error"
+    )
+    expect_identical(
+        readLines(file.path(raced, "raced.txt")), "preserve me"
+    )
+
     legacy <- tempfile("stage1-legacy-artifact-")
     dir.create(legacy)
     governed <- landscapeR:::.stage1_benchmark_governed_files()

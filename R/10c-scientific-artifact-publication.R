@@ -334,8 +334,8 @@
         return(verify_existing())
     }
     if (!is.null(artifact_path) && dir.exists(artifact)) {
-        suppressWarnings(unlink(artifact, recursive = TRUE))
-        if (dir.exists(artifact)) {
+        removed <- suppressWarnings(file.remove(artifact))
+        if (!isTRUE(removed)) {
             .artifact_fail(abort, messages, "atomic")
         }
     }
