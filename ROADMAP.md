@@ -8,11 +8,12 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#193 revised K=1 acceptance**.
-Version 3 execution infrastructure must land first. Its seed set is retired
-because four task rows were exercised during runner development. A protocol-only
-version 4 freeze must retain the version 3 scientific settings unchanged and
-derive a fresh post-merge seed set before any production execution.
+**Next task after this change lands:** **#211 migrate remaining
+scientific-artifact publishers**.
+The maintainer deliberately reopened the architecture-maintenance lane on
+2026-08-14 after a fresh whole-codebase review. Issue #209 completes on merge;
+#211 finishes that publication lane before #210 begins the association lane.
+The scientific #193 sequence remains paused, not superseded.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -231,6 +232,13 @@ consistently but do not themselves satisfy #79's scientific exit.
 confirmation; stable-subspace/no-stable-axis is a valid abstention.
 
 ### 4a. Architecture debt lane
+
+**2026-08-14 deepening loop:** #209 completes on merge, followed by #211,
+#210, and #212. Issue #214 follows only after #97. Scheduler-backed #213 and
+its dependent #215 require Gemini for their final HPC proof; #216 follows
+#215 and retains its explicit deletion test. This deliberately opened
+maintenance loop pauses, but does not reorder internally, the #193 scientific
+acceptance sequence.
 
 **Active prefactor:** #91 and its general-contract correction #100 are
 complete. #92, #83, #93, #94, #106, and #108 are complete. #107 completes on
@@ -694,9 +702,17 @@ bodies may state dependencies but do not change this ordering.
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | complete on merge; does not block acceptance |
-| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; v4 protocol merged, runner adaptation in progress, then independent HPC execution after runner merge |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — paused during deliberate architecture deepening loop; resume without internal reordering |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
+| [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete on merge; then #211 |
+| [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | queued after #211 |
+| [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | active — next; blocked by #209 until merge |
+| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | queued; blocked by #210 |
+| [#213](https://github.com/drejom/landscapeR/issues/213) | Architecture deepening — durable HPC evidence orchestration | queued; blocked by #211 and Gemini availability for final proof |
+| [#214](https://github.com/drejom/landscapeR/issues/214) | Architecture deepening — component-decision evidence interface | queued; blocked by #212 and #97 |
+| [#215](https://github.com/drejom/landscapeR/issues/215) | Architecture deepening — remaining evidence orchestration | queued; blocked by #213 |
+| [#216](https://github.com/drejom/landscapeR/issues/216) | Architecture deepening — acceptance-control adapter deletion test | queued; blocked by #215 |
 <!-- issue-map:end -->
 
 ---

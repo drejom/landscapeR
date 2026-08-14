@@ -7,7 +7,9 @@ Those responsibilities stay with the independent-time, repeated-subject, and
 high-dimensional modules because their estimands, non-estimability rules, plot
 data, and scientific language differ.
 
-The shared calibration-artifact module owns only the publication mechanism:
+The cross-cutting scientific-artifact publication module owns only the
+filesystem publication mechanism described in
+[`scientific-artifact-publication.md`](scientific-artifact-publication.md):
 
 - the seven governed evidence files and exact manifest shape;
 - rejection of undeclared files, unsafe paths, missing files, and digest drift;
@@ -22,8 +24,9 @@ Contributors adding a new calibration design should reuse this publication
 mechanism, but must not create a generic scientific-result class or weaken the
 module-specific validator, caption, typed non-estimability, or plotting rules.
 
-The shared helper is internal. Public APIs and serialized assessment and
-artifact formats remain module-specific and unchanged.
+The shared module is internal. Public APIs and serialized assessment and
+artifact formats remain module-specific and unchanged. Revised K=1 acceptance
+uses the same filesystem module through its own scientific adapter.
 
 `locate_k1_operating_domain()` is a separate public comparison seam. It accepts
 a declared sampling design, one compatible design assessment, a

@@ -1,0 +1,4 @@
+check	observed	artifact_address
+first publication verifies	TRUE	proof-v1-3458139c196e1d06
+repeat uses the same address	TRUE	proof-v1-3458139c196e1d06
+payload mutation is rejected	TRUE	proof-v1-3458139c196e1d06
