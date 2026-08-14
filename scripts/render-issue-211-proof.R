@@ -2,6 +2,7 @@
 
 devtools::load_all(".", quiet = TRUE)
 
+update_proof <- "--update" %in% commandArgs(trailingOnly = TRUE)
 proof_root <- file.path(".github", "landing-proof", "issue-211")
 example_root <- file.path(proof_root, "examples")
 scratch_root <- file.path(".scratch", "issue-211-proof")
@@ -39,8 +40,18 @@ benchmark_artifact <- dirname(unname(benchmark_paths[[1L]]))
 
 stage1_manifest <- stage1_benchmark_manifest()
 calibration <- stage1_evidence_fixture("calibration")
+calibration$elapsed_sec <- ifelse(
+    calibration$candidate == "C1_symmetric_consensus", 1, 1.1
+)
+calibration$peak_vcells_bytes <- 0
 selection <- select_stage1_candidate(calibration)
+selection$bootstrap_executions <- list()
+selection$bootstrap_measurements <- list()
 holdout_results <- stage1_evidence_fixture("holdout")
+holdout_results$elapsed_sec <- ifelse(
+    holdout_results$candidate == "C1_symmetric_consensus", 1, 1.1
+)
+holdout_results$peak_vcells_bytes <- 0
 holdout <- assess_stage1_holdout(
     selection$selected_candidate,
     holdout_results[
@@ -49,6 +60,8 @@ holdout <- assess_stage1_holdout(
         drop = FALSE
     ]
 )
+holdout$bootstrap_executions <- list()
+holdout$bootstrap_measurements <- list()
 stage1_artifact <- landscapeR:::.stage1_write_full_artifact(
     file.path(scratch_root, "stage1-evidence"),
     stage1_manifest,
@@ -165,17 +178,34 @@ cases$publication_verified <- c(
 if (!all(cases$publication_verified)) {
     stop("one or more scientific artifact publication proofs failed")
 }
-for (index in seq_len(nrow(cases))) {
-    copied <- file.copy(
-        file.path(artifacts[[index]], "MANIFEST.tsv"),
-        file.path(proof_root, cases$example[[index]]),
-        overwrite = TRUE
+assert_or_update <- function(source, target) {
+    matches <- file.exists(target) && identical(
+        landscapeR:::.artifact_file_digest(source),
+        landscapeR:::.artifact_file_digest(target)
     )
-    if (!copied) stop("could not retain proof manifest")
+    if (!matches && !update_proof) {
+        stop(
+            "retained proof differs from regeneration: ",
+            target,
+            "; rerun with --update only for a deliberate proof revision"
+        )
+    }
+    if (!matches && !file.copy(source, target, overwrite = TRUE)) {
+        stop("could not retain proof file: ", target)
+    }
+    invisible(TRUE)
+}
+for (index in seq_len(nrow(cases))) {
+    assert_or_update(
+        file.path(artifacts[[index]], "MANIFEST.tsv"),
+        file.path(proof_root, cases$example[[index]])
+    )
 }
 
 output <- file.path(proof_root, "publication-matrix.tsv")
+candidate_matrix <- file.path(scratch_root, "publication-matrix.tsv")
 utils::write.table(
-    cases, output, sep = "\t", quote = FALSE, row.names = FALSE
+    cases, candidate_matrix, sep = "\t", quote = FALSE, row.names = FALSE
 )
-cat("Wrote", output, "and", nrow(cases), "artifact manifests\n")
+assert_or_update(candidate_matrix, output)
+cat("Verified", output, "and", nrow(cases), "artifact manifests\n")

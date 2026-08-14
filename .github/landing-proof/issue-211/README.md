@@ -24,6 +24,11 @@ Regenerate the matrix from the repository root with:
 Rscript scripts/render-issue-211-proof.R
 ```
 
+The default command verifies byte-for-byte agreement with the retained files
+and fails on drift. After an intentional publication-contract change, regenerate
+them explicitly with `Rscript scripts/render-issue-211-proof.R --update`, review
+the diff, then rerun the default verification command.
+
 The focused tests cover deterministic address reuse and rejection of
 incomplete, altered, interrupted, or semantically invalid artifacts in every
 migrated family. Historical Stage 1 artifacts keep their original `hashes.csv`
