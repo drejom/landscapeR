@@ -14,18 +14,9 @@
 
 .assoc_exec_fingerprint <- function(atlas) {
     provenance <- atlas_provenance(atlas)
-    stable_provenance <- intersect(
-        c(
-            "association_strategy", "association_contracts",
-            "sampling_design", "exchangeability", "multiplicity",
-            "interpretation_module", "primary_evidence_variant",
-            "display_trajectory_variant", "analysis_cohort",
-            "analysis_cohort_exclusions", "time_course_cells",
-            "time_course_missing_cells", "time_course_missing_cell_count",
-            "time_course_display_state"
-        ),
-        names(provenance)
-    )
+    if (is.list(provenance$evidence_contract)) {
+        provenance$evidence_contract$digests <- NULL
+    }
     evidence <- list(
         version = atlas@version,
         dataset_id = atlas@dataset_id,
@@ -38,7 +29,7 @@
         state_space_digest = atlas@state_space_digest,
         compute_tier = atlas@compute_tier,
         evidence_status = atlas@evidence_status,
-        provenance = provenance[stable_provenance]
+        provenance = provenance
     )
     digest::digest(
         .assoc_exec_normalize(evidence),

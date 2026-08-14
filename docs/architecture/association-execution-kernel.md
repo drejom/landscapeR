@@ -52,8 +52,13 @@ The package-owned design adapter supplies the surrounding execution mechanics.
 
 ## Evidence of behavior preservation
 
-`tests/testthat/test-association-execution-kernel.R` freezes atlas and evidence
-digests for successful and partial cross-sectional and independent-time-course
-analyses. It also freezes the non-identifiable time-course abstention. The
-landing proof in `.github/landing-proof/issue-210/` renders the shared workflow
-and records those identities.
+`tests/testthat/test-association-execution-kernel.R` freezes exact atlas digests
+for successful and partial rank-only cross-sectional analyses. Fitted
+independent-time-course analyses use a portable scientific fingerprint that
+retains normalized evidence and the complete scientific provenance tree while
+excluding only the raw platform-dependent evidence digests. The test also
+freezes the non-identifiable time-course abstention and proves that changes to
+the specification, model formula, resampling plan, fitted model, or association
+evidence alter the fingerprint. The landing proof in
+`.github/landing-proof/issue-210/` renders the shared workflow and records
+those identities.

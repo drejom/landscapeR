@@ -16,11 +16,16 @@ atlas assembly. The kernel does not choose an estimand or exchangeability rule.
 [`evidence-equivalence.tsv`](evidence-equivalence.tsv) records exact atlas
 digests for the rank-only cross-sectional fixtures and portable scientific
 fingerprints for the fitted time-course fixtures, plus the typed
-non-identifiable outcome. The portable fingerprint retains the evidence
-tables, declared scientific provenance, and identity fields while rounding
-floating-point model output to six decimal places so equivalent BLAS and
-operating-system results compare consistently. Regenerate both artifacts from
-the repository root with:
+non-identifiable outcome. The portable fingerprint retains the complete
+scientific provenance tree, evidence tables, cohort membership, fitted model
+summaries, rankings, resampling plan, and identity fields. Only the original
+raw evidence digests are removed because they encode the platform-dependent
+floating-point bytes replaced by the normalized content. Numeric values are
+rounded to six decimal places: the test treats changes below `5e-7` as
+serialization or BLAS noise and detects changes of `5e-6` or more. CI exposed
+the Linux/macOS raw-byte divergence; this explicit boundary, rather than the
+opaque digest difference, defines the portable comparison. Regenerate both
+artifacts from the repository root with:
 
 ```sh
 Rscript scripts/render-issue-210-proof.R

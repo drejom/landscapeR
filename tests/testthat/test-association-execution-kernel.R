@@ -84,7 +84,7 @@ test_that("association execution preserves successful evidence identities", {
     )
     expect_identical(
         .assoc_exec_fingerprint(independent),
-        "fc308da2e02d91b85740560329d1f7019b9ab7531f458d1c551841a909728a73"
+        "16c45f5022c0fe1bbfbb2c8a432caaa61111d089a5ac7b72b19b32a67853155e"
     )
 })
 
@@ -117,7 +117,7 @@ test_that("association execution preserves partial-case evidence identities", {
     )
     expect_identical(
         .assoc_exec_fingerprint(independent),
-        "376260cb97b9adfd89a415f9a41555e87cf923c1802796bb3199a50d41290744"
+        "35f20dbb3676a011af5a1419400bff34961c3dcfbbebd91abfb4484f4af7c9da"
     )
 })
 
@@ -138,4 +138,63 @@ test_that("association execution preserves typed abstention", {
     expect_s4_class(result, "AssociationAbstention")
     expect_identical(result@reason, "non-identifiable-design")
     expect_match(result@diagnostic, "fewer than two finite values")
+})
+
+test_that("portable fingerprints retain scientific provenance and evidence", {
+    atlas <- associate_metadata(
+        independent_time_course_fixture(),
+        specification = independent_time_course_specification("batch"),
+        non_analytical_fields = "sample_id",
+        dataset_id = "kernel-independent",
+        n_resamples = 3L,
+        seed = 17L,
+        sequential_internal = TRUE
+    )
+    baseline <- .assoc_exec_fingerprint(atlas)
+
+    changed_formula <- atlas
+    formula_provenance <- atlas_provenance(changed_formula)
+    formula_provenance$model_formula_digest <- paste(rep("0", 64L), collapse = "")
+    changed_formula@provenance <- formula_provenance
+    expect_false(identical(.assoc_exec_fingerprint(changed_formula), baseline))
+
+    changed_specification <- atlas
+    specification_provenance <- atlas_provenance(changed_specification)
+    specification_provenance$analysis_specification_digest <-
+        paste(rep("1", 64L), collapse = "")
+    changed_specification@provenance <- specification_provenance
+    expect_false(identical(
+        .assoc_exec_fingerprint(changed_specification),
+        baseline
+    ))
+
+    changed_resampling <- atlas
+    resampling_provenance <- atlas_provenance(changed_resampling)
+    resampling_provenance$resampling_plan$digest <-
+        paste(rep("2", 64L), collapse = "")
+    changed_resampling@provenance <- resampling_provenance
+    expect_false(identical(
+        .assoc_exec_fingerprint(changed_resampling),
+        baseline
+    ))
+
+    changed_model <- atlas
+    model_provenance <- atlas_provenance(changed_model)
+    model_provenance$time_course_models[[1L]]$unadjusted$estimate <-
+        model_provenance$time_course_models[[1L]]$unadjusted$estimate + 1e-4
+    changed_model@provenance <- model_provenance
+    expect_false(identical(.assoc_exec_fingerprint(changed_model), baseline))
+
+    changed_association <- atlas
+    changed_association@associations$estimate[[1L]] <-
+        changed_association@associations$estimate[[1L]] + 1e-4
+    expect_false(identical(
+        .assoc_exec_fingerprint(changed_association),
+        baseline
+    ))
+})
+
+test_that("portable fingerprint precision has an explicit boundary", {
+    expect_identical(.assoc_exec_normalize(1 + 4e-7), 1)
+    expect_identical(.assoc_exec_normalize(1 + 6e-6), 1.000006)
 })
