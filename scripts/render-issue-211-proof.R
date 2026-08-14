@@ -20,7 +20,7 @@ load_first_assignment("tests/testthat/test-stage1-evidence.R")
 
 benchmark_runner <- run_stage1_benchmark_replicate
 benchmark_paths <- testthat::with_mocked_bindings(
-    write_stage1_benchmark_artifact(
+    publish_stage1_benchmark_artifact(
         file.path(scratch_root, "stage1-benchmark")
     ),
     .stage1_benchmark_environment = function() list(
@@ -140,7 +140,7 @@ cases <- data.frame(
         "K=1 acceptance"
     ),
     publisher = c(
-        "write_stage1_benchmark_artifact()",
+        "publish_stage1_benchmark_artifact()",
         ".stage1_write_full_artifact()",
         "publish_k1_calibration_outcomes()",
         ".k1_acceptance_publish()"

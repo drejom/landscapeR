@@ -146,16 +146,30 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
         missing_block_rate = 0, sample_order = "permuted", feature_order = "permuted",
         projection_case = "exact_ids"), list(n = 21L))), class = "stage1_benchmark_error")
 
-    path <- tempfile("stage1-artifact-")
-    paths <- write_stage1_benchmark_artifact(path, manifest)
+    path <- tempfile("stage1-artifact-root-")
+    paths <- publish_stage1_benchmark_artifact(path, manifest)
     artifact <- dirname(unname(paths[[1L]]))
-    repeated <- write_stage1_benchmark_artifact(path, manifest)
+    repeated <- publish_stage1_benchmark_artifact(path, manifest)
     saved <- utils::read.csv(
         file.path(artifact, "results.csv"), stringsAsFactors = FALSE
     )
     expect_true(all(c("stratum", "exclusions", "failure_reason", "protocol_digest", "generator_digest") %in% names(saved)))
     expect_true(verify_stage1_benchmark_artifact(artifact))
     expect_identical(dirname(unname(repeated[[1L]])), artifact)
+
+    direct <- tempfile("stage1-artifact-direct-")
+    dir.create(direct)
+    direct_paths <- write_stage1_benchmark_artifact(direct, manifest)
+    expect_identical(dirname(unname(direct_paths[[1L]])), direct)
+    expect_identical(
+        unname(direct_paths[["hashes"]]), file.path(direct, "hashes.csv")
+    )
+    expect_true(file.exists(file.path(direct, "results.csv")))
+    expect_true(verify_stage1_benchmark_artifact(direct))
+    expect_error(
+        write_stage1_benchmark_artifact(direct, manifest),
+        class = "stage1_benchmark_error"
+    )
 
     legacy <- tempfile("stage1-legacy-artifact-")
     dir.create(legacy)
@@ -194,6 +208,7 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
     file_path <- tempfile("stage1-artifact-file-")
     file.create(file_path)
     expect_error(write_stage1_benchmark_artifact(file_path, manifest), class = "stage1_benchmark_error")
+    expect_error(publish_stage1_benchmark_artifact(file_path, manifest), class = "stage1_benchmark_error")
     expect_error(verify_stage1_benchmark_artifact(tempfile("missing-artifact-")),
                  class = "stage1_benchmark_error")
 })

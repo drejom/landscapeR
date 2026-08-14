@@ -41,7 +41,7 @@ scientific-result type.
 | K=1 calibration outcomes | `publish_k1_calibration_outcomes()` | `verify_k1_calibration_outcomes()` | Existing `MANIFEST.tsv` artifacts remain valid |
 | K=1 acceptance | Internal acceptance publisher used by the public runner | `verify_k1_acceptance_artifact()` | Both accepted artifact versions retain their governed payloads |
 | Revised K=1 acceptance | Revised acceptance publisher | Revised acceptance verifier | Existing governed payload remains unchanged |
-| Single-replicate Stage 1 benchmark | `write_stage1_benchmark_artifact()` | `verify_stage1_benchmark_artifact()` | Historical `hashes.csv` snapshots remain readable and verifiable; new artifacts use `MANIFEST.tsv` |
+| Single-replicate Stage 1 benchmark | `publish_stage1_benchmark_artifact()` | `verify_stage1_benchmark_artifact()` | `write_stage1_benchmark_artifact()` preserves the original exact-directory contract through the same transaction; historical `hashes.csv` snapshots remain readable and verifiable |
 | Full Stage 1 evidence | Full benchmark publication workflow | `verify_stage1_evidence_artifact()` | Historical `hashes.csv` artifacts remain readable and verifiable; new artifacts use `MANIFEST.tsv` |
 
 The single-replicate benchmark artifact remains diagnostic evidence. It does

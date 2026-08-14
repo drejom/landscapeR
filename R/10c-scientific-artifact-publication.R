@@ -186,7 +186,8 @@
     },
     identity_digest = function(manifest, artifact) {
         .artifact_digest(manifest)
-    }
+    },
+    artifact_path = NULL
 ) {
     if (!.is_scalar_nonempty_text(artifact_root)) {
         .stop_landscapeR_validation("artifact_root must be one non-empty path")
@@ -202,9 +203,27 @@
             !.is_scalar_nonempty_text(staging_prefix)) {
         .artifact_fail(abort, messages, "invalid")
     }
+    if (!is.null(artifact_path) &&
+            !.is_scalar_nonempty_text(artifact_path)) {
+        .artifact_fail(abort, messages, "invalid")
+    }
     .artifact_validate_files(governed, abort, messages)
 
     artifact_root <- path.expand(artifact_root)
+    if (!is.null(artifact_path)) {
+        artifact_path <- path.expand(artifact_path)
+        if (!identical(dirname(artifact_path), artifact_root) ||
+                basename(artifact_path) %in% c(".", "..")) {
+            .artifact_fail(abort, messages, "invalid")
+        }
+        if (file.exists(artifact_path) && !dir.exists(artifact_path)) {
+            .artifact_fail(abort, messages, "invalid")
+        }
+        if (dir.exists(artifact_path) && length(list.files(
+                artifact_path, all.files = TRUE, no.. = TRUE))) {
+            .artifact_fail(abort, messages, "invalid")
+        }
+    }
     if (!dir.exists(artifact_root)) {
         .artifact_attempt(
             suppressWarnings(dir.create(
@@ -270,9 +289,13 @@
         identity_digest, manifest, payload, abort, messages,
         preserve_condition
     )
-    artifact <- file.path(artifact_root, paste0(
-        address_prefix, "-", substr(artifact_digest, 1L, 16L)
-    ))
+    artifact <- if (is.null(artifact_path)) {
+        file.path(artifact_root, paste0(
+            address_prefix, "-", substr(artifact_digest, 1L, 16L)
+        ))
+    } else {
+        artifact_path
+    }
     candidate <- file.path(staging, basename(artifact))
     moved_to_candidate <- .artifact_attempt(
         suppressWarnings(file.rename(payload, candidate)),
@@ -307,9 +330,19 @@
         }
         artifact
     }
-    if (dir.exists(artifact)) return(verify_existing())
+    if (is.null(artifact_path) && dir.exists(artifact)) {
+        return(verify_existing())
+    }
+    if (!is.null(artifact_path) && dir.exists(artifact)) {
+        suppressWarnings(unlink(artifact, recursive = TRUE))
+        if (dir.exists(artifact)) {
+            .artifact_fail(abort, messages, "atomic")
+        }
+    }
     if (!atomic_move(candidate, artifact)) {
-        if (dir.exists(artifact)) return(verify_existing())
+        if (is.null(artifact_path) && dir.exists(artifact)) {
+            return(verify_existing())
+        }
         .artifact_fail(abort, messages, "atomic")
     }
     artifact

@@ -7,7 +7,9 @@
 verify_stage1_benchmark_artifact(artifact_dir)
 }
 \arguments{
-\item{artifact_dir}{artifact directory written by \code{write_stage1_benchmark_artifact()}.}
+\item{artifact_dir}{artifact directory written by
+\code{\link[=write_stage1_benchmark_artifact]{write_stage1_benchmark_artifact()}} or returned by
+\code{\link[=publish_stage1_benchmark_artifact]{publish_stage1_benchmark_artifact()}}.}
 }
 \value{
 \code{TRUE} when every recorded hash matches.
