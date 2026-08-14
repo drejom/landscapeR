@@ -42,6 +42,8 @@ R_DEFINITION_PATTERN = re.compile(
 R_S4_PATTERN = re.compile(
     r"\b(?:setGeneric|setClass|setClassUnion|setMethod)\s*\(\s*['\"]([^'\"]+)",
 )
+FULL_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$", flags=re.IGNORECASE)
+PROOF_MARKER = ".github/landing-proof/"
 
 
 def changed_files() -> list[str]:
@@ -174,23 +176,82 @@ def visual_review_has_artifact(body: str) -> bool:
     return has_image or has_table or has_rendered_output
 
 
-def missing_repository_image_paths(body: str) -> list[str]:
-    """Return repository-hosted proof images that do not exist in the checkout."""
-    marker = ".github/landing-proof/"
-    missing: list[str] = []
-    for target in re.findall(r"!\[[^\]]+\]\(([^)]+)\)", body):
-        target = target.strip().split()[0].strip("<>")
-        if marker not in target:
+def markdown_targets(body: str) -> list[str]:
+    """Return normalized inline Markdown link and image targets."""
+    return [
+        target.strip().split()[0].strip("<>")
+        for target in re.findall(r"!?\[[^\]]+\]\(([^)]+)\)", body)
+    ]
+
+
+def repository_proof_targets(body: str) -> list[tuple[str, Path]]:
+    """Return repository proof link targets paired with normalized local paths."""
+    targets: list[tuple[str, Path]] = []
+    for target in markdown_targets(body):
+        if PROOF_MARKER not in target:
             continue
-        repository_path = marker + target.split(marker, maxsplit=1)[1]
+        repository_path = PROOF_MARKER + target.split(PROOF_MARKER, maxsplit=1)[1]
         repository_path = repository_path.split("?", maxsplit=1)[0]
         repository_path = repository_path.split("#", maxsplit=1)[0]
-        if not Path(repository_path).is_file():
-            missing.append(repository_path)
-    return missing
+        targets.append((target, Path(repository_path)))
+    return targets
 
 
-def validate_required_proof(body: str, files: list[str]) -> int:
+def non_immutable_repository_proof_targets(
+    body: str, expected_commit: str
+) -> list[str]:
+    """Return repository proof targets not pinned to the current PR-head SHA."""
+    expected_pattern = re.compile(
+        rf"/(?:blob/|tree/)?{re.escape(expected_commit)}/{re.escape(PROOF_MARKER)}",
+        flags=re.IGNORECASE,
+    )
+    return [
+        target for target, _ in repository_proof_targets(body)
+        if expected_pattern.search(target) is None
+    ]
+
+
+def missing_repository_proof_paths(body: str) -> list[str]:
+    """Return repository-hosted proof paths that do not exist in the checkout."""
+    return [
+        str(path) for _, path in repository_proof_targets(body)
+        if not path.exists()
+    ]
+
+
+def invalid_repository_proof_routes(
+    body: str, expected_commit: str
+) -> list[str]:
+    """Return proof targets whose GitHub route does not match the path type."""
+    raw_pattern = re.compile(
+        rf"^https://raw\.githubusercontent\.com/[^/]+/[^/]+/"
+        rf"{re.escape(expected_commit)}/{re.escape(PROOF_MARKER)}",
+        flags=re.IGNORECASE,
+    )
+    blob_pattern = re.compile(
+        rf"^https://github\.com/[^/]+/[^/]+/blob/"
+        rf"{re.escape(expected_commit)}/{re.escape(PROOF_MARKER)}",
+        flags=re.IGNORECASE,
+    )
+    tree_pattern = re.compile(
+        rf"^https://github\.com/[^/]+/[^/]+/tree/"
+        rf"{re.escape(expected_commit)}/{re.escape(PROOF_MARKER)}",
+        flags=re.IGNORECASE,
+    )
+    invalid: list[str] = []
+    for target, path in repository_proof_targets(body):
+        if path.is_dir() and tree_pattern.search(target) is None:
+            invalid.append(target)
+        elif path.is_file() and not (
+            raw_pattern.search(target) or blob_pattern.search(target)
+        ):
+            invalid.append(target)
+    return invalid
+
+
+def validate_required_proof(
+    body: str, files: list[str], expected_commit: str
+) -> int:
     required_fields = (
         "Proof type",
         "Before",
@@ -237,11 +298,27 @@ def validate_required_proof(body: str, files: list[str]) -> int:
             "The Visual review section must contain an inspectable artifact: "
             "a Markdown image, table, or fenced rendered output."
         )
-    missing_images = missing_repository_image_paths(body)
-    if missing_images:
+    non_immutable_targets = non_immutable_repository_proof_targets(
+        body, expected_commit
+    )
+    if non_immutable_targets:
         return fail(
-            "Visual review references repository proof images that do not exist: "
-            + ", ".join(missing_images)
+            "Repository landing-proof links must use the current full PR-head "
+            f"commit SHA ({expected_commit}); branch links break after deletion: "
+            + ", ".join(non_immutable_targets)
+        )
+    missing_paths = missing_repository_proof_paths(body)
+    if missing_paths:
+        return fail(
+            "Visual review references repository proof paths that do not exist: "
+            + ", ".join(missing_paths)
+        )
+    invalid_routes = invalid_repository_proof_routes(body, expected_commit)
+    if invalid_routes:
+        return fail(
+            "Repository proof URL type must match its committed artifact: use "
+            "GitHub /tree/ for directories and /blob/ or raw URLs for files: "
+            + ", ".join(invalid_routes)
         )
 
     print("Visual landing proof packet accepted.")
@@ -251,6 +328,10 @@ def validate_required_proof(body: str, files: list[str]) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("pr_body_file", type=Path, help="File containing the PR body")
+    parser.add_argument(
+        "--expected-commit",
+        help="Full immutable PR-head commit SHA required in repository proof links",
+    )
     args = parser.parse_args()
 
     if not args.pr_body_file.is_file():
@@ -269,9 +350,20 @@ def main() -> int:
     except RuntimeError as error:
         return fail(str(error))
 
+    expected_commit = args.expected_commit
+    if expected_commit is None:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            return fail("cannot determine the current commit for proof-link validation")
+        expected_commit = result.stdout.strip()
+    if FULL_COMMIT_PATTERN.fullmatch(expected_commit) is None:
+        return fail("Expected proof-link commit must be a full 40-character SHA.")
+
     if exempt:
         return validate_exemption(body, files)
-    return validate_required_proof(body, files)
+    return validate_required_proof(body, files, expected_commit.lower())
 
 
 if __name__ == "__main__":
