@@ -62,6 +62,8 @@ evidence or repetition records are already retained. The test also freezes the
 non-identifiable time-course abstention and proves that changes to the
 specification, model formula, model engine, resampling plan, fitted model,
 repetition values, or association evidence alter the fingerprint. The landing
-proof in
+proof uses five-decimal quantization: six decimals failed the supported
+macOS/Linux fixture comparison, while changes of `1e-4` remain detectable.
+The landing proof in
 `.github/landing-proof/issue-210/` renders the shared workflow and records
 those identities.

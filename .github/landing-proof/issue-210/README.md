@@ -22,14 +22,16 @@ summaries, rankings, resampling plan, and identity fields. Only the original
 raw evidence digests, repetition-result byte digests, and runtime model-engine
 version are removed. Their normalized underlying evidence, repetition values,
 declared model engine, RNG identity, and scientific summaries remain in the
-fingerprint. Numeric values are quantized by rounding to six decimal places.
+fingerprint. Numeric values are quantized by rounding to five decimal places.
 This is not a distance tolerance:
 even a very small change can alter the fingerprint when it crosses a rounding
 boundary, and the tests make that behavior explicit. The supported Linux and
 macOS CI jobs independently recompute the fixtures and must place every value
-in the same six-decimal bin before the frozen fingerprint can pass. CI exposed
-the original raw-byte divergence; this transparent quantization rule, rather
-than an opaque raw digest difference, defines the portable comparison.
+in the same five-decimal bin before the frozen fingerprint can pass. Six
+decimal places failed that supported-platform comparison; five decimals retain
+the test's ability to detect scientific changes of `1e-4`. This transparent
+quantization rule, rather than an opaque raw digest difference, defines the
+portable comparison.
 Regenerate both artifacts from the repository root with:
 
 ```sh

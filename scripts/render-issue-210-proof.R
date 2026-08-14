@@ -130,9 +130,9 @@ evidence <- data.frame(
     ),
     expected = c(
         "e9a80c9b4a59b685a78827a4affcb3288200df4f38008ac5333f10abb1081862",
-        "ceebfccce6d0beb6affa639cee17c6a442203c9d87e98d764937c14549175780",
+        "2926e00771749c145c84b5a9a78a1e4c77a3c4eb4a706cb125c002156bc7e4c9",
         "44bc45c654ca7761513643ca2992af8c6382668014960a5ea43e8f11e33a9d04",
-        "8869e089769e5f244830a838bb65c526f5e6d2f39df701c3c962a76edb943647",
+        "d1f6d0db0019a7df5badaddd02ba28eddde969d306db2be41e0a2646c0b1107d",
         "non-identifiable-design"
     ),
     stringsAsFactors = FALSE

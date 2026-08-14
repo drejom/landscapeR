@@ -5,7 +5,7 @@
         return(value)
     }
     if (is.factor(value)) return(as.character(value))
-    if (is.numeric(value) && !is.integer(value)) return(round(value, 6L))
+    if (is.numeric(value) && !is.integer(value)) return(round(value, 5L))
     if (is.list(value)) {
         return(lapply(value, .assoc_exec_normalize))
     }

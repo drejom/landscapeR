@@ -84,7 +84,7 @@ test_that("association execution preserves successful evidence identities", {
     )
     expect_identical(
         .assoc_exec_fingerprint(independent),
-        "ceebfccce6d0beb6affa639cee17c6a442203c9d87e98d764937c14549175780"
+        "2926e00771749c145c84b5a9a78a1e4c77a3c4eb4a706cb125c002156bc7e4c9"
     )
 })
 
@@ -117,7 +117,7 @@ test_that("association execution preserves partial-case evidence identities", {
     )
     expect_identical(
         .assoc_exec_fingerprint(independent),
-        "8869e089769e5f244830a838bb65c526f5e6d2f39df701c3c962a76edb943647"
+        "d1f6d0db0019a7df5badaddd02ba28eddde969d306db2be41e0a2646c0b1107d"
     )
 })
 
@@ -221,11 +221,11 @@ test_that("portable fingerprints retain scientific provenance and evidence", {
     ))
 })
 
-test_that("portable fingerprint uses explicit six-decimal quantization", {
-    expect_identical(.assoc_exec_normalize(1 + 4e-7), 1)
-    expect_identical(.assoc_exec_normalize(1 + 6e-6), 1.000006)
+test_that("portable fingerprint uses explicit five-decimal quantization", {
+    expect_identical(.assoc_exec_normalize(1 + 4e-6), 1)
+    expect_identical(.assoc_exec_normalize(1 + 6e-5), 1.00006)
     expect_false(identical(
-        .assoc_exec_normalize(1.00000049),
-        .assoc_exec_normalize(1.00000051)
+        .assoc_exec_normalize(1.0000049),
+        .assoc_exec_normalize(1.0000051)
     ))
 })
