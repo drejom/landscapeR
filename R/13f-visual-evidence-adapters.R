@@ -625,7 +625,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         time_field = provenance$time_field,
         subject_field = if (repeated) provenance$subject_field else NA_character_,
         nuisance_fields = provenance$nuisance_fields,
-        panels = panel_terms,
+        panels = if (repeated) panel_terms else character(),
         encodings = if (repeated) {
             c(
                 "Thin lines connect repeated observations from each subject.",
