@@ -1079,9 +1079,6 @@ register_strategy(
                 scientific_records = list(model_record),
                 display_records = list(display_line)
             )
-        },
-        finalize = function(context, plan, normalized) {
-            context$blueprint
         }
     )
     execution <- .execute_assoc_components(adapter, context = list())
@@ -1324,11 +1321,7 @@ register_strategy(
         ),
         evidence_status = "estimable-exploratory-only"
     )
-    .finalize_assoc_execution(
-        adapter,
-        context = list(blueprint = blueprint),
-        execution = execution
-    )
+    .finalize_assoc_blueprint(blueprint, adapter$sampling_design)
 }
 
 .time_course_permutation_indices <- function(

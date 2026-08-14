@@ -112,56 +112,70 @@
                 ))
             )
         },
-        execute_component = execute_component,
-        finalize = function(context, plan, normalized) {
-            visual_evidence <- list(
-                monotone_fit = landscapeR:::.monotone_fit_data(
-                    normalized$observations
-                ),
-                flexible_fit = landscapeR:::.flexible_fit_data(
-                    normalized$observations
-                )
-            )
-            list(
-                module = "cross-sectional-v1",
-                contract_sampling_design = "cross_sectional",
-                version = "1.0.0",
-                dataset_id = "kernel-contract-fixture",
-                associations = normalized$associations,
-                observations = normalized$observations,
-                exclusions = normalized$exclusions,
-                cohort_members = normalized$cohort_members,
-                sampling_design = cross_sectional(),
-                input_digest = paste(rep("a", 64L), collapse = ""),
-                state_space_digest = paste(rep("b", 64L), collapse = ""),
-                compute_tier = "inspect",
-                provenance = list(
-                    association_strategy = "fixture-strategy-v1",
-                    association_contracts = list(fixture = contract),
-                    package_version = as.character(
-                        utils::packageVersion("landscapeR")
-                    ),
-                    sampling_design = "cross_sectional",
-                    layer = "fixture",
-                    input_digest = paste(rep("a", 64L), collapse = ""),
-                    state_space_digest = paste(rep("b", 64L), collapse = ""),
-                    dataset_id = "kernel-contract-fixture",
-                    exchangeability = "independent",
-                    multiplicity =
-                        landscapeR:::.association_multiplicity_contract(),
-                    visual_evidence = visual_evidence,
-                    bootstrap_executions = list()
-                ),
-                evidence_status = "estimable-exploratory-only"
-            )
-        }
+        execute_component = execute_component
+    )
+}
+
+.kernel_contract_blueprint <- function(normalized) {
+    contract <- landscapeR:::.new_association_contract(
+        sampling_designs = "cross_sectional",
+        target_types = "binary",
+        estimand = "fixture-effect",
+        cohort_policy = "complete-fixture-observations",
+        diagnostic_prefix = "fixture",
+        abstention_statuses = "not-estimable",
+        refit_policy = "none",
+        evidence_version = "cross-sectional-v1"
+    )
+    visual_evidence <- list(
+        monotone_fit = landscapeR:::.monotone_fit_data(
+            normalized$observations
+        ),
+        flexible_fit = landscapeR:::.flexible_fit_data(
+            normalized$observations
+        )
+    )
+    list(
+        module = "cross-sectional-v1",
+        contract_sampling_design = "cross_sectional",
+        version = "1.0.0",
+        dataset_id = "kernel-contract-fixture",
+        associations = normalized$associations,
+        observations = normalized$observations,
+        exclusions = normalized$exclusions,
+        cohort_members = normalized$cohort_members,
+        sampling_design = cross_sectional(),
+        input_digest = paste(rep("a", 64L), collapse = ""),
+        state_space_digest = paste(rep("b", 64L), collapse = ""),
+        compute_tier = "inspect",
+        provenance = list(
+            association_strategy = "fixture-strategy-v1",
+            association_contracts = list(fixture = contract),
+            package_version = as.character(
+                utils::packageVersion("landscapeR")
+            ),
+            sampling_design = "cross_sectional",
+            layer = "fixture",
+            input_digest = paste(rep("a", 64L), collapse = ""),
+            state_space_digest = paste(rep("b", 64L), collapse = ""),
+            dataset_id = "kernel-contract-fixture",
+            exchangeability = "independent",
+            multiplicity = landscapeR:::.association_multiplicity_contract(),
+            visual_evidence = visual_evidence,
+            bootstrap_executions = list()
+        ),
+        evidence_status = "estimable-exploratory-only"
     )
 }
 
 test_that("the kernel owns traversal, accounting, and atlas assembly", {
-    atlas <- landscapeR:::.execute_association_kernel(
+    execution <- landscapeR:::.execute_assoc_components(
         .kernel_contract_adapter(),
         context = list()
+    )
+    atlas <- landscapeR:::.finalize_assoc_blueprint(
+        .kernel_contract_blueprint(execution$normalized),
+        "cross_sectional"
     )
 
     expect_s4_class(atlas, "MetadataAssociationAtlas")
@@ -180,7 +194,7 @@ test_that("invalid adapter output fails with a stable kernel condition", {
     adapter <- .kernel_contract_adapter(function(...) list())
 
     expect_error(
-        landscapeR:::.execute_association_kernel(adapter, context = list()),
+        landscapeR:::.execute_assoc_components(adapter, context = list()),
         "must return exactly",
         class = "association_execution_error"
     )
@@ -192,7 +206,7 @@ test_that("incidental adapter errors do not leak through the kernel", {
     })
 
     expect_error(
-        landscapeR:::.execute_association_kernel(adapter, context = list()),
+        landscapeR:::.execute_assoc_components(adapter, context = list()),
         "adapter failed.*dependency detail",
         class = "association_execution_error"
     )
@@ -213,11 +227,58 @@ test_that("typed scientific abstention crosses the kernel unchanged", {
     adapter <- .kernel_contract_adapter()
     adapter$prepare <- function(context) abstention
 
-    result <- landscapeR:::.execute_association_kernel(
+    result <- landscapeR:::.execute_assoc_components(
         adapter,
         context = list()
     )
 
     expect_identical(result, abstention)
     expect_s4_class(result, "AssociationAbstention")
+})
+
+test_that("malformed atlas blueprints fail with a stable kernel condition", {
+    execution <- landscapeR:::.execute_assoc_components(
+        .kernel_contract_adapter(),
+        context = list()
+    )
+    blueprint <- .kernel_contract_blueprint(execution$normalized)
+    blueprint$version <- "not-a-valid-atlas-version"
+
+    expect_error(
+        landscapeR:::.finalize_assoc_blueprint(
+            blueprint,
+            "cross_sectional"
+        ),
+        "adapter failed during atlas assembly",
+        class = "association_execution_error"
+    )
+})
+
+test_that("incompatible normalized rows fail with a stable kernel condition", {
+    base_execute <- .kernel_contract_adapter()$execute_component
+    adapter <- .kernel_contract_adapter(function(
+        context,
+        plan,
+        work_item,
+        component,
+        component_label,
+        scores
+    ) {
+        result <- base_execute(
+            context,
+            plan,
+            work_item,
+            component,
+            component_label,
+            scores
+        )
+        if (component == 2L) result$association_rows$unexpected <- "invalid"
+        result
+    })
+
+    expect_error(
+        landscapeR:::.execute_assoc_components(adapter, context = list()),
+        "adapter failed during normalization",
+        class = "association_execution_error"
+    )
 })

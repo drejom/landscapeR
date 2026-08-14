@@ -13,7 +13,7 @@ separately in issue #212.
 | Biological estimand and model fit | Work-item and component traversal |
 | Exchangeability and resampling indices | Future result and failure accounting |
 | Scientific diagnostics and display records | Normalized association and observation rows |
-| Design-specific permutation behavior | Multiplicity, cohort expansion, and atlas assembly |
+| Design-specific permutation behavior | Multiplicity, cohort expansion, and typed atlas assembly |
 | Typed reasons that evidence is not estimable | Unchanged propagation of typed abstention |
 
 The kernel cannot select a component, alter an estimand, substitute a fallback
@@ -22,7 +22,7 @@ boundaries remain governed by ADR 0020 and the design-specific strategies.
 
 ## Internal adapter contract
 
-An execution adapter declares an identifier, one sampling design, and three
+An execution adapter declares an identifier, one sampling design, and two
 callbacks:
 
 1. `prepare()` returns finite component coordinates, unique labels, scientific
@@ -30,13 +30,17 @@ callbacks:
 2. `execute_component()` fits one declared work item on one component and
    returns association rows, observation rows, execution records, scientific
    records, and display records.
-3. `finalize()` maps normalized results and design provenance to an atlas
-   blueprint. The kernel validates the blueprint and constructs the S4 atlas.
+
+After execution, the design module supplies its scientific provenance and
+display evidence in an atlas blueprint. The kernel validates that blueprint
+and constructs the S4 atlas. This keeps scientific meaning in the design
+module without duplicating S4 assembly or leaking incidental construction
+errors.
 
 Malformed callback output raises `association_execution_error`, which also
 inherits from `landscapeR_validation_error`. Incidental dependency errors are
 translated at this boundary. An `AssociationAbstention` returned during
-preparation, component execution, or finalization is returned unchanged.
+preparation or component execution is returned unchanged.
 
 ## Method-author path
 

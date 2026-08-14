@@ -57,8 +57,7 @@
     id,
     sampling_design,
     prepare,
-    execute_component,
-    finalize
+    execute_component
 ) {
     adapter <- structure(
         list(
@@ -66,8 +65,7 @@
             id = id,
             sampling_design = sampling_design,
             prepare = prepare,
-            execute_component = execute_component,
-            finalize = finalize
+            execute_component = execute_component
         ),
         class = "landscapeR_association_execution_adapter"
     )
@@ -77,8 +75,7 @@
 
 .validate_assoc_exec_adapter <- function(adapter) {
     required <- c(
-        "version", "id", "sampling_design", "prepare",
-        "execute_component", "finalize"
+        "version", "id", "sampling_design", "prepare", "execute_component"
     )
     if (!inherits(adapter, "landscapeR_association_execution_adapter") ||
             !identical(names(adapter), required)) {
@@ -93,7 +90,7 @@
             "association execution adapter identity fields must be non-empty strings"
         )
     }
-    callback_fields <- c("prepare", "execute_component", "finalize")
+    callback_fields <- c("prepare", "execute_component")
     if (any(!vapply(adapter[callback_fields], is.function, logical(1L)))) {
         .stop_association_execution(
             "association execution adapter callbacks must be functions"
@@ -312,43 +309,47 @@
 }
 
 .normalize_assoc_execution <- function(results, exclusion_rows) {
-    association_rows <- unlist(
-        lapply(results, `[[`, "association_rows"),
-        recursive = FALSE
-    )
-    observation_rows <- unlist(
-        lapply(results, `[[`, "observation_rows"),
-        recursive = FALSE
-    )
-    associations <- .association_execution_bind(
-        association_rows,
-        .empty_association_evidence
-    )
-    observations <- .association_execution_bind(
-        observation_rows,
-        .empty_observation_evidence
-    )
-    exclusions <- .association_execution_bind(
-        exclusion_rows,
-        .empty_exclusion_evidence
-    )
-    .validate_resample_accounting(associations)
-    associations <- .adjust_association_multiplicity(associations)
-    cohort_members <- .assoc_exec_cohort_members(associations)
-    associations$.cohort_members <- NULL
-    records <- lapply(
-        c("execution_records", "scientific_records", "display_records"),
-        function(field) unlist(lapply(results, `[[`, field), recursive = FALSE)
-    )
-    names(records) <- c(
-        "execution_records", "scientific_records", "display_records"
-    )
-    c(list(
-        associations = associations,
-        observations = observations,
-        exclusions = exclusions,
-        cohort_members = cohort_members
-    ), records)
+    .association_execution_attempt({
+        association_rows <- unlist(
+            lapply(results, `[[`, "association_rows"),
+            recursive = FALSE
+        )
+        observation_rows <- unlist(
+            lapply(results, `[[`, "observation_rows"),
+            recursive = FALSE
+        )
+        associations <- .association_execution_bind(
+            association_rows,
+            .empty_association_evidence
+        )
+        observations <- .association_execution_bind(
+            observation_rows,
+            .empty_observation_evidence
+        )
+        exclusions <- .association_execution_bind(
+            exclusion_rows,
+            .empty_exclusion_evidence
+        )
+        .validate_resample_accounting(associations)
+        associations <- .adjust_association_multiplicity(associations)
+        cohort_members <- .assoc_exec_cohort_members(associations)
+        associations$.cohort_members <- NULL
+        records <- lapply(
+            c("execution_records", "scientific_records", "display_records"),
+            function(field) {
+                unlist(lapply(results, `[[`, field), recursive = FALSE)
+            }
+        )
+        names(records) <- c(
+            "execution_records", "scientific_records", "display_records"
+        )
+        c(list(
+            associations = associations,
+            observations = observations,
+            exclusions = exclusions,
+            cohort_members = cohort_members
+        ), records)
+    }, "normalization")
 }
 
 .validate_assoc_blueprint <- function(blueprint, sampling_design) {
@@ -425,29 +426,10 @@
 }
 
 .finalize_assoc_blueprint <- function(blueprint, sampling_design) {
-    .validate_assoc_blueprint(blueprint, sampling_design)
-    .assoc_exec_build_atlas(blueprint)
-}
-
-.finalize_assoc_execution <- function(adapter, context, execution) {
-    if (!is.list(execution) ||
-            !identical(names(execution), c("plan", "normalized"))) {
-        .stop_association_execution(
-            "association execution finalization requires normalized execution"
-        )
-    }
-    plan <- execution$plan
-    normalized <- execution$normalized
-    blueprint <- .association_execution_attempt(
-        adapter$finalize(
-            context = context,
-            plan = plan,
-            normalized = normalized
-        ),
-        "finalization"
-    )
-    if (is(blueprint, "AssociationAbstention")) return(blueprint)
-    .finalize_assoc_blueprint(blueprint, adapter$sampling_design)
+    .association_execution_attempt({
+        .validate_assoc_blueprint(blueprint, sampling_design)
+        .assoc_exec_build_atlas(blueprint)
+    }, "atlas assembly")
 }
 
 .execute_assoc_components <- function(adapter, context) {
@@ -494,10 +476,4 @@
         plan$exclusion_rows
     )
     list(plan = plan, normalized = normalized)
-}
-
-.execute_association_kernel <- function(adapter, context) {
-    execution <- .execute_assoc_components(adapter, context)
-    if (is(execution, "AssociationAbstention")) return(execution)
-    .finalize_assoc_execution(adapter, context, execution)
 }

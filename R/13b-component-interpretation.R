@@ -1846,9 +1846,6 @@ associate_metadata <- function(
                     scientific_records = list(),
                     display_records = list()
                 )
-            },
-            finalize = function(context, plan, normalized) {
-                context$blueprint
             }
         )
         execution <- .execute_assoc_components(adapter, context = list())
