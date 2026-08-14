@@ -707,9 +707,9 @@ bodies may state dependencies but do not change this ordering.
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete |
-| [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | in review; then #212 |
+| [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | complete on merge; then #212 |
 | [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | complete |
-| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | queued; next after #210 |
+| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | active — next |
 | [#213](https://github.com/drejom/landscapeR/issues/213) | Architecture deepening — durable HPC evidence orchestration | queued; blocked by #211 and Gemini availability for final proof |
 | [#214](https://github.com/drejom/landscapeR/issues/214) | Architecture deepening — component-decision evidence interface | queued; blocked by #212 and #97 |
 | [#215](https://github.com/drejom/landscapeR/issues/215) | Architecture deepening — remaining evidence orchestration | queued; blocked by #213 |
