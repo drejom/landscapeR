@@ -170,6 +170,9 @@
             atomic = messages$atomic
         ),
         staging_prefix = staging_prefix,
-        atomic_move = .k1_calibration_atomic_move
+        atomic_move = .k1_calibration_atomic_move,
+        preserve_condition = function(condition) {
+            inherits(condition, "k1_acceptance_runner_error")
+        }
     )
 }

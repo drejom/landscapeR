@@ -30,7 +30,10 @@ artifact_test_verify <- function(artifact) {
 artifact_test_publish <- function(
     root, writer = artifact_test_writer,
     atomic_move = landscapeR:::.artifact_atomic_move,
-    semantic_verifier = artifact_test_verify
+    semantic_verifier = artifact_test_verify,
+    preserve_condition = function(condition) {
+        inherits(condition, "landscapeR_validation_error")
+    }
 ) {
     landscapeR:::.artifact_publish(
         artifact_root = root,
@@ -41,7 +44,8 @@ artifact_test_publish <- function(
         abort = artifact_test_abort,
         messages = artifact_test_messages(),
         staging_prefix = ".fixture-tmp-",
-        atomic_move = atomic_move
+        atomic_move = atomic_move,
+        preserve_condition = preserve_condition
     )
 }
 
@@ -78,6 +82,29 @@ test_that("scientific artifact setup failures use the adapter error", {
     expect_error(
         artifact_test_publish(root),
         "artifact manifest invalid"
+    )
+})
+
+test_that("scientific adapters declare which typed conditions survive", {
+    root <- tempfile("scientific-artifact-")
+    dir.create(root)
+    typed_writer <- function(staging) {
+        stop(structure(
+            list(message = "scientific adapter rejected payload", call = NULL),
+            class = c("fixture_scientific_error", "error", "condition")
+        ))
+    }
+
+    expect_error(
+        artifact_test_publish(
+            root,
+            writer = typed_writer,
+            preserve_condition = function(condition) {
+                inherits(condition, "fixture_scientific_error")
+            }
+        ),
+        "scientific adapter rejected payload",
+        class = "fixture_scientific_error"
     )
 })
 

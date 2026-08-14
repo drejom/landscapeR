@@ -37,12 +37,15 @@
     invisible(NULL)
 }
 
-.artifact_attempt <- function(expression, abort, messages, key = "invalid") {
+.artifact_attempt <- function(
+    expression, abort, messages, preserve_condition, key = "invalid"
+) {
     tryCatch(
         force(expression),
-        landscapeR_validation_error = function(condition) stop(condition),
-        k1_acceptance_runner_error = function(condition) stop(condition),
-        error = function(condition) .artifact_fail(abort, messages, key)
+        error = function(condition) {
+            if (isTRUE(preserve_condition(condition))) stop(condition)
+            .artifact_fail(abort, messages, key)
+        }
     )
 }
 
@@ -149,7 +152,10 @@
 .artifact_publish <- function(
     artifact_root, address_prefix, governed, write_payload,
     semantic_verifier, abort, messages, staging_prefix,
-    atomic_move = .artifact_atomic_move
+    atomic_move = .artifact_atomic_move,
+    preserve_condition = function(condition) {
+        inherits(condition, "landscapeR_validation_error")
+    }
 ) {
     if (!.is_scalar_nonempty_text(artifact_root)) {
         .stop_landscapeR_validation("artifact_root must be one non-empty path")
@@ -161,6 +167,7 @@
     }
     if (!is.function(write_payload) || !is.function(semantic_verifier) ||
             !is.function(abort) || !is.function(atomic_move) ||
+            !is.function(preserve_condition) ||
             !.is_scalar_nonempty_text(staging_prefix)) {
         .artifact_fail(abort, messages, "invalid")
     }
@@ -172,7 +179,7 @@
             suppressWarnings(dir.create(
                 artifact_root, recursive = TRUE, showWarnings = FALSE
             )),
-            abort, messages
+            abort, messages, preserve_condition
         )
     }
     if (!dir.exists(artifact_root)) {
@@ -184,7 +191,7 @@
         suppressWarnings(dir.create(
             payload, recursive = TRUE, showWarnings = FALSE
         )),
-        abort, messages
+        abort, messages, preserve_condition
     )
     if (!dir.exists(payload)) {
         .artifact_fail(abort, messages, "invalid")
@@ -195,7 +202,9 @@
         }
     }, add = TRUE)
 
-    .artifact_attempt(write_payload(payload), abort, messages)
+    .artifact_attempt(
+        write_payload(payload), abort, messages, preserve_condition
+    )
     actual <- .artifact_inventory(
         payload, governed, abort, messages
     )$files
@@ -215,7 +224,7 @@
             ),
             stringsAsFactors = FALSE
         ),
-        abort, messages
+        abort, messages, preserve_condition
     )
     artifact_digest <- .artifact_digest(manifest)
     artifact <- file.path(artifact_root, paste0(
@@ -227,12 +236,12 @@
             file.path(payload, .artifact_manifest_name),
             sep = "\t", quote = FALSE, row.names = FALSE
         ),
-        abort, messages
+        abort, messages, preserve_condition
     )
     candidate <- file.path(staging, basename(artifact))
     moved_to_candidate <- .artifact_attempt(
         suppressWarnings(file.rename(payload, candidate)),
-        abort, messages, "atomic"
+        abort, messages, preserve_condition, "atomic"
     )
     if (!moved_to_candidate) {
         .artifact_fail(abort, messages, "atomic")

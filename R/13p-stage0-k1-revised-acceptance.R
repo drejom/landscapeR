@@ -1363,7 +1363,10 @@ plot_k1_revised_acceptance <- function(
         abort = .k1_acceptance_runner_abort,
         messages = .k1_revised_artifact_errors(),
         staging_prefix = paste0(".", protocol$protocol_id, "-tmp-"),
-        atomic_move = .artifact_atomic_move
+        atomic_move = .artifact_atomic_move,
+        preserve_condition = function(condition) {
+            inherits(condition, "k1_acceptance_runner_error")
+        }
     )
 }
 
