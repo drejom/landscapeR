@@ -850,22 +850,13 @@ register_strategy(
         run_seed = plan$seed,
         compute_tier = "standard",
         worker = function(task, task_id, task_stream) {
-            index <- task$index
-            result <- refit_association(
+            .repeated_bootstrap_refit(
+                task,
                 strategy,
                 scores,
                 target,
-                as.integer(index),
-                context = list(
-                    subject = task$subject,
-                    orientation_multiplier = orientation_multiplier
-                )
+                orientation_multiplier
             )
-            if (identical(result$status, "estimable")) {
-                result$estimate
-            } else {
-                .repetition_failure("model-not-estimable", NA_real_)
-            }
         },
         sequential_internal = sequential_internal,
         future_scheduling = future_scheduling
@@ -882,6 +873,30 @@ register_strategy(
     summary$bootstrap_estimates <- estimates
     summary$execution <- execution
     summary
+}
+
+.repeated_bootstrap_refit <- function(
+    task,
+    strategy,
+    scores,
+    target,
+    orientation_multiplier
+) {
+    result <- refit_association(
+        strategy,
+        scores,
+        target,
+        as.integer(task$index),
+        context = list(
+            subject = task$subject,
+            orientation_multiplier = orientation_multiplier
+        )
+    )
+    if (identical(result$status, "estimable")) {
+        result$estimate
+    } else {
+        .repetition_failure("model-not-estimable", NA_real_)
+    }
 }
 
 .repeated_display_lines <- function(
@@ -1098,126 +1113,195 @@ register_strategy(
     if (is.null(component_labels)) {
         component_labels <- paste0("PC", seq_len(ncol(coordinate_matrix)))
     }
-    rows <- list()
-    model_records <- list()
-    observations <- list()
-    display_lines <- list()
     unadjusted_strategy <- preparation$strategy
     adjusted_strategy <- preparation$context$adjusted_strategy
     diagnostic_prefix <- association_contract(
         unadjusted_strategy
     )$diagnostic_prefix
     if (identical(diagnostic_prefix, "none")) diagnostic_prefix <- ""
-    for (component in seq_len(ncol(coordinate_matrix))) {
-        scores <- coordinate_matrix[, component]
-        unadjusted <- associate_component(
-            unadjusted_strategy,
-            scores,
-            target
-        )$model_result
-        unadjusted_uncertainty <- .repeated_time_uncertainty(
-            scores,
-            target,
-            unadjusted_strategy,
+    excluded_fields <- setdiff(
+        names(colData(std)),
+        specification@target_field
+    )
+    exclusions <- data.frame(
+        metadata_field = excluded_fields,
+        reason = vapply(excluded_fields, function(field) {
+            if (field == subject_field) {
+                "sampling-subject-field"
+            } else if (field == time_field) {
+                "sampling-time-field"
+            } else if (field %in% specification@nuisance_fields) {
+                "declared-nuisance-field"
+            } else if (field %in% non_analytical_fields) {
+                "declared-non-analytical"
+            } else {
+                "unsupported-repeated-time-course-metadata"
+            }
+        }, character(1L)),
+        stringsAsFactors = FALSE
+    )
+    strategy_contracts <- list(
+        unadjusted = .validated_association_contract(unadjusted_strategy)
+    )
+    if (length(nuisance_values)) {
+        strategy_contracts$adjusted <-
+            .validated_association_contract(adjusted_strategy)
+    }
+    adapter <- .new_assoc_execution_adapter(
+        id = "repeated-time-course-random-slope-v1",
+        sampling_design = "longitudinal",
+        prepare = function(context) {
+            list(
+                coordinate_matrix = coordinate_matrix,
+                component_labels = component_labels,
+                work_items = list(list(
+                    id = specification@target_field,
+                    metadata_field = specification@target_field
+                )),
+                state = list(resampling_plan = plan),
+                strategy_contracts = strategy_contracts,
+                exclusion_rows = list(exclusions)
+            )
+        },
+        execute_component = function(
+            context,
             plan,
-            unadjusted$orientation_multiplier,
-            task_identity = paste0(component_labels[[component]], ":unadjusted"),
-            sequential_internal = sequential_internal,
-            future_scheduling = future_scheduling
-        )
-        rows[[length(rows) + 1L]] <- .time_course_pooled_row(
+            work_item,
             component,
-            component_labels[[component]],
-            unadjusted$standardized_scores,
-            target,
-            reference_level,
-            comparison_level,
-            unadjusted$diagnostic %||% ""
-        )
-        rows[[length(rows) + 1L]] <- .time_course_association_row(
-            component,
-            component_labels[[component]],
-            "repeated-time-course-unadjusted",
-            unadjusted,
-            unadjusted_uncertainty,
-            reference_level,
-            comparison_level,
-            diagnostic_prefix = diagnostic_prefix
-        )
-        adjusted <- NULL
-        adjusted_uncertainty <- NULL
-        if (length(nuisance_values)) {
-            adjusted <- associate_component(
-                adjusted_strategy,
+            component_label,
+            scores
+        ) {
+            unadjusted <- associate_component(
+                unadjusted_strategy,
                 scores,
                 target
             )$model_result
-            adjusted_uncertainty <- .repeated_time_uncertainty(
+            unadjusted_uncertainty <- .repeated_time_uncertainty(
                 scores,
                 target,
-                adjusted_strategy,
-                plan,
-                adjusted$orientation_multiplier,
-                task_identity = paste0(component_labels[[component]], ":adjusted"),
+                unadjusted_strategy,
+                plan = plan$state$resampling_plan,
+                unadjusted$orientation_multiplier,
+                task_identity = paste0(component_label, ":unadjusted"),
                 sequential_internal = sequential_internal,
                 future_scheduling = future_scheduling
             )
-            rows[[length(rows) + 1L]] <- .time_course_association_row(
+            association_rows <- list(
+                .time_course_pooled_row(
+                    component,
+                    component_label,
+                    unadjusted$standardized_scores,
+                    target,
+                    reference_level,
+                    comparison_level,
+                    unadjusted$diagnostic %||% ""
+                ),
+                .time_course_association_row(
+                    component,
+                    component_label,
+                    "repeated-time-course-unadjusted",
+                    unadjusted,
+                    unadjusted_uncertainty,
+                    reference_level,
+                    comparison_level,
+                    diagnostic_prefix = diagnostic_prefix
+                )
+            )
+            adjusted <- NULL
+            adjusted_uncertainty <- NULL
+            if (length(nuisance_values)) {
+                adjusted <- associate_component(
+                    adjusted_strategy,
+                    scores,
+                    target
+                )$model_result
+                adjusted_uncertainty <- .repeated_time_uncertainty(
+                    scores,
+                    target,
+                    adjusted_strategy,
+                    plan = plan$state$resampling_plan,
+                    adjusted$orientation_multiplier,
+                    task_identity = paste0(component_label, ":adjusted"),
+                    sequential_internal = sequential_internal,
+                    future_scheduling = future_scheduling
+                )
+                association_rows[[length(association_rows) + 1L]] <-
+                    .time_course_association_row(
+                        component,
+                        component_label,
+                        "repeated-time-course-adjusted",
+                        adjusted,
+                        adjusted_uncertainty,
+                        reference_level,
+                        comparison_level,
+                        nuisance_fields = names(nuisance_values),
+                        diagnostic_prefix = diagnostic_prefix
+                    )
+            }
+            standardized <- unadjusted$standardized_scores
+            if (length(standardized) != length(scores)) {
+                standardized <- rep(NA_real_, length(scores))
+            }
+            observation <- data.frame(
+                metadata_field = specification@target_field,
+                component = component,
+                component_label = component_label,
+                sample_index = seq_along(scores),
+                primary_sample = names(target),
+                metadata_type = "categorical",
+                metadata_value = as.character(target),
+                metadata_numeric = NA_real_,
+                score = standardized,
+                atom_count = 1L,
+                available = is.finite(standardized),
+                stringsAsFactors = FALSE
+            )
+            primary_model <- if (length(nuisance_values)) {
+                adjusted
+            } else {
+                unadjusted
+            }
+            display_line <- .repeated_display_lines(
+                primary_model,
                 component,
-                component_labels[[component]],
-                "repeated-time-course-adjusted",
-                adjusted,
-                adjusted_uncertainty,
+                component_label,
                 reference_level,
                 comparison_level,
-                nuisance_fields = names(nuisance_values),
-                diagnostic_prefix = diagnostic_prefix
+                nuisance_values,
+                target,
+                primary_model$scaled_time
+            )
+            model_record <- list(
+                component = component,
+                component_label = component_label,
+                orientation_multiplier = unadjusted$orientation_multiplier,
+                unadjusted = unadjusted,
+                adjusted = adjusted,
+                unadjusted_uncertainty = unadjusted_uncertainty,
+                adjusted_uncertainty = adjusted_uncertainty
+            )
+            execution_records <- list(
+                unadjusted = unadjusted_uncertainty$execution
+            )
+            if (length(nuisance_values)) {
+                execution_records$adjusted <- adjusted_uncertainty$execution
+            }
+            list(
+                association_rows = association_rows,
+                observation_rows = observation,
+                execution_records = execution_records,
+                scientific_records = list(model_record),
+                display_records = list(display_line)
             )
         }
-        standardized <- unadjusted$standardized_scores
-        if (length(standardized) != length(scores)) {
-            standardized <- rep(NA_real_, length(scores))
-        }
-        observations[[component]] <- data.frame(
-            metadata_field = specification@target_field,
-            component = as.integer(component),
-            component_label = component_labels[[component]],
-            sample_index = seq_along(scores),
-            primary_sample = names(target),
-            metadata_type = "categorical",
-            metadata_value = as.character(target),
-            metadata_numeric = NA_real_,
-            score = standardized,
-            atom_count = 1L,
-            available = is.finite(standardized),
-            stringsAsFactors = FALSE
-        )
-        primary_model <- if (length(nuisance_values)) adjusted else unadjusted
-        display_lines[[component]] <- .repeated_display_lines(
-            primary_model,
-            component,
-            component_labels[[component]],
-            reference_level,
-            comparison_level,
-            nuisance_values,
-            target,
-            primary_model$scaled_time
-        )
-        model_records[[component]] <- list(
-            component = as.integer(component),
-            component_label = component_labels[[component]],
-            orientation_multiplier = unadjusted$orientation_multiplier,
-            unadjusted = unadjusted,
-            adjusted = adjusted,
-            unadjusted_uncertainty = unadjusted_uncertainty,
-            adjusted_uncertainty = adjusted_uncertainty
-        )
-    }
-    associations <- do.call(rbind, rows)
-    associations <- .adjust_association_multiplicity(associations)
-    observations <- do.call(rbind, observations)
-    rownames(associations) <- NULL
-    rownames(observations) <- NULL
+    )
+    execution <- .execute_assoc_components(adapter, context = list())
+    if (is(execution, "AssociationAbstention")) return(execution)
+    associations <- execution$normalized$associations
+    observations <- execution$normalized$observations
+    exclusions <- execution$normalized$exclusions
+    model_records <- execution$normalized$scientific_records
+    display_lines <- execution$normalized$display_records
     primary_variant <- if (length(nuisance_values)) {
         "repeated-time-course-adjusted"
     } else {
@@ -1282,36 +1366,12 @@ register_strategy(
     input_digest <- .atlas_input_digest(std)
     state_space_digest <- .atlas_state_space_digest(stage1)
     dataset_id <- .time_course_dataset_id(std, input_digest, dataset_id)
-    exclusions <- data.frame(
-        metadata_field = setdiff(
-            names(colData(std)),
-            specification@target_field
-        ),
-        reason = vapply(
-            setdiff(names(colData(std)), specification@target_field),
-            function(field) {
-                if (field == subject_field) {
-                    "sampling-subject-field"
-                } else if (field == time_field) {
-                    "sampling-time-field"
-                } else if (field %in% specification@nuisance_fields) {
-                    "declared-nuisance-field"
-                } else if (field %in% non_analytical_fields) {
-                    "declared-non-analytical"
-                } else {
-                    "unsupported-repeated-time-course-metadata"
-                }
-            },
-            character(1L)
-        ),
-        stringsAsFactors = FALSE
-    )
     display_line_table <- do.call(rbind, display_lines)
     display_state <- .new_time_course_display_state(
         display_line_table,
         resample_ranks$summary
     )
-    atlas <- .new_time_course_atlas(
+    blueprint <- list(
         module = .repeated_time_evidence_version,
         contract_sampling_design = "longitudinal",
         version = "1.0.0",
@@ -1474,8 +1534,7 @@ register_strategy(
         ),
         evidence_status = "estimable-exploratory-only"
     )
-    validObject(atlas)
-    atlas
+    .finalize_assoc_blueprint(blueprint, adapter$sampling_design)
 }
 
 .repeated_subject_permutation_plan <- function(
@@ -1530,6 +1589,36 @@ register_strategy(
         }
     )
     structure(policy$draws, resampling_policy = policy)
+}
+
+.repeated_permutation_max <- function(
+    permuted,
+    score_matrix,
+    observed_time,
+    subject,
+    nuisance_values,
+    reference_level,
+    comparison_level,
+    time_range
+) {
+    effects <- apply(score_matrix, 2L, function(scores) {
+        result <- .fit_repeated_time_course(
+            scores,
+            factor(permuted, levels = c(reference_level, comparison_level)),
+            observed_time,
+            subject,
+            nuisance_values,
+            reference_level,
+            comparison_level,
+            study_time_range = time_range
+        )
+        if (identical(result$status, "estimable")) {
+            result$estimate
+        } else {
+            NA_real_
+        }
+    })
+    if (all(is.finite(effects))) max(abs(effects)) else NA_real_
 }
 
 .compute_repeated_time_permutation_evidence <- function(
@@ -1646,30 +1735,16 @@ register_strategy(
         run_seed = seed,
         compute_tier = "standard",
         worker = function(permuted, task_id, task_stream) {
-        effects <- apply(score_matrix, 2L, function(scores) {
-            result <- .fit_repeated_time_course(
-                scores,
-                factor(
-                    permuted,
-                    levels = c(
-                        atlas@provenance$reference_level,
-                        atlas@provenance$comparison_level
-                    )
-                ),
+            .repeated_permutation_max(
+                permuted,
+                score_matrix,
                 observed_time,
                 subject,
                 nuisance_values,
                 atlas@provenance$reference_level,
                 atlas@provenance$comparison_level,
-                study_time_range = atlas@provenance$time_range
+                atlas@provenance$time_range
             )
-            if (identical(result$status, "estimable")) {
-                result$estimate
-            } else {
-                NA_real_
-            }
-        })
-        if (all(is.finite(effects))) max(abs(effects)) else NA_real_
         },
         sequential_internal = sequential_internal,
         future_scheduling = future_scheduling,

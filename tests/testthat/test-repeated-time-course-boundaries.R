@@ -516,16 +516,29 @@ test_that("repeated plots expose uncertainty dropout and model diagnostics", {
     expect_match(atlas_caption, "random intercepts", fixed = TRUE)
     expect_match(
         atlas_caption,
-        "crosses mark recorded early endpoints",
+        "Black crosses mark recorded early endpoints",
         fixed = TRUE
     )
+    expect_match(atlas_caption, "(A) Component PC1", fixed = TRUE)
+    expect_match(atlas_caption, "(B) Component PC2", fixed = TRUE)
+    facet_labels <- unname(atlas_plot$facet$params$labeller(
+        data.frame(component_label = c("PC1", "PC2"))
+    )$component_label)
+    expect_match(facet_labels[[1L]], "^A PC1\\ninteraction ")
+    expect_match(facet_labels[[2L]], "^B PC2\\ninteraction ")
+    singular_plot <- plot(propose_component(associate_metadata(
+        repeated_time_course_fixture(slope_scale = 0),
+        specification = repeated_time_course_specification(),
+        non_analytical_fields = c("mouse_id", "batch")
+    )))
+    expect_false(grepl(
+        "early endpoints",
+        scientific_caption(singular_plot),
+        fixed = TRUE
+    ))
     expect_false(grepl(
         "singular-random-effects-covariance|non-identifiable-design",
-        plot(propose_component(associate_metadata(
-            repeated_time_course_fixture(slope_scale = 0),
-            specification = repeated_time_course_specification(),
-            non_analytical_fields = c("mouse_id", "batch")
-        )))$labels$subtitle
+        singular_plot$labels$subtitle
     ))
     expect_true(any(grepl(
         "interaction",

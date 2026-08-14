@@ -1,0 +1,11 @@
+No component nominated for condition. The Issue 212 singular-model example experiment uses the
+rna layer to assess the declared condition target contrasts treatment with control. (A)
+Component PC1 shows individual observations; no population trajectory or interaction interval
+is estimable. (B) Component PC2 shows individual observations; no population trajectory or
+interaction interval is estimable. Thin lines connect repeated observations from each subject.
+The analysis unit is complete subject trajectory; the design is longitudinal; the estimand is
+condition-by-time interaction on the rank scale; time is recorded as day; subjects are
+identified by mouse_id. No interaction interval or resampling recurrence is available. Raw
+p-values are retained; q-values use Holm correction across declared components within each
+metadata field and evidence variant. No acceptance threshold is applied. No unique biological
+coordinate is identified.

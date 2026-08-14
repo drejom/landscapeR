@@ -8,13 +8,14 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#212 migrate repeated time-course
-interpretation onto the normalized association execution kernel**.
+**Next task after this change lands:** **#193, resume revised independent K=1
+acceptance from its existing internal checkpoint**.
 The maintainer deliberately reopened the architecture-maintenance lane on
 2026-08-14 after a fresh whole-codebase review. Issues #209 and #211 completed
-the publication lane; #210 establishes the shared association kernel before
-#212 migrates the remaining repeated-subject design.
-The scientific #193 sequence remains paused, not superseded.
+the publication lane; #210 established the shared association kernel and #212
+migrated the remaining repeated-subject design. The maintenance loop is then
+complete. Scheduler-backed #213 still requires Gemini for its final proof, and
+#214 remains blocked by #97.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -269,9 +270,10 @@ range. The #67 audit also showed that the validation instrument itself is not
 yet fit for final adjudication: it gates one-dimensional recovery twice using
 inconsistent cosine/angle cutoffs, cannot evaluate some declared small-sample
 cells, assumes complete repeated trajectories, and tests only one
-fixed-total-signal high-dimensional regime. The next task is #188, followed by
-the revised calibration sequence in #189–#191 and a newly frozen independent
-acceptance in #193. Issue labels do not independently change this schedule.
+fixed-total-signal high-dimensional regime. That audit was addressed by #188,
+followed by the revised calibration sequence in #189–#191 and a newly frozen
+independent acceptance in #193. Issue labels do not independently change this
+schedule.
 
 **Deterministic maintenance-loop order:** when this lane is deliberately
 opened, process one issue through implementation, both review modes, green CI,
@@ -703,17 +705,18 @@ bodies may state dependencies but do not change this ordering.
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | complete on merge; does not block acceptance |
-| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — paused during deliberate architecture deepening loop; resume without internal reordering |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; resume from the existing internal checkpoint |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete |
 | [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | complete on merge; then #212 |
 | [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | complete |
-| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | active — next |
+| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | complete on merge; then resume #193 |
 | [#213](https://github.com/drejom/landscapeR/issues/213) | Architecture deepening — durable HPC evidence orchestration | queued; blocked by #211 and Gemini availability for final proof |
 | [#214](https://github.com/drejom/landscapeR/issues/214) | Architecture deepening — component-decision evidence interface | queued; blocked by #212 and #97 |
 | [#215](https://github.com/drejom/landscapeR/issues/215) | Architecture deepening — remaining evidence orchestration | queued; blocked by #213 |
 | [#216](https://github.com/drejom/landscapeR/issues/216) | Architecture deepening — acceptance-control adapter deletion test | queued; blocked by #215 |
+| [#220](https://github.com/drejom/landscapeR/issues/220) | Interpretation visual standards — independent time-course panel labels | queued; standalone follow-up; does not reorder #193 |
 <!-- issue-map:end -->
 
 ---

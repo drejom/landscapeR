@@ -387,16 +387,44 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     requested_searches <- display_state$requested_searches
     complete_searches <- display_state$complete_searches
     partial_resampling <- display_state$partial_resampling
-    facet_labels <- if (!has_trajectories) {
-        stats::setNames(
-            summaries$component_label,
+    panel_letters <- .publication_panel_letters(nrow(summaries))
+    panel_labels <- stats::setNames(
+        if (repeated) {
+            paste(panel_letters, summaries$component_label)
+        } else {
             summaries$component_label
-        )
+        },
+        summaries$component_label
+    )
+    panel_terms <- stats::setNames(
+        if (has_trajectories) {
+            sprintf(
+                paste(
+                    "Component %s shows individual observations and stored",
+                    "population trajectories; the standardized condition-by-time",
+                    "interaction is %s"
+                ),
+                summaries$component_label,
+                interval_text[summaries$component_label]
+            )
+        } else {
+            sprintf(
+                paste(
+                    "Component %s shows individual observations; no population",
+                    "trajectory or interaction interval is estimable"
+                ),
+                summaries$component_label
+            )
+        },
+        panel_letters
+    )
+    facet_labels <- if (!has_trajectories) {
+        panel_labels
     } else if (!is.null(ranking) && nrow(ranking)) {
         stats::setNames(
             sprintf(
                 "%s\nrank %d | interaction %s\n%s",
-                ranking$component_label,
+                panel_labels[ranking$component_label],
                 ranking$proposal_rank,
                 interval_text[ranking$component_label],
                 rank_text[ranking$component_label]
@@ -407,7 +435,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         stats::setNames(
             sprintf(
                 "%s\ninteraction %s",
-                summaries$component_label,
+                panel_labels[summaries$component_label],
                 interval_text
             ),
             summaries$component_label
@@ -597,6 +625,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         time_field = provenance$time_field,
         subject_field = if (repeated) provenance$subject_field else NA_character_,
         nuisance_fields = provenance$nuisance_fields,
+        panels = if (repeated) panel_terms else character(),
         encodings = if (repeated) {
             c(
                 "Thin lines connect repeated observations from each subject.",
@@ -605,7 +634,9 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
                     "rank-scale model with subject-specific random intercepts",
                     "and time slopes."
                 ),
-                "Red crosses mark recorded early endpoints."
+                if (nrow(display$dropout_points)) {
+                    "Black crosses mark recorded early endpoints."
+                }
             )
         } else {
             c(

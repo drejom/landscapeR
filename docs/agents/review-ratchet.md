@@ -44,11 +44,11 @@ found that body-only fingerprints, incomplete closure environments, and
 assign-before-record ordering could hide behavior changes or leave an
 unprovenanced registry mutation.
 ### RR-006 — Verify that visual encodings carry independent meaning
-Verify that plotted quantities are not deterministic transforms and semantic
-highlight colours retain their role rather than marking selected extremes.
-**Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) initially
-plotted one-dimensional principal angle against its exact absolute-cosine
-transform and used the focal red for the three largest observed rotations.
+Verify plotted quantities are independent and semantic colours retain their role;
+captions must match rendered marks, omit absent encodings, and narrate each panel.
+**Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) plotted an
+exact cosine transform and misused focal red; issue #212 review found endpoint
+and A/B panel caption mismatches.
 ### RR-007 — Keep transient roots outside package builds
 Exclude repo scratch from Git and R package builds. Before trusting a package
 check, verify that generated sites, bundles, and prior checks missed the tarball.
@@ -62,10 +62,10 @@ Never ask an artifact to echo expected identity. Read installation or build
 metadata it cannot redefine; if absent, report unavailable or stop.
 **Incident:** issue #134 review found remote workers could echo the expected SHA while running different installed code.
 ### RR-010 — Prove parallelism boundaries behaviorally
-Do not infer that nested parallelism is disabled from a scheduling or chunking
-argument. Exercise the declared inner-sequential path under an ambient parallel
-backend and prove that work remains in the current worker.
-**Incident:** issue #135 found `future.scheduling = 0` still creates one future and violates ADR 0018's single-layer policy.
+Do not infer parallelism boundaries from scheduling arguments. Exercise the
+inner-sequential path under an ambient backend, and test private worker entry
+points from an installed package; `load_all()` can mask namespace failures.
+**Incident:** issue #135 found hidden nested futures; issue #212 lost a private fitter only on multisession workers.
 ### RR-011 — Keep backend-dependent measurements out of scientific decisions
 Runtime and resource measurements may be retained for operational diagnostics,
 but they must not affect candidate selection or the scientific evidence digest
