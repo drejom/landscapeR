@@ -9,7 +9,11 @@
     "operating-map-caption.txt", "environment.rds"
 )
 
-.k1_calibration_atomic_move <- function(from, to) file.rename(from, to)
+# Compatibility seam retained for existing failure-injection tests. Publication
+# semantics and the default move remain owned by the shared artifact module.
+.k1_calibration_atomic_move <- function(from, to) {
+    .artifact_atomic_move(from, to)
+}
 
 .k1_calibration_read_or_abort <- function(expression, message) {
     suppressWarnings(tryCatch(

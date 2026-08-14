@@ -137,4 +137,69 @@ test_that("scientific artifact staging is cleaned after failure", {
     expect_length(
         list.files(semantic_root, all.files = TRUE, no.. = TRUE), 0L
     )
+
+    mutation_root <- tempfile("scientific-artifact-")
+    dir.create(mutation_root)
+    mutating_verifier <- function(artifact) {
+        artifact_test_verify(artifact)
+        writeLines("changed during replay", file.path(artifact, "alpha.txt"))
+        invisible(TRUE)
+    }
+    expect_error(
+        artifact_test_publish(
+            mutation_root, semantic_verifier = mutating_verifier
+        ),
+        "digest mismatch"
+    )
+    expect_length(
+        list.files(mutation_root, all.files = TRUE, no.. = TRUE), 0L
+    )
+})
+
+test_that("scientific artifacts reject links and undeclared directories", {
+    link_root <- tempfile("scientific-artifact-")
+    dir.create(link_root)
+    external <- tempfile("external-payload-")
+    writeLines("external", external)
+    link_writer <- function(staging) {
+        file.symlink(external, file.path(staging, "alpha.txt"))
+        writeLines("beta", file.path(staging, "beta.txt"))
+    }
+    expect_error(
+        artifact_test_publish(link_root, link_writer),
+        "manifest invalid"
+    )
+    expect_length(list.files(link_root, all.files = TRUE, no.. = TRUE), 0L)
+
+    directory_root <- tempfile("scientific-artifact-")
+    dir.create(directory_root)
+    directory_writer <- function(staging) {
+        artifact_test_writer(staging)
+        dir.create(file.path(staging, "undeclared"))
+    }
+    expect_error(
+        artifact_test_publish(directory_root, directory_writer),
+        "undeclared files"
+    )
+    expect_length(
+        list.files(directory_root, all.files = TRUE, no.. = TRUE), 0L
+    )
+})
+
+test_that("a concurrent valid publisher wins the address race", {
+    root <- tempfile("scientific-artifact-")
+    dir.create(root)
+    racing_move <- function(from, to) {
+        dir.create(to)
+        files <- list.files(from, all.files = TRUE, no.. = TRUE)
+        file.copy(file.path(from, files), to, recursive = TRUE)
+        FALSE
+    }
+
+    artifact <- artifact_test_publish(root, atomic_move = racing_move)
+
+    expect_true(artifact_test_verify(artifact))
+    expect_length(
+        list.files(root, all.files = TRUE, no.. = TRUE), 1L
+    )
 })

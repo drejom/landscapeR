@@ -49,6 +49,40 @@
     invisible(TRUE)
 }
 
+.artifact_governed_directories <- function(governed) {
+    directories <- dirname(governed)
+    directories <- directories[directories != "."]
+    unique(unlist(lapply(directories, function(directory) {
+        parts <- strsplit(directory, "/", fixed = TRUE)[[1L]]
+        vapply(seq_along(parts), function(index) {
+            paste(parts[seq_len(index)], collapse = "/")
+        }, character(1L))
+    }), use.names = FALSE))
+}
+
+.artifact_inventory <- function(path, governed, abort, messages) {
+    entries <- list.files(
+        path, recursive = TRUE, all.files = TRUE,
+        no.. = TRUE, include.dirs = TRUE
+    )
+    if (length(entries) == 0L) {
+        return(list(files = character(), directories = character()))
+    }
+    full_paths <- file.path(path, entries)
+    info <- file.info(full_paths)
+    links <- nzchar(Sys.readlink(full_paths))
+    invalid_entry <- anyNA(info$isdir) || any(links) ||
+        any(!info$isdir & !file_test("-f", full_paths))
+    if (invalid_entry) {
+        .artifact_fail(abort, messages, "invalid")
+    }
+    directories <- entries[info$isdir]
+    if (any(!directories %in% .artifact_governed_directories(governed))) {
+        .artifact_fail(abort, messages, "undeclared")
+    }
+    list(files = entries[!info$isdir], directories = directories)
+}
+
 .artifact_read_manifest <- function(path, abort, messages) {
     suppressWarnings(tryCatch(
         utils::read.delim(
@@ -71,6 +105,9 @@
     if (!dir.exists(artifact) || !file.exists(manifest_path)) {
         .artifact_fail(abort, messages, "missing_manifest")
     }
+    inventory <- .artifact_inventory(
+        artifact, governed, abort, messages
+    )
     manifest <- .artifact_read_manifest(
         manifest_path, abort, messages
     )
@@ -82,11 +119,7 @@
     if (!valid_manifest) {
         .artifact_fail(abort, messages, "invalid")
     }
-    actual <- list.files(
-        artifact, recursive = TRUE, all.files = TRUE,
-        no.. = TRUE, include.dirs = FALSE
-    )
-    payload_files <- setdiff(actual, .artifact_manifest_name)
+    payload_files <- setdiff(inventory$files, .artifact_manifest_name)
     if (any(!governed %in% payload_files)) {
         .artifact_fail(abort, messages, "missing_payload")
     }
@@ -134,10 +167,9 @@
     }, add = TRUE)
 
     write_payload(payload)
-    actual <- list.files(
-        payload, recursive = TRUE, all.files = TRUE,
-        no.. = TRUE, include.dirs = FALSE
-    )
+    actual <- .artifact_inventory(
+        payload, governed, abort, messages
+    )$files
     if (any(!governed %in% actual)) {
         .artifact_fail(abort, messages, "incomplete")
     }
@@ -160,6 +192,7 @@
     if (dir.exists(artifact)) {
         .artifact_verify_payload(artifact, governed, abort, messages)
         semantic_verifier(artifact)
+        .artifact_verify_payload(artifact, governed, abort, messages)
         return(artifact)
     }
     utils::write.table(
@@ -173,7 +206,14 @@
     }
     .artifact_verify_payload(candidate, governed, abort, messages)
     semantic_verifier(candidate)
+    .artifact_verify_payload(candidate, governed, abort, messages)
     if (!atomic_move(candidate, artifact)) {
+        if (dir.exists(artifact)) {
+            .artifact_verify_payload(artifact, governed, abort, messages)
+            semantic_verifier(artifact)
+            .artifact_verify_payload(artifact, governed, abort, messages)
+            return(artifact)
+        }
         .artifact_fail(abort, messages, "atomic")
     }
     artifact
