@@ -844,8 +844,12 @@ register_strategy(
         "associate_metadata",
         "target field"
     )
-    strategy <- .resolve_registered_association_strategy(std, target)
-    if (is.null(strategy)) {
+    resolved_strategy <- .resolve_assoc_strategy(
+        std,
+        target,
+        .resolve_registered_association_strategy
+    )
+    if (is.null(resolved_strategy)) {
         return(.new_association_abstention(
             std,
             stage1,
@@ -855,6 +859,7 @@ register_strategy(
             interpretation_module = .independent_time_evidence_version
         ))
     }
+    strategy <- resolved_strategy$strategy
     preparation <- prepare_association(strategy, std, specification, target)
     analysis_complete <- preparation$complete
     analysis_cohort <- preparation$context$analysis_cohort
@@ -914,7 +919,7 @@ register_strategy(
         unadjusted_strategy
     )$diagnostic_prefix
     strategy_contracts <- list(
-        unadjusted = .validated_association_contract(unadjusted_strategy)
+        unadjusted = resolved_strategy$contract
     )
     if (length(nuisance_values)) {
         strategy_contracts$adjusted <-

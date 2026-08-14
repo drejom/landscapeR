@@ -26,6 +26,33 @@
     )
 }
 
+.resolve_assoc_strategy <- function(data, values, resolver) {
+    if (!is(data, "StateTransitionData") || !is.function(resolver)) {
+        .stop_association_execution(
+            "association strategy resolution requires data and a resolver"
+        )
+    }
+    strategy <- .association_execution_attempt(
+        resolver(data, values),
+        "strategy resolution"
+    )
+    if (is.null(strategy)) return(NULL)
+    contract <- .validated_association_contract(strategy)
+    target_type <- .metadata_target_type(values)
+    if (!data@sampling_design@kind %in% contract$sampling_designs ||
+            !target_type %in% contract$target_types) {
+        .stop_association_execution(paste(
+            "resolved association strategy contract does not support",
+            sprintf("design '%s' and target '%s'", data@sampling_design@kind, target_type)
+        ))
+    }
+    list(
+        strategy = strategy,
+        id = association_strategy_id(strategy),
+        contract = contract
+    )
+}
+
 .new_assoc_execution_adapter <- function(
     id,
     sampling_design,
@@ -258,6 +285,32 @@
     members
 }
 
+.assoc_exec_attach_members <- function(associations, cohort_members) {
+    if (!nrow(associations)) return(associations)
+    if (!is.data.frame(cohort_members)) {
+        .stop_association_execution(
+            "association execution cohort membership must be a data frame"
+        )
+    }
+    associations$.cohort_members <- I(lapply(
+        seq_len(nrow(associations)),
+        function(i) {
+            members <- cohort_members[
+                cohort_members$metadata_field ==
+                    associations$metadata_field[[i]] &
+                    cohort_members$component == associations$component[[i]] &
+                    cohort_members$evidence_variant ==
+                        associations$evidence_variant[[i]],
+                c("primary_sample", "included"),
+                drop = FALSE
+            ]
+            rownames(members) <- NULL
+            members
+        }
+    ))
+    associations
+}
+
 .normalize_assoc_execution <- function(results, exclusion_rows) {
     association_rows <- unlist(
         lapply(results, `[[`, "association_rows"),
@@ -298,7 +351,7 @@
     ), records)
 }
 
-.validate_assoc_blueprint <- function(blueprint, adapter) {
+.validate_assoc_blueprint <- function(blueprint, sampling_design) {
     required <- c(
         "module", "contract_sampling_design", "version", "dataset_id",
         "associations", "observations", "exclusions", "cohort_members",
@@ -323,7 +376,7 @@
     }
     if (!identical(
         blueprint$contract_sampling_design,
-        adapter$sampling_design
+        sampling_design
     )) {
         .stop_association_execution(
             "association execution finalizer changed the declared sampling design"
@@ -371,6 +424,11 @@
     atlas
 }
 
+.finalize_assoc_blueprint <- function(blueprint, sampling_design) {
+    .validate_assoc_blueprint(blueprint, sampling_design)
+    .assoc_exec_build_atlas(blueprint)
+}
+
 .finalize_assoc_execution <- function(adapter, context, execution) {
     if (!is.list(execution) ||
             !identical(names(execution), c("plan", "normalized"))) {
@@ -389,8 +447,7 @@
         "finalization"
     )
     if (is(blueprint, "AssociationAbstention")) return(blueprint)
-    .validate_assoc_blueprint(blueprint, adapter)
-    .assoc_exec_build_atlas(blueprint)
+    .finalize_assoc_blueprint(blueprint, adapter$sampling_design)
 }
 
 .execute_assoc_components <- function(adapter, context) {
