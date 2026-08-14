@@ -242,7 +242,14 @@ stage1_crew_controller <- function(
         c("elapsed_sec", "peak_vcells_bytes", "completed_at_utc"),
         names(results)
     )
-    results[setdiff(names(results), operational)]
+    scientific <- results[setdiff(names(results), operational)]
+    for (field in intersect(
+        c("exclusions", "failure_reason"), names(scientific)
+    )) {
+        scientific[[field]] <- as.character(scientific[[field]])
+        scientific[[field]][is.na(scientific[[field]])] <- ""
+    }
+    scientific
 }
 
 .stage1_scientific_selection <- function(selection) {

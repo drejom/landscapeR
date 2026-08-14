@@ -2,7 +2,7 @@
 % Please edit documentation in R/21-stage1-benchmark.R
 \name{verify_stage1_benchmark_artifact}
 \alias{verify_stage1_benchmark_artifact}
-\title{Verify a Stage 1 benchmark artifact hash manifest}
+\title{Verify a Stage 1 benchmark artifact}
 \usage{
 verify_stage1_benchmark_artifact(artifact_dir)
 }
@@ -13,5 +13,5 @@ verify_stage1_benchmark_artifact(artifact_dir)
 \code{TRUE} when every recorded hash matches.
 }
 \description{
-Verify a Stage 1 benchmark artifact hash manifest
+Verify a Stage 1 benchmark artifact
 }

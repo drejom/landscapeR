@@ -525,6 +525,64 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
     atomic = "could not atomically publish evidence artifact"
 )
 
+.stage1_evidence_identity_digest <- function(file_manifest, artifact_dir) {
+    manifest <- readRDS(file.path(artifact_dir, "manifest.rds"))
+    results <- utils::read.csv(
+        file.path(artifact_dir, "results.csv"), stringsAsFactors = FALSE
+    )
+    selection <- readRDS(
+        file.path(artifact_dir, "calibration-selection.rds")
+    )
+    holdout <- readRDS(file.path(artifact_dir, "holdout-report.rds"))
+    environment <- readRDS(file.path(artifact_dir, "environment.rds"))
+    stable_environment <- environment[
+        c("commit", "r_version", "package_version")
+    ]
+    digest::digest(list(
+        manifest = manifest,
+        results = .stage1_scientific_results(results),
+        selection = .stage1_scientific_selection(selection),
+        holdout = .stage1_scientific_holdout(holdout),
+        environment = stable_environment
+    ), algo = "sha256")
+}
+
+.stage1_compare_derivatives <- function(
+    artifact_dir, manifest, holdout
+) {
+    expected <- tempfile("stage1-evidence-replay-")
+    dir.create(expected, recursive = TRUE, showWarnings = FALSE)
+    on.exit(unlink(expected, recursive = TRUE, force = TRUE), add = TRUE)
+    utils::write.csv(
+        manifest$seeds,
+        file.path(expected, "seed-manifest.csv"),
+        row.names = FALSE
+    )
+    utils::write.csv(
+        holdout$summary,
+        file.path(expected, "holdout-summary.csv"),
+        row.names = FALSE
+    )
+    .stage1_write_figures(expected, holdout)
+    derivatives <- c(
+        "seed-manifest.csv", "holdout-summary.csv",
+        "figures/shared_recovery_error.png",
+        "figures/projection_error.png"
+    )
+    matches <- vapply(derivatives, function(path) {
+        identical(
+            .artifact_file_digest(file.path(expected, path)),
+            .artifact_file_digest(file.path(artifact_dir, path))
+        )
+    }, logical(1L))
+    if (!all(matches)) {
+        .stage1_evidence_abort(
+            "Stage 1 evidence derivatives do not reproduce"
+        )
+    }
+    invisible(TRUE)
+}
+
 .stage1_verify_current_artifact <- function(artifact_dir) {
     artifact_dir <- path.expand(artifact_dir)
     files <- .artifact_verify_payload(
@@ -572,8 +630,38 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
             "Stage 1 evidence artifact reports an inconsistent protocol digest"
         )
     }
+    calibration <- results[
+        results$split == "calibration", , drop = FALSE
+    ]
+    reproduced_selection <- select_stage1_candidate(calibration)
+    holdout_rows <- results[
+        results$split == "holdout" &
+            results$candidate == selection$selected_candidate,
+        ,
+        drop = FALSE
+    ]
+    reproduced_holdout <- assess_stage1_holdout(
+        selection$selected_candidate, holdout_rows
+    )
+    selection_matches <- isTRUE(all.equal(
+        .stage1_scientific_selection(selection),
+        .stage1_scientific_selection(reproduced_selection)
+    ))
+    holdout_matches <- isTRUE(all.equal(
+        .stage1_scientific_holdout(holdout),
+        .stage1_scientific_holdout(reproduced_holdout)
+    ))
+    if (!selection_matches || !holdout_matches) {
+        .stage1_evidence_abort(
+            "Stage 1 evidence selection or holdout does not reproduce"
+        )
+    }
+    .stage1_compare_derivatives(artifact_dir, manifest, holdout)
+    identity_digest <- .stage1_evidence_identity_digest(
+        files, artifact_dir
+    )
     expected_name <- paste0(
-        manifest$protocol_id, "-", substr(.artifact_digest(files), 1L, 16L)
+        manifest$protocol_id, "-", substr(identity_digest, 1L, 16L)
     )
     if (!identical(basename(artifact_dir), expected_name)) {
         .stage1_evidence_abort(
@@ -633,7 +721,8 @@ assess_stage1_holdout <- function(selected_candidate, holdout_rows,
         staging_prefix = ".stage1-evidence-",
         preserve_condition = function(condition) {
             inherits(condition, "stage1_evidence_error")
-        }
+        },
+        identity_digest = .stage1_evidence_identity_digest
     )
 }
 

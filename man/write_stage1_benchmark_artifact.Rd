@@ -14,7 +14,7 @@ write_stage1_benchmark_artifact(
 )
 }
 \arguments{
-\item{artifact_dir}{new destination directory.}
+\item{artifact_dir}{root directory for content-addressed artifacts.}
 
 \item{manifest}{benchmark manifest.}
 
@@ -23,7 +23,7 @@ write_stage1_benchmark_artifact(
 \item{stratum}{one explicit frozen-grid stratum.}
 }
 \value{
-named character vector of written artifact paths.
+named character vector of verified artifact paths.
 }
 \description{
 Write an immutable Stage 1 benchmark artifact

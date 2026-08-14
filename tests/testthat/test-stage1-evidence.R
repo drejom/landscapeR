@@ -277,17 +277,19 @@ test_that("full evidence artifact verifier rejects undeclared and altered payloa
     manifest <- stage1_benchmark_manifest()
     calibration <- stage1_evidence_fixture("calibration")
     selection <- select_stage1_candidate(calibration)
-    holdout_rows <- stage1_evidence_fixture("holdout")
+    holdout_results <- stage1_evidence_fixture("holdout")
+    holdout_rows <- holdout_results
     holdout_rows <- holdout_rows[holdout_rows$candidate == selection$selected_candidate, , drop = FALSE]
     holdout <- assess_stage1_holdout(selection$selected_candidate, holdout_rows)
-    all_results <- rbind(calibration, stage1_evidence_fixture("holdout"))
+    all_results <- rbind(calibration, holdout_results)
     root <- tempfile("stage1-evidence-root-")
     artifact <- landscapeR:::.stage1_write_full_artifact(root, manifest,
         all_results, selection, holdout,
         workers = 1L, source_commit = paste(rep("a", 40L), collapse = ""))
     repeated <- landscapeR:::.stage1_write_full_artifact(root, manifest,
         all_results, selection, holdout,
-        workers = 1L, source_commit = paste(rep("a", 40L), collapse = ""))
+        workers = 4L, source_commit = paste(rep("a", 40L), collapse = ""),
+        execution = list(backend = "synthetic-scheduler"))
     expect_true(verify_stage1_evidence_artifact(artifact))
     expect_identical(repeated, artifact)
     expect_identical(read_stage1_evidence_artifact(artifact)$selection$selected_candidate,
@@ -342,6 +344,35 @@ test_that("full evidence artifact verifier rejects undeclared and altered payloa
     unlink(missing)
     expect_error(verify_stage1_evidence_artifact(artifact), class = "stage1_evidence_error")
     writeBin(backup, missing)
+
+    selection_path <- file.path(artifact, "calibration-selection.rds")
+    original_selection <- readRDS(selection_path)
+    altered_selection <- original_selection
+    altered_selection$selected_candidate <- "C2_block_scaled_svd"
+    saveRDS(altered_selection, selection_path)
+    manifest_path <- file.path(artifact, "MANIFEST.tsv")
+    original_manifest <- utils::read.delim(
+        manifest_path, stringsAsFactors = FALSE
+    )
+    altered_manifest <- original_manifest
+    selection_row <- altered_manifest$file == "calibration-selection.rds"
+    altered_manifest$sha256[selection_row] <-
+        landscapeR:::.artifact_file_digest(selection_path)
+    utils::write.table(
+        altered_manifest, manifest_path, sep = "\t", quote = FALSE,
+        row.names = FALSE
+    )
+    expect_error(
+        verify_stage1_evidence_artifact(artifact),
+        "selection or holdout does not reproduce",
+        class = "stage1_evidence_error"
+    )
+    saveRDS(original_selection, selection_path)
+    utils::write.table(
+        original_manifest, manifest_path, sep = "\t", quote = FALSE,
+        row.names = FALSE
+    )
+
     cat("tampered", file = file.path(artifact, "results.csv"), append = TRUE)
     expect_error(verify_stage1_evidence_artifact(artifact), class = "stage1_evidence_error")
 })

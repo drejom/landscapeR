@@ -1935,24 +1935,14 @@ print.K1AcceptanceManifest <- function(x, ...) {
 
 .k1_acceptance_verify_artifact <- function(artifact) {
     artifact <- path.expand(artifact)
-    manifest_path <- file.path(artifact, "MANIFEST.tsv")
-    if (!file.exists(manifest_path)) {
-        .k1_acceptance_runner_abort("acceptance artifact has no MANIFEST.tsv")
-    }
-    files <- utils::read.delim(manifest_path, stringsAsFactors = FALSE)
-    allowed_files <- list(
-        .k1_acceptance_governed_files(),
-        .k1_acceptance_governed_files("independent_aml_acceptance_summary")
-    )
-    if (!identical(names(files), c("file", "sha256")) || !nrow(files) ||
-            anyNA(files) || anyDuplicated(files$file) ||
-            !any(vapply(allowed_files, identical, logical(1L), files$file)) ||
-            any(grepl("(^|/)\\.\\.(/|$)|^/", files$file))) {
-        .k1_acceptance_runner_abort("acceptance file manifest is invalid")
-    }
     files <- .artifact_verify_payload(
         artifact,
-        files$file,
+        list(
+            .k1_acceptance_governed_files(),
+            .k1_acceptance_governed_files(
+                "independent_aml_acceptance_summary"
+            )
+        ),
         .k1_acceptance_runner_abort,
         .k1_acceptance_artifact_errors()
     )

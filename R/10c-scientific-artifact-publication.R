@@ -61,6 +61,30 @@
     invisible(TRUE)
 }
 
+.artifact_governed_options <- function(governed, abort, messages) {
+    options <- if (is.character(governed)) list(governed) else governed
+    if (!is.list(options) || length(options) == 0L) {
+        .artifact_fail(abort, messages, "invalid")
+    }
+    lapply(options, .artifact_validate_files,
+        abort = abort, messages = messages)
+    options
+}
+
+.artifact_identity <- function(
+    identity_digest, manifest, artifact, abort, messages, preserve_condition
+) {
+    value <- .artifact_attempt(
+        identity_digest(manifest, artifact),
+        abort, messages, preserve_condition
+    )
+    if (!is.character(value) || length(value) != 1L || is.na(value) ||
+            !grepl("^[0-9a-f]{64}$", value)) {
+        .artifact_fail(abort, messages, "invalid")
+    }
+    value
+}
+
 .artifact_governed_directories <- function(governed) {
     directories <- dirname(governed)
     directories <- directories[directories != "."]
@@ -109,7 +133,7 @@
 .artifact_verify_payload <- function(
     artifact, governed, abort, messages
 ) {
-    .artifact_validate_files(governed, abort, messages)
+    options <- .artifact_governed_options(governed, abort, messages)
     artifact <- path.expand(artifact)
     manifest_path <- file.path(
         artifact, .artifact_manifest_name
@@ -117,20 +141,24 @@
     if (!dir.exists(artifact) || !file.exists(manifest_path)) {
         .artifact_fail(abort, messages, "missing_manifest")
     }
-    inventory <- .artifact_inventory(
-        artifact, governed, abort, messages
-    )
     manifest <- .artifact_read_manifest(
         manifest_path, abort, messages
     )
-    valid_manifest <- is.data.frame(manifest) &&
+    valid_shape <- is.data.frame(manifest) &&
         identical(names(manifest), c("file", "sha256")) &&
-        identical(manifest$file, governed) && !anyNA(manifest) &&
-        !anyDuplicated(manifest$file) &&
+        !anyNA(manifest) && !anyDuplicated(manifest$file) &&
         !any(grepl("(^|/)[.][.](/|$)|^/", manifest$file))
-    if (!valid_manifest) {
+    if (!valid_shape) {
         .artifact_fail(abort, messages, "invalid")
     }
+    matches <- vapply(options, identical, logical(1L), manifest$file)
+    if (sum(matches) != 1L) {
+        .artifact_fail(abort, messages, "invalid")
+    }
+    governed <- options[[which(matches)]]
+    inventory <- .artifact_inventory(
+        artifact, governed, abort, messages
+    )
     payload_files <- setdiff(inventory$files, .artifact_manifest_name)
     if (any(!governed %in% payload_files)) {
         .artifact_fail(abort, messages, "missing_payload")
@@ -155,6 +183,9 @@
     atomic_move = .artifact_atomic_move,
     preserve_condition = function(condition) {
         inherits(condition, "landscapeR_validation_error")
+    },
+    identity_digest = function(manifest, artifact) {
+        .artifact_digest(manifest)
     }
 ) {
     if (!.is_scalar_nonempty_text(artifact_root)) {
@@ -167,7 +198,7 @@
     }
     if (!is.function(write_payload) || !is.function(semantic_verifier) ||
             !is.function(abort) || !is.function(atomic_move) ||
-            !is.function(preserve_condition) ||
+            !is.function(preserve_condition) || !is.function(identity_digest) ||
             !.is_scalar_nonempty_text(staging_prefix)) {
         .artifact_fail(abort, messages, "invalid")
     }
@@ -226,10 +257,6 @@
         ),
         abort, messages, preserve_condition
     )
-    artifact_digest <- .artifact_digest(manifest)
-    artifact <- file.path(artifact_root, paste0(
-        address_prefix, "-", substr(artifact_digest, 1L, 16L)
-    ))
     .artifact_attempt(
         utils::write.table(
             manifest,
@@ -238,6 +265,14 @@
         ),
         abort, messages, preserve_condition
     )
+    .artifact_verify_payload(payload, governed, abort, messages)
+    artifact_digest <- .artifact_identity(
+        identity_digest, manifest, payload, abort, messages,
+        preserve_condition
+    )
+    artifact <- file.path(artifact_root, paste0(
+        address_prefix, "-", substr(artifact_digest, 1L, 16L)
+    ))
     candidate <- file.path(staging, basename(artifact))
     moved_to_candidate <- .artifact_attempt(
         suppressWarnings(file.rename(payload, candidate)),
@@ -248,12 +283,26 @@
     }
     .artifact_verify_payload(candidate, governed, abort, messages)
     semantic_verifier(candidate)
-    .artifact_verify_payload(candidate, governed, abort, messages)
+    candidate_manifest <- .artifact_verify_payload(
+        candidate, governed, abort, messages
+    )
+    candidate_identity <- .artifact_identity(
+        identity_digest, candidate_manifest, candidate, abort, messages,
+        preserve_condition
+    )
+    if (!identical(candidate_identity, artifact_digest)) {
+        .artifact_fail(abort, messages, "digest")
+    }
     verify_existing <- function() {
         observed <- .artifact_verify_payload(
             artifact, governed, abort, messages
         )
-        if (!identical(.artifact_digest(observed), artifact_digest)) {
+        observed_identity <- .artifact_identity(
+            identity_digest, observed, artifact, abort, messages,
+            preserve_condition
+        )
+        .artifact_verify_payload(artifact, governed, abort, messages)
+        if (!identical(observed_identity, artifact_digest)) {
             .artifact_fail(abort, messages, "digest")
         }
         artifact

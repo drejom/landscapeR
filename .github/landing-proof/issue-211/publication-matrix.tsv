@@ -1,4 +1,5 @@
-artifact_family	publisher	verifier	reproducible_test	publication_verified
-K=1 calibration outcomes	publish_k1_calibration_outcomes()	verify_k1_calibration_outcomes()	test-k1-calibration-outcomes.R	TRUE
-K=1 acceptance	.k1_acceptance_publish()	verify_k1_acceptance_artifact()	test-k1-stage0-acceptance-runner.R	TRUE
-Full Stage 1 evidence	.stage1_write_full_artifact()	verify_stage1_evidence_artifact()	test-stage1-evidence.R	TRUE
+artifact_family	publisher	verifier	example	address	publication_verified
+Single-replicate Stage 1 benchmark	write_stage1_benchmark_artifact()	verify_stage1_benchmark_artifact()	examples/stage1-benchmark-MANIFEST.tsv	stage1-heterogeneous-v2-replicate-1001-2d3bf97a2ef79cbc	TRUE
+Full Stage 1 evidence	.stage1_write_full_artifact()	verify_stage1_evidence_artifact()	examples/stage1-evidence-MANIFEST.tsv	stage1-heterogeneous-v2-cb08487f81570e13	TRUE
+K=1 calibration outcomes	publish_k1_calibration_outcomes()	verify_k1_calibration_outcomes()	examples/k1-calibration-MANIFEST.tsv	k1-calibration-outcomes-v1-e862af14fee2e5bf	TRUE
+K=1 acceptance	.k1_acceptance_publish()	verify_k1_acceptance_artifact()	examples/k1-acceptance-MANIFEST.tsv	k1-stage0-acceptance-v2-999e29d010b42db9	TRUE

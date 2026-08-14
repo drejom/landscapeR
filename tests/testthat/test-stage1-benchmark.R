@@ -147,14 +147,88 @@ test_that("one benchmark replicate is deterministic and artifact hashes verify",
         projection_case = "exact_ids"), list(n = 21L))), class = "stage1_benchmark_error")
 
     path <- tempfile("stage1-artifact-")
-    write_stage1_benchmark_artifact(path, manifest)
-    saved <- utils::read.csv(file.path(path, "results.csv"), stringsAsFactors = FALSE)
+    paths <- write_stage1_benchmark_artifact(path, manifest)
+    artifact <- dirname(unname(paths[[1L]]))
+    repeated <- write_stage1_benchmark_artifact(path, manifest)
+    saved <- utils::read.csv(
+        file.path(artifact, "results.csv"), stringsAsFactors = FALSE
+    )
     expect_true(all(c("stratum", "exclusions", "failure_reason", "protocol_digest", "generator_digest") %in% names(saved)))
-    expect_true(verify_stage1_benchmark_artifact(path))
-    expect_error(write_stage1_benchmark_artifact(path, manifest), class = "stage1_benchmark_error")
+    expect_true(verify_stage1_benchmark_artifact(artifact))
+    expect_identical(dirname(unname(repeated[[1L]])), artifact)
+
+    legacy <- tempfile("stage1-legacy-artifact-")
+    dir.create(legacy)
+    governed <- landscapeR:::.stage1_benchmark_governed_files()
+    file.copy(file.path(artifact, governed), legacy)
+    hashes <- data.frame(
+        file = governed,
+        sha256 = vapply(
+            file.path(legacy, governed),
+            digest::digest,
+            character(1L),
+            file = TRUE,
+            algo = "sha256"
+        ),
+        stringsAsFactors = FALSE
+    )
+    utils::write.csv(hashes, file.path(legacy, "hashes.csv"), row.names = FALSE)
+    expect_true(verify_stage1_benchmark_artifact(legacy))
+
+    results_path <- file.path(artifact, "results.csv")
+    original_results <- readBin(
+        results_path, what = "raw", n = file.info(results_path)$size
+    )
+    writeLines("altered", results_path)
+    expect_error(
+        verify_stage1_benchmark_artifact(artifact),
+        class = "stage1_benchmark_error"
+    )
+    writeBin(original_results, results_path)
+
+    unlink(file.path(artifact, "results.csv"))
+    expect_error(
+        verify_stage1_benchmark_artifact(artifact),
+        class = "stage1_benchmark_error"
+    )
     file_path <- tempfile("stage1-artifact-file-")
     file.create(file_path)
     expect_error(write_stage1_benchmark_artifact(file_path, manifest), class = "stage1_benchmark_error")
     expect_error(verify_stage1_benchmark_artifact(tempfile("missing-artifact-")),
                  class = "stage1_benchmark_error")
+})
+
+test_that("benchmark publication cleans interrupted and rejected candidates", {
+    manifest <- stage1_benchmark_manifest()
+    interrupted_root <- tempfile("stage1-benchmark-interrupted-")
+    expect_error(
+        testthat::with_mocked_bindings(
+            write_stage1_benchmark_artifact(interrupted_root, manifest),
+            .artifact_atomic_move = function(from, to) FALSE,
+            .package = "landscapeR"
+        ),
+        class = "stage1_benchmark_error"
+    )
+    expect_false(any(
+        grepl("^\\.stage1-benchmark-", list.files(interrupted_root))
+    ))
+
+    rejected_root <- tempfile("stage1-benchmark-rejected-")
+    expect_error(
+        testthat::with_mocked_bindings(
+            write_stage1_benchmark_artifact(rejected_root, manifest),
+            .stage1_benchmark_verify_current = function(artifact_dir) {
+                landscapeR:::.stage1_benchmark_abort(
+                    "synthetic semantic rejection"
+                )
+            },
+            .package = "landscapeR"
+        ),
+        "synthetic semantic rejection",
+        class = "stage1_benchmark_error"
+    )
+    expect_false(any(
+        grepl("^\\.stage1-benchmark-", list.files(rejected_root))
+    ))
+    expect_length(list.dirs(rejected_root, recursive = FALSE), 0L)
 })
