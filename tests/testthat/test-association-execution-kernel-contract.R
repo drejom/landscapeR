@@ -197,3 +197,27 @@ test_that("incidental adapter errors do not leak through the kernel", {
         class = "association_execution_error"
     )
 })
+
+test_that("typed scientific abstention crosses the kernel unchanged", {
+    std <- independent_time_course_fixture()
+    stage1 <- stage_artifact(std, "stage1")
+    specification <- independent_time_course_specification("batch")
+    abstention <- landscapeR:::.new_association_abstention(
+        std,
+        stage1,
+        specification,
+        "fixture non-identifiable design",
+        reason = "non-identifiable-design",
+        interpretation_module = "independent-time-course-v1"
+    )
+    adapter <- .kernel_contract_adapter()
+    adapter$prepare <- function(context) abstention
+
+    result <- landscapeR:::.execute_association_kernel(
+        adapter,
+        context = list()
+    )
+
+    expect_identical(result, abstention)
+    expect_s4_class(result, "AssociationAbstention")
+})

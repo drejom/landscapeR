@@ -22,13 +22,20 @@ independent and repeated time-course strategies do. Overrides return ordinary
 preparation and fit results; they never construct evidence tables or S4 result
 objects.
 
+Method authors do not implement the association execution kernel. A new method
+for an already supported design only implements the strategy surface above.
+landscapeR resolves and validates that strategy, traverses every component,
+runs refits, accounts for failures, adjusts multiplicity, and constructs the
+atlas. A kernel adapter is needed only when package maintainers add a genuinely
+new sampling design with different cohort or exchangeability semantics.
+
 ```mermaid
 flowchart LR
     A[Registered strategy] --> B[Validated contract]
     B --> C[Strategy-owned cohort]
     C --> D[Component fit]
-    D --> E[Package-owned future refits]
-    E --> F[Normalized evidence boundary]
+    D --> E[Normalized execution kernel]
+    E --> F[Package-owned future refits and accounting]
     F --> G[Atlas or typed abstention]
 ```
 
@@ -55,6 +62,12 @@ target type that reaches a complete `MetadataAssociationAtlas` through
 adapter rejected at the same seam. Add design-specific tests for cohort
 exclusion, typed abstention, deterministic refitting, serialization and
 provenance before proposing a production strategy.
+
+`tests/testthat/test-association-execution-kernel-contract.R` is the package
+maintainer example for a new design adapter. It is intentionally separate from
+the ordinary method-author path. The example returns scientific component rows
+only; the kernel owns traversal, normalized accounting, cohort expansion,
+multiplicity, typed failure, and atlas construction.
 
 Bayesian, GEE, nonlinear and survival engines can use this seam in future, but
 each requires a separate scientific decision and implementation. Registration
