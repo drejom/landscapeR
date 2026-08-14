@@ -1282,6 +1282,247 @@ associate_metadata <- function(
     )
 }
 
+.cross_unadjusted_result <- function(
+    scores,
+    values,
+    strategy,
+    preparation,
+    descriptive_unordered,
+    resampling_plan,
+    field,
+    component,
+    component_label,
+    sequential_internal,
+    future_scheduling
+) {
+    effect <- if (descriptive_unordered) {
+        .unordered_rank_effect(scores, values)
+    } else {
+        associate_component(strategy, scores, values)
+    }
+    if (is.null(effect)) return(NULL)
+    complete <- is.finite(scores) & if (is.null(preparation)) {
+        !is.na(values)
+    } else {
+        preparation$complete
+    }
+    if (is.null(preparation) &&
+            is.numeric(values) &&
+            !is.ordered(values)) {
+        complete <- complete & is.finite(values)
+    }
+    repetition <- .future_numeric_repetition(
+        tasks = resampling_plan$indices,
+        task_ids = sprintf(
+            "cross-sectional:%s:%s:unadjusted:bootstrap:%04d",
+            field,
+            component_label,
+            seq_along(resampling_plan$indices)
+        ),
+        run_seed = resampling_plan$policy$seed,
+        compute_tier = "standard",
+        worker = function(index, task_id, task_stream) {
+            resampled <- if (descriptive_unordered) {
+                .unordered_rank_effect(scores[index], values[index])
+            } else {
+                refit_association(
+                    strategy,
+                    scores,
+                    values,
+                    as.integer(index)
+                )
+            }
+            if (is.null(resampled)) NA_real_ else resampled$estimate
+        },
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling
+    )
+    uncertainty <- .resampling_summary(
+        repetition$values,
+        resampling_plan
+    )
+    row <- data.frame(
+        metadata_field = field,
+        component = component,
+        component_label = component_label,
+        estimand = effect$estimand,
+        estimate = effect$estimate,
+        effect_magnitude = abs(effect$estimate),
+        reference_level = effect$reference_level,
+        comparison_level = effect$comparison_level,
+        n_available = as.integer(effect$n_available),
+        n_missing = as.integer(length(values) - effect$n_available),
+        n_score_ties = as.integer(effect$n_score_ties),
+        n_target_ties = as.integer(effect$n_target_ties),
+        evidence_variant = "unadjusted",
+        proposal_eligible = !descriptive_unordered,
+        nuisance_fields = "",
+        cohort_digest = if (!is.null(effect$cohort_digest)) {
+            effect$cohort_digest
+        } else {
+            .association_cohort_digest(names(values), complete)
+        },
+        design_digest = NA_character_,
+        diagnostic = .monotonicity_diagnostic(scores, values),
+        p_value = effect$p_value,
+        q_value = NA_real_,
+        effect_conf_low = uncertainty$effect_conf_low,
+        effect_conf_high = uncertainty$effect_conf_high,
+        n_resamples = uncertainty$n_resamples,
+        resample_failures = uncertainty$resample_failures,
+        resampling_method = uncertainty$resampling_method,
+        resampling_plan_digest = uncertainty$resampling_plan_digest,
+        evidence_status = "estimable-exploratory-only",
+        .cohort_members = I(list(data.frame(
+            primary_sample = as.character(names(values)),
+            included = complete,
+            stringsAsFactors = FALSE
+        ))),
+        stringsAsFactors = FALSE
+    )
+    list(
+        row = row,
+        execution = repetition$execution,
+        key = paste(field, component, "unadjusted", sep = ":")
+    )
+}
+
+.cross_adjusted_result <- function(
+    std,
+    scores,
+    values,
+    nuisance_values,
+    specification,
+    resampling_plan,
+    field,
+    component,
+    component_label,
+    sequential_internal,
+    future_scheduling
+) {
+    effect <- .adjusted_rank_score_effect(
+        std,
+        scores,
+        values,
+        specification
+    )
+    if (is.null(effect)) return(NULL)
+    repetition <- .future_numeric_repetition(
+        tasks = resampling_plan$indices,
+        task_ids = sprintf(
+            "cross-sectional:%s:%s:adjusted:bootstrap:%04d",
+            field,
+            component_label,
+            seq_along(resampling_plan$indices)
+        ),
+        run_seed = resampling_plan$policy$seed,
+        compute_tier = "standard",
+        worker = function(index, task_id, task_stream) {
+            .adjusted_resampled_estimate(
+                scores[index],
+                values[index],
+                lapply(nuisance_values, `[`, index),
+                specification
+            )
+        },
+        sequential_internal = sequential_internal,
+        future_scheduling = future_scheduling
+    )
+    uncertainty <- .resampling_summary(
+        repetition$values,
+        resampling_plan
+    )
+    row <- data.frame(
+        metadata_field = field,
+        component = component,
+        component_label = component_label,
+        estimand = effect$estimand,
+        estimate = effect$estimate,
+        effect_magnitude = abs(effect$estimate),
+        reference_level = effect$reference_level,
+        comparison_level = effect$comparison_level,
+        n_available = as.integer(effect$n_available),
+        n_missing = as.integer(length(values) - effect$n_available),
+        n_score_ties = as.integer(effect$n_score_ties),
+        n_target_ties = as.integer(effect$n_target_ties),
+        evidence_variant = "adjusted",
+        proposal_eligible = TRUE,
+        nuisance_fields = paste(
+            specification@nuisance_fields,
+            collapse = " + "
+        ),
+        cohort_digest = effect$cohort_digest,
+        design_digest = effect$design_digest,
+        diagnostic = effect$diagnostic,
+        p_value = effect$p_value,
+        q_value = NA_real_,
+        effect_conf_low = uncertainty$effect_conf_low,
+        effect_conf_high = uncertainty$effect_conf_high,
+        n_resamples = uncertainty$n_resamples,
+        resample_failures = uncertainty$resample_failures,
+        resampling_method = uncertainty$resampling_method,
+        resampling_plan_digest = uncertainty$resampling_plan_digest,
+        evidence_status = effect$evidence_status,
+        .cohort_members = I(list(effect$cohort_members)),
+        stringsAsFactors = FALSE
+    )
+    list(
+        row = row,
+        execution = repetition$execution,
+        key = paste(field, component, "adjusted", sep = ":")
+    )
+}
+
+.cross_observation_result <- function(
+    scores,
+    values,
+    field,
+    component,
+    component_label
+) {
+    metadata_type <- if (is.ordered(values)) {
+        "ordered"
+    } else if (is.numeric(values) && !is.logical(values)) {
+        "continuous"
+    } else {
+        "categorical"
+    }
+    metadata_numeric <- if (is.ordered(values)) {
+        as.numeric(values)
+    } else if (identical(metadata_type, "continuous")) {
+        as.numeric(values)
+    } else {
+        rep(NA_real_, length(values))
+    }
+    data.frame(
+        metadata_field = field,
+        component = component,
+        component_label = component_label,
+        sample_index = seq_along(scores),
+        primary_sample = names(values),
+        metadata_type = metadata_type,
+        metadata_value = as.character(values),
+        metadata_numeric = metadata_numeric,
+        score = as.numeric(scores),
+        atom_count = as.integer(ave(
+            rep.int(1L, length(scores)),
+            paste(
+                as.character(values),
+                sprintf("%.17g", scores),
+                sep = "\r"
+            ),
+            FUN = length
+        )),
+        available = is.finite(scores) &
+            !is.na(values) &
+            (
+                !identical(metadata_type, "continuous") |
+                    is.finite(metadata_numeric)
+            ),
+        stringsAsFactors = FALSE
+    )
+}
+
 .associate_cross_sectional <- function(
     std,
     stage1,
@@ -1454,7 +1695,16 @@ associate_metadata <- function(
             names(ordered_values) <- names(values)
             values <- ordered_values
         }
-        strategy <- .resolve_component_association_strategy(std, values)
+        resolved_strategy <- .resolve_assoc_strategy(
+            std,
+            values,
+            .resolve_component_association_strategy
+        )
+        strategy <- if (is.null(resolved_strategy)) {
+            NULL
+        } else {
+            resolved_strategy$strategy
+        }
         descriptive_unordered <- is.factor(values) &&
             !is.ordered(values) &&
             nlevels(droplevels(values[!is.na(values)])) > 2L
@@ -1467,14 +1717,13 @@ associate_metadata <- function(
             next
         }
         if (!is.null(strategy)) {
-            strategy_id <- association_strategy_id(strategy)
+            strategy_id <- resolved_strategy$id
             association_strategy_ids <- c(
                 association_strategy_ids,
                 strategy_id
             )
-            association_contracts[[strategy_id]] <- association_contract(
-                strategy
-            )
+            association_contracts[[strategy_id]] <-
+                resolved_strategy$contract
         }
         preparation <- if (!is.null(strategy)) {
             prepare_association(strategy, std, specification, values)
@@ -1496,269 +1745,123 @@ associate_metadata <- function(
             seed + match(field, metadata_fields) - 1L
         )
 
-        field_rows <- lapply(seq_len(ncol(coordinate_matrix)), function(j) {
-            scores <- coordinate_matrix[, j]
-            effect <- if (descriptive_unordered) {
-                .unordered_rank_effect(scores, values)
-            } else {
-                associate_component(strategy, scores, values)
-            }
-            if (is.null(effect)) return(NULL)
-            complete <- is.finite(scores) & if (is.null(preparation)) {
-                !is.na(values)
-            } else {
-                preparation$complete
-            }
-            if (is.null(preparation) &&
-                is.numeric(values) &&
-                !is.ordered(values)) {
-                complete <- complete & is.finite(values)
-            }
-            repetition <- .future_numeric_repetition(
-                tasks = resampling_plan$indices,
-                task_ids = sprintf(
-                    "cross-sectional:%s:%s:unadjusted:bootstrap:%04d",
-                    field,
-                    component_labels[[j]],
-                    seq_along(resampling_plan$indices)
-                ),
-                run_seed = resampling_plan$policy$seed,
-                compute_tier = "standard",
-                worker = function(index, task_id, task_stream) {
-                    resampled <- if (descriptive_unordered) {
-                        .unordered_rank_effect(
-                            scores[index],
-                            values[index]
-                        )
-                    } else {
-                        refit_association(
-                            strategy,
-                            scores,
-                            values,
-                            as.integer(index)
-                        )
-                    }
-                    if (is.null(resampled)) NA_real_ else resampled$estimate
-                },
-                sequential_internal = sequential_internal,
-                future_scheduling = future_scheduling
-            )
-            resampled_estimates <- repetition$values
-            uncertainty <- .resampling_summary(
-                resampled_estimates,
-                resampling_plan
-            )
-            row <- data.frame(
-                metadata_field = field,
-                component = as.integer(j),
-                component_label = component_labels[[j]],
-                estimand = effect$estimand,
-                estimate = effect$estimate,
-                effect_magnitude = abs(effect$estimate),
-                reference_level = effect$reference_level,
-                comparison_level = effect$comparison_level,
-                n_available = as.integer(effect$n_available),
-                n_missing = as.integer(length(values) - effect$n_available),
-                n_score_ties = as.integer(effect$n_score_ties),
-                n_target_ties = as.integer(effect$n_target_ties),
-                evidence_variant = "unadjusted",
-                proposal_eligible = !descriptive_unordered,
-                nuisance_fields = "",
-                cohort_digest = if (!is.null(effect$cohort_digest)) {
-                    effect$cohort_digest
-                } else {
-                    .association_cohort_digest(names(values), complete)
-                },
-                design_digest = NA_character_,
-                diagnostic = .monotonicity_diagnostic(scores, values),
-                p_value = effect$p_value,
-                q_value = NA_real_,
-                effect_conf_low = uncertainty$effect_conf_low,
-                effect_conf_high = uncertainty$effect_conf_high,
-                n_resamples = uncertainty$n_resamples,
-                resample_failures = uncertainty$resample_failures,
-                resampling_method = uncertainty$resampling_method,
-                resampling_plan_digest =
-                    uncertainty$resampling_plan_digest,
-                evidence_status = "estimable-exploratory-only",
-                .cohort_members = I(list(
-                    data.frame(
-                        primary_sample = as.character(names(values)),
-                        included = complete,
-                        stringsAsFactors = FALSE
-                    )
-                )),
-                stringsAsFactors = FALSE
-            )
-            list(
-                row = row,
-                execution = repetition$execution,
-                key = paste(field, j, "unadjusted", sep = ":")
-            )
-        })
-        field_rows <- Filter(Negate(is.null), field_rows)
-        if (length(field_rows)) {
-            for (result in field_rows) {
-                bootstrap_executions[[result$key]] <- result$execution
-            }
-            field_table <- do.call(rbind, lapply(field_rows, `[[`, "row"))
-            field_table <- .adjust_association_multiplicity(field_table)
-            association_rows[[length(association_rows) + 1L]] <- field_table
-            if (!is.null(specification) &&
+        work_items <- list(list(
+            id = paste(field, "unadjusted", sep = ":"),
+            evidence_variant = "unadjusted"
+        ))
+        if (!is.null(specification) &&
                 identical(field, specification@target_field) &&
                 length(specification@nuisance_fields)) {
-                adjusted_rows <- lapply(
-                    seq_len(ncol(coordinate_matrix)),
-                    function(j) {
-                        effect <- .adjusted_rank_score_effect(
-                            std,
-                            coordinate_matrix[, j],
-                            values,
-                            specification
-                        )
-                        if (is.null(effect)) return(NULL)
-                        repetition <- .future_numeric_repetition(
-                            tasks = resampling_plan$indices,
-                            task_ids = sprintf(
-                                "cross-sectional:%s:%s:adjusted:bootstrap:%04d",
-                                field,
-                                component_labels[[j]],
-                                seq_along(resampling_plan$indices)
-                            ),
-                            run_seed = resampling_plan$policy$seed,
-                            compute_tier = "standard",
-                            worker = function(index, task_id, task_stream) {
-                                .adjusted_resampled_estimate(
-                                    coordinate_matrix[index, j],
-                                    values[index],
-                                    lapply(
-                                        field_nuisance_values,
-                                        `[`,
-                                        index
-                                    ),
-                                    specification
-                                )
-                            },
-                            sequential_internal = sequential_internal,
-                            future_scheduling = future_scheduling
-                        )
-                        resampled_estimates <- repetition$values
-                        uncertainty <- .resampling_summary(
-                            resampled_estimates,
-                            resampling_plan
-                        )
-                        row <- data.frame(
-                            metadata_field = field,
-                            component = as.integer(j),
-                            component_label = component_labels[[j]],
-                            estimand = effect$estimand,
-                            estimate = effect$estimate,
-                            effect_magnitude = abs(effect$estimate),
-                            reference_level = effect$reference_level,
-                            comparison_level = effect$comparison_level,
-                            n_available = as.integer(effect$n_available),
-                            n_missing = as.integer(
-                                length(values) - effect$n_available
-                            ),
-                            n_score_ties = as.integer(effect$n_score_ties),
-                            n_target_ties = as.integer(effect$n_target_ties),
-                            evidence_variant = "adjusted",
-                            proposal_eligible = TRUE,
-                            nuisance_fields = paste(
-                                specification@nuisance_fields,
-                                collapse = " + "
-                            ),
-                            cohort_digest = effect$cohort_digest,
-                            design_digest = effect$design_digest,
-                            diagnostic = effect$diagnostic,
-                            p_value = effect$p_value,
-                            q_value = NA_real_,
-                            effect_conf_low = uncertainty$effect_conf_low,
-                            effect_conf_high = uncertainty$effect_conf_high,
-                            n_resamples = uncertainty$n_resamples,
-                            resample_failures =
-                                uncertainty$resample_failures,
-                            resampling_method =
-                                uncertainty$resampling_method,
-                            resampling_plan_digest =
-                                uncertainty$resampling_plan_digest,
-                            evidence_status = effect$evidence_status,
-                            .cohort_members = I(list(
-                                effect$cohort_members
-                            )),
-                            stringsAsFactors = FALSE
-                        )
-                        list(
-                            row = row,
-                            execution = repetition$execution,
-                            key = paste(field, j, "adjusted", sep = ":")
-                        )
-                    }
-                )
-                adjusted_rows <- Filter(Negate(is.null), adjusted_rows)
-                if (length(adjusted_rows)) {
-                    for (result in adjusted_rows) {
-                        bootstrap_executions[[result$key]] <- result$execution
-                    }
-                    adjusted_table <- do.call(
-                        rbind,
-                        lapply(adjusted_rows, `[[`, "row")
-                    )
-                    adjusted_table <-
-                        .adjust_association_multiplicity(adjusted_table)
-                    association_rows[[length(association_rows) + 1L]] <-
-                        adjusted_table
-                }
-            }
-            field_observations <- lapply(
-                seq_len(ncol(coordinate_matrix)),
-                function(j) {
-                    scores <- coordinate_matrix[, j]
-                    metadata_type <- if (is.ordered(values)) {
-                        "ordered"
-                    } else if (is.numeric(values) && !is.logical(values)) {
-                        "continuous"
-                    } else {
-                        "categorical"
-                    }
-                    metadata_numeric <- if (is.ordered(values)) {
-                        as.numeric(values)
-                    } else if (identical(metadata_type, "continuous")) {
-                        as.numeric(values)
-                    } else {
-                        rep(NA_real_, length(values))
-                    }
-                    data.frame(
-                        metadata_field = field,
-                        component = as.integer(j),
-                        component_label = component_labels[[j]],
-                        sample_index = seq_along(scores),
-                        primary_sample = names(values),
-                        metadata_type = metadata_type,
-                        metadata_value = as.character(values),
-                        metadata_numeric = metadata_numeric,
-                        score = as.numeric(scores),
-                        atom_count = as.integer(ave(
-                            rep.int(1L, length(scores)),
-                            paste(
-                                as.character(values),
-                                sprintf("%.17g", scores),
-                                sep = "\r"
-                            ),
-                            FUN = length
-                        )),
-                        available = is.finite(scores) &
-                            !is.na(values) &
-                            (
-                                !identical(metadata_type, "continuous") |
-                                    is.finite(metadata_numeric)
-                            ),
-                        stringsAsFactors = FALSE
-                    )
-                }
+            work_items[[2L]] <- list(
+                id = paste(field, "adjusted", sep = ":"),
+                evidence_variant = "adjusted"
             )
+        }
+        field_contracts <- if (is.null(strategy)) {
+            list()
+        } else {
+            list(strategy = resolved_strategy$contract)
+        }
+        adapter <- .new_assoc_execution_adapter(
+            id = paste("cross-sectional", field, sep = ":"),
+            sampling_design = "cross_sectional",
+            prepare = function(context) {
+                list(
+                    coordinate_matrix = coordinate_matrix,
+                    component_labels = component_labels,
+                    work_items = work_items,
+                    state = list(),
+                    strategy_contracts = field_contracts,
+                    exclusion_rows = list()
+                )
+            },
+            execute_component = function(
+                context,
+                plan,
+                work_item,
+                component,
+                component_label,
+                scores
+            ) {
+                result <- if (identical(
+                    work_item$evidence_variant,
+                    "unadjusted"
+                )) {
+                    .cross_unadjusted_result(
+                        scores,
+                        values,
+                        strategy,
+                        preparation,
+                        descriptive_unordered,
+                        resampling_plan,
+                        field,
+                        component,
+                        component_label,
+                        sequential_internal,
+                        future_scheduling
+                    )
+                } else {
+                    .cross_adjusted_result(
+                        std,
+                        scores,
+                        values,
+                        field_nuisance_values,
+                        specification,
+                        resampling_plan,
+                        field,
+                        component,
+                        component_label,
+                        sequential_internal,
+                        future_scheduling
+                    )
+                }
+                association_result <- if (is.null(result)) {
+                    list()
+                } else {
+                    list(result$row)
+                }
+                observation_result <- if (identical(
+                    work_item$evidence_variant,
+                    "unadjusted"
+                )) {
+                    list(.cross_observation_result(
+                        scores,
+                        values,
+                        field,
+                        component,
+                        component_label
+                    ))
+                } else {
+                    list()
+                }
+                execution_records <- if (is.null(result)) {
+                    list()
+                } else {
+                    stats::setNames(list(result$execution), result$key)
+                }
+                list(
+                    association_rows = association_result,
+                    observation_rows = observation_result,
+                    execution_records = execution_records,
+                    scientific_records = list(),
+                    display_records = list()
+                )
+            }
+        )
+        execution <- .execute_assoc_components(adapter, context = list())
+        if (is(execution, "AssociationAbstention")) return(execution)
+        field_table <- .assoc_exec_attach_members(
+            execution$normalized$associations,
+            execution$normalized$cohort_members
+        )
+        if (nrow(field_table)) {
+            association_rows[[length(association_rows) + 1L]] <- field_table
             observation_rows[[length(observation_rows) + 1L]] <-
-                do.call(rbind, field_observations)
+                execution$normalized$observations
+            bootstrap_executions <- c(
+                bootstrap_executions,
+                execution$normalized$execution_records
+            )
         }
     }
 
@@ -1785,10 +1888,40 @@ associate_metadata <- function(
         monotone_fit = .monotone_fit_data(visual_observations),
         flexible_fit = .flexible_fit_data(visual_observations)
     )
-    evidence <- .new_cross_sectional_evidence(
-        association_rows = association_rows,
-        observation_rows = observation_rows,
-        exclusion_rows = exclusion_rows,
+    associations <- if (length(association_rows)) {
+        do.call(rbind, association_rows)
+    } else {
+        .empty_association_evidence()
+    }
+    cohort_members <- .assoc_exec_cohort_members(associations)
+    associations$.cohort_members <- NULL
+    observations <- if (length(observation_rows)) {
+        do.call(rbind, observation_rows)
+    } else {
+        .empty_observation_evidence()
+    }
+    exclusions <- if (length(exclusion_rows)) {
+        do.call(rbind, exclusion_rows)
+    } else {
+        .empty_exclusion_evidence()
+    }
+    blueprint <- list(
+        module = .cross_sectional_evidence_version,
+        contract_sampling_design = "cross_sectional",
+        version = "1.0.0",
+        dataset_id = dataset_id,
+        associations = associations,
+        observations = observations,
+        exclusions = exclusions,
+        cohort_members = cohort_members,
+        sampling_design = std@sampling_design,
+        input_digest = input_digest,
+        state_space_digest = state_space_digest,
+        compute_tier = if (n_resamples > 0L) {
+            "standard"
+        } else {
+            "inspect"
+        },
         provenance = c(list(
             association_strategy = sort(unique(association_strategy_ids)),
             association_contracts = association_contracts[
@@ -1807,28 +1940,10 @@ associate_metadata <- function(
             interpretation_module = .cross_sectional_evidence_version,
             visual_evidence = stored_visual_evidence,
             bootstrap_executions = bootstrap_executions
-        ), specification_provenance)
-    )
-    atlas <- new(
-        "MetadataAssociationAtlas",
-        version = "1.0.0",
-        dataset_id = dataset_id,
-        associations = evidence@associations,
-        observations = evidence@observations,
-        exclusions = evidence@exclusions,
-        sampling_design = std@sampling_design,
-        input_digest = input_digest,
-        state_space_digest = state_space_digest,
-        compute_tier = if (n_resamples > 0L) {
-            "standard"
-        } else {
-            "inspect"
-        },
-        provenance = evidence@provenance,
+        ), specification_provenance),
         evidence_status = "estimable-exploratory-only"
     )
-    validObject(atlas)
-    atlas
+    .finalize_assoc_blueprint(blueprint, "cross_sectional")
 }
 
 #' Extract association rows from an atlas

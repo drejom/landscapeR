@@ -6,12 +6,14 @@ consumers.
 
 ## Shared evidence seam
 
-`associate_metadata()` is the public workflow boundary. Each supported sampling
-design resolves a registered `AssociationStrategy` by its validated declarative
-contract. The adapter owns cohort preparation, estimand mapping, diagnostics,
-typed abstention and scientific refitting; package-owned future execution owns
-scheduling and failure accounting. Every design then crosses one package-owned
-evidence seam.
+`associate_metadata()` is the public workflow boundary. Cross-sectional and
+independent-time-course designs now cross the normalized association execution
+kernel described in
+[`association-execution-kernel.md`](association-execution-kernel.md). The kernel
+validates strategy resolution, traverses components, normalizes resampling
+accounting, applies multiplicity, propagates typed abstention, and assembles the
+final atlas. Design adapters still own cohort preparation, estimand mapping,
+diagnostics, exchangeability, scientific fitting, and refitting.
 That seam normalizes and validates:
 
 - association rows at metadata field, component, and evidence-variant grain;

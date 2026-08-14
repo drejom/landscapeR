@@ -143,6 +143,16 @@ permutation, plotting, or serialization consumers can use the evidence.
 Registered association strategies still calculate the scientific estimands;
 they do not assemble or validate the surrounding evidence.
 
+Cross-sectional and independent destructive time-course analyses now pass
+through the same normalized execution kernel. This is a software consistency
+boundary, not a shared statistical model. The two designs retain their own
+cohorts, estimands, exchangeability rules, refits, diagnostics, and permutation
+schemes. The shared kernel checks strategy contracts, traverses the declared
+components, accounts for every requested resample, applies the declared
+multiplicity correction, and constructs the typed atlas. Repeated-subject
+analysis remains subject-aware and is never routed through an independence
+assumption.
+
 ### One resampling contract, three scientific adapters
 
 Bootstrap and permutation work share one internal policy for deterministic

@@ -8,11 +8,12 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#210 normalize association
-execution**.
+**Next task after this change lands:** **#212 migrate repeated time-course
+interpretation onto the normalized association execution kernel**.
 The maintainer deliberately reopened the architecture-maintenance lane on
-2026-08-14 after a fresh whole-codebase review. Issues #209 and #211 complete
-the publication lane before #210 begins the association lane.
+2026-08-14 after a fresh whole-codebase review. Issues #209 and #211 completed
+the publication lane; #210 establishes the shared association kernel before
+#212 migrates the remaining repeated-subject design.
 The scientific #193 sequence remains paused, not superseded.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
@@ -705,10 +706,10 @@ bodies may state dependencies but do not change this ordering.
 | [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — paused during deliberate architecture deepening loop; resume without internal reordering |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
-| [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete on merge; then #211 |
-| [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | active — next |
-| [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | complete on merge; then #210 |
-| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | queued; blocked by #210 |
+| [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete |
+| [#210](https://github.com/drejom/landscapeR/issues/210) | Architecture deepening — normalized association execution | complete on merge; then #212 |
+| [#211](https://github.com/drejom/landscapeR/issues/211) | Architecture deepening — remaining artifact publishers | complete |
+| [#212](https://github.com/drejom/landscapeR/issues/212) | Architecture deepening — repeated-time-course migration | active — next |
 | [#213](https://github.com/drejom/landscapeR/issues/213) | Architecture deepening — durable HPC evidence orchestration | queued; blocked by #211 and Gemini availability for final proof |
 | [#214](https://github.com/drejom/landscapeR/issues/214) | Architecture deepening — component-decision evidence interface | queued; blocked by #212 and #97 |
 | [#215](https://github.com/drejom/landscapeR/issues/215) | Architecture deepening — remaining evidence orchestration | queued; blocked by #213 |
