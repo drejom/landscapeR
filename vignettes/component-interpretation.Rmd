@@ -703,6 +703,12 @@ plot(repeated_atlas)
 plot(repeated_proposal)
 ```
 
+Repeated-subject atlas and proposal plots label component panels A, B, and so
+on in reading order. Their separate scientific captions use the same letters
+to explain each component-specific trajectory and interaction estimate.
+Independent destructive-time-course plots retain component-only facet labels;
+their captions do not invent panel letters that are absent from the graphic.
+
 The complete subject trajectory is the inferential and resampling unit.
 Bootstrap draws occur within condition and receive fresh subject identifiers,
 so a duplicated draw remains one trajectory rather than pseudoreplicated
