@@ -1,4 +1,9 @@
-# Gemini hprcc deployment
+# Historical Gemini hprcc deployment record
+
+> This document preserves the environment and commands used by completed
+> governed Gemini runs. It is not the active #193 launch guide. New Apollo or
+> Gemini runs use [`coh-hprcc-deployment.md`](coh-hprcc-deployment.md) and must
+> not copy the retired cluster-specific profiles below.
 
 This guide owns the City of Hope Gemini execution profile for durable
 landscapeR acceptance workloads. The scientific protocol and task graph remain

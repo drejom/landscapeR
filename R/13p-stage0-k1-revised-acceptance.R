@@ -1481,13 +1481,14 @@ verify_k1_revised_acceptance_artifact <- function(artifact) {
 #' @param phase_a_merge_commit reviewed version 3 or 4 protocol merge SHA-1.
 #' @param runner_revision reviewed runner merge SHA-1.
 #' @param artifact_root absolute publication directory.
-#' @param controller named crew controller configured by the caller.
+#' @param controller optional named crew controller configured by the caller.
+#'   `NULL` defers to the controller selected by the active targets backend.
 #' @return List of targets objects. Version 4 is executable only after the
 #'   supplied runner revision is installed; version 3 remains audit-only.
 #' @export
 k1_revised_acceptance_targets <- function(
     phase_a_merge_commit, runner_revision, artifact_root,
-    controller = "k1-revised-acceptance"
+    controller = NULL
 ) {
     if (!requireNamespace("targets", quietly = TRUE)) {
         .k1_acceptance_runner_abort(
@@ -1498,9 +1499,13 @@ k1_revised_acceptance_targets <- function(
     .k1_acceptance_validate_merge_commit(runner_revision)
     if (!.is_scalar_nonempty_text(artifact_root) ||
             !grepl("^/", path.expand(artifact_root)) ||
-            !.is_scalar_nonempty_text(controller)) {
+            (!is.null(controller) &&
+                !.is_scalar_nonempty_text(controller))) {
         .k1_acceptance_runner_abort(
-            "artifact_root must be absolute and controller must be non-empty"
+            paste(
+                "artifact_root must be absolute and controller must be NULL",
+                "or non-empty"
+            )
         )
     }
     protocol_version <- names(.k1_revised_protocol_merges)[match(
@@ -1510,6 +1515,9 @@ k1_revised_acceptance_targets <- function(
         .k1_acceptance_runner_abort(
             "phase_a_merge_commit is not a reviewed revised protocol merge"
         )
+    }
+    if (is.null(controller)) {
+        controller <- targets::tar_option_get("resources")$crew$controller
     }
     prefix <- paste0("k1_v", protocol_version)
     protocol_name <- paste0(prefix, "_protocol")

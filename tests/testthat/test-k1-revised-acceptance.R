@@ -224,6 +224,11 @@ test_that("an incomplete cell is indeterminate rather than supported", {
 
 test_that("revised acceptance targets expose one branch per replicate", {
     skip_if_not_installed("targets")
+    previous_resources <- targets::tar_option_get("resources")
+    withr::defer(targets::tar_option_set(resources = previous_resources))
+    targets::tar_option_set(resources = targets::tar_resources(
+        crew = targets::tar_resources_crew(controller = "small")
+    ))
     graph <- k1_revised_acceptance_targets(
         phase_a_merge_commit = protocol_merge_v3(),
         runner_revision = runner_revision_v3(),
@@ -238,10 +243,23 @@ test_that("revised acceptance targets expose one branch per replicate", {
     ))
     result <- graph[[7L]]
     expect_identical(result$settings$deployment, "worker")
+    expect_identical(
+        result$settings$resources$crew$controller, "small"
+    )
     expect_match(deparse(result$settings$pattern), "map\\(k1_v3_task\\)")
     expect_match(
         paste(capture.output(print(graph[[4L]])), collapse = "\n"),
         "k1_revised_assert_execution_authorized"
+    )
+
+    explicit <- k1_revised_acceptance_targets(
+        phase_a_merge_commit = protocol_merge_v3(),
+        runner_revision = runner_revision_v3(),
+        artifact_root = tempfile("k1-revised-acceptance-"),
+        controller = "large"
+    )
+    expect_identical(
+        explicit[[7L]]$settings$resources$crew$controller, "large"
     )
 })
 
