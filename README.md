@@ -110,15 +110,17 @@ the next task. The
 [pkgdown site](https://drejom.github.io/landscapeR/) presents current package
 behavior and evidence, not the work schedule.
 
-The revised K=1 acceptance API exposes an audit-only version 3 manifest, targets
-graph, typed result contract, operating-map renderer, and artifact verifier.
-Version 3 cannot execute or publish scientific evidence: its seed set was
-retired after development smoke tests exercised four tasks before runner review.
-Version 4 refreezes the identical scientific protocol with reproducible
-historical RNG manifests and a merge-derived, disjoint seed set. The runner
-must still merge separately before HPC execution. The committed
-operating maps are implementation fixtures, not acceptance results or
-sample-size recommendations.
+The revised K=1 acceptance API exposes audit-only version 3 and version 4
+manifests and targets graphs, plus a typed result contract, operating-map
+renderer, and artifact verifier. Neither retired version can execute or publish
+scientific evidence because its task rows were exercised before the applicable
+runner merged. Version 5 is a protocol-only refreeze with identical scientific
+settings, authenticated historical RNG manifests, and explicit reservation of
+the retired and development-fixture seed blocks. Its acceptance seeds remain
+hidden until the protocol merge, and execution remains unavailable until a
+separate version 5 runner revision is reviewed and merged. Current operating
+maps are implementation fixtures, not acceptance results or sample-size
+recommendations.
 
 K=1 calibration, K=1 acceptance, and full Stage 1 evidence publish and verify
 governed artifacts through one internal content-addressed seam. Each workflow

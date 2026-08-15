@@ -286,12 +286,16 @@ rule.
 The version 3 scientific protocol was frozen before its merge-derived seeds
 were knowable. Four version 3 task rows were then exercised prematurely during
 runner integration, so that complete seed set is retired under RR-017. Version
-4 refreezes the identical grids, estimands, thresholds, pass rules, and 7,200
-replicate workload. It adds self-describing historical calibration RNG
-manifests and reserves the entire revealed version 3 block before its own merge
-can reveal new seeds. No observed version 3 outcome informed version 4.
-A complete negative result is valid. Results cannot tune version 4.
-Exploratory real-data K=1 work advances
+4 refroze identical science, but its acceptance branches were also executed
+before the revision-stamped runner merged. Its complete seed set is therefore
+retired regardless of outcome. Version 5 again retains the identical grids,
+estimands, thresholds, pass rules, and 7,200-replicate workload; it reserves
+both earlier seed blocks and a labelled development-fixture block before its
+own merge can reveal new seeds. Version 4 result structure was inspected to
+diagnose collection, but no scientific setting changed in response. A complete
+negative result remains valid. Results cannot tune version 5. Version 5 remains
+protocol-only until a separate reviewed runner revision merges. Exploratory
+real-data K=1 work advances
 only if a real experiment lies inside a supported, design-compatible cell and
 the complete artifact, null controls, accounting, and provenance verify.
 

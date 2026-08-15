@@ -263,7 +263,7 @@ test_that("revised acceptance targets expose one branch per replicate", {
     )
 })
 
-test_that("version 4 targets expose the reviewed executable topology", {
+test_that("version 4 targets expose a retired audit topology", {
     skip_if_not_installed("targets")
     graph <- k1_revised_acceptance_targets(
         phase_a_merge_commit = protocol_merge_v4(),
@@ -304,6 +304,20 @@ test_that("retired version 3 tasks cannot execute", {
             manifest$tasks[1L, , drop = FALSE], protocol
         ),
         "version 3 acceptance execution is retired",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("retired version 4 tasks cannot execute", {
+    protocol <- k1_acceptance_protocol("4")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v4(), runner_revision_v4(), protocol
+    )
+    expect_error(
+        landscapeR:::.k1_revised_run_task(
+            manifest$tasks[1L, , drop = FALSE], protocol
+        ),
+        "version 4 acceptance execution is retired",
         class = "k1_acceptance_runner_error"
     )
 })
@@ -408,7 +422,7 @@ test_that("retired or fabricated evidence cannot publish acceptance artifacts", 
     )
 })
 
-test_that("version 4 revised acceptance publishes and replays through the shared module", {
+test_that("retired version 4 evidence cannot publish acceptance artifacts", {
     protocol <- k1_acceptance_protocol("4")
     manifest <- k1_revised_acceptance_manifest(
         protocol_merge_v4(), runner_revision_v4(), protocol
@@ -425,19 +439,12 @@ test_that("version 4 revised acceptance publishes and replays through the shared
     root <- tempfile("k1-revised-artifacts-")
     dir.create(root)
 
-    artifact <- landscapeR:::.k1_revised_publish(
-        root, protocol, manifest, manifest$tasks, results, identity
-    )
-
-    expect_true(landscapeR:::.k1_revised_verify_artifact(artifact))
-    expect_identical(
+    expect_error(
         landscapeR:::.k1_revised_publish(
             root, protocol, manifest, manifest$tasks, results, identity
         ),
-        artifact
-    )
-    expect_match(
-        basename(artifact), "^k1-stage0-acceptance-v4-[0-9a-f]{16}$"
+        "retired version 4 evidence",
+        class = "k1_acceptance_runner_error"
     )
 })
 
@@ -540,6 +547,111 @@ test_that("control-specific evidence cannot drift from its manifest task", {
             result, task, protocol, runner_revision_v3()
         ),
         "does not match its task",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("repeated-subject evidence uses its governed execution contract", {
+    protocol <- k1_acceptance_protocol("4")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v4(), runner_revision_v4(), protocol
+    )
+    task <- manifest$tasks[
+        manifest$tasks$control == "repeated_subject",
+        , drop = FALSE
+    ][1L, , drop = FALSE]
+    fixture <- k1_acceptance_protocol("5")$separation$
+        development_fixture_seed_blocks$repeated_subject_validator
+    development_seed <- fixture$first_scalar_seed
+    task$task_id <- fixture$task_id
+    task$seed_root <- development_seed
+    task$stream_seeds <- I(list(as.integer(development_seed + 0:7)))
+    task$task_stream <- I(list(landscapeR:::.derive_task_stream(
+        development_seed, task$task_id[[1L]]
+    )))
+    expect_false(task$task_id[[1L]] %in% manifest$tasks$task_id)
+    expect_identical(
+        range(task$stream_seeds[[1L]]),
+        c(fixture$first_scalar_seed, fixture$last_scalar_seed)
+    )
+    expect_true(
+        max(task$stream_seeds[[1L]]) <
+            protocol$seed_derivation$minimum_seed_root
+    )
+    expect_false(any(task$stream_seeds[[1L]] %in%
+        protocol$separation$reserved_calibration_rng_streams))
+    identity <- revised_identity_v3()
+    identity$source_revision <- runner_revision_v4()
+    testthat::local_mocked_bindings(
+        .k1_acceptance_worker_identity = function() identity,
+        .k1_revised_assert_execution_authorized = function(protocol) {
+            invisible(TRUE)
+        },
+        .package = "landscapeR"
+    )
+    result <- landscapeR:::.k1_revised_run_task(
+        task, protocol, expected_identity = identity
+    )
+    expect_identical(result$status, "success")
+
+    expect_true(landscapeR:::.k1_revised_validate_result(
+        result, task, protocol, runner_revision_v4()
+    ))
+
+    changed_template <- result
+    changed_template$scientific_evidence$assessment$evidence$template$label <-
+        "changed after generation"
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            changed_template, task, protocol, runner_revision_v4()
+        ),
+        "does not match its task",
+        class = "k1_acceptance_runner_error"
+    )
+    missing_status <- result
+    missing_status$scientific_evidence$assessment$evidence$recovery$status <-
+        NULL
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            missing_status, task, protocol, runner_revision_v4()
+        ),
+        "does not match its task",
+        class = "k1_acceptance_runner_error"
+    )
+    for (field in c(
+            "n_subjects", "minimum_subject_observations",
+            "axis_refits_requested"
+        )) {
+        corrupted_row <- result
+        row <- corrupted_row$scientific_evidence$assessment$row
+        row[[field]] <- row[[field]] + 1L
+        corrupted_row$scientific_evidence$assessment$row <- row
+        expect_error(
+            landscapeR:::.k1_revised_validate_result(
+                corrupted_row, task, protocol, runner_revision_v4()
+            ),
+            "does not match its task",
+            class = "k1_acceptance_runner_error",
+            info = paste("collector must reject changed", field)
+        )
+    }
+    wrong_p <- result
+    wrong_p$scientific_evidence$execution_contract$p <- task$p[[1L]] + 1L
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            wrong_p, task, protocol, runner_revision_v4()
+        ),
+        "internally inconsistent",
+        class = "k1_acceptance_runner_error"
+    )
+    wrong_seed <- result
+    wrong_seed$scientific_evidence$stream_seeds[[1L]] <-
+        wrong_seed$scientific_evidence$stream_seeds[[1L]] + 1L
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            wrong_seed, task, protocol, runner_revision_v4()
+        ),
+        "internally inconsistent",
         class = "k1_acceptance_runner_error"
     )
 })

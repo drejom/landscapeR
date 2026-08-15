@@ -583,6 +583,239 @@ k1_repeated_subject_control_info <- function(x) {
     result[match(unique(replicates$template_id), result$template_id), , drop = FALSE]
 }
 
+.k1_repeated_valid_identifiability <- function(evidence, template) {
+    required <- c(
+        "status", "mean_absolute_similarity", "n_requested",
+        "n_completed", "plan_seed", "resampling_method", "resampling_unit",
+        "plan_digest", "replicates", "reason"
+    )
+    if (!is.list(evidence) || !all(required %in% names(evidence)) ||
+            !.is_whole_number(evidence$n_requested, 0L) ||
+            !.is_whole_number(evidence$n_completed, 0L) ||
+            !.is_whole_number(evidence$plan_seed, 0L) ||
+            evidence$n_completed > evidence$n_requested ||
+            length(evidence$replicates) != evidence$n_requested ||
+            !identical(evidence$resampling_method,
+                "condition-stratified-subject-trajectory-bootstrap") ||
+            !identical(evidence$resampling_unit,
+                "complete-subject-trajectory")) return(FALSE)
+    replicate_names <- c(
+        "replicate", "status", "target_absolute_similarity",
+        "target_replicate_component", "assignment_margin",
+        "source_primary", "replicate_subject", "diagnostic"
+    )
+    valid_replicate <- vapply(seq_along(evidence$replicates), function(i) {
+        replicate <- evidence$replicates[[i]]
+        if (!is.list(replicate) ||
+                !identical(names(replicate), replicate_names) ||
+                !identical(replicate$replicate, as.integer(i)) ||
+                !replicate$status %in% c("completed", "execution_failure") ||
+                !is.character(replicate$source_primary) ||
+                !length(replicate$source_primary) ||
+                anyNA(replicate$source_primary) ||
+                !is.character(replicate$replicate_subject) ||
+                length(replicate$replicate_subject) !=
+                    length(replicate$source_primary) ||
+                anyNA(replicate$replicate_subject) ||
+                !is.character(replicate$diagnostic) ||
+                length(replicate$diagnostic) != 1L ||
+                is.na(replicate$diagnostic)) return(FALSE)
+        if (identical(replicate$status, "completed")) {
+            is.numeric(replicate$target_absolute_similarity) &&
+                length(replicate$target_absolute_similarity) == 1L &&
+                is.finite(replicate$target_absolute_similarity) &&
+                replicate$target_absolute_similarity >= 0 &&
+                replicate$target_absolute_similarity <= 1 &&
+                .is_whole_number(replicate$target_replicate_component, 1L) &&
+                replicate$target_replicate_component <= 2L &&
+                is.numeric(replicate$assignment_margin) &&
+                length(replicate$assignment_margin) == 1L &&
+                is.finite(replicate$assignment_margin) &&
+                replicate$assignment_margin >= 0 &&
+                replicate$assignment_margin <= 1 &&
+                !nzchar(replicate$diagnostic)
+        } else {
+            is.na(replicate$target_absolute_similarity) &&
+                is.na(replicate$target_replicate_component) &&
+                is.na(replicate$assignment_margin) &&
+                nzchar(replicate$diagnostic)
+        }
+    }, logical(1L))
+    if (any(!valid_replicate)) return(FALSE)
+    completed <- vapply(evidence$replicates, function(replicate) {
+        identical(replicate$status, "completed")
+    }, logical(1L))
+    observed_mean <- if (any(completed)) {
+        mean(vapply(evidence$replicates[completed], function(replicate) {
+            replicate$target_absolute_similarity
+        }, numeric(1L)))
+    } else {
+        NA_real_
+    }
+    expected_status <- if (all(completed) && length(completed)) {
+        "estimable"
+    } else if (any(completed)) {
+        "partial"
+    } else if (!length(completed)) {
+        "not_requested"
+    } else {
+        "not_estimable"
+    }
+    expected_draws <- if (evidence$n_requested) {
+        .k1_repeated_expected_draws(
+            template, evidence$n_requested, evidence$plan_seed
+        )
+    } else {
+        list()
+    }
+    observed_draws <- lapply(evidence$replicates, function(replicate) list(
+        source_primary = replicate$source_primary,
+        replicate_subject = replicate$replicate_subject
+    ))
+    expected_plan_digest <- if (evidence$n_requested) {
+        digest::digest(list(
+            method = evidence$resampling_method,
+            unit = evidence$resampling_unit,
+            n_requested = evidence$n_requested,
+            draws = expected_draws
+        ), algo = "sha256", serialize = TRUE)
+    } else {
+        NULL
+    }
+    identical(evidence$status, expected_status) &&
+        identical(observed_draws, expected_draws) &&
+        identical(evidence$plan_digest, expected_plan_digest) &&
+        identical(evidence$n_completed, as.integer(sum(completed))) &&
+        identical(evidence$mean_absolute_similarity, observed_mean)
+}
+
+.k1_repeated_valid_recovery <- function(evidence) {
+    if (!is.list(evidence) || !identical(names(evidence), c(
+            "status", "target_loading_cosine", "threshold", "met"
+        )) || !evidence$status %in% c("estimable", "not_estimable") ||
+            !is.numeric(evidence$target_loading_cosine) ||
+            length(evidence$target_loading_cosine) != 1L ||
+            !is.numeric(evidence$threshold) ||
+            length(evidence$threshold) != 1L ||
+            !is.finite(evidence$threshold) ||
+            !is.logical(evidence$met) || length(evidence$met) != 1L ||
+            is.na(evidence$met)) return(FALSE)
+    if (identical(evidence$status, "estimable")) {
+        is.finite(evidence$target_loading_cosine) &&
+            identical(evidence$met,
+                evidence$target_loading_cosine >= evidence$threshold)
+    } else {
+        is.na(evidence$target_loading_cosine) && !evidence$met
+    }
+}
+
+.k1_repeated_valid_nomination <- function(evidence) {
+    if (!is.list(evidence) || !identical(names(evidence), c(
+            "status", "nominated_component", "agrees_with_planted_target"
+        )) || !evidence$status %in% c(
+            "proposal", "abstention", "not_estimable"
+        ) || !is.logical(evidence$agrees_with_planted_target) ||
+            length(evidence$agrees_with_planted_target) != 1L) return(FALSE)
+    if (identical(evidence$status, "proposal")) {
+        .is_whole_number(evidence$nominated_component, 1L) &&
+            evidence$nominated_component <= 2L &&
+            !is.na(evidence$agrees_with_planted_target) &&
+            identical(evidence$agrees_with_planted_target,
+                evidence$nominated_component == 2L)
+    } else {
+        is.integer(evidence$nominated_component) &&
+            length(evidence$nominated_component) == 1L &&
+            is.na(evidence$nominated_component) &&
+            is.na(evidence$agrees_with_planted_target)
+    }
+}
+
+.k1_repeated_valid_model <- function(evidence) {
+    if (!is.list(evidence) || !identical(names(evidence), c(
+            "status", "diagnostic", "effect_magnitude"
+        )) || !evidence$status %in% c("estimable", "not_estimable") ||
+            !is.character(evidence$diagnostic) ||
+            length(evidence$diagnostic) != 1L || is.na(evidence$diagnostic) ||
+            !is.numeric(evidence$effect_magnitude) ||
+            length(evidence$effect_magnitude) != 1L) return(FALSE)
+    if (identical(evidence$status, "estimable")) {
+        is.finite(evidence$effect_magnitude)
+    } else {
+        is.na(evidence$effect_magnitude)
+    }
+}
+
+.k1_repeated_valid_replicate_evidence <- function(
+    evidence, row, template, recovery_threshold, plan_seed, n_requested
+) {
+    row_names <- c(
+        "template_id", "template_label", "missingness", "n_subjects",
+        "n_intended", "n_retained", "n_removed",
+        "minimum_subject_observations", "execution_completed",
+        "target_loading_cosine", "recovery_evaluable", "recovery_met",
+        "axis_identifiability_evaluable", "axis_mean_absolute_similarity",
+        "axis_refits_requested", "axis_refits_completed",
+        "nominated_component", "nomination_agrees_with_target",
+        "model_estimable", "model_diagnostic", "outcome"
+    )
+    evidence_names <- c(
+        "version", "template", "recovery", "identifiability",
+        "metadata_nomination", "repeated_subject_model", "outcome"
+    )
+    if (!inherits(evidence, "K1RepeatedSubjectReplicateEvidence") ||
+            !is.list(evidence) || !identical(names(evidence), evidence_names) ||
+            !is.data.frame(row) || nrow(row) != 1L ||
+            !identical(names(row), row_names) ||
+            !identical(evidence$version,
+                "k1-repeated-subject-replicate-evidence-v1") ||
+            !identical(evidence$template, template)) return(FALSE)
+    recovery <- evidence$recovery
+    identifiability <- evidence$identifiability
+    nomination <- evidence$metadata_nomination
+    model <- evidence$repeated_subject_model
+    identical(row$template_id[[1L]], template$id) &&
+        identical(row$template_label[[1L]], template$label) &&
+        identical(row$missingness[[1L]], template$missingness) &&
+        identical(row$n_subjects[[1L]], as.integer(length(unique(
+            template$intended_observations$mouse_id
+        )))) &&
+        identical(row$n_intended[[1L]], nrow(template$intended_observations)) &&
+        identical(row$n_retained[[1L]], nrow(template$retained_observations)) &&
+        identical(row$n_removed[[1L]], nrow(template$removed_observations)) &&
+        identical(row$minimum_subject_observations[[1L]], as.integer(min(
+            table(template$retained_observations$mouse_id)
+        ))) &&
+        identical(isTRUE(row$execution_completed[[1L]]), TRUE) &&
+        identical(evidence$outcome, as.character(row$outcome[[1L]])) &&
+        .k1_repeated_valid_recovery(recovery) &&
+        identical(recovery$target_loading_cosine,
+            row$target_loading_cosine[[1L]]) &&
+        identical(recovery$status == "estimable",
+            row$recovery_evaluable[[1L]]) &&
+        identical(recovery$met, row$recovery_met[[1L]]) &&
+        identical(recovery$threshold, recovery_threshold) &&
+        .k1_repeated_valid_identifiability(identifiability, template) &&
+        identical(identifiability$plan_seed, plan_seed) &&
+        identical(identifiability$n_requested, n_requested) &&
+        identical(row$axis_refits_requested[[1L]],
+            identifiability$n_requested) &&
+        identical(is.finite(identifiability$mean_absolute_similarity),
+            row$axis_identifiability_evaluable[[1L]]) &&
+        identical(identifiability$mean_absolute_similarity,
+            row$axis_mean_absolute_similarity[[1L]]) &&
+        identical(identifiability$n_completed,
+            row$axis_refits_completed[[1L]]) &&
+        .k1_repeated_valid_nomination(nomination) &&
+        identical(nomination$nominated_component,
+            row$nominated_component[[1L]]) &&
+        identical(nomination$agrees_with_planted_target,
+            row$nomination_agrees_with_target[[1L]]) &&
+        .k1_repeated_valid_model(model) &&
+        identical(model$status == "estimable", row$model_estimable[[1L]]) &&
+        identical(model$diagnostic %||% identifiability$reason %||% "",
+            row$model_diagnostic[[1L]])
+}
+
 .validate_k1_repeated_assessment <- function(x) {
     if (!inherits(x, "K1RepeatedSubjectAssessment") || !is.list(x) ||
             !identical(names(x), c(
@@ -641,166 +874,6 @@ k1_repeated_subject_control_info <- function(x) {
         )
     }
     execution_payload <- x$execution[c("values", "account", "provenance")]
-    valid_identifiability <- function(evidence, template) {
-        required <- c(
-            "status", "mean_absolute_similarity", "n_requested",
-            "n_completed", "plan_seed", "resampling_method", "resampling_unit",
-            "plan_digest", "replicates", "reason"
-        )
-        if (!is.list(evidence) ||
-                !all(required %in% names(evidence)) ||
-                !.is_whole_number(evidence$n_requested, 0L) ||
-                !.is_whole_number(evidence$n_completed, 0L) ||
-                !.is_whole_number(evidence$plan_seed, 0L) ||
-                evidence$n_completed > evidence$n_requested ||
-                length(evidence$replicates) != evidence$n_requested ||
-                !identical(evidence$resampling_method,
-                    "condition-stratified-subject-trajectory-bootstrap") ||
-                !identical(evidence$resampling_unit,
-                    "complete-subject-trajectory")) return(FALSE)
-        replicate_names <- c(
-            "replicate", "status", "target_absolute_similarity",
-            "target_replicate_component", "assignment_margin",
-            "source_primary", "replicate_subject", "diagnostic"
-        )
-        valid_replicate <- vapply(seq_along(evidence$replicates), function(i) {
-            replicate <- evidence$replicates[[i]]
-            if (!is.list(replicate) ||
-                    !identical(names(replicate), replicate_names) ||
-                    !identical(replicate$replicate, as.integer(i)) ||
-                    !replicate$status %in% c("completed", "execution_failure") ||
-                    !is.character(replicate$source_primary) ||
-                    !length(replicate$source_primary) ||
-                    anyNA(replicate$source_primary) ||
-                    !is.character(replicate$replicate_subject) ||
-                    length(replicate$replicate_subject) !=
-                        length(replicate$source_primary) ||
-                    anyNA(replicate$replicate_subject) ||
-                    !is.character(replicate$diagnostic) ||
-                    length(replicate$diagnostic) != 1L ||
-                    is.na(replicate$diagnostic)) return(FALSE)
-            if (identical(replicate$status, "completed")) {
-                is.numeric(replicate$target_absolute_similarity) &&
-                    length(replicate$target_absolute_similarity) == 1L &&
-                    is.finite(replicate$target_absolute_similarity) &&
-                    replicate$target_absolute_similarity >= 0 &&
-                    replicate$target_absolute_similarity <= 1 &&
-                    .is_whole_number(replicate$target_replicate_component, 1L) &&
-                    replicate$target_replicate_component <= 2L &&
-                    is.numeric(replicate$assignment_margin) &&
-                    length(replicate$assignment_margin) == 1L &&
-                    is.finite(replicate$assignment_margin) &&
-                    replicate$assignment_margin >= 0 &&
-                    replicate$assignment_margin <= 1 &&
-                    !nzchar(replicate$diagnostic)
-            } else {
-                is.na(replicate$target_absolute_similarity) &&
-                    is.na(replicate$target_replicate_component) &&
-                    is.na(replicate$assignment_margin) &&
-                    nzchar(replicate$diagnostic)
-            }
-        }, logical(1L))
-        if (any(!valid_replicate)) return(FALSE)
-        completed <- vapply(evidence$replicates, function(replicate) {
-            identical(replicate$status, "completed")
-        }, logical(1L))
-        observed_mean <- if (any(completed)) {
-            mean(vapply(evidence$replicates[completed], function(replicate) {
-                replicate$target_absolute_similarity
-            }, numeric(1L)))
-        } else {
-            NA_real_
-        }
-        expected_status <- if (all(completed) && length(completed)) {
-            "estimable"
-        } else if (any(completed)) {
-            "partial"
-        } else if (!length(completed)) {
-            "not_requested"
-        } else {
-            "not_estimable"
-        }
-        expected_draws <- if (evidence$n_requested) {
-            .k1_repeated_expected_draws(
-                template, evidence$n_requested, evidence$plan_seed
-            )
-        } else {
-            list()
-        }
-        observed_draws <- lapply(evidence$replicates, function(replicate) list(
-            source_primary = replicate$source_primary,
-            replicate_subject = replicate$replicate_subject
-        ))
-        expected_plan_digest <- if (evidence$n_requested) {
-            digest::digest(list(
-                method = evidence$resampling_method,
-                unit = evidence$resampling_unit,
-                n_requested = evidence$n_requested,
-                draws = expected_draws
-            ), algo = "sha256", serialize = TRUE)
-        } else {
-            NULL
-        }
-        identical(evidence$status, expected_status) &&
-            identical(observed_draws, expected_draws) &&
-            identical(evidence$plan_digest, expected_plan_digest) &&
-            identical(evidence$n_completed, as.integer(sum(completed))) &&
-            identical(evidence$mean_absolute_similarity, observed_mean)
-    }
-    valid_recovery <- function(evidence) {
-        if (!is.list(evidence) || !identical(names(evidence), c(
-                "status", "target_loading_cosine", "threshold", "met"
-            )) || !evidence$status %in% c("estimable", "not_estimable") ||
-                !is.numeric(evidence$target_loading_cosine) ||
-                length(evidence$target_loading_cosine) != 1L ||
-                !is.numeric(evidence$threshold) ||
-                length(evidence$threshold) != 1L ||
-                !is.finite(evidence$threshold) ||
-                !is.logical(evidence$met) || length(evidence$met) != 1L ||
-                is.na(evidence$met)) return(FALSE)
-        if (identical(evidence$status, "estimable")) {
-            is.finite(evidence$target_loading_cosine) &&
-                identical(evidence$met,
-                    evidence$target_loading_cosine >= evidence$threshold)
-        } else {
-            is.na(evidence$target_loading_cosine) && !evidence$met
-        }
-    }
-    valid_nomination <- function(evidence) {
-        if (!is.list(evidence) || !identical(names(evidence), c(
-                "status", "nominated_component", "agrees_with_planted_target"
-            )) || !evidence$status %in% c(
-                "proposal", "abstention", "not_estimable"
-            ) || !is.logical(evidence$agrees_with_planted_target) ||
-                length(evidence$agrees_with_planted_target) != 1L) return(FALSE)
-        if (identical(evidence$status, "proposal")) {
-            .is_whole_number(evidence$nominated_component, 1L) &&
-                evidence$nominated_component <= 2L &&
-                !is.na(evidence$agrees_with_planted_target) &&
-                identical(evidence$agrees_with_planted_target,
-                    evidence$nominated_component == 2L)
-        } else {
-            is.integer(evidence$nominated_component) &&
-                length(evidence$nominated_component) == 1L &&
-                is.na(evidence$nominated_component) &&
-                is.na(evidence$agrees_with_planted_target)
-        }
-    }
-    valid_model <- function(evidence) {
-        if (!is.list(evidence) || !identical(names(evidence), c(
-                "status", "diagnostic", "effect_magnitude"
-            )) || !evidence$status %in% c("estimable", "not_estimable") ||
-                !is.character(evidence$diagnostic) ||
-                length(evidence$diagnostic) != 1L ||
-                is.na(evidence$diagnostic) ||
-                !is.numeric(evidence$effect_magnitude) ||
-                length(evidence$effect_magnitude) != 1L) return(FALSE)
-        if (identical(evidence$status, "estimable")) {
-            is.finite(evidence$effect_magnitude)
-        } else {
-            is.na(evidence$effect_magnitude)
-        }
-    }
     completed_values_match <- vapply(seq_len(nrow(x$replicates)), function(i) {
         value <- x$execution$values[[i]]
         if (!x$replicates$execution_completed[[i]]) return(is.null(value))
@@ -815,42 +888,17 @@ k1_repeated_subject_control_info <- function(x) {
         rownames(expected) <- NULL
         rownames(observed) <- NULL
         template <- x$sampling_audit[[observed$template_id[[1L]]]]
-        recovery <- value$evidence$recovery
-        identifiability <- value$evidence$identifiability
-        nomination <- value$evidence$metadata_nomination
-        model <- value$evidence$repeated_subject_model
+        producer_row <- value$row[, setdiff(
+            names(value$row), c("task_id", "replicate_index")
+        ), drop = FALSE]
         identical(expected, observed) &&
-            identical(value$evidence$template, template) &&
-            identical(value$evidence$outcome,
-                as.character(observed$outcome[[1L]])) &&
-            valid_recovery(recovery) &&
-            identical(recovery$target_loading_cosine,
-                observed$target_loading_cosine[[1L]]) &&
-            identical(recovery$status == "estimable",
-                observed$recovery_evaluable[[1L]]) &&
-            identical(recovery$met, observed$recovery_met[[1L]]) &&
-            identical(recovery$threshold, x$recovery_threshold) &&
-            valid_identifiability(identifiability, template) &&
-            identical(identifiability$plan_seed,
-                as.integer(x$execution$provenance$task_streams[[i]][[2L]] + 3L)) &&
-            identical(is.finite(identifiability$mean_absolute_similarity),
-                observed$axis_identifiability_evaluable[[1L]]) &&
-            identical(identifiability$mean_absolute_similarity,
-                observed$axis_mean_absolute_similarity[[1L]]) &&
-            identical(identifiability$n_requested,
-                observed$axis_refits_requested[[1L]]) &&
-            identical(identifiability$n_completed,
-                observed$axis_refits_completed[[1L]]) &&
-            valid_nomination(nomination) &&
-            identical(nomination$nominated_component,
-                observed$nominated_component[[1L]]) &&
-            identical(nomination$agrees_with_planted_target,
-                observed$nomination_agrees_with_target[[1L]]) &&
-            valid_model(model) &&
-            identical(model$status == "estimable",
-                observed$model_estimable[[1L]]) &&
-            identical(model$diagnostic %||% identifiability$reason %||% "",
-                observed$model_diagnostic[[1L]])
+            .k1_repeated_valid_replicate_evidence(
+                value$evidence, producer_row, template, x$recovery_threshold,
+                as.integer(
+                    x$execution$provenance$task_streams[[i]][[2L]] + 3L
+                ),
+                x$axis_resamples
+            )
     }, logical(1L))
     audit_matches <- vapply(names(x$sampling_audit), function(template_id) {
         template <- x$sampling_audit[[template_id]]
