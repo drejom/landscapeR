@@ -396,6 +396,28 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         },
         summaries$component_label
     )
+    independent_headings <- function(labels) {
+        vapply(labels, function(label) {
+            index <- match(label, summaries$component_label)
+            estimate <- summaries$estimate[[index]]
+            lower <- summaries$effect_conf_low[[index]]
+            upper <- summaries$effect_conf_high[[index]]
+            if (is.finite(estimate) && is.finite(lower) && is.finite(upper)) {
+                sprintf(
+                    "%s\ninteraction %.2f\n95%% CI %.2f to %.2f",
+                    unname(panel_labels[[label]]),
+                    estimate,
+                    lower,
+                    upper
+                )
+            } else {
+                sprintf(
+                    "%s\ninteraction not estimated",
+                    unname(panel_labels[[label]])
+                )
+            }
+        }, character(1L))
+    }
     panel_terms <- stats::setNames(
         if (has_trajectories) {
             sprintf(
@@ -421,25 +443,44 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     facet_labels <- if (!has_trajectories) {
         panel_labels
     } else if (!is.null(ranking) && nrow(ranking)) {
-        stats::setNames(
-            sprintf(
-                "%s\nrank %d | interaction %s\n%s",
-                panel_labels[ranking$component_label],
-                ranking$proposal_rank,
-                interval_text[ranking$component_label],
-                rank_text[ranking$component_label]
-            ),
-            ranking$component_label
-        )
+        if (repeated) {
+            stats::setNames(
+                sprintf(
+                    "%s\nrank %d | interaction %s\n%s",
+                    panel_labels[ranking$component_label],
+                    ranking$proposal_rank,
+                    interval_text[ranking$component_label],
+                    rank_text[ranking$component_label]
+                ),
+                ranking$component_label
+            )
+        } else {
+            stats::setNames(
+                sprintf(
+                    "%s\nrank %d\n%s",
+                    independent_headings(ranking$component_label),
+                    ranking$proposal_rank,
+                    rank_text[ranking$component_label]
+                ),
+                ranking$component_label
+            )
+        }
     } else {
-        stats::setNames(
-            sprintf(
-                "%s\ninteraction %s",
-                panel_labels[summaries$component_label],
-                interval_text
-            ),
-            summaries$component_label
-        )
+        if (repeated) {
+            stats::setNames(
+                sprintf(
+                    "%s\ninteraction %s",
+                    panel_labels[summaries$component_label],
+                    interval_text
+                ),
+                summaries$component_label
+            )
+        } else {
+            stats::setNames(
+                independent_headings(summaries$component_label),
+                summaries$component_label
+            )
+        }
     }
     title <- if (is_abstention) {
         sprintf("No component nominated for %s", x@target_field)
@@ -559,6 +600,12 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     resampling_account <- if (!has_trajectories) {
         paste(
             "No interaction interval or resampling recurrence is available.",
+            .association_multiplicity_caption(provenance)
+        )
+    } else if (!repeated) {
+        paste(
+            "Facet labels report stored interaction estimates and 95%",
+            "intervals; resampling recurrence remains in the evidence.",
             .association_multiplicity_caption(provenance)
         )
     } else {
@@ -812,10 +859,21 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         ) +
         theme_landscapeR()
     if (!repeated) {
-        plot <- plot + ggplot2::coord_cartesian(
-            xlim = c(-0.08, 1.08),
-            clip = "off"
-        )
+        # Independent destructive-time-course strips use short, explicit
+        # estimate/CI lines and a slightly smaller strip type at the default
+        # 100 mm device so the complete heading remains inside each facet.
+        plot <- plot +
+            ggplot2::coord_cartesian(
+                xlim = c(-0.08, 1.08),
+                clip = "off"
+            ) +
+            ggplot2::theme(
+                strip.text = ggplot2::element_text(
+                    size = 6,
+                    lineheight = 0.9,
+                    margin = ggplot2::margin(t = 1.5, b = 1.5)
+                )
+            )
     }
     .with_scientific_caption(plot, visual_evidence_caption(view))
 }
