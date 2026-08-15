@@ -556,6 +556,49 @@
     payload
 }
 
+.k1_acceptance_protocol_v5_payload <- function() {
+    payload <- .k1_acceptance_protocol_v4_payload()
+    payload$artifact_version <- "5"
+    payload$protocol_id <- "k1-stage0-acceptance-v5"
+    payload$calibration_evidence$review_conclusion <- paste(
+        "version 5 retains every version 4 scientific setting unchanged;",
+        "only the retired acceptance seed set and delayed seed-reveal",
+        "identity change"
+    )
+    payload$seed_derivation$reveal_value <-
+        "reviewed version 5 protocol merge commit SHA-1"
+    payload$seed_derivation$hidden_until <- "version 5 protocol merge"
+    payload$seed_derivation$algorithm <-
+        "sha256-merge-commit-indexed-block-v5"
+    payload$separation$retired_version4_seed_block <- list(
+        protocol_merge_commit =
+            "92db509aa1724cbeac62ac79d4e4858c94e5aa20",
+        protocol_digest = digest::digest(
+            .k1_acceptance_protocol_v4_payload(), algo = "sha256"
+        ),
+        derivation_algorithm = "sha256-merge-commit-indexed-block-v4",
+        first_seed_root = 990320213L,
+        last_reserved_scalar_seed = 990377812L,
+        task_count = 7200L,
+        block_stride = 8L,
+        status = "retired_after_premerge_acceptance_execution"
+    )
+    payload$separation$rule <- paste(
+        "version 5 roots are unknowable before its reviewed merge; versions",
+        "3 and 4 are retired in full, and their scalar blocks, task",
+        "identities, and derived streams remain reserved alongside #67",
+        "and calibration evidence"
+    )
+    payload$provenance$implementation <- "k1_stage0_acceptance_v5"
+    payload$provenance$source_specification <-
+        "docs/specs/k1-stage0-acceptance-protocol-v5.md"
+    payload$provenance$evidence_inputs <- c(
+        payload$provenance$evidence_inputs,
+        "version 4 premerge execution incident; no scientific outcomes used"
+    )
+    payload
+}
+
 .k1_acceptance_protocol_v1_payload <- function() {
     list(
         artifact_version = "1",
@@ -942,9 +985,12 @@
 
 .k1_acceptance_protocol_payload <- function(version = "2") {
     if (!is.character(version) || length(version) != 1L || is.na(version) ||
-            !version %in% c("1", "2", "3", "4")) {
+            !version %in% c("1", "2", "3", "4", "5")) {
         .k1_acceptance_protocol_abort(
-            "version must identify readable K=1 acceptance protocol 1, 2, 3, or 4"
+            paste(
+                "version must identify readable K=1 acceptance protocol",
+                "1, 2, 3, 4, or 5"
+            )
         )
     }
     if (identical(version, "1")) {
@@ -953,8 +999,10 @@
         .k1_acceptance_protocol_v2_payload()
     } else if (identical(version, "3")) {
         .k1_acceptance_protocol_v3_payload()
-    } else {
+    } else if (identical(version, "4")) {
         .k1_acceptance_protocol_v4_payload()
+    } else {
+        .k1_acceptance_protocol_v5_payload()
     }
 }
 
@@ -964,9 +1012,9 @@
 #' Constructing or validating it does not execute any acceptance replicate.
 #'
 #' @param version readable protocol version. Version 2 remains the default for
-#'   the historical runner; version 4 is the protocol-only refreeze of the
+#'   the historical runner; version 5 is the protocol-only refreeze of the
 #'   revised acceptance science, versions 1 and 2 remain historical, and
-#'   version 3 is readable but its complete seed set is retired.
+#'   versions 3 and 4 are readable but their complete seed sets are retired.
 #' @return A digest-bound `K1AcceptanceProtocol` list containing the frozen
 #'   grids, metrics, thresholds, pass rules, and delayed seed-derivation plan.
 #' @export
@@ -1000,6 +1048,7 @@ validate_k1_acceptance_protocol <- function(
         `k1-stage0-acceptance-v2` = "2",
         `k1-stage0-acceptance-v3` = "3",
         `k1-stage0-acceptance-v4` = "4",
+        `k1-stage0-acceptance-v5` = "5",
         .k1_acceptance_protocol_abort(
             "protocol does not identify a readable frozen definition"
         )

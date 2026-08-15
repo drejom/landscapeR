@@ -57,7 +57,7 @@ test_that("K=1 acceptance protocol v2 extends the lower tail and preserves v1", 
         )
     )
     expect_error(
-        k1_acceptance_protocol("5"),
+        k1_acceptance_protocol("6"),
         class = "k1_acceptance_protocol_error"
     )
 })
@@ -268,6 +268,38 @@ test_that("K=1 acceptance protocol v4 pins the committed calibration scripts", {
         unname(tools::sha256sum(source_paths)),
         manifests$source_script_sha256_assertion
     )
+})
+
+test_that("K=1 acceptance protocol v5 refreezes identical science only", {
+    retired <- k1_acceptance_protocol("4")
+    refrozen <- k1_acceptance_protocol("5")
+
+    expect_identical(refrozen$protocol_id, "k1-stage0-acceptance-v5")
+    expect_identical(refrozen$artifact_version, "5")
+    expect_true(validate_k1_acceptance_protocol(refrozen))
+    expect_false(refrozen$execution$acceptance_execution_available)
+    expect_identical(refrozen$execution$phase, "definition_only")
+    expect_false(refrozen$provenance$acceptance_results_inspected)
+    expect_identical(refrozen$grids, retired$grids)
+    expect_identical(refrozen$thresholds, retired$thresholds)
+    expect_identical(refrozen$outcome_states, retired$outcome_states)
+    expect_identical(refrozen$pass_rules, retired$pass_rules)
+    expect_identical(refrozen$resampling, retired$resampling)
+    expect_identical(refrozen$seed_plan, retired$seed_plan)
+    expect_identical(refrozen$workload, retired$workload)
+    expect_identical(refrozen$execution_contracts, retired$execution_contracts)
+    expect_identical(
+        refrozen$seed_derivation$hidden_until,
+        "version 5 protocol merge"
+    )
+    expect_false("seed" %in% names(refrozen$seed_plan))
+    expect_match(refrozen$separation$rule, "versions 3 and 4")
+    expect_match(refrozen$separation$rule, "retired")
+    retired_v4 <- refrozen$separation$retired_version4_seed_block
+    expect_identical(retired_v4$first_seed_root, 990320213L)
+    expect_identical(retired_v4$last_reserved_scalar_seed, 990377812L)
+    expect_identical(retired_v4$task_count, 7200L)
+    expect_identical(retired_v4$protocol_digest, retired$digest)
 })
 
 test_that("K=1 acceptance seeds remain hidden until their protocol merge", {

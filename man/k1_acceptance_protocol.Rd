@@ -8,9 +8,9 @@ k1_acceptance_protocol(version = "2")
 }
 \arguments{
 \item{version}{readable protocol version. Version 2 remains the default for
-the historical runner; version 4 is the protocol-only refreeze of the
+the historical runner; version 5 is the protocol-only refreeze of the
 revised acceptance science, versions 1 and 2 remain historical, and
-version 3 is readable but its complete seed set is retired.}
+versions 3 and 4 are readable but their complete seed sets are retired.}
 }
 \value{
 A digest-bound \code{K1AcceptanceProtocol} list containing the frozen

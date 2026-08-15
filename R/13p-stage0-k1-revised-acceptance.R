@@ -124,7 +124,7 @@
         manifest_payload
     if (is.null(manifests) || length(manifests) != 3L) {
         .k1_acceptance_runner_abort(
-            "version 4 calibration RNG manifests are unavailable"
+            "authenticated calibration RNG manifests are unavailable"
         )
     }
     invisible(lapply(
@@ -378,19 +378,17 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
 
 .k1_revised_assert_execution_authorized <- function(protocol) {
     validate_k1_acceptance_protocol(protocol)
-    if (identical(protocol$artifact_version, "3")) {
+    if (protocol$artifact_version %in% c("3", "4")) {
         .k1_acceptance_runner_abort(paste(
-            "version 3 acceptance execution is retired because manifest tasks",
-            "were exercised during runner development; freeze and implement a",
-            "new protocol version before scientific execution"
+            "version", protocol$artifact_version,
+            "acceptance execution is retired because manifest tasks were",
+            "exercised before the runner merged; freeze and implement a new",
+            "protocol version before scientific execution"
         ))
     }
-    if (!identical(protocol$artifact_version, "4")) {
-        .k1_acceptance_runner_abort(
-            "this runner does not implement the supplied acceptance protocol"
-        )
-    }
-    invisible(TRUE)
+    .k1_acceptance_runner_abort(
+        "no reviewed executable protocol is implemented by this runner revision"
+    )
 }
 
 .k1_revised_failure <- function(task, condition, runtime_identity = NULL) {
@@ -942,7 +940,7 @@ summarize_k1_revised_acceptance <- function(
     }))
     rownames(cells) <- NULL
     null_cells <- cells$control == "high_dimensional_null"
-    retired <- identical(protocol$artifact_version, "3")
+    retired <- protocol$artifact_version %in% c("3", "4")
     claim_status <- if (!complete_manifest) {
         "implementation_proof_only"
     } else if (retired) {
@@ -1282,9 +1280,12 @@ plot_k1_revised_acceptance <- function(
     .k1_acceptance_validate_identity(identity)
     .k1_acceptance_validate_collector_identity(collector_identity)
     .k1_validate_runtime_revision(identity, manifest)
-    if (identical(protocol$artifact_version, "3")) {
+    if (protocol$artifact_version %in% c("3", "4")) {
         .k1_acceptance_runner_abort(
-            "retired version 3 evidence cannot be published as acceptance"
+            paste(
+                "retired version", protocol$artifact_version,
+                "evidence cannot be published as acceptance"
+            )
         )
     }
     if (!identical(tasks, manifest$tasks)) {
@@ -1462,17 +1463,16 @@ verify_k1_revised_acceptance_artifact <- function(artifact) {
 
 #' Build the revised K=1 acceptance targets graph
 #'
-#' Version 4 provides the reviewed one-branch-per-replicate production graph.
-#' Passing the retired version 3 merge commit returns the audit-only version 3
-#' topology whose preflight deliberately stops before any task can execute.
+#' Versions 3 and 4 provide readable one-branch-per-replicate audit graphs whose
+#' preflight deliberately stops before any task can execute. Version 5 remains
+#' protocol-only until a later reviewed runner binds its protocol merge.
 #'
 #' @param phase_a_merge_commit reviewed version 3 or 4 protocol merge SHA-1.
 #' @param runner_revision reviewed runner merge SHA-1.
 #' @param artifact_root absolute publication directory.
 #' @param controller optional named crew controller configured by the caller.
 #'   `NULL` defers to the controller selected by the active targets backend.
-#' @return List of targets objects. Version 4 is executable only after the
-#'   supplied runner revision is installed; version 3 remains audit-only.
+#' @return List of targets objects. Versions 3 and 4 are audit-only.
 #' @export
 k1_revised_acceptance_targets <- function(
     phase_a_merge_commit, runner_revision, artifact_root,

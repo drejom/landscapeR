@@ -1,4 +1,4 @@
-# Cluster-neutral _targets.R profile for the reviewed version 4 graph. Run it
+# Cluster-neutral _targets.R profile for a reviewed revised-acceptance graph. Run it
 # from a dedicated directory inside a standard rbiocverse Slurm session. hprcc
 # owns cluster detection, worker libraries, bind mounts, partitions, and named
 # resource controllers.

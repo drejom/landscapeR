@@ -22,11 +22,10 @@ k1_revised_acceptance_targets(
 \code{NULL} defers to the controller selected by the active targets backend.}
 }
 \value{
-List of targets objects. Version 4 is executable only after the
-supplied runner revision is installed; version 3 remains audit-only.
+List of targets objects. Versions 3 and 4 are audit-only.
 }
 \description{
-Version 4 provides the reviewed one-branch-per-replicate production graph.
-Passing the retired version 3 merge commit returns the audit-only version 3
-topology whose preflight deliberately stops before any task can execute.
+Versions 3 and 4 provide readable one-branch-per-replicate audit graphs whose
+preflight deliberately stops before any task can execute. Version 5 remains
+protocol-only until a later reviewed runner binds its protocol merge.
 }

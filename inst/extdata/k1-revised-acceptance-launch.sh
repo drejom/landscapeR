@@ -18,7 +18,7 @@ launch_script=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
 
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     exec sbatch \
-        --job-name=landscapeR-k1-v4 \
+        --job-name=landscapeR-k1-acceptance \
         --partition="$(get_slurm_partition "$cluster")" \
         --time=24:00:00 \
         --cpus-per-task=2 \

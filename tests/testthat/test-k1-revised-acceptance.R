@@ -263,7 +263,7 @@ test_that("revised acceptance targets expose one branch per replicate", {
     )
 })
 
-test_that("version 4 targets expose the reviewed executable topology", {
+test_that("version 4 targets expose a retired audit topology", {
     skip_if_not_installed("targets")
     graph <- k1_revised_acceptance_targets(
         phase_a_merge_commit = protocol_merge_v4(),
@@ -304,6 +304,20 @@ test_that("retired version 3 tasks cannot execute", {
             manifest$tasks[1L, , drop = FALSE], protocol
         ),
         "version 3 acceptance execution is retired",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("retired version 4 tasks cannot execute", {
+    protocol <- k1_acceptance_protocol("4")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v4(), runner_revision_v4(), protocol
+    )
+    expect_error(
+        landscapeR:::.k1_revised_run_task(
+            manifest$tasks[1L, , drop = FALSE], protocol
+        ),
+        "version 4 acceptance execution is retired",
         class = "k1_acceptance_runner_error"
     )
 })
@@ -408,7 +422,7 @@ test_that("retired or fabricated evidence cannot publish acceptance artifacts", 
     )
 })
 
-test_that("version 4 revised acceptance publishes and replays through the shared module", {
+test_that("retired version 4 evidence cannot publish acceptance artifacts", {
     protocol <- k1_acceptance_protocol("4")
     manifest <- k1_revised_acceptance_manifest(
         protocol_merge_v4(), runner_revision_v4(), protocol
@@ -425,19 +439,12 @@ test_that("version 4 revised acceptance publishes and replays through the shared
     root <- tempfile("k1-revised-artifacts-")
     dir.create(root)
 
-    artifact <- landscapeR:::.k1_revised_publish(
-        root, protocol, manifest, manifest$tasks, results, identity
-    )
-
-    expect_true(landscapeR:::.k1_revised_verify_artifact(artifact))
-    expect_identical(
+    expect_error(
         landscapeR:::.k1_revised_publish(
             root, protocol, manifest, manifest$tasks, results, identity
         ),
-        artifact
-    )
-    expect_match(
-        basename(artifact), "^k1-stage0-acceptance-v4-[0-9a-f]{16}$"
+        "retired version 4 evidence",
+        class = "k1_acceptance_runner_error"
     )
 })
 
@@ -553,10 +560,21 @@ test_that("repeated-subject evidence uses its governed execution contract", {
         manifest$tasks$control == "repeated_subject",
         , drop = FALSE
     ][1L, , drop = FALSE]
+    development_seed <- 424242L
+    task$task_id <- "development-fixture=repeated-subject-validator"
+    task$seed_root <- development_seed
+    task$stream_seeds <- I(list(as.integer(development_seed + 0:7)))
+    task$task_stream <- I(list(landscapeR:::.derive_task_stream(
+        development_seed, task$task_id[[1L]]
+    )))
+    expect_false(task$task_id[[1L]] %in% manifest$tasks$task_id)
     identity <- revised_identity_v3()
     identity$source_revision <- runner_revision_v4()
     testthat::local_mocked_bindings(
         .k1_acceptance_worker_identity = function() identity,
+        .k1_revised_assert_execution_authorized = function(protocol) {
+            invisible(TRUE)
+        },
         .package = "landscapeR"
     )
     result <- landscapeR:::.k1_revised_run_task(
