@@ -1198,8 +1198,8 @@ plot_k1_revised_acceptance <- function(
             ggplot2::geom_tile(
                 colour = semantic[["paper"]], linewidth = 0.8
             ) +
-            ggplot2::geom_point(ggplot2::aes(shape = decision),
-                colour = semantic[["ink"]], fill = semantic[["paper"]],
+        ggplot2::geom_point(ggplot2::aes(shape = decision),
+                colour = semantic[["ink"]], fill = semantic[["focal"]],
                 size = 2.2, stroke = 0.5) +
             ggplot2::facet_wrap(
                 ggplot2::vars(regime_label), ncol = 3, scales = "free_x"
@@ -1227,9 +1227,10 @@ plot_k1_revised_acceptance <- function(
             experiment_label = "synthetic K=1 assessment",
             sampling_unit = context$independent_sampling_unit,
             encodings = c(paste(
-                "Circle symbols distinguish supported and unsupported",
-                "positive cells; upward triangles mark passing null controls",
-                "and downward triangles mark failed null controls."
+                "Red filled circles denote supported positive cells, open",
+                "circles denote unsupported positive cells; upward triangles",
+                "mark passing null controls and downward triangles mark failed",
+                "null controls."
             )),
             design = paste(
                 "Signal coefficients use the regime-specific noise reference",

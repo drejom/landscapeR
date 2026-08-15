@@ -449,6 +449,15 @@ test_that("revised acceptance maps use established encodings and captions", {
         signal$scales$get_scales("fill")$palette(c(0, 1)),
         c("#FFEA46", "#00204D")
     )
+    expect_identical(signal$layers[[2L]]$aes_params$fill, semantic[["focal"]])
+    expect_true("shape" %in% names(signal$layers[[2L]]$mapping))
+    expect_identical(
+        signal$scales$get_scales("shape")$palette(5L),
+        c(
+            supported = 21, unsupported = 1, indeterminate = 4,
+            passed_null = 24, failed_null = 25
+        )
+    )
 })
 
 test_that("version 3 historical streams are recorded but not authenticated", {

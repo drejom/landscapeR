@@ -1,11 +1,11 @@
-Recovery across high-dimensional signal regimes. The synthetic K=1 assessment experiment.
-Circle symbols distinguish supported and unsupported positive cells; upward triangles mark
-passing null controls and downward triangles mark failed null controls. The analysis unit is
-one independently collected synthetic animal; the design is Signal coefficients use the
-regime-specific noise reference at n = 24 and p = 100 . Each replicate requests 19 stratified
-axis refits. Cell decisions use Wilson 95% confidence intervals over all 100 requested
-replicates in each complete cell. Positive support requires recovery at least 0.9 and a Wilson
-lower bound at least 0.8 ; passing null controls require recovery no greater than 0.05 and a
-Wilson upper bound no greater than 0.1 . Claim status is implementation proof only ; the map
-describes only the frozen feature counts, signal coefficients, covariance regimes, and sample
-size.
+Recovery across high-dimensional signal regimes. The synthetic K=1 assessment experiment. Red
+filled circles denote supported positive cells, open circles denote unsupported positive cells;
+upward triangles mark passing null controls and downward triangles mark failed null controls.
+The analysis unit is one independently collected synthetic animal; the design is Signal
+coefficients use the regime-specific noise reference at n = 24 and p = 100 . Each replicate
+requests 19 stratified axis refits. Cell decisions use Wilson 95% confidence intervals over all
+100 requested replicates in each complete cell. Positive support requires recovery at least 0.9
+and a Wilson lower bound at least 0.8 ; passing null controls require recovery no greater than
+0.05 and a Wilson upper bound no greater than 0.1 . Claim status is implementation proof only ;
+the map describes only the frozen feature counts, signal coefficients, covariance regimes, and
+sample size.
