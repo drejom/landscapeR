@@ -423,7 +423,7 @@ findings <- data.frame(
         "Independent-time-course facets do not yet carry the visible A/B panel labels required by the publication policy.",
         "Identifiability comparison markers and Stage 2 critical-point annotations can occlude one another or the landscape evidence.",
         "Stage 1 and Stage 2 group/time rugs rely on thin colour-only marks that weaken at reduced size and under colour-vision deficiency.",
-        "Cross-sectional and abstention captions describe visual encodings that are not rendered in the corresponding figures.",
+        "Cross-sectional, abstention, and operating-domain captions need reconciliation with the rendered encodings and public analysis-unit wording.",
         "The contact-sheet tile subtitles collide across tile boundaries at reduced reading size.",
         "Continuous component plots emit an unknown fill-scale warning for a valid continuous metadata field.",
         "The abstention empty state and cross-figure layout tokens need a consistency pass after the higher-severity fixes."
@@ -433,7 +433,7 @@ findings <- data.frame(
         "independent-time-course.png; issue #220",
         "identifiability-diagnostic.png; identifiability-audit.png; stage2-potential-critical-points.png",
         "stage1-components-categorical.png; stage1-components-continuous.png; stage1-decomposition.png; stage2-potential*.png",
-        "cross-sectional-atlas.png; cross-sectional-atlas-caption.txt; association-abstention.png; association-abstention-caption.txt",
+        "cross-sectional-atlas.png; cross-sectional-atlas-caption.txt; association-abstention.png; association-abstention-caption.txt; k1-operating-domain-caption.txt",
         "public-plot-contact-sheet.png",
         "script regeneration output: Ignoring unknown labels: fill",
         "association-abstention.png; public-plot-contact-sheet.png"

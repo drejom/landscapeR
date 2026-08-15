@@ -10,7 +10,7 @@ checking the estimand, uncertainty, evidence, or claim boundary.
 
 - **P1, #232:** long tile subtitles collide across contact-sheet boundaries at
   reduced reading size. The sheet is an audit surface, so the full captions
-  remain separate while tile-local text is repaired.
+  remain separate while tile-local text is queued for repair.
 - **P1, #227:** independent-time-course interaction intervals are clipped in
   the native 100 mm figure.
 - **P1, #229:** identifiability comparison markers and Stage 2 critical-point
@@ -18,7 +18,9 @@ checking the estimand, uncertainty, evidence, or claim boundary.
 - **P1, #230:** several Stage 1/Stage 2 rugs rely on thin colour-only marks that
   weaken at reduced size and under colour-vision deficiency.
 - **P2, #231:** two captions describe encodings not rendered by their figures:
-  cross-sectional fits and the colour of the abstention reason.
+  cross-sectional fits and the colour of the abstention reason. The operating-
+  domain caption also needs public wording correction: a design identifier is
+  not a biological analysis unit, and the current sentence is malformed.
 - **P2, #233:** the abstention empty state and shared layout tokens need a
   consistency pass after the higher-severity issues are addressed.
 - **P2, #228:** valid continuous component plots emit an unknown fill-scale
