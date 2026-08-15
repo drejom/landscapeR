@@ -56,30 +56,41 @@ images on both clusters.
 [hprcc issue 36](https://github.com/cohmathonc/hprcc/issues/36) tracks the
 missing `slurm_workers` argument in exported `add_controller()`. The active
 profile temporarily uses hprcc's own controller constructor to request the
-development-pilot resource class, eight concurrent workers, and at most eight
+development-pilot resource class, 96 concurrent workers, and at most 100
 complete tasks per worker. hprcc continues to own cluster detection,
 partitions, libraries, bind mounts, the container, and Slurm submission.
 
-This packing avoids a burst of hundreds of one-task submissions. It changes
-only scheduler concurrency and process reuse. Task identities, RNG streams,
-scientific inputs, thresholds, and results are unchanged. Remove the internal
-constructor call when hprcc's public API forwards the worker limit.
+The profile serializes only scheduler submission calls when the active
+environment relays them over SSH. Queued workers still execute concurrently,
+so this avoids relay exhaustion without underusing cluster compute. It changes
+only scheduler concurrency and process reuse. The larger per-worker task cap
+prevents short branches from requiring repeated scheduler submissions. Task
+identities, RNG streams, scientific inputs, thresholds, and results are
+unchanged. Remove the internal constructor call when hprcc's public API
+forwards the worker limit.
 
 ## Launch revised acceptance
 
 Only after the protocol and runner revisions are reviewed, merged, and
-installed:
+installed, copy the installed cluster-neutral profile into a dedicated shared
+run directory as `_targets.R`, and copy
+`k1-revised-acceptance-launch.sh` beside it. Supply the reviewed upstream
+rbiocverse `container/scripts/cluster-config.sh`, both reviewed revisions, and
+the run directory through the declared environment variables. Invoke the
+tracked launcher rather than reconstructing the controller command ad hoc:
 
-```sh
-export LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-merge-SHA-1>
-export LANDSCAPER_K1_RUNNER_MERGE=<reviewed-runner-merge-SHA-1>
-Rscript -e 'targets::tar_make(use_crew = TRUE, callr_function = NULL)'
+```bash
+RBIOCVERSE_CONFIG=/path/to/rbiocverse/container/scripts/cluster-config.sh \
+LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-merge-SHA-1> \
+LANDSCAPER_K1_RUNNER_MERGE=<reviewed-runner-merge-SHA-1> \
+LANDSCAPER_RUN_ROOT=/path/to/shared/run \
+bash /path/to/k1-revised-acceptance-launch.sh
 ```
 
-The `tar_make()` controller must run inside the Slurm-backed rbiocverse
-session, never on a login node. The active profile declares only the measured
-workload size and bounded concurrency. The installed `hprcc` configuration
-owns all cluster infrastructure and submission choices.
+The launcher submits `tar_make()` as a Slurm job and enters the rbiocverse
+container there; it never runs the controller on a login node. The active
+profile declares only the measured workload size and bounded concurrency. The
+installed `hprcc` configuration owns worker infrastructure and submission.
 
 ## Monitor and verify
 

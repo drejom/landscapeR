@@ -64,8 +64,9 @@ metadata it cannot redefine; if absent, report unavailable or stop.
 ### RR-010 — Prove parallelism boundaries behaviorally
 Do not infer parallelism boundaries from scheduling arguments. Exercise the
 inner-sequential path under an ambient backend, and test private worker entry
-points from an installed package; `load_all()` can mask namespace failures.
-**Incident:** issue #135 found hidden nested futures; issue #212 lost a private fitter only on multisession workers.
+points from an installed package. Track the complete HPC launcher and measure
+worker reuse; nominal pool size can hide scheduler churn or ad hoc deployment.
+**Incident:** issue #135 found hidden nested futures; issue #212 lost a private fitter on multisession; issue #193 recycled every worker after eight tasks.
 ### RR-011 — Keep backend-dependent measurements out of scientific decisions
 Runtime and resource measurements may be retained for operational diagnostics,
 but they must not affect candidate selection or the scientific evidence digest
@@ -92,10 +93,9 @@ When a typed result or summary gains phase-specific fields, replay every
 committed governed artifact through its semantic verifier before merge. New
 fields must not change the reconstructed payload, field order, digest, or
 caption contract of an earlier artifact unless a declared migration governs
-that change.
+that change. Test validators with the actual producer-shaped evidence.
 **Incident:** issue #67 added AML-only summary fields that passed focused tests
-but initially made the committed phase-B1 acceptance artifact fail semantic
-reproduction during vignette rebuilding.
+but broke phase-B1 artifact replay; issue #193's collector required fields its repeated producer never recorded.
 ### RR-014 — Compare governed identities independently of orchestration labels
 When parallel orchestration attaches names or labels to a result container,
 compare the governed identity values and their required order independently of

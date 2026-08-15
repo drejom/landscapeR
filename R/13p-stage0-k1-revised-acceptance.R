@@ -745,8 +745,6 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
             identical(scientific$version,
                 "k1-repeated-subject-replicate-evidence-v1") &&
             identical(scientific$template$id, task$design_id[[1L]]) &&
-            identical(scientific$template$seed,
-                task$stream_seeds[[1L]][[1L]]) &&
             identical(scientific$outcome, result$outcome) &&
             identical(recovery$target_loading_cosine,
                 result$recovery$absolute_loading_cosine) &&
@@ -762,8 +760,7 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
             identical(identifiability$n_requested,
                 protocol$resampling$repeated_axis_resamples) &&
             identical(nomination$nominated_component,
-                row$nominated_component[[1L]]) &&
-            identical(as.integer(row$p[[1L]]), task$p[[1L]]))
+                row$nominated_component[[1L]]))
     }
     generator <- scientific$generator
     rng <- scientific$rng

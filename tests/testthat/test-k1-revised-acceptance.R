@@ -544,6 +544,95 @@ test_that("control-specific evidence cannot drift from its manifest task", {
     )
 })
 
+test_that("repeated-subject evidence uses its governed execution contract", {
+    protocol <- k1_acceptance_protocol("4")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v4(), runner_revision_v4(), protocol
+    )
+    task <- manifest$tasks[
+        manifest$tasks$control == "repeated_subject",
+        , drop = FALSE
+    ][1L, , drop = FALSE]
+    threshold <- protocol$thresholds$target_axis_recovery$minimum
+    assessment <- list(
+        row = data.frame(
+            execution_completed = TRUE,
+            target_loading_cosine = 0.95,
+            recovery_evaluable = TRUE,
+            recovery_met = TRUE,
+            model_estimable = TRUE,
+            nominated_component = 2L,
+            outcome = "recovered_and_estimable"
+        ),
+        evidence = structure(list(
+            version = "k1-repeated-subject-replicate-evidence-v1",
+            template = list(id = task$design_id[[1L]]),
+            recovery = list(
+                target_loading_cosine = 0.95,
+                threshold = threshold,
+                met = TRUE
+            ),
+            identifiability = list(
+                plan_seed = as.integer(task$stream_seeds[[1L]][[1L]] + 3L),
+                n_requested = protocol$resampling$repeated_axis_resamples
+            ),
+            metadata_nomination = list(nominated_component = 2L),
+            repeated_subject_model = list(status = "estimable"),
+            outcome = "recovered_and_estimable"
+        ), class = c("K1RepeatedSubjectReplicateEvidence", "list"))
+    )
+    identity <- revised_identity_v3()
+    identity$source_revision <- runner_revision_v4()
+    result <- structure(list(
+        version = "k1-revised-acceptance-replicate-v1",
+        task_id = task$task_id[[1L]],
+        control = "repeated_subject",
+        status = "success",
+        outcome = "recovered_and_estimable",
+        recovery = list(
+            evaluable = TRUE, met = TRUE, absolute_loading_cosine = 0.95
+        ),
+        downstream = list(estimable = TRUE, diagnostic = ""),
+        scientific_evidence = list(
+            version = "k1-revised-scientific-evidence-v1",
+            control = "repeated_subject",
+            task_id = task$task_id[[1L]],
+            stream_seeds = task$stream_seeds[[1L]],
+            task_stream = task$task_stream[[1L]],
+            execution_contract = landscapeR:::.k1_revised_execution_contract(
+                task, protocol
+            ),
+            observed_generator = NULL,
+            assessment = assessment
+        ),
+        runtime_identity = identity
+    ), class = c("K1RevisedAcceptanceReplicate", "list"))
+
+    expect_true(landscapeR:::.k1_revised_validate_result(
+        result, task, protocol, runner_revision_v4()
+    ))
+
+    wrong_p <- result
+    wrong_p$scientific_evidence$execution_contract$p <- task$p[[1L]] + 1L
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            wrong_p, task, protocol, runner_revision_v4()
+        ),
+        "internally inconsistent",
+        class = "k1_acceptance_runner_error"
+    )
+    wrong_seed <- result
+    wrong_seed$scientific_evidence$stream_seeds[[1L]] <-
+        wrong_seed$scientific_evidence$stream_seeds[[1L]] + 1L
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            wrong_seed, task, protocol, runner_revision_v4()
+        ),
+        "internally inconsistent",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
 test_that("every control has an exact manifest-derived execution contract", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(
