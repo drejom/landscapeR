@@ -44,4 +44,3 @@ their separate captions are retained so each follow-up can be reproduced.
   https://clauswilke.com/dataviz/color-pitfalls.html
 - Tufte, *The Visual Display of Quantitative Information*:
   https://www.edwardtufte.com/book/the-visual-display-of-quantitative-information/
-
