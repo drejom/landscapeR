@@ -15,13 +15,15 @@ The active profile requires R 4.5.2, Bioconductor 3.22, `targets 1.12.0`,
 `crew 1.3.2` or a compatible release, `crew.cluster 0.4.0`, and `hprcc 0.2.3`.
 Install one reviewed landscapeR revision in the shared Bioconductor 3.22
 library. The controller and every worker must report that same full revision.
+The installed hprcc must expose `slurm_workers` through its internal
+`create_controller()` implementation until
+[hprcc issue 36](https://github.com/cohmathonc/hprcc/issues/36) is resolved.
 
 On 2026-08-14, a configuration-free smoke graph completed on Apollo. Slurm
-controller job `22796320` dispatched hprcc's default `small` worker job
-`22796322`, which completed on `ppxhpcnode31` and reported landscapeR revision
-`9dc785266f7675741f2c0ea2646250ce0b432fc2`. This is operational evidence only.
-It did not load an acceptance protocol, derive governed seeds, or publish a
-scientific artifact.
+dispatched hprcc's default `small` worker, and controller and worker reported
+the same landscapeR revision. This is operational evidence only. It did not
+load an acceptance protocol, derive governed seeds, or publish a scientific
+artifact.
 
 ## Prepare a run directory
 
@@ -49,6 +51,20 @@ hprcc. It does not construct an Apollo or Gemini path.
 Remove this override after hprcc's cluster defaults select current rbiocverse
 images on both clusters.
 
+## Temporary bounded-worker workaround
+
+[hprcc issue 36](https://github.com/cohmathonc/hprcc/issues/36) tracks the
+missing `slurm_workers` argument in exported `add_controller()`. The active
+profile temporarily uses hprcc's own controller constructor to request the
+development-pilot resource class, eight concurrent workers, and at most eight
+complete tasks per worker. hprcc continues to own cluster detection,
+partitions, libraries, bind mounts, the container, and Slurm submission.
+
+This packing avoids a burst of hundreds of one-task submissions. It changes
+only scheduler concurrency and process reuse. Task identities, RNG streams,
+scientific inputs, thresholds, and results are unchanged. Remove the internal
+constructor call when hprcc's public API forwards the worker limit.
+
 ## Launch revised acceptance
 
 Only after the protocol and runner revisions are reviewed, merged, and
@@ -61,9 +77,9 @@ Rscript -e 'targets::tar_make(use_crew = TRUE, callr_function = NULL)'
 ```
 
 The `tar_make()` controller must run inside the Slurm-backed rbiocverse
-session, never on a login node. The active profile does not select a resource
-controller or declare cluster infrastructure. The installed `hprcc`
-configuration owns those choices, including its configured default controller.
+session, never on a login node. The active profile declares only the measured
+workload size and bounded concurrency. The installed `hprcc` configuration
+owns all cluster infrastructure and submission choices.
 
 ## Monitor and verify
 
