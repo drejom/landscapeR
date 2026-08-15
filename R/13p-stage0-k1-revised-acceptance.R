@@ -737,30 +737,21 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
     }
     scientific <- assessment$evidence
     if (identical(control, "repeated_subject")) {
+        template <- k1_repeated_subject_template(task$design_id[[1L]])
         recovery <- scientific$recovery
         model <- scientific$repeated_subject_model
-        identifiability <- scientific$identifiability
-        nomination <- scientific$metadata_nomination
-        return(inherits(scientific, "K1RepeatedSubjectReplicateEvidence") &&
-            identical(scientific$version,
-                "k1-repeated-subject-replicate-evidence-v1") &&
-            identical(scientific$template$id, task$design_id[[1L]]) &&
+        return(.k1_repeated_valid_replicate_evidence(
+            scientific, row, template,
+            protocol$thresholds$target_axis_recovery$minimum,
+            as.integer(task$stream_seeds[[1L]][[1L]] + 3L),
+            protocol$resampling$repeated_axis_resamples
+        ) &&
             identical(scientific$outcome, result$outcome) &&
             identical(recovery$target_loading_cosine,
                 result$recovery$absolute_loading_cosine) &&
-            identical(recovery$threshold,
-                protocol$thresholds$target_axis_recovery$minimum) &&
             identical(recovery$met, result$recovery$met) &&
             identical(model$status == "estimable",
-                isTRUE(result$downstream$estimable)) &&
-            identical(model$status == "estimable",
-                isTRUE(row$model_estimable[[1L]])) &&
-            identical(identifiability$plan_seed,
-                as.integer(task$stream_seeds[[1L]][[1L]] + 3L)) &&
-            identical(identifiability$n_requested,
-                protocol$resampling$repeated_axis_resamples) &&
-            identical(nomination$nominated_component,
-                row$nominated_component[[1L]]))
+                isTRUE(result$downstream$estimable)))
     }
     generator <- scientific$generator
     rng <- scientific$rng

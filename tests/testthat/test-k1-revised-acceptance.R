@@ -553,65 +553,41 @@ test_that("repeated-subject evidence uses its governed execution contract", {
         manifest$tasks$control == "repeated_subject",
         , drop = FALSE
     ][1L, , drop = FALSE]
-    threshold <- protocol$thresholds$target_axis_recovery$minimum
-    assessment <- list(
-        row = data.frame(
-            execution_completed = TRUE,
-            target_loading_cosine = 0.95,
-            recovery_evaluable = TRUE,
-            recovery_met = TRUE,
-            model_estimable = TRUE,
-            nominated_component = 2L,
-            outcome = "recovered_and_estimable"
-        ),
-        evidence = structure(list(
-            version = "k1-repeated-subject-replicate-evidence-v1",
-            template = list(id = task$design_id[[1L]]),
-            recovery = list(
-                target_loading_cosine = 0.95,
-                threshold = threshold,
-                met = TRUE
-            ),
-            identifiability = list(
-                plan_seed = as.integer(task$stream_seeds[[1L]][[1L]] + 3L),
-                n_requested = protocol$resampling$repeated_axis_resamples
-            ),
-            metadata_nomination = list(nominated_component = 2L),
-            repeated_subject_model = list(status = "estimable"),
-            outcome = "recovered_and_estimable"
-        ), class = c("K1RepeatedSubjectReplicateEvidence", "list"))
-    )
     identity <- revised_identity_v3()
     identity$source_revision <- runner_revision_v4()
-    result <- structure(list(
-        version = "k1-revised-acceptance-replicate-v1",
-        task_id = task$task_id[[1L]],
-        control = "repeated_subject",
-        status = "success",
-        outcome = "recovered_and_estimable",
-        recovery = list(
-            evaluable = TRUE, met = TRUE, absolute_loading_cosine = 0.95
-        ),
-        downstream = list(estimable = TRUE, diagnostic = ""),
-        scientific_evidence = list(
-            version = "k1-revised-scientific-evidence-v1",
-            control = "repeated_subject",
-            task_id = task$task_id[[1L]],
-            stream_seeds = task$stream_seeds[[1L]],
-            task_stream = task$task_stream[[1L]],
-            execution_contract = landscapeR:::.k1_revised_execution_contract(
-                task, protocol
-            ),
-            observed_generator = NULL,
-            assessment = assessment
-        ),
-        runtime_identity = identity
-    ), class = c("K1RevisedAcceptanceReplicate", "list"))
+    testthat::local_mocked_bindings(
+        .k1_acceptance_worker_identity = function() identity,
+        .package = "landscapeR"
+    )
+    result <- landscapeR:::.k1_revised_run_task(
+        task, protocol, expected_identity = identity
+    )
+    expect_identical(result$status, "success")
 
     expect_true(landscapeR:::.k1_revised_validate_result(
         result, task, protocol, runner_revision_v4()
     ))
 
+    changed_template <- result
+    changed_template$scientific_evidence$assessment$evidence$template$label <-
+        "changed after generation"
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            changed_template, task, protocol, runner_revision_v4()
+        ),
+        "does not match its task",
+        class = "k1_acceptance_runner_error"
+    )
+    missing_status <- result
+    missing_status$scientific_evidence$assessment$evidence$recovery$status <-
+        NULL
+    expect_error(
+        landscapeR:::.k1_revised_validate_result(
+            missing_status, task, protocol, runner_revision_v4()
+        ),
+        "does not match its task",
+        class = "k1_acceptance_runner_error"
+    )
     wrong_p <- result
     wrong_p$scientific_evidence$execution_contract$p <- task$p[[1L]] + 1L
     expect_error(
