@@ -45,10 +45,12 @@ assign-before-record ordering could hide behavior changes or leave an
 unprovenanced registry mutation.
 ### RR-006 — Verify that visual encodings carry independent meaning
 Verify plotted quantities are independent and semantic colours retain their role;
-captions must match rendered marks, omit absent encodings, and narrate each panel.
+captions must match rendered marks, omit absent encodings, narrate each panel,
+and keep annotations/overlays recoverable at native and reduced reading sizes.
 **Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) plotted an
 exact cosine transform and misused focal red; issue #212 review found endpoint
-and A/B panel caption mismatches.
+and A/B panel caption mismatches; issue #226 found clipped interaction intervals,
+occluded comparison/critical-point marks, and tile-level visual collisions.
 ### RR-007 — Keep transient roots outside package builds
 Exclude repo scratch from Git and R package builds. Before trusting a package
 check, verify that generated sites, bundles, and prior checks missed the tarball.
@@ -145,5 +147,4 @@ against current code. Consolidate near 150 lines.
 - **Deduplicate:** search before adding; consolidate overlapping rules.
 - **Graduate:** move mechanical rules into checks and recurring decisions into ADRs.
 - **Report:** select one disposition and give a substantive rationale.
-This document is only for review knowledge; other concerns belong to their
-existing authorities.
+This document is only for review knowledge; other concerns belong to their existing authorities.
