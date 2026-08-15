@@ -8,7 +8,7 @@ k1_revised_acceptance_targets(
   phase_a_merge_commit,
   runner_revision,
   artifact_root,
-  controller = "k1-revised-acceptance"
+  controller = NULL
 )
 }
 \arguments{
@@ -18,7 +18,8 @@ k1_revised_acceptance_targets(
 
 \item{artifact_root}{absolute publication directory.}
 
-\item{controller}{named crew controller configured by the caller.}
+\item{controller}{optional named crew controller configured by the caller.
+\code{NULL} defers to the controller selected by the active targets backend.}
 }
 \value{
 List of targets objects. Version 4 is executable only after the

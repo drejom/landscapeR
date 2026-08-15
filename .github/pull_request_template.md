@@ -19,6 +19,8 @@
 
 **After or representative output:** <!-- Embed/link the figure, table, or workflow render. Repository-hosted proof links must use the current full PR-head commit SHA, never a branch name. -->
 
+<!-- This repository is public. Report only the evidence needed to support the claim. Do not expose non-public infrastructure identifiers, internal paths or topology, job or node details, or operational configuration unless disclosure is necessary and explicitly approved. -->
+
 **Cold-reader conclusion:** <!-- What should someone who has not read the code conclude? -->
 
 **Reproduction:** <!-- Exact command or procedure that regenerates the proof. -->
