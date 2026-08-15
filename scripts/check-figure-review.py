@@ -184,16 +184,18 @@ def markdown_targets(body: str) -> list[str]:
     ]
 
 
-def repository_proof_targets(body: str) -> list[tuple[str, Path]]:
+def repository_proof_targets(body: str) -> list[tuple[str, Path, bool]]:
     """Return repository proof link targets paired with normalized local paths."""
-    targets: list[tuple[str, Path]] = []
-    for target in markdown_targets(body):
+    targets: list[tuple[str, Path, bool]] = []
+    for match in re.finditer(r"(!)?\[[^\]]+\]\(([^)]+)\)", body):
+        is_image = match.group(1) == "!"
+        target = match.group(2).strip().split()[0].strip("<>")
         if PROOF_MARKER not in target:
             continue
         repository_path = PROOF_MARKER + target.split(PROOF_MARKER, maxsplit=1)[1]
         repository_path = repository_path.split("?", maxsplit=1)[0]
         repository_path = repository_path.split("#", maxsplit=1)[0]
-        targets.append((target, Path(repository_path)))
+        targets.append((target, Path(repository_path), is_image))
     return targets
 
 
@@ -206,7 +208,7 @@ def non_immutable_repository_proof_targets(
         flags=re.IGNORECASE,
     )
     return [
-        target for target, _ in repository_proof_targets(body)
+        target for target, _, _ in repository_proof_targets(body)
         if expected_pattern.search(target) is None
     ]
 
@@ -214,7 +216,7 @@ def non_immutable_repository_proof_targets(
 def missing_repository_proof_paths(body: str) -> list[str]:
     """Return repository-hosted proof paths that do not exist in the checkout."""
     return [
-        str(path) for _, path in repository_proof_targets(body)
+        str(path) for _, path, _ in repository_proof_targets(body)
         if not path.exists()
     ]
 
@@ -239,13 +241,16 @@ def invalid_repository_proof_routes(
         flags=re.IGNORECASE,
     )
     invalid: list[str] = []
-    for target, path in repository_proof_targets(body):
+    for target, path, is_image in repository_proof_targets(body):
         if path.is_dir() and tree_pattern.search(target) is None:
             invalid.append(target)
-        elif path.is_file() and not (
-            raw_pattern.search(target) or blob_pattern.search(target)
-        ):
-            invalid.append(target)
+        elif path.is_file():
+            if is_image and raw_pattern.search(target) is None:
+                invalid.append(target)
+            elif not is_image and not (
+                raw_pattern.search(target) or blob_pattern.search(target)
+            ):
+                invalid.append(target)
     return invalid
 
 
@@ -317,7 +322,8 @@ def validate_required_proof(
     if invalid_routes:
         return fail(
             "Repository proof URL type must match its committed artifact: use "
-            "GitHub /tree/ for directories and /blob/ or raw URLs for files: "
+            "GitHub /tree/ for directories, /blob/ for text files, and raw "
+            "URLs for image embeds: "
             + ", ".join(invalid_routes)
         )
 

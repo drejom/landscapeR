@@ -1609,7 +1609,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
 
 .k1_validate_runtime_revision <- function(identity, manifest) {
     revised <- inherits(manifest, "K1RevisedAcceptanceManifest") &&
-        manifest$artifact_version %in% c("3", "4")
+        manifest$artifact_version %in% c("3", "4", "5")
     if (!identical(manifest$artifact_version, "2") && !revised) {
         return(invisible(TRUE))
     }

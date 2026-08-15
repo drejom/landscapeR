@@ -4,7 +4,8 @@
 
 .k1_revised_protocol_merges <- c(
     `3` = "4d2ee67653c7de2f7caf2e52da4a8f7fa05ab111",
-    `4` = "92db509aa1724cbeac62ac79d4e4858c94e5aa20"
+    `4` = "92db509aa1724cbeac62ac79d4e4858c94e5aa20",
+    `5` = "f668e1e0f49f66b8bd8c244ca6fb667a9b39d896"
 )
 
 .k1_revised_acceptance_controls <- c(
@@ -165,9 +166,9 @@
     phase_a_merge_commit, runner_revision, protocol
 ) {
     validate_k1_acceptance_protocol(protocol)
-    if (!protocol$artifact_version %in% c("3", "4")) {
+    if (!protocol$artifact_version %in% c("3", "4", "5")) {
         .k1_acceptance_runner_abort(
-            "revised acceptance requires frozen protocol version 3 or 4"
+            "revised acceptance requires frozen protocol version 3, 4, or 5"
         )
     }
     phase_a_merge_commit <- .k1_acceptance_validate_merge_commit(
@@ -237,7 +238,7 @@
         "canonical_cell", "stream_seeds", "task_stream"
     )]
     rownames(tasks) <- NULL
-    historical <- if (identical(protocol$artifact_version, "4")) {
+    historical <- if (protocol$artifact_version %in% c("4", "5")) {
         .k1_revised_authenticated_historical_rng(protocol)
     } else .k1_revised_historical_rng()
     scalar_seeds <- unlist(tasks$stream_seeds, use.names = FALSE)
@@ -259,6 +260,25 @@
             paste, collapse = ":", character(1L)
         )
     }
+    retired_v4 <- protocol$separation$retired_version4_seed_block
+    retired_v4_stream_keys <- character()
+    if (!is.null(retired_v4)) {
+        retired_protocol <- k1_acceptance_protocol("4")
+        retired_manifest <- .k1_revised_manifest_payload(
+            unname(.k1_revised_protocol_merges[["4"]]),
+            strrep("0", 40L), retired_protocol
+        )
+        retired_v4_stream_keys <- vapply(
+            retired_manifest$tasks$task_stream,
+            paste, collapse = ":", character(1L)
+        )
+    }
+    fixture_blocks <- protocol$separation$development_fixture_seed_blocks
+    fixture_scalar_seeds <- if (is.null(fixture_blocks)) {
+        integer()
+    } else unlist(lapply(fixture_blocks, function(block) {
+        seq.int(block$first_scalar_seed, block$last_scalar_seed)
+    }), use.names = FALSE)
     collides_retired_v3 <- !is.null(retired_v3) && any(
         scalar_seeds >= retired_v3$first_seed_root &
             scalar_seeds <= retired_v3$last_reserved_scalar_seed
@@ -270,9 +290,14 @@
         any(scalar_seeds >= historical_range$first_stream &
             scalar_seeds <= historical_range$last_stream) ||
         any(scalar_seeds %in%
-            protocol$separation$reserved_calibration_rng_streams)
+            protocol$separation$reserved_calibration_rng_streams) ||
+        any(scalar_seeds %in% fixture_scalar_seeds)
     collision <- collision || collides_retired_v3 ||
-        any(task_stream_keys %in% retired_v3_stream_keys)
+        any(task_stream_keys %in% retired_v3_stream_keys) ||
+        (!is.null(retired_v4) && any(
+            scalar_seeds >= retired_v4$first_seed_root &
+                scalar_seeds <= retired_v4$last_reserved_scalar_seed
+        )) || any(task_stream_keys %in% retired_v4_stream_keys)
     if (collision) {
         .k1_acceptance_runner_abort(
             "revised acceptance RNG blocks collide with reserved evidence streams"
@@ -287,7 +312,7 @@
         runner_revision = runner_revision,
         seed_derivation = protocol$seed_derivation$algorithm,
         historical_stream_authentication = if (
-            identical(protocol$artifact_version, "4")
+            protocol$artifact_version %in% c("4", "5")
         ) list(
             schema_version = "k1-calibration-rng-manifest-v1",
             manifest_digests = historical$manifest_digests,
@@ -316,10 +341,11 @@
 
 #' Reveal the deterministic revised K=1 acceptance manifest
 #'
-#' @param phase_a_merge_commit reviewed version 3 or 4 protocol merge SHA-1.
+#' @param phase_a_merge_commit reviewed version 3, 4, or 5 protocol merge
+#'   SHA-1.
 #' @param runner_revision reviewed runner merge SHA-1.
-#' @param protocol frozen revised protocol. Version 4 is the executable
-#'   protocol; version 3 remains readable but retired.
+#' @param protocol frozen revised protocol. Version 5 is the executable
+#'   protocol; versions 3 and 4 remain readable but retired.
 #' @return Digest-bound `K1RevisedAcceptanceManifest`.
 #' @export
 k1_revised_acceptance_manifest <- function(
@@ -352,6 +378,7 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
             manifest$protocol_id,
             `k1-stage0-acceptance-v3` = k1_acceptance_protocol("3"),
             `k1-stage0-acceptance-v4` = k1_acceptance_protocol("4"),
+            `k1-stage0-acceptance-v5` = k1_acceptance_protocol("5"),
             .k1_acceptance_runner_abort(
                 "manifest protocol is not a supported revised definition"
             )
@@ -386,9 +413,12 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
             "protocol version before scientific execution"
         ))
     }
-    .k1_acceptance_runner_abort(
-        "no reviewed executable protocol is implemented by this runner revision"
-    )
+    if (!identical(protocol$artifact_version, "5")) {
+        .k1_acceptance_runner_abort(
+            "only reviewed version 5 is executable by this runner revision"
+        )
+    }
+    invisible(TRUE)
 }
 
 .k1_revised_failure <- function(task, condition, runtime_identity = NULL) {
@@ -1168,8 +1198,8 @@ plot_k1_revised_acceptance <- function(
             ggplot2::geom_tile(
                 colour = semantic[["paper"]], linewidth = 0.8
             ) +
-            ggplot2::geom_point(ggplot2::aes(shape = decision),
-                colour = semantic[["ink"]], fill = semantic[["paper"]],
+        ggplot2::geom_point(ggplot2::aes(shape = decision),
+                colour = semantic[["ink"]], fill = semantic[["focal"]],
                 size = 2.2, stroke = 0.5) +
             ggplot2::facet_wrap(
                 ggplot2::vars(regime_label), ncol = 3, scales = "free_x"
@@ -1197,9 +1227,10 @@ plot_k1_revised_acceptance <- function(
             experiment_label = "synthetic K=1 assessment",
             sampling_unit = context$independent_sampling_unit,
             encodings = c(paste(
-                "Circle symbols distinguish supported and unsupported",
-                "positive cells; upward triangles mark passing null controls",
-                "and downward triangles mark failed null controls."
+                "Red filled circles denote supported positive cells, open",
+                "circles denote unsupported positive cells; upward triangles",
+                "mark passing null controls and downward triangles mark failed",
+                "null controls."
             )),
             design = paste(
                 "Signal coefficients use the regime-specific noise reference",
@@ -1286,6 +1317,11 @@ plot_k1_revised_acceptance <- function(
                 "retired version", protocol$artifact_version,
                 "evidence cannot be published as acceptance"
             )
+        )
+    }
+    if (!identical(protocol$artifact_version, "5")) {
+        .k1_acceptance_runner_abort(
+            "only reviewed version 5 is executable by this runner revision"
         )
     }
     if (!identical(tasks, manifest$tasks)) {
@@ -1464,15 +1500,17 @@ verify_k1_revised_acceptance_artifact <- function(artifact) {
 #' Build the revised K=1 acceptance targets graph
 #'
 #' Versions 3 and 4 provide readable one-branch-per-replicate audit graphs whose
-#' preflight deliberately stops before any task can execute. Version 5 remains
-#' protocol-only until a later reviewed runner binds its protocol merge.
+#' preflight deliberately stops before any task can execute. Version 5 binds the
+#' reviewed protocol merge and is the only executable revised-acceptance graph.
 #'
-#' @param phase_a_merge_commit reviewed version 3 or 4 protocol merge SHA-1.
+#' @param phase_a_merge_commit reviewed version 3, 4, or 5 protocol merge
+#'   SHA-1.
 #' @param runner_revision reviewed runner merge SHA-1.
 #' @param artifact_root absolute publication directory.
 #' @param controller optional named crew controller configured by the caller.
 #'   `NULL` defers to the controller selected by the active targets backend.
-#' @return List of targets objects. Versions 3 and 4 are audit-only.
+#' @return List of targets objects. Versions 3 and 4 are audit-only; version 5
+#'   is executable only after worker revision preflight succeeds.
 #' @export
 k1_revised_acceptance_targets <- function(
     phase_a_merge_commit, runner_revision, artifact_root,

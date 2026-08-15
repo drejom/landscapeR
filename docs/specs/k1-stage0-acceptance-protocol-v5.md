@@ -2,16 +2,18 @@
 
 ## Purpose
 
-Version 5 is a protocol-only refreeze of version 4. It changes no scientific
-grid, generator setting, estimand, threshold, pass rule, outcome state,
-resampling request, execution contract, workload, or claim boundary. It exists
-because version 4 acceptance tasks were executed before the revision-stamped
-runner passed review and merged. Under RR-017 the complete version 4 seed set
-is retired, regardless of those outcomes.
+Version 5 is a refreeze of version 4 plus the reviewed runner binding. It
+changes no scientific grid, generator setting, estimand, threshold, pass rule,
+outcome state, resampling request, execution contract, workload, or claim
+boundary. It exists because version 4 acceptance tasks were executed before
+the revision-stamped runner passed review and merged. Under RR-017 the complete
+version 4 seed set is retired, regardless of those outcomes.
 
-Constructing, validating, testing, or reviewing this protocol must not derive a
-version 5 seed, construct its acceptance manifest, execute an acceptance task,
-or adapt the version 4 runner. Those are separate post-merge work.
+The reviewed runner derives the version 5 manifest only from the merged
+protocol revision and requires an independently observed matching runner
+revision on every worker. No version 5 acceptance task has executed in this
+change; execution remains downstream of this runner revision and its governed
+preflight.
 
 ## Frozen science
 
@@ -26,8 +28,10 @@ evaluability; and the same out-of-domain and real-data stop boundaries.
 
 Version 5 retains version 4's self-describing canonical RNG payloads for the
 exact disclosed #189, #190, and #191 calibration proof runs. The reviewed
-version 5 protocol merge SHA-1 will reveal a new indexed seed block. Until that
-merge, no value exists.
+version 5 protocol merge is
+`f668e1e0f49f66b8bd8c244ca6fb667a9b39d896`; it reveals the new indexed seed
+block through the manifest, while the runner revision remains a separate
+provenance field.
 
 The complete revealed version 3 scalar block from 664979464 through 665037063
 and version 4 scalar block from 990320213 through 990377812 are reserved with
@@ -41,9 +45,9 @@ version 5 evidence; future manifest validation must retain that separation.
 
 ## Separation of work
 
-This change freezes only the protocol. A later reviewed change may adapt the
-backend-independent targets runner to version 5 and reveal its manifest. Only
-after that runner revision merges may the independent HPC run begin.
+This change adapts the backend-independent targets runner to version 5 and
+reveals its manifest. Only after this runner revision merges may the
+independent HPC run begin.
 Integration tests use labelled fixture streams and may never use a version 5
 acceptance row.
 
@@ -54,4 +58,5 @@ acceptance row.
 - Incident rule: RR-017
 - Version 4 result structure inspected while diagnosing collection: yes
 - Scientific settings changed in response to acceptance outcomes: no
-- Claim: predeclared acceptance protocol only
+- Claim: predeclared acceptance protocol and reviewed runner only; no scientific
+  acceptance result
