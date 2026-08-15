@@ -776,9 +776,15 @@ k1_repeated_subject_control_info <- function(x) {
     identical(row$template_id[[1L]], template$id) &&
         identical(row$template_label[[1L]], template$label) &&
         identical(row$missingness[[1L]], template$missingness) &&
+        identical(row$n_subjects[[1L]], as.integer(length(unique(
+            template$intended_observations$mouse_id
+        )))) &&
         identical(row$n_intended[[1L]], nrow(template$intended_observations)) &&
         identical(row$n_retained[[1L]], nrow(template$retained_observations)) &&
         identical(row$n_removed[[1L]], nrow(template$removed_observations)) &&
+        identical(row$minimum_subject_observations[[1L]], as.integer(min(
+            table(template$retained_observations$mouse_id)
+        ))) &&
         identical(isTRUE(row$execution_completed[[1L]]), TRUE) &&
         identical(evidence$outcome, as.character(row$outcome[[1L]])) &&
         .k1_repeated_valid_recovery(recovery) &&
@@ -791,6 +797,8 @@ k1_repeated_subject_control_info <- function(x) {
         .k1_repeated_valid_identifiability(identifiability, template) &&
         identical(identifiability$plan_seed, plan_seed) &&
         identical(identifiability$n_requested, n_requested) &&
+        identical(row$axis_refits_requested[[1L]],
+            identifiability$n_requested) &&
         identical(is.finite(identifiability$mean_absolute_similarity),
             row$axis_identifiability_evaluable[[1L]]) &&
         identical(identifiability$mean_absolute_similarity,

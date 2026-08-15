@@ -588,6 +588,23 @@ test_that("repeated-subject evidence uses its governed execution contract", {
         "does not match its task",
         class = "k1_acceptance_runner_error"
     )
+    for (field in c(
+            "n_subjects", "minimum_subject_observations",
+            "axis_refits_requested"
+        )) {
+        corrupted_row <- result
+        row <- corrupted_row$scientific_evidence$assessment$row
+        row[[field]] <- row[[field]] + 1L
+        corrupted_row$scientific_evidence$assessment$row <- row
+        expect_error(
+            landscapeR:::.k1_revised_validate_result(
+                corrupted_row, task, protocol, runner_revision_v4()
+            ),
+            "does not match its task",
+            class = "k1_acceptance_runner_error",
+            info = paste("collector must reject changed", field)
+        )
+    }
     wrong_p <- result
     wrong_p$scientific_evidence$execution_contract$p <- task$p[[1L]] + 1L
     expect_error(
