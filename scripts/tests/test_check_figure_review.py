@@ -356,6 +356,24 @@ class VisualProofCheckerCliTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_rejects_blob_url_for_repository_proof_image(self) -> None:
+        self._commit_change(current_docs=True)
+        self._commit_path(
+            ".github/landing-proof/issue-1/recovery-surface.png", "png\n"
+        )
+        head_sha = self._head_sha()
+        image = (
+            "![Recovery surface](https://github.com/example/repo/blob/"
+            f"{head_sha}/.github/landing-proof/issue-1/recovery-surface.png)"
+        )
+        body = REQUIRED_PROOF.replace(
+            "See the before/after table in the Visual review section.", image
+        )
+        result = self._run_checker(body)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("URL type must match", result.stderr)
+
     def test_accepts_repository_proof_directory_pinned_to_head_commit(self) -> None:
         self._commit_change(current_docs=True)
         self._commit_path(
