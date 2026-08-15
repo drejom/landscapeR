@@ -8,16 +8,20 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#193, execute the reviewed version 5
-acceptance run; then complete #51 phase B**. Do not execute a version 5 row
-before this runner revision merges and its exact revision is recorded by the
-workers.
+**Next task after this change lands:** **#227, resolve the public-figure
+follow-ups recorded by the #226 contact-sheet audit**. Complete #220 and the
+remaining #228--#233 visual/warning follow-ups before **#193, execute the
+reviewed version 5 acceptance run; then complete #51 phase B**. Do not execute
+a version 5 row before the runner revision merges and its exact revision is
+recorded by the workers.
 The maintainer deliberately reopened the architecture-maintenance lane on
 2026-08-14 after a fresh whole-codebase review. Issues #209 and #211 completed
 the publication lane; #210 established the shared association kernel and #212
 migrated the remaining repeated-subject design. The maintenance loop is then
 complete. Scheduler-backed #213 still requires Gemini for its final proof, and
-#214 remains blocked by #97.
+#214 remains blocked by #97. Issue #226 has now audited the complete
+public-facing plot family; its native/reduced proof is retained, and its
+adversarial findings are the required visual gate before the scientific run.
 
 **Current scientific boundary:** reach a reproducible, explicitly exploratory
 AML `primary_2018` Stage 1 result—or a structured abstention—without beginning
@@ -721,7 +725,7 @@ bodies may state dependencies but do not change this ordering.
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | complete on merge; does not block acceptance |
-| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next — execute the reviewed v5 acceptance run after this runner revision merges |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | queued after the #226 visual gate — execute the reviewed v5 acceptance run |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete |
@@ -732,8 +736,16 @@ bodies may state dependencies but do not change this ordering.
 | [#214](https://github.com/drejom/landscapeR/issues/214) | Architecture deepening — component-decision evidence interface | queued; blocked by #212 and #97 |
 | [#215](https://github.com/drejom/landscapeR/issues/215) | Architecture deepening — remaining evidence orchestration | queued; blocked by #213 |
 | [#216](https://github.com/drejom/landscapeR/issues/216) | Architecture deepening — acceptance-control adapter deletion test | queued; blocked by #215 |
-| [#220](https://github.com/drejom/landscapeR/issues/220) | Interpretation visual standards — independent time-course panel labels | queued; standalone follow-up; does not reorder #193 |
+| [#220](https://github.com/drejom/landscapeR/issues/220) | Interpretation visual standards — independent time-course panel labels | queued; visual gate before #193 |
 | [#223](https://github.com/drejom/landscapeR/issues/223) | Maintenance — explicit scientific diagnostics and warning-free tests | queued; standalone agent-ready maintenance; does not reorder #193 |
+| [#226](https://github.com/drejom/landscapeR/issues/226) | Interpretation visual standards — complete public-plot audit | complete on merge; follow-ups #227--#233 gate #193 |
+| [#227](https://github.com/drejom/landscapeR/issues/227) | Interpretation visual standards — independent time-course clipping | active — next |
+| [#228](https://github.com/drejom/landscapeR/issues/228) | Interpretation visual standards — continuous plot warning | queued; visual gate before #193 |
+| [#229](https://github.com/drejom/landscapeR/issues/229) | Interpretation visual standards — non-occluding evidence marks | queued; visual gate before #193 |
+| [#230](https://github.com/drejom/landscapeR/issues/230) | Interpretation visual standards — accessible group/time encodings | queued; visual gate before #193 |
+| [#231](https://github.com/drejom/landscapeR/issues/231) | Interpretation visual standards — caption/render fidelity | queued; visual gate before #193 |
+| [#232](https://github.com/drejom/landscapeR/issues/232) | Interpretation visual standards — contact-sheet tile isolation | queued; visual gate before #193 |
+| [#233](https://github.com/drejom/landscapeR/issues/233) | Interpretation visual standards — empty-state/layout consistency | queued; visual gate before #193 |
 <!-- issue-map:end -->
 
 ---
