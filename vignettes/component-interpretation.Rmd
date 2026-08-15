@@ -373,6 +373,14 @@ non-evidentiary and cannot contribute to the scientific result. Neither that
 pilot, the calibration example, nor its visual proof supports a biological AML
 claim.
 
+`k1_revised_acceptance_targets()` builds the governed independent-assessment
+graph without choosing cluster infrastructure. By default,
+`controller = NULL` inherits the controller configured in the active
+`targets` resources, such as the default supplied by `hprcc` in a Slurm
+session. An explicit named controller remains available when a workflow needs
+a reviewed resource override. Controller choice changes deployment only; it
+does not change the frozen manifest, scientific commands, or RNG streams.
+
 ### Independent destructive-time-course operating evidence
 
 Destructive sampling uses a different biological animal in every
