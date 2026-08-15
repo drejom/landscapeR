@@ -35,6 +35,10 @@ their canonical task identities and derived streams, together with all
 calibration and historical acceptance streams. The later version 5 manifest
 validator must reject any collision before any task can execute.
 
+The labelled repeated-subject validator fixture reserves scalar seeds 4242
+through 4249. This block lies below the acceptance minimum and cannot enter
+version 5 evidence; future manifest validation must retain that separation.
+
 ## Separation of work
 
 This change freezes only the protocol. A later reviewed change may adapt the
@@ -48,5 +52,6 @@ acceptance row.
 - Source issue: #193
 - Scientific source: immutable version 4 protocol
 - Incident rule: RR-017
-- Acceptance results inspected while refreezing science: no
+- Version 4 result structure inspected while diagnosing collection: yes
+- Scientific settings changed in response to acceptance outcomes: no
 - Claim: predeclared acceptance protocol only

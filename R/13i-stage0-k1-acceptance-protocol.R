@@ -583,6 +583,14 @@
         block_stride = 8L,
         status = "retired_after_premerge_acceptance_execution"
     )
+    payload$separation$development_fixture_seed_blocks <- list(
+        repeated_subject_validator = list(
+            task_id = "development-fixture=repeated-subject-validator",
+            first_scalar_seed = 4242L,
+            last_scalar_seed = 4249L,
+            status = "reserved_non_acceptance_fixture"
+        )
+    )
     payload$separation$rule <- paste(
         "version 5 roots are unknowable before its reviewed merge; versions",
         "3 and 4 are retired in full, and their scalar blocks, task",
@@ -592,9 +600,14 @@
     payload$provenance$implementation <- "k1_stage0_acceptance_v5"
     payload$provenance$source_specification <-
         "docs/specs/k1-stage0-acceptance-protocol-v5.md"
+    payload$provenance$acceptance_results_inspected <- TRUE
+    payload$provenance$acceptance_outcomes_changed_science <- FALSE
     payload$provenance$evidence_inputs <- c(
         payload$provenance$evidence_inputs,
-        "version 4 premerge execution incident; no scientific outcomes used"
+        paste(
+            "version 4 premerge execution incident; result structure",
+            "inspected, no scientific setting changed in response"
+        )
     )
     payload
 }

@@ -560,14 +560,26 @@ test_that("repeated-subject evidence uses its governed execution contract", {
         manifest$tasks$control == "repeated_subject",
         , drop = FALSE
     ][1L, , drop = FALSE]
-    development_seed <- 424242L
-    task$task_id <- "development-fixture=repeated-subject-validator"
+    fixture <- k1_acceptance_protocol("5")$separation$
+        development_fixture_seed_blocks$repeated_subject_validator
+    development_seed <- fixture$first_scalar_seed
+    task$task_id <- fixture$task_id
     task$seed_root <- development_seed
     task$stream_seeds <- I(list(as.integer(development_seed + 0:7)))
     task$task_stream <- I(list(landscapeR:::.derive_task_stream(
         development_seed, task$task_id[[1L]]
     )))
     expect_false(task$task_id[[1L]] %in% manifest$tasks$task_id)
+    expect_identical(
+        range(task$stream_seeds[[1L]]),
+        c(fixture$first_scalar_seed, fixture$last_scalar_seed)
+    )
+    expect_true(
+        max(task$stream_seeds[[1L]]) <
+            protocol$seed_derivation$minimum_seed_root
+    )
+    expect_false(any(task$stream_seeds[[1L]] %in%
+        protocol$separation$reserved_calibration_rng_streams))
     identity <- revised_identity_v3()
     identity$source_revision <- runner_revision_v4()
     testthat::local_mocked_bindings(

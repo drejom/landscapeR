@@ -279,7 +279,8 @@ test_that("K=1 acceptance protocol v5 refreezes identical science only", {
     expect_true(validate_k1_acceptance_protocol(refrozen))
     expect_false(refrozen$execution$acceptance_execution_available)
     expect_identical(refrozen$execution$phase, "definition_only")
-    expect_false(refrozen$provenance$acceptance_results_inspected)
+    expect_true(refrozen$provenance$acceptance_results_inspected)
+    expect_false(refrozen$provenance$acceptance_outcomes_changed_science)
     expect_identical(refrozen$grids, retired$grids)
     expect_identical(refrozen$thresholds, retired$thresholds)
     expect_identical(refrozen$outcome_states, retired$outcome_states)
@@ -300,6 +301,13 @@ test_that("K=1 acceptance protocol v5 refreezes identical science only", {
     expect_identical(retired_v4$last_reserved_scalar_seed, 990377812L)
     expect_identical(retired_v4$task_count, 7200L)
     expect_identical(retired_v4$protocol_digest, retired$digest)
+    fixture <- refrozen$separation$development_fixture_seed_blocks$
+        repeated_subject_validator
+    expect_identical(fixture$first_scalar_seed, 4242L)
+    expect_identical(fixture$last_scalar_seed, 4249L)
+    expect_true(
+        fixture$last_scalar_seed < refrozen$seed_derivation$minimum_seed_root
+    )
 })
 
 test_that("K=1 acceptance seeds remain hidden until their protocol merge", {

@@ -126,10 +126,9 @@ merged. Integration smoke tests must use a separately labelled development
 fixture with RNG streams that cannot enter acceptance evidence. If an
 acceptance task is run early, retire the complete seed set and freeze a new
 protocol without changing scientific settings in response to its outcomes.
-**Incident:** issue #193 runner development executed four version 3 manifest
-tasks locally while checking integration. Although labelled as a smoke test,
-their outcomes were observed before runner review, so the entire version 3 seed
-set was retired before production execution.
+**Incident:** issue #193 ran version 3 smoke rows and later version 4 acceptance
+branches before their runner revisions merged. Both complete seed sets were
+retired; version 5 refroze unchanged science and reserved fixture RNG explicitly.
 ### RR-018 — Preserve public call sequences during infrastructure migrations
 Retain arguments, paths, return shape, and verifier sequence, or provide a tested
 migration path. Exact-path compatibility must preserve raced destination data.
