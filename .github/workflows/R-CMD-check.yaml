@@ -101,6 +101,9 @@ jobs:
       - name: Visual landing-proof policy tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
 
+      - name: Public plot contact-sheet contract
+        run: python3 scripts/check-issue-226-contact-sheet.py
+
       - name: Visual landing-proof policy
         if: github.event_name == 'pull_request'
         env:
