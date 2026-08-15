@@ -11,12 +11,13 @@ k1_revised_acceptance_manifest(
 )
 }
 \arguments{
-\item{phase_a_merge_commit}{reviewed version 3 or 4 protocol merge SHA-1.}
+\item{phase_a_merge_commit}{reviewed version 3, 4, or 5 protocol merge
+SHA-1.}
 
 \item{runner_revision}{reviewed runner merge SHA-1.}
 
-\item{protocol}{frozen revised protocol. Version 4 is the executable
-protocol; version 3 remains readable but retired.}
+\item{protocol}{frozen revised protocol. Version 5 is the executable
+protocol; versions 3 and 4 remain readable but retired.}
 }
 \value{
 Digest-bound \code{K1RevisedAcceptanceManifest}.

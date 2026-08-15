@@ -1,9 +1,9 @@
 devtools::load_all(quiet = TRUE)
 
-protocol <- k1_acceptance_protocol("3")
+protocol <- k1_acceptance_protocol("5")
 manifest <- k1_revised_acceptance_manifest(
-    "4d2ee67653c7de2f7caf2e52da4a8f7fa05ab111",
-    strrep("a", 40L),
+    "f668e1e0f49f66b8bd8c244ca6fb667a9b39d896",
+    strrep("d", 40L),
     protocol
 )
 
@@ -23,7 +23,7 @@ recovered <- with(manifest$tasks, ifelse(
     )
 ))
 identity <- list(
-    source_revision = strrep("a", 40L),
+    source_revision = strrep("d", 40L),
     r_version = paste(R.version$major, R.version$minor, sep = "."),
     package_versions = c(landscapeR = "proof-fixture")
 )
@@ -62,6 +62,21 @@ signal <- plot_k1_revised_acceptance(summary, "signal_regime")
 
 proof_root <- ".github/landing-proof/issue-193-runner"
 dir.create(proof_root, recursive = TRUE, showWarnings = FALSE)
+writeLines(c(
+    paste0("protocol_id=", manifest$protocol_id),
+    paste0("protocol_digest=", manifest$protocol_digest),
+    paste0("phase_a_merge_commit=", manifest$phase_a_merge_commit),
+    paste0("fixture_runner_revision=", manifest$runner_revision),
+    paste0("manifest_digest=", manifest$digest),
+    paste0("requested_tasks=", nrow(manifest$tasks)),
+    paste0("first_seed_root=", min(manifest$tasks$seed_root)),
+    paste0(
+        "last_scalar_seed=",
+        max(unlist(manifest$tasks$stream_seeds, use.names = FALSE))
+    ),
+    "historical_stream_authentication=TRUE",
+    "acceptance_executed=FALSE"
+), file.path(proof_root, "manifest-summary.txt"))
 plots <- list(sampling = sampling, signal = signal)
 dimensions <- list(sampling = c(250, 140), signal = c(180, 150))
 for (name in names(plots)) {

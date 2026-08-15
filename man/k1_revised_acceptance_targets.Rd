@@ -12,7 +12,8 @@ k1_revised_acceptance_targets(
 )
 }
 \arguments{
-\item{phase_a_merge_commit}{reviewed version 3 or 4 protocol merge SHA-1.}
+\item{phase_a_merge_commit}{reviewed version 3, 4, or 5 protocol merge
+SHA-1.}
 
 \item{runner_revision}{reviewed runner merge SHA-1.}
 
@@ -22,10 +23,11 @@ k1_revised_acceptance_targets(
 \code{NULL} defers to the controller selected by the active targets backend.}
 }
 \value{
-List of targets objects. Versions 3 and 4 are audit-only.
+List of targets objects. Versions 3 and 4 are audit-only; version 5
+is executable only after worker revision preflight succeeds.
 }
 \description{
 Versions 3 and 4 provide readable one-branch-per-replicate audit graphs whose
-preflight deliberately stops before any task can execute. Version 5 remains
-protocol-only until a later reviewed runner binds its protocol merge.
+preflight deliberately stops before any task can execute. Version 5 binds the
+reviewed protocol merge and is the only executable revised-acceptance graph.
 }

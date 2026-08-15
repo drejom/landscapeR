@@ -8,9 +8,10 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#193, adapt and review the version 5
-runner after the protocol-only freeze merges; do not execute a version 5 row
-before that runner revision also merges**.
+**Next task after this change lands:** **#193, execute the reviewed version 5
+acceptance run; then complete #51 phase B**. Do not execute a version 5 row
+before this runner revision merges and its exact revision is recorded by the
+workers.
 The maintainer deliberately reopened the architecture-maintenance lane on
 2026-08-14 after a fresh whole-codebase review. Issues #209 and #211 completed
 the publication lane; #210 established the shared association kernel and #212
@@ -164,7 +165,8 @@ The milestone is complete only when:
                                                          │
                                                          v
                                              #193 v5 runner adaptation;
-                                                  execute only after merge
+                                                  manifest revealed; execute
+                                                  only after runner merge
                                                          │
                                                          v
                                              #51 phase B: aggregate/finalize
@@ -719,7 +721,7 @@ bodies may state dependencies but do not change this ordering.
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | complete on merge; does not block acceptance |
-| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; v5 protocol-only freeze, then reviewed v5 runner before execution |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next — execute the reviewed v5 acceptance run after this runner revision merges |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete |

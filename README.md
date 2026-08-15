@@ -114,13 +114,13 @@ The revised K=1 acceptance API exposes audit-only version 3 and version 4
 manifests and targets graphs, plus a typed result contract, operating-map
 renderer, and artifact verifier. Neither retired version can execute or publish
 scientific evidence because its task rows were exercised before the applicable
-runner merged. Version 5 is a protocol-only refreeze with identical scientific
-settings, authenticated historical RNG manifests, and explicit reservation of
-the retired and development-fixture seed blocks. Its acceptance seeds remain
-hidden until the protocol merge, and execution remains unavailable until a
-separate version 5 runner revision is reviewed and merged. Current operating
-maps are implementation fixtures, not acceptance results or sample-size
-recommendations.
+runner merged. Version 5 refreezes the same scientific settings, authenticates
+the historical RNG manifests, reserves the retired and development-fixture
+seed blocks, and binds the reviewed targets runner to the merged protocol. Its
+manifest is now revealed, but no acceptance task has executed; workers must
+still report the exact reviewed runner revision before execution. Current
+operating maps are implementation fixtures, not acceptance results or
+sample-size recommendations.
 
 K=1 calibration, K=1 acceptance, and full Stage 1 evidence publish and verify
 governed artifacts through one internal content-addressed seam. Each workflow

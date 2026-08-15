@@ -10,6 +10,12 @@ protocol_merge_v4 <- function() {
 
 runner_revision_v4 <- function() strrep("b", 40L)
 
+protocol_merge_v5 <- function() {
+    "f668e1e0f49f66b8bd8c244ca6fb667a9b39d896"
+}
+
+runner_revision_v5 <- function() strrep("d", 40L)
+
 revised_identity_v3 <- function() list(
     source_revision = runner_revision_v3(),
     r_version = paste(R.version$major, R.version$minor, sep = "."),
@@ -100,6 +106,47 @@ test_that("version 4 manifest is authenticated and disjoint before execution", {
         landscapeR:::.k1_validate_runtime_revision(bad_identity, manifest),
         "must equal the reviewed runner revision",
         class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("version 5 reveals a disjoint executable manifest after protocol merge", {
+    protocol <- k1_acceptance_protocol("5")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v5(), runner_revision_v5(), protocol
+    )
+
+    expect_true(validate_k1_revised_acceptance_manifest(manifest))
+    expect_identical(manifest$protocol_id, "k1-stage0-acceptance-v5")
+    expect_identical(manifest$artifact_version, "5")
+    expect_identical(manifest$phase_a_merge_commit, protocol_merge_v5())
+    expect_identical(manifest$runner_revision, runner_revision_v5())
+    expect_identical(nrow(manifest$tasks), 7200L)
+    expect_true(manifest$historical_stream_authentication$
+        authenticated_for_execution)
+    good_identity <- revised_identity_v3()
+    good_identity$source_revision <- runner_revision_v5()
+    expect_true(landscapeR:::.k1_validate_runtime_revision(
+        good_identity, manifest
+    ))
+    bad_identity <- good_identity
+    bad_identity$source_revision <- strrep("e", 40L)
+    expect_error(
+        landscapeR:::.k1_validate_runtime_revision(bad_identity, manifest),
+        "must equal the reviewed runner revision",
+        class = "k1_acceptance_runner_error"
+    )
+    scalar <- unlist(manifest$tasks$stream_seeds, use.names = FALSE)
+    retired <- protocol$separation$retired_version4_seed_block
+    expect_false(any(
+        scalar >= retired$first_seed_root &
+            scalar <= retired$last_reserved_scalar_seed
+    ))
+    expect_false(any(scalar %in% 4242:4249))
+    expect_true(all(
+        manifest$tasks$seed_root >= protocol$seed_derivation$minimum_seed_root
+    ))
+    expect_invisible(
+        landscapeR:::.k1_revised_assert_execution_authorized(protocol)
     )
 })
 
@@ -292,6 +339,28 @@ test_that("version 4 targets expose a retired audit topology", {
         "not a reviewed revised protocol merge",
         class = "k1_acceptance_runner_error"
     )
+})
+
+test_that("version 5 targets expose the reviewed executable topology", {
+    skip_if_not_installed("targets")
+    graph <- k1_revised_acceptance_targets(
+        phase_a_merge_commit = protocol_merge_v5(),
+        runner_revision = runner_revision_v5(),
+        artifact_root = tempfile("k1-revised-v5-")
+    )
+
+    expect_identical(vapply(graph, `[[`, character(1L), "name"), c(
+        "k1_v5_protocol", "k1_v5_manifest", "k1_v5_identity",
+        "k1_v5_preflight", "k1_v5_tasks", "k1_v5_task",
+        "k1_v5_result", "k1_v5_results", "k1_v5_artifact",
+        "k1_v5_artifact_verified", "k1_v5_evidence"
+    ))
+    expect_match(
+        paste(capture.output(print(graph[[4L]])), collapse = "\n"),
+        "k1_revised_assert_execution_authorized"
+    )
+    expect_match(deparse(graph[[7L]]$settings$pattern), "map\\(k1_v5_task\\)")
+    expect_identical(graph[[7L]]$settings$error, "null")
 })
 
 test_that("retired version 3 tasks cannot execute", {
