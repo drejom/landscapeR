@@ -1198,7 +1198,7 @@ plot_k1_revised_acceptance <- function(
             ggplot2::geom_tile(
                 colour = semantic[["paper"]], linewidth = 0.8
             ) +
-        ggplot2::geom_point(ggplot2::aes(shape = decision),
+            ggplot2::geom_point(ggplot2::aes(shape = decision),
                 colour = semantic[["ink"]], fill = semantic[["focal"]],
                 size = 2.2, stroke = 0.5) +
             ggplot2::facet_wrap(

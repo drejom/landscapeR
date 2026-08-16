@@ -113,6 +113,43 @@ test_that("independent time course fits the declared standardized interaction", 
         visual_evidence_surface(atlas_view),
         "independent_time_course"
     )
+    facet_labels <- unname(atlas_plot$facet$params$labeller(
+        data.frame(component_label = c("PC1", "PC2"))
+    )$component_label)
+    effect_summary <- atlas_provenance(atlas)$time_course_effect_summary
+    expect_identical(
+        facet_labels,
+        sprintf(
+            "%s\ninteraction %.2f\n95%% CI %.2f to %.2f",
+            effect_summary$component_label,
+            effect_summary$estimate,
+            effect_summary$effect_conf_low,
+            effect_summary$effect_conf_high
+        )
+    )
+    expect_identical(atlas_plot$theme$strip.text$size, 6)
+    expect_identical(atlas_plot$theme$strip.text$lineheight, 0.9)
+    expect_equal(
+        as.numeric(atlas_plot$theme$strip.text$margin[c(1L, 3L)]),
+        c(1.5, 1.5)
+    )
+    expect_match(
+        scientific_caption(atlas_plot),
+        "Facet labels report stored interaction estimates and 95% intervals",
+        fixed = TRUE
+    )
+    nonfinite_interval_atlas <- atlas
+    nonfinite_summary <- nonfinite_interval_atlas@provenance$time_course_effect_summary
+    nonfinite_summary$effect_conf_low[[1L]] <- NA_real_
+    nonfinite_interval_atlas@provenance$time_course_effect_summary <-
+        nonfinite_summary
+    nonfinite_labels <- unname(plot(nonfinite_interval_atlas)$facet$params$labeller(
+        data.frame(component_label = c("PC1", "PC2"))
+    )$component_label)
+    expect_identical(
+        nonfinite_labels[[1L]],
+        "PC1\ninteraction not estimated"
+    )
     expect_true(nrow(visual_evidence_display(atlas_view, "cells")) > 0L)
     expect_null(atlas_plot$labels$caption)
     expect_match(

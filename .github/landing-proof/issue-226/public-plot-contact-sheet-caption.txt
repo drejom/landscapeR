@@ -1,0 +1,18 @@
+Figure 1. Public-facing landscapeR plot contact sheet.
+Panels A--Q show representative outputs from the current package source,
+with panel identity, plotting function, input class, purpose, and separate
+scientific caption recorded in public-plot-inventory.tsv.
+Panels A--G cover component-association evidence across cross-sectional,
+independent-time-course, and repeated-subject designs. Panels H--M cover
+Stage 1 and Stage 2 state-space displays. Panel N covers the calibrated
+operating-domain diagnostic; panels O--Q cover the primary, diagnostic,
+and audit identifiability views.
+Excluded exported K=1 calibration and acceptance renderers are listed in the
+inventory with their development/validation boundary; they are not package
+user result figures.
+All included figures use the package scientific-caption accessor; the contact
+sheet itself is an audit artifact and carries no scientific claim.
+The adversarial review found follow-up work rather than silently declaring the
+current visual language complete. Findings and issue links are recorded in
+audit-findings.tsv; the governing objective is scientific accuracy and usefulness
+through a coherent visual language that elevates scientific interpretation.
