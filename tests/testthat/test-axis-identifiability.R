@@ -602,6 +602,18 @@ test_that("identifiability assessment repeats the complete discovery search", {
     expect_identical(diagnostic$labels$colour, "Discovery component")
     expect_identical(diagnostic$labels$shape, "Evidence series")
     expect_identical(diagnostic$labels$size, "Nominated component")
+    diagnostic_positions <- vapply(
+        diagnostic$layers,
+        function(layer) class(layer$position)[[1L]],
+        character(1L)
+    )
+    expect_true(any(grepl("PositionDodge", diagnostic_positions)))
+    expect_true(any(grepl("PositionJitterdodge", diagnostic_positions)))
+    expect_match(
+        diagnostic_caption,
+        "Comparison series are horizontally separated",
+        fixed = TRUE
+    )
     audit <- plot_component_identifiability(assessed, view = "audit")
     expect_setequal(
         unique(audit$data$surface),

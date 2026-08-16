@@ -1606,7 +1606,9 @@ proposal_identifiability <- function(proposal) {
             paste(
                 "Larger red points denote the nominated component and",
                 "smaller black points denote the remaining candidate",
-                "components in component-indexed panels."
+                "components in component-indexed panels. Comparison series",
+                "are horizontally separated at shared evidence positions so",
+                "each series remains recoverable."
             )
         },
         "Components were matched jointly by maximizing total absolute",
@@ -2089,7 +2091,8 @@ plot_component_identifiability <- function(
             x = evidence_index,
             y = value,
             colour = focal,
-            shape = series
+            shape = series,
+            group = series
         )
     ) +
         ggplot2::geom_blank(
@@ -2110,6 +2113,7 @@ plot_component_identifiability <- function(
             ],
             ggplot2::aes(size = focal),
             alpha = 0.65,
+            position = ggplot2::position_dodge(width = 0.42),
             na.rm = TRUE
         ) +
         ggplot2::geom_jitter(
@@ -2123,8 +2127,12 @@ plot_component_identifiability <- function(
                 drop = FALSE
             ],
             ggplot2::aes(size = focal),
-            width = 0.15,
-            height = 0,
+            position = ggplot2::position_jitterdodge(
+                jitter.width = 0.015,
+                jitter.height = 0,
+                dodge.width = 0.42,
+                seed = 229L
+            ),
             alpha = 0.55,
             na.rm = TRUE
         ) +
@@ -2135,8 +2143,12 @@ plot_component_identifiability <- function(
                 drop = FALSE
             ],
             ggplot2::aes(size = focal),
-            width = 0.15,
-            height = 0,
+            position = ggplot2::position_jitterdodge(
+                jitter.width = 0.015,
+                jitter.height = 0,
+                dodge.width = 0.42,
+                seed = 229L
+            ),
             alpha = 0.55,
             na.rm = TRUE
         ) +
