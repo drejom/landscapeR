@@ -74,16 +74,32 @@ test_that("plot_potential requires explicit opt-in for point-estimate classifica
         logical(1L)
     )))
     caption <- gsub("\\s+", " ", scientific_caption(plot))
-    expect_match(caption, "downward triangles mark stored wells")
-    expect_match(caption, "symbols are offset from their stored coordinates")
-    expect_match(caption, "upward triangles mark stored barriers")
+    expect_match(caption, "Outlined downward triangles mark stored wells")
+    expect_match(
+        caption,
+        "symbols are offset and staggered from their stored coordinates"
+    )
+    expect_match(caption, "Outlined upward triangles mark stored barriers")
     expect_match(caption, "Dotted vertical segments")
     expect_match(caption, "point\\s+estimates")
 
     caption_with_metadata <- scientific_caption(plot_potential(
         std3, colour_by = "planted_group", show_critical_points = TRUE
     ))
-    expect_match(caption_with_metadata, "stem width")
+    caption_with_metadata <- gsub("\\s+", " ", caption_with_metadata)
+    expect_false(grepl("stem width|stem type", caption_with_metadata))
+    expect_match(
+        caption_with_metadata,
+        "categorical samples occupy distinct short baseline lanes"
+    )
+    critical_metadata_plot <- plot_potential(
+        std3, colour_by = "planted_group", show_critical_points = TRUE
+    )
+    expect_s3_class(
+        critical_metadata_plot$scales$get_scales("linetype"),
+        "ScaleDiscrete"
+    )
+    expect_null(critical_metadata_plot$scales$get_scales("linewidth"))
 })
 
 test_that("plot_potential rejects overlarge categorical critical-point encodings", {
@@ -98,7 +114,7 @@ test_that("plot_potential rejects overlarge categorical critical-point encodings
 
     expect_error(
         plot_potential(std3, colour_by = "many_groups", show_critical_points = TRUE),
-        "at most 8 levels",
+        "baseline lanes support at most 4 levels",
         class = "landscapeR_plot_evidence_unavailable"
     )
 })
@@ -205,7 +221,7 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     expect_match(scientific_caption(plot), "categorical\\s+planted group")
     expect_match(scientific_caption(plot), "Dashed rug marks\\s+1 observation")
     expect_s3_class(plot$scales$get_scales("linetype"), "ScaleDiscrete")
-    expect_match(scientific_caption(plot), "baseline stem")
+    expect_match(scientific_caption(plot), "baseline stem type")
 })
 
 test_that("plot_potential redundantly encodes continuous rug metadata", {
@@ -228,6 +244,19 @@ test_that("plot_potential redundantly encodes continuous rug metadata", {
     expect_s3_class(plot$scales$get_scales("colour"), "ScaleContinuous")
     expect_s3_class(plot$scales$get_scales("linewidth"), "ScaleContinuous")
     expect_match(scientific_caption(plot), "stem width")
+
+    critical_plot <- plot_potential(
+        std, colour_by = "observed_time", show_critical_points = TRUE
+    )
+    expect_s3_class(
+        critical_plot$scales$get_scales("colour"),
+        "ScaleContinuous"
+    )
+    expect_null(critical_plot$scales$get_scales("linewidth"))
+    expect_match(
+        scientific_caption(critical_plot),
+        "no baseline stem encoding is added"
+    )
 })
 
 test_that("plot_potential renders typed unavailability when Stage 2 is absent", {
