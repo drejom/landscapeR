@@ -277,6 +277,34 @@ test_that("plot_components visibly renders continuous MAE metadata", {
     expect_match(scientific_caption(p), "continuous sample_weeks")
 })
 
+test_that("plot_components renders valid metadata without unknown-scale warnings", {
+    old_warning <- options(warn = 2)
+    on.exit(options(old_warning), add = TRUE)
+
+    continuous <- component_gallery_fixture()
+    continuous_cd <- colData(continuous)
+    continuous_cd$sample_weeks[1L] <- NA_real_
+    colData(continuous) <- continuous_cd
+    continuous <- prepare_plot_evidence(continuous, stage = "stage1")
+
+    categorical <- component_gallery_fixture()
+    categorical_cd <- colData(categorical)
+    categorical_cd$condition[1L] <- NA_character_
+    colData(categorical) <- categorical_cd
+    categorical <- prepare_plot_evidence(categorical, stage = "stage1")
+
+    expect_no_error({
+        ggplot2::ggplot_build(
+            plot_components(continuous, colour_by = "sample_weeks")
+        )
+    })
+    expect_no_error({
+        ggplot2::ggplot_build(
+            plot_components(categorical, colour_by = "condition")
+        )
+    })
+})
+
 test_that("metadata field names cannot overwrite gallery coordinates or facets", {
     std <- component_gallery_fixture()
     cd <- colData(std)
