@@ -6,6 +6,40 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 # plot_potential(): Stage 2 quasi-potential curve
 # ---------------------------------------------------------------------------
 
+.stage2_critical_point_display <- function(cp_df, curve_df) {
+    if (!is.data.frame(cp_df) || !nrow(cp_df)) {
+        return(list(
+            points = data.frame(
+                x = numeric(), U = numeric(), type = character(),
+                display_x = numeric(), display_U = numeric()
+            ),
+            connectors = data.frame(
+                x = numeric(), y = numeric(), xend = numeric(), yend = numeric()
+            )
+        ))
+    }
+    x_values <- curve_df$x[is.finite(curve_df$x)]
+    y_values <- curve_df$U[is.finite(curve_df$U)]
+    x_span <- diff(range(x_values))
+    y_span <- diff(range(y_values))
+    if (!is.finite(x_span) || x_span <= 0) x_span <- 1
+    if (!is.finite(y_span) || y_span <= 0) y_span <- 1
+    order_index <- order(cp_df$x, cp_df$type)
+    ranks <- integer(nrow(cp_df))
+    ranks[order_index] <- seq_len(nrow(cp_df))
+    offsets <- ranks - (nrow(cp_df) + 1) / 2
+    display <- cp_df
+    display$display_x <- cp_df$x + offsets * x_span * 0.035
+    display$display_U <- cp_df$U + max(y_span * 0.06, 0.25)
+    connectors <- data.frame(
+        x = display$x,
+        y = display$U,
+        xend = display$display_x,
+        yend = display$display_U
+    )
+    list(points = display, connectors = connectors)
+}
+
 #' Plot the quasi-potential landscape (Stage 2 output)
 #'
 #' Shows U(x) = -log p(x) along the state-transition axis. Point-estimate
@@ -69,8 +103,19 @@ plot_potential <- function(std, colour_by = NULL,
     }
 
     palette <- landscapeR_palette("semantic")
-    p <- ggplot2::ggplot(curve_df, ggplot2::aes(x = x, y = U)) +
-        ggplot2::geom_line(linewidth = 1, colour = unname(palette[["ink"]])) +
+    p <- ggplot2::ggplot(curve_df, ggplot2::aes(x = x, y = U))
+    if (isTRUE(show_critical_points) && nrow(seg_df)) {
+        p <- p + ggplot2::geom_segment(
+            data = seg_df,
+            ggplot2::aes(x = x, xend = xend, y = y, yend = yend),
+            linetype = "dotted",
+            colour = unname(palette[["nuisance"]]), linewidth = 0.7,
+            inherit.aes = FALSE
+        )
+    }
+    p <- p + ggplot2::geom_line(
+        linewidth = 1, colour = unname(palette[["ink"]])
+    ) +
         ggplot2::labs(
             title = "Quasi-potential landscape  U(x) = -log p(x)",
             x = "State-transition coordinate",
@@ -80,10 +125,19 @@ plot_potential <- function(std, colour_by = NULL,
         ggplot2::theme(legend.position = "bottom")
 
     if (isTRUE(show_critical_points)) {
+        critical_display <- .stage2_critical_point_display(cp_df, curve_df)
         p <- p +
+            ggplot2::geom_segment(
+                data = critical_display$connectors,
+                ggplot2::aes(x = x, xend = xend, y = y, yend = yend),
+                linetype = "dashed",
+                linewidth = 0.4,
+                colour = unname(palette[["nuisance"]]),
+                inherit.aes = FALSE
+            ) +
             ggplot2::geom_point(
-                data = cp_df,
-                ggplot2::aes(shape = type),
+                data = critical_display$points,
+                ggplot2::aes(x = display_x, y = display_U, shape = type),
                 size = 4,
                 colour = unname(palette[["ink"]])
             ) +
@@ -95,16 +149,6 @@ plot_potential <- function(std, colour_by = NULL,
                 )
             ) +
             ggplot2::labs(shape = "Critical point")
-    }
-
-    # Barrier-height segments
-    if (isTRUE(show_critical_points) && nrow(seg_df)) {
-        p <- p + ggplot2::geom_segment(
-            data = seg_df,
-            ggplot2::aes(x = x, xend = xend, y = y, yend = yend),
-            linetype = "dotted",
-            colour = unname(palette[["nuisance"]]), linewidth = 0.7,
-            inherit.aes = FALSE)
     }
 
     # Sample rug
@@ -219,10 +263,18 @@ plot_potential <- function(std, colour_by = NULL,
     } else {
         c(
             if (any(cp_df$type == "well")) {
-                "Exploratory downward triangles mark stored wells"
+                paste(
+                    "Exploratory downward triangles mark stored wells;",
+                    "symbols are offset from their stored coordinates and",
+                    "linked by dashed stems"
+                )
             },
             if (any(cp_df$type == "barrier")) {
-                "Exploratory upward triangles mark stored barriers"
+                paste(
+                    "exploratory upward triangles mark stored barriers;",
+                    "symbols are offset from their stored coordinates and",
+                    "linked by dashed stems"
+                )
             },
             if (nrow(seg_df)) {
                 "Dotted vertical segments show point-estimate barrier heights"

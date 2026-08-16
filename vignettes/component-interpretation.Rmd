@@ -264,7 +264,16 @@ plot_component_identifiability(assessed)
 plot_component_identifiability(assessed, view = "diagnostic")
 # Complete nine-panel evidence record when a detailed audit is needed:
 plot_component_identifiability(assessed, view = "audit")
+# Use the compact two-column layout for a narrow output device:
+plot_component_identifiability(assessed, view = "diagnostic", compact = TRUE)
 ```
+
+The diagnostic and audit views keep comparison series recoverable when their
+values coincide with the nominated component: shared evidence positions are
+separated horizontally without changing the stored values. For Stage 2
+quasi-potential figures, opt-in critical-point symbols are similarly offset
+for display and connected by dashed stems to their exact stored coordinates;
+the separate caption records this display convention.
 
 Each replicate reruns the declared decomposition and complete eligible
 component ranking. Cross-sectional observations are resampled as independent

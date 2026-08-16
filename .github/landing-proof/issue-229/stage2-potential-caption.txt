@@ -1,0 +1,12 @@
+Density-derived quasi-potential landscape. Molecular layers layer1, layer2. The black curve
+shows U(x) = -log p(x), derived from the stored density estimate for component 1; Rug marks
+show observed sample coordinates; rug colours encode categorical planted_group; Exploratory
+downward triangles mark stored wells; symbols are offset from their stored coordinates and
+linked by dashed stems; exploratory upward triangles mark stored barriers; symbols are offset
+from their stored coordinates and linked by dashed stems; Dotted vertical segments show
+point-estimate barrier heights. The analysis unit is independent biological observation; the
+design is cross_sectional; the estimand is the density-derived quasi-potential along the
+selected component. Critical-point classifications and barrier heights are point estimates
+without uncertainty. No calibrated critical-point or barrier threshold is applied. The
+landscape is an exploratory description and does not by itself establish a biological state
+transition.

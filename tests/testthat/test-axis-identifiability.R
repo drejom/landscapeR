@@ -602,6 +602,23 @@ test_that("identifiability assessment repeats the complete discovery search", {
     expect_identical(diagnostic$labels$colour, "Discovery component")
     expect_identical(diagnostic$labels$shape, "Evidence series")
     expect_identical(diagnostic$labels$size, "Nominated component")
+    compact_diagnostic <- plot_component_identifiability(
+        assessed, view = "diagnostic", compact = TRUE
+    )
+    expect_s3_class(compact_diagnostic, "ggplot")
+    expect_identical(compact_diagnostic$facet$params$ncol, 2L)
+    diagnostic_positions <- vapply(
+        diagnostic$layers,
+        function(layer) class(layer$position)[[1L]],
+        character(1L)
+    )
+    expect_true(any(grepl("PositionDodge", diagnostic_positions)))
+    expect_true(any(grepl("PositionJitterdodge", diagnostic_positions)))
+    expect_match(
+        diagnostic_caption,
+        "Comparison series are horizontally separated",
+        fixed = TRUE
+    )
     audit <- plot_component_identifiability(assessed, view = "audit")
     expect_setequal(
         unique(audit$data$surface),
@@ -610,6 +627,11 @@ test_that("identifiability assessment repeats the complete discovery search", {
     expect_error(
         plot_component_identifiability(assessed, view = "radial"),
         "should be one of"
+    )
+    expect_error(
+        plot_component_identifiability(assessed, compact = NA),
+        "compact must be a single non-missing logical",
+        class = "landscapeR_validation_error"
     )
     expect_false(any(grepl(
         "human",

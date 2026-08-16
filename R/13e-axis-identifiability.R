@@ -1606,7 +1606,9 @@ proposal_identifiability <- function(proposal) {
             paste(
                 "Larger red points denote the nominated component and",
                 "smaller black points denote the remaining candidate",
-                "components in component-indexed panels."
+                "components in component-indexed panels. Comparison series",
+                "are horizontally separated at shared evidence positions so",
+                "each series remains recoverable."
             )
         },
         "Components were matched jointly by maximizing total absolute",
@@ -1728,14 +1730,22 @@ proposal_identifiability <- function(proposal) {
 #' @param view one of `"primary"` (the default scientific summary),
 #'   `"diagnostic"` (the focused diagnostic), or `"audit"` (the complete
 #'   nine-panel evidence surface)
+#' @param compact logical; use a reflowed two-column diagnostic/audit layout
+#'   for narrow output devices. Defaults to `FALSE`.
 #' @return a `ggplot2` object whose separate scientific figure caption is
 #'   available through [scientific_caption()]
 #' @export
 plot_component_identifiability <- function(
     proposal,
-    view = c("primary", "diagnostic", "audit")
+    view = c("primary", "diagnostic", "audit"),
+    compact = FALSE
 ) {
     view <- match.arg(view)
+    if (!is.logical(compact) || length(compact) != 1L || is.na(compact)) {
+        .stop_landscapeR_validation(
+            "compact must be a single non-missing logical"
+        )
+    }
     evidence <- proposal_identifiability(proposal)
     single_axis <- nrow(evidence$recurrence_summary) == 1L
     surface_data <- if (identical(view, "primary")) {
@@ -1744,12 +1754,21 @@ plot_component_identifiability <- function(
         .identifiability_surface_data(evidence)
     }
     palette <- landscapeR_palette("semantic")
-    subtitle <- paste(strwrap(sprintf(
-        "Evidence outcome: %s; full-assessment completion: %d/%d",
-        .identifiability_outcome_label(evidence$structured_outcome),
-        evidence$n_completed,
-        evidence$n_requested
-    ), width = 74L), collapse = "\n")
+    subtitle <- if (isTRUE(compact)) {
+        sprintf(
+            "Outcome: %s; completion: %d/%d",
+            .identifiability_outcome_label(evidence$structured_outcome),
+            evidence$n_completed,
+            evidence$n_requested
+        )
+    } else {
+        paste(strwrap(sprintf(
+            "Evidence outcome: %s; full-assessment completion: %d/%d",
+            .identifiability_outcome_label(evidence$structured_outcome),
+            evidence$n_completed,
+            evidence$n_requested
+        ), width = 74L), collapse = "\n")
+    }
     caption <- .identifiability_caption(proposal, evidence, view)
     colour_scale <- ggplot2::scale_colour_manual(
         values = c(
@@ -2055,6 +2074,11 @@ plot_component_identifiability <- function(
         length.out = length(series_levels)
     )
     names(series_shapes) <- series_levels
+    y_scale <- if (isTRUE(compact)) {
+        ggplot2::scale_y_continuous(n.breaks = 3L)
+    } else {
+        ggplot2::scale_y_continuous()
+    }
     diagnostic_panel_labels <- c(
         Spectrum = "A  Spectrum",
         `Matching similarity` = "B  Match cosine",
@@ -2089,7 +2113,8 @@ plot_component_identifiability <- function(
             x = evidence_index,
             y = value,
             colour = focal,
-            shape = series
+            shape = series,
+            group = series
         )
     ) +
         ggplot2::geom_blank(
@@ -2110,6 +2135,7 @@ plot_component_identifiability <- function(
             ],
             ggplot2::aes(size = focal),
             alpha = 0.65,
+            position = ggplot2::position_dodge(width = 0.42),
             na.rm = TRUE
         ) +
         ggplot2::geom_jitter(
@@ -2123,8 +2149,12 @@ plot_component_identifiability <- function(
                 drop = FALSE
             ],
             ggplot2::aes(size = focal),
-            width = 0.15,
-            height = 0,
+            position = ggplot2::position_jitterdodge(
+                jitter.width = 0.015,
+                jitter.height = 0,
+                dodge.width = 0.42,
+                seed = 229L
+            ),
             alpha = 0.55,
             na.rm = TRUE
         ) +
@@ -2135,15 +2165,19 @@ plot_component_identifiability <- function(
                 drop = FALSE
             ],
             ggplot2::aes(size = focal),
-            width = 0.15,
-            height = 0,
+            position = ggplot2::position_jitterdodge(
+                jitter.width = 0.015,
+                jitter.height = 0,
+                dodge.width = 0.42,
+                seed = 229L
+            ),
             alpha = 0.55,
             na.rm = TRUE
         ) +
         ggplot2::facet_wrap(
             ggplot2::vars(surface),
             scales = "free",
-            ncol = 3L,
+            ncol = if (isTRUE(compact)) 2L else 3L,
             labeller = ggplot2::as_labeller(diagnostic_panel_labels)
         ) +
         colour_scale +
@@ -2155,6 +2189,7 @@ plot_component_identifiability <- function(
             values = c(`FALSE` = 0.8, `TRUE` = 1.5),
             guide = "none"
         ) +
+        y_scale +
         ggplot2::guides(
             shape = ggplot2::guide_legend(
                 nrow = 4L,
@@ -2180,7 +2215,27 @@ plot_component_identifiability <- function(
         ggplot2::theme(
             legend.position = "bottom",
             legend.box = "vertical",
-            strip.text = ggplot2::element_text(size = 7.5)
+            strip.text = ggplot2::element_text(
+                size = if (isTRUE(compact)) 6.5 else 6.5
+            ),
+            axis.text = ggplot2::element_text(
+                size = if (isTRUE(compact)) 6 else 7
+            ),
+            axis.title = ggplot2::element_text(
+                size = if (isTRUE(compact)) 7 else 7
+            ),
+            plot.title = ggplot2::element_text(
+                size = if (isTRUE(compact)) 10 else 10
+            ),
+            plot.subtitle = ggplot2::element_text(
+                size = if (isTRUE(compact)) 6.5 else 7
+            ),
+            legend.text = ggplot2::element_text(
+                size = if (isTRUE(compact)) 6 else 6.5
+            ),
+            legend.title = ggplot2::element_text(
+                size = if (isTRUE(compact)) 6.5 else 7
+            )
         )
     if (single_axis) {
         plot <- plot + ggplot2::geom_text(

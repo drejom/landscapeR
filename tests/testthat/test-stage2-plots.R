@@ -75,6 +75,7 @@ test_that("plot_potential requires explicit opt-in for point-estimate classifica
     )))
     caption <- gsub("\\s+", " ", scientific_caption(plot))
     expect_match(caption, "downward triangles mark stored wells")
+    expect_match(caption, "symbols are offset from their stored coordinates")
     expect_match(caption, "upward triangles mark stored barriers")
     expect_match(caption, "Dotted vertical segments")
     expect_match(caption, "point\\s+estimates")
@@ -126,6 +127,23 @@ test_that("plot_potential describes wells without claiming barrier heights", {
         "Critical-point classifications are point estimates without uncertainty"
     )
     expect_false(grepl("barrier heights are point estimates", caption))
+})
+
+test_that("critical-point display offsets preserve exact coordinates", {
+    curve <- data.frame(
+        x = seq(-2, 2, length.out = 20L),
+        U = seq(0, 4, length.out = 20L)
+    )
+    points <- data.frame(
+        x = c(0, 0), U = c(1, 1), type = c("well", "barrier")
+    )
+    display <- landscapeR:::.stage2_critical_point_display(points, curve)
+
+    expect_gt(length(unique(display$points$display_x)), 1L)
+    expect_equal(display$connectors$x, points$x)
+    expect_equal(display$connectors$y, points$U)
+    expect_equal(display$connectors$xend, display$points$display_x)
+    expect_equal(display$connectors$yend, display$points$display_U)
 })
 
 test_that("plot_potential caption combines metadata and missing-rug evidence", {

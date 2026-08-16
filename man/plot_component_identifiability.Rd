@@ -6,7 +6,8 @@
 \usage{
 plot_component_identifiability(
   proposal,
-  view = c("primary", "diagnostic", "audit")
+  view = c("primary", "diagnostic", "audit"),
+  compact = FALSE
 )
 }
 \arguments{
@@ -16,6 +17,9 @@ plot_component_identifiability(
 \item{view}{one of \code{"primary"} (the default scientific summary),
 \code{"diagnostic"} (the focused diagnostic), or \code{"audit"} (the complete
 nine-panel evidence surface)}
+
+\item{compact}{logical; use a reflowed two-column diagnostic/audit layout
+for narrow output devices. Defaults to \code{FALSE}.}
 }
 \value{
 a \code{ggplot2} object whose separate scientific figure caption is
