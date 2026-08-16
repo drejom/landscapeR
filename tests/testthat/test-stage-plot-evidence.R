@@ -579,7 +579,7 @@ test_that("degenerate grouped densities retain their component and group identit
     )
     expect_match(
         caption,
-        sprintf("PC1 \\(planted_group = %s\\)", focal_group)
+        sprintf("PC1 \\(planted group = %s\\)", focal_group)
     )
     expect_match(caption, "numerically degenerate", ignore.case = TRUE)
 })
