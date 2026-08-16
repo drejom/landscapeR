@@ -6,31 +6,6 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 # plot_potential(): Stage 2 quasi-potential curve
 # ---------------------------------------------------------------------------
 
-#' Plot the quasi-potential landscape (Stage 2 output)
-#'
-#' Shows U(x) = -log p(x) along the state-transition axis. Point-estimate
-#' critical-point classifications and barrier heights are omitted by default;
-#' they require explicit diagnostic opt-in until uncertainty is available.
-#' The returned scientific caption describes the selected component, plotted
-#' encodings, missing observations, and exploratory claim boundary separately
-#' from the graphic.
-#'
-#' @param std \code{StateTransitionData} with \code{metadata()$stage2} present
-#' @param colour_by character column name in \code{colData(std)} to colour
-#'   the rug of sample positions, or \code{NULL} (default \code{NULL})
-#' @param show_critical_points logical; explicitly opt in to point-estimate
-#'   well/barrier classifications and barrier-height segments. Defaults to
-#'   \code{FALSE} because current output does not estimate critical-point
-#'   uncertainty; opt-in output is exploratory diagnostic information only.
-#' @return a \code{ggplot} object
-#'
-#' @examples
-#' \dontrun{
-#' # Requires Stage 2 to have been run
-#' plot_potential(std_with_stage2)
-#' }
-#'
-#' @export
 .stage2_critical_point_display <- function(cp_df, curve_df) {
     if (!is.data.frame(cp_df) || !nrow(cp_df)) {
         return(list(
@@ -65,6 +40,31 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
     list(points = display, connectors = connectors)
 }
 
+#' Plot the quasi-potential landscape (Stage 2 output)
+#'
+#' Shows U(x) = -log p(x) along the state-transition axis. Point-estimate
+#' critical-point classifications and barrier heights are omitted by default;
+#' they require explicit diagnostic opt-in until uncertainty is available.
+#' The returned scientific caption describes the selected component, plotted
+#' encodings, missing observations, and exploratory claim boundary separately
+#' from the graphic.
+#'
+#' @param std \code{StateTransitionData} with \code{metadata()$stage2} present
+#' @param colour_by character column name in \code{colData(std)} to colour
+#'   the rug of sample positions, or \code{NULL} (default \code{NULL})
+#' @param show_critical_points logical; explicitly opt in to point-estimate
+#'   well/barrier classifications and barrier-height segments. Defaults to
+#'   \code{FALSE} because current output does not estimate critical-point
+#'   uncertainty; opt-in output is exploratory diagnostic information only.
+#' @return a \code{ggplot} object
+#'
+#' @examples
+#' \dontrun{
+#' # Requires Stage 2 to have been run
+#' plot_potential(std_with_stage2)
+#' }
+#'
+#' @export
 plot_potential <- function(std, colour_by = NULL,
                            show_critical_points = FALSE) {
     stopifnot(is(std, "StateTransitionData"))

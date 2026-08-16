@@ -264,6 +264,8 @@ plot_component_identifiability(assessed)
 plot_component_identifiability(assessed, view = "diagnostic")
 # Complete nine-panel evidence record when a detailed audit is needed:
 plot_component_identifiability(assessed, view = "audit")
+# Use the compact two-column layout for a narrow output device:
+plot_component_identifiability(assessed, view = "diagnostic", compact = TRUE)
 ```
 
 The diagnostic and audit views keep comparison series recoverable when their

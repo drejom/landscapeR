@@ -602,6 +602,11 @@ test_that("identifiability assessment repeats the complete discovery search", {
     expect_identical(diagnostic$labels$colour, "Discovery component")
     expect_identical(diagnostic$labels$shape, "Evidence series")
     expect_identical(diagnostic$labels$size, "Nominated component")
+    compact_diagnostic <- plot_component_identifiability(
+        assessed, view = "diagnostic", compact = TRUE
+    )
+    expect_s3_class(compact_diagnostic, "ggplot")
+    expect_identical(compact_diagnostic$facet$params$ncol, 2L)
     diagnostic_positions <- vapply(
         diagnostic$layers,
         function(layer) class(layer$position)[[1L]],

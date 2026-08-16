@@ -119,8 +119,11 @@ save_landscapeR_plot(
     width_mm = 100, height_mm = 100
 )
 save_landscapeR_plot(
-    identifiability, file.path(output_dir, "identifiability-reduced.png"),
-    width_mm = 80, height_mm = 80
+    plot_component_identifiability(
+        assessed, view = "diagnostic", compact = TRUE
+    ),
+    file.path(output_dir, "identifiability-reduced.png"),
+    width_mm = 80, height_mm = 120
 )
 save_landscapeR_plot(
     potential, file.path(output_dir, "stage2-potential.png"),
@@ -143,8 +146,9 @@ writeLines(
         "Issue #229 visual proof", "",
         "The before images are retained issue #226 native artifacts, copied",
         "verbatim to preserve the observed overplotting failure.", "",
-        "The after images use the same scientific evidence. Identifiability",
-        "comparison series are separated at shared evidence positions. Stage 2",
+        "The after images are representative synthetic renders from the same",
+        "plotting functions. Identifiability comparison series are separated at",
+        "shared evidence positions. Stage 2",
         "critical-point symbols are offset only for display and connected by",
         "dashed stems to their exact stored coordinates. Native 100 mm and",
         "reduced 80 mm renderings are both retained for inspection.", "",
