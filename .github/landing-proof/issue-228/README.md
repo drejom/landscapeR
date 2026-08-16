@@ -12,9 +12,9 @@ from the current source with `options(warn = 2)`.
 Rscript scripts/render-issue-228-proof.R
 ```
 
-The script writes the 100 mm PNG and its separate scientific caption. The
-categorical and missing-metadata cases are covered by the focused
-`test-stage1-plots.R` regression test.
+The script writes native 100 mm and reduced 80 mm PNGs plus their separate
+scientific caption. The categorical and missing-metadata cases are covered by
+the focused `test-stage1-plots.R` regression test.
 
 ## Before and after
 
@@ -26,6 +26,11 @@ After, the same valid continuous encoding renders cleanly under strict warning
 handling, with a colour legend and no fill label:
 
 ![After: continuous component plot](continuous-component.png)
+
+The reduced-size rendering remains legible under the same canonical save
+helper:
+
+![After: reduced continuous component plot](continuous-component-reduced.png)
 
 The scientific caption is kept separately in
 [`continuous-component-caption.txt`](continuous-component-caption.txt).

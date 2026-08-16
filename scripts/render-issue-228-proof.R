@@ -20,10 +20,17 @@ std <- suppressWarnings(
 old_warning <- options(warn = 2)
 on.exit(options(old_warning), add = TRUE)
 plot <- plot_components(std, colour_by = "observed_time", n_components = 2L)
-ggplot2::ggsave(
+save_landscapeR_plot(
     filename = file.path(output_dir, "continuous-component.png"),
     plot = plot,
-    width = 100, height = 100, units = "mm", dpi = 300, bg = "white"
+    width_mm = 100,
+    height_mm = 100
+)
+save_landscapeR_plot(
+    filename = file.path(output_dir, "continuous-component-reduced.png"),
+    plot = plot,
+    width_mm = 80,
+    height_mm = 80
 )
 writeLines(
     scientific_caption(plot),
