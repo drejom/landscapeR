@@ -28,9 +28,11 @@ treated as sample identity.
 }
 \details{
 Categorical and continuous metadata colour the rugs while retaining the
-stored overall density. The gallery does not calculate association scores or rank
-components; those responsibilities belong to the metadata atlas and proposal
-workflow.
+stored overall density. Categorical metadata also use baseline stem type and
+height; continuous metadata use baseline stem width and height. The gallery
+rejects categorical fields with more than 8 observed levels rather than
+assigning ambiguous marks. It does not calculate association scores or rank components; those
+responsibilities belong to the metadata atlas and proposal workflow.
 }
 \examples{
 std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)

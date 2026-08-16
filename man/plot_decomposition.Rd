@@ -10,7 +10,9 @@ plot_decomposition(std, colour_by = NULL, component = 1L)
 \item{std}{\code{StateTransitionData} with \code{metadata()$stage1} present}
 
 \item{colour_by}{character column name in \code{colData(std)} to colour
-samples by, or \code{NULL} for unlabelled points (default \code{NULL})}
+samples by, or \code{NULL} for unlabelled points (default \code{NULL}).
+Categorical fields additionally encode shape (up to 8 observed levels);
+continuous fields additionally encode point size.}
 
 \item{component}{integer -- which component column to plot from each layer's
 coordinate matrix (default \code{1L}). Use \code{plot_components()} to

@@ -79,6 +79,44 @@ test_that("plot_potential requires explicit opt-in for point-estimate classifica
     expect_match(caption, "upward triangles mark stored barriers")
     expect_match(caption, "Dotted vertical segments")
     expect_match(caption, "point\\s+estimates")
+
+    caption_with_metadata <- scientific_caption(plot_potential(
+        std3, colour_by = "planted_group", show_critical_points = TRUE
+    ))
+    expect_match(caption_with_metadata, "stem width")
+})
+
+test_that("plot_potential rejects overlarge categorical critical-point encodings", {
+    std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+    cd <- colData(std)
+    cd$many_groups <- factor(seq_len(nrow(cd)))
+    colData(std) <- cd
+    std2 <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std))@value
+    std3 <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std2)@value
+
+    expect_error(
+        plot_potential(std3, colour_by = "many_groups", show_critical_points = TRUE),
+        "at most 8 levels",
+        class = "landscapeR_plot_evidence_unavailable"
+    )
+})
+
+test_that("plot_potential renders eight categorical linetypes", {
+    std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+    cd <- colData(std)
+    cd$eight_groups <- factor(rep(letters[1:8], length.out = nrow(cd)))
+    colData(std) <- cd
+    std2 <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std))@value
+    std3 <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std2)@value
+
+    p <- plot_potential(std3, colour_by = "eight_groups")
+
+    expect_s3_class(p, "gg")
+    expect_s3_class(p$scales$get_scales("linetype"), "ScaleDiscrete")
 })
 
 test_that("plot_potential reports an empty requested critical-point overlay", {
@@ -166,6 +204,30 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     expect_null(plot$labels$caption)
     expect_match(scientific_caption(plot), "categorical\\s+planted_group")
     expect_match(scientific_caption(plot), "Dashed rug marks\\s+1 observation")
+    expect_s3_class(plot$scales$get_scales("linetype"), "ScaleDiscrete")
+    expect_match(scientific_caption(plot), "baseline stem")
+})
+
+test_that("plot_potential redundantly encodes continuous rug metadata", {
+    std <- synthetic_control(
+        n = 40L, p = 500L, K = 2L, signal = 30, seed = 2L
+    )
+    cd <- colData(std)
+    cd$observed_time <- seq_len(nrow(cd))
+    colData(std) <- cd
+    std <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std)
+    )@value
+    std <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std
+    )@value
+    std <- prepare_plot_evidence(std, stage = "stage2")
+
+    plot <- plot_potential(std, colour_by = "observed_time")
+
+    expect_s3_class(plot$scales$get_scales("colour"), "ScaleContinuous")
+    expect_s3_class(plot$scales$get_scales("linewidth"), "ScaleContinuous")
+    expect_match(scientific_caption(plot), "stem width")
 })
 
 test_that("plot_potential renders typed unavailability when Stage 2 is absent", {

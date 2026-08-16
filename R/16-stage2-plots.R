@@ -51,7 +51,13 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage2} present
 #' @param colour_by character column name in \code{colData(std)} to colour
-#'   the rug of sample positions, or \code{NULL} (default \code{NULL})
+#'   the rug of sample positions. Categorical metadata additionally use a
+#'   baseline stem with line type and height when critical points are hidden;
+#'   when \code{show_critical_points = TRUE}, stem width and height are used
+#'   so shape remains available for critical-point classifications. Continuous
+#'   metadata additionally use stem width and height. Categorical fields with
+#'   more than 8 observed levels are rejected as unavailable. Use \code{NULL}
+#'   (default) for an unlabelled rug.
 #' @param show_critical_points logical; explicitly opt in to point-estimate
 #'   well/barrier classifications and barrier-height segments. Defaults to
 #'   \code{FALSE} because current output does not estimate critical-point
@@ -192,6 +198,75 @@ plot_potential <- function(std, colour_by = NULL,
                         inherit.aes = FALSE
                     )
             }
+            marker_y <- min(curve_df$U, na.rm = TRUE)
+            marker_height <- max(diff(range(curve_df$U, na.rm = TRUE)) * 0.025, 0.02)
+            if (is.numeric(rug_df[[colour_by]])) {
+                observed_rug$metadata_height <- marker_y + marker_height *
+                    (0.4 + 0.8 * (observed_rug[[colour_by]] -
+                        min(observed_rug[[colour_by]], na.rm = TRUE)) /
+                        max(diff(range(observed_rug[[colour_by]], na.rm = TRUE)), 1))
+                observed_rug$metadata_width <- 0.45 + 0.75 *
+                    (observed_rug[[colour_by]] -
+                        min(observed_rug[[colour_by]], na.rm = TRUE)) /
+                        max(diff(range(observed_rug[[colour_by]], na.rm = TRUE)), 1)
+                p <- p + ggplot2::geom_segment(
+                    data = observed_rug,
+                    ggplot2::aes(
+                        x = x, xend = x,
+                        y = marker_y, yend = metadata_height,
+                        linewidth = metadata_width
+                    ),
+                    colour = unname(palette[["ink"]]),
+                    lineend = "round",
+                    inherit.aes = FALSE
+                ) + ggplot2::scale_linewidth_continuous(
+                    range = c(0.25, 0.8),
+                    name = paste0(colour_by, " (stem width)")
+                )
+            } else if (!isTRUE(show_critical_points)) {
+                levels <- sort(unique(as.character(observed_rug[[colour_by]])))
+                observed_rug$metadata_height <- marker_y + marker_height *
+                    (0.4 + 0.8 * (match(as.character(observed_rug[[colour_by]]), levels) - 1) /
+                        max(1, length(levels) - 1))
+                p <- p + ggplot2::geom_segment(
+                    data = observed_rug,
+                    ggplot2::aes(
+                        x = x, xend = x,
+                        y = marker_y, yend = metadata_height,
+                        linetype = .data[[colour_by]]
+                    ),
+                    linewidth = 0.65,
+                    colour = unname(palette[["ink"]]),
+                    lineend = "round",
+                    inherit.aes = FALSE
+                ) + ggplot2::scale_linetype_manual(
+                    values = .metadata_linetype_values(observed_rug[[colour_by]]),
+                    name = paste0(colour_by, " (stem type)")
+                )
+            } else {
+                levels <- names(.metadata_linetype_values(
+                    observed_rug[[colour_by]]
+                ))
+                observed_rug$metadata_height <- marker_y + marker_height *
+                    (0.4 + 0.8 * (match(as.character(observed_rug[[colour_by]]), levels) - 1) /
+                        max(1, length(levels) - 1))
+                p <- p + ggplot2::geom_segment(
+                    data = observed_rug,
+                    ggplot2::aes(
+                        x = x, xend = x,
+                        y = marker_y, yend = metadata_height,
+                        linewidth = match(as.character(.data[[colour_by]]), levels)
+                    ),
+                    colour = unname(palette[["ink"]]),
+                    lineend = "round",
+                    inherit.aes = FALSE
+                ) + ggplot2::scale_linewidth_continuous(
+                    range = c(0.45, 1.1),
+                    breaks = seq_along(levels),
+                    labels = levels,
+                    name = paste0(colour_by, " (stem width)")
+                )
+            }
         } else {
             p <- p +
                 ggplot2::geom_rug(
@@ -213,6 +288,8 @@ plot_potential <- function(std, colour_by = NULL,
                 shape = ggplot2::guide_legend(order = 2L)
             ) +
             ggplot2::theme(legend.box = "vertical")
+    } else if (!is.null(colour_by)) {
+        p <- p + ggplot2::theme(legend.box = "vertical")
     }
     .with_scientific_caption(p, visual_evidence_caption(view))
 }
@@ -246,10 +323,17 @@ plot_potential <- function(std, colour_by = NULL,
         "Sample-coordinate rug marks are omitted because Stage 1 coordinates are unavailable"
     } else if (is.null(metadata_values)) {
         "Grey rug marks show observed sample coordinates without metadata encoding"
+    } else if (is.numeric(metadata_values)) {
+        paste0(
+            "Rug colours and baseline stem width and height redundantly encode continuous ",
+            colour_by
+        )
     } else {
         paste0(
-            "Rug marks show observed sample coordinates; ",
-            .plot_metadata_encoding(metadata_values, colour_by, "rug colours")
+            "Rug colours and baseline stem ",
+            if (isTRUE(show_critical_points)) "width" else "line type",
+            " and height redundantly encode categorical ",
+            colour_by
         )
     }
     cp_df <- displays$critical_points

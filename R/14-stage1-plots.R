@@ -50,6 +50,59 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
     type <- if (is.numeric(values)) "continuous" else "categorical"
     paste0(marks, " encode ", type, " ", field)
 }
+
+.metadata_shape_values <- function(values) {
+    levels <- sort(unique(as.character(values[!is.na(values)])))
+    if (length(levels) > 8L) {
+        .stop_plot_evidence_unavailable(
+            "Categorical decomposition marks support at most 8 levels"
+        )
+    }
+    shapes <- c(16, 17, 15, 18, 8, 3, 4, 7)
+    stats::setNames(rep(shapes, length.out = length(levels)), levels)
+}
+
+.metadata_linetype_values <- function(values) {
+    levels <- sort(unique(as.character(values[!is.na(values)])))
+    if (length(levels) > 8L) {
+        .stop_plot_evidence_unavailable(
+            "Categorical stem marks support at most 8 levels"
+        )
+    }
+    linetypes <- c(
+        "solid", "dashed", "dotted", "dotdash",
+        "longdash", "twodash", "11", "33"
+    )
+    stats::setNames(rep(linetypes, length.out = length(levels)), levels)
+}
+
+.metadata_stem_data <- function(observed, density_df, value_col = "metadata_value") {
+    if (!nrow(observed)) return(observed)
+    max_density <- tapply(
+        density_df$density,
+        density_df$component,
+        max,
+        na.rm = TRUE
+    )
+    component_max <- unname(max_density[as.character(observed$component)])
+    component_max[!is.finite(component_max) | component_max <= 0] <- 1
+    values <- observed[[value_col]]
+    if (is.numeric(values)) {
+        value_range <- range(values, na.rm = TRUE)
+        if (diff(value_range) == 0) {
+            scaled <- rep(0.6, length(values))
+        } else {
+            scaled <- (values - value_range[[1L]]) / diff(value_range)
+        }
+    } else {
+        levels <- sort(unique(as.character(values)))
+        scaled <- (match(as.character(values), levels) - 1) /
+            max(1, length(levels) - 1)
+    }
+    observed$metadata_height <- component_max * (0.035 + 0.075 * scaled)
+    observed$metadata_width <- 0.45 + 0.75 * scaled
+    observed
+}
 #
 # All functions take a StateTransitionData object and return a ggplot.
 # colour_by is always optional -- omit it for unlabelled exploratory plots,
@@ -85,9 +138,11 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 #' treated as sample identity.
 #'
 #' Categorical and continuous metadata colour the rugs while retaining the
-#' stored overall density. The gallery does not calculate association scores or rank
-#' components; those responsibilities belong to the metadata atlas and proposal
-#' workflow.
+#' stored overall density. Categorical metadata also use baseline stem type and
+#' height; continuous metadata use baseline stem width and height. The gallery
+#' rejects categorical fields with more than 8 observed levels rather than
+#' assigning ambiguous marks. It does not calculate association scores or rank components; those
+#' responsibilities belong to the metadata atlas and proposal workflow.
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage1} present
 #' @param colour_by optional single MAE-level \code{colData} column name.
@@ -251,6 +306,21 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 sides = "b"
             )
         }
+        observed <- .metadata_stem_data(observed, density_df)
+        p <- p + ggplot2::geom_segment(
+            data = observed,
+            ggplot2::aes(
+                x = coord, xend = coord,
+                y = 0, yend = metadata_height,
+                colour = .data[["metadata_value"]],
+                linewidth = metadata_width
+            ),
+            inherit.aes = FALSE,
+            lineend = "round"
+        ) + ggplot2::scale_linewidth_continuous(
+            range = c(0.35, 1.1),
+            name = paste0(colour_by, " (stem width)")
+        )
     } else {
         observed <- df[!is.na(df$metadata_value), , drop = FALSE]
         missing <- df[is.na(df$metadata_value), , drop = FALSE]
@@ -307,6 +377,22 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 sides = "b"
             )
         }
+        observed <- .metadata_stem_data(observed, density_df)
+        p <- p + ggplot2::geom_segment(
+            data = observed,
+            ggplot2::aes(
+                x = coord, xend = coord,
+                y = 0, yend = metadata_height,
+                colour = .data[["metadata_value"]],
+                linetype = .data[["metadata_value"]]
+            ),
+            inherit.aes = FALSE,
+            linewidth = 0.65,
+            lineend = "round"
+        ) + ggplot2::scale_linetype_manual(
+            values = .metadata_linetype_values(observed$metadata_value),
+            name = paste0(colour_by, " (stem type)")
+        )
     }
 
     plot_labels <- list(
@@ -331,7 +417,10 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         ggplot2::facet_wrap(~ component, scales = "free") +
         do.call(ggplot2::labs, plot_labels) +
         theme_landscapeR() +
-        ggplot2::theme(legend.position = "bottom")
+        ggplot2::theme(
+            legend.position = "bottom",
+            legend.box = "vertical"
+        )
 
     view <- .stage1_components_surface_view(
         view, layer_name, k_show, colour_by
@@ -427,7 +516,14 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     }
     context <- displays$caption_contexts[[layer_name]]
     metadata_marks <- if (!is.null(meta_col) && !is.numeric(meta_col)) {
-        "Density fills, outlines, and rug colours"
+        paste(
+            "Density fills, outlines, and rug colours; baseline stems use",
+            "line type and height and redundantly"
+        )
+    } else if (!is.null(meta_col)) {
+        paste(
+            "Rug colours; baseline stems use width and height and redundantly"
+        )
     } else {
         "Rug colours"
     }
@@ -646,7 +742,9 @@ plot_spectrum <- function(std, n_sv = 20L) {
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage1} present
 #' @param colour_by character column name in \code{colData(std)} to colour
-#'   samples by, or \code{NULL} for unlabelled points (default \code{NULL})
+#'   samples by, or \code{NULL} for unlabelled points (default \code{NULL}).
+#'   Categorical fields additionally encode shape (up to 8 observed levels);
+#'   continuous fields additionally encode point size.
 #' @param component integer -- which component column to plot from each layer's
 #'   coordinate matrix (default \code{1L}). Use \code{plot_components()} to
 #'   inspect descriptive distributions; scientific selection requires the
@@ -761,18 +859,41 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
             colour   = colour_by
         ) +
         theme_landscapeR() +
-        ggplot2::theme(legend.position = "bottom")
+        ggplot2::theme(
+            legend.position = "bottom",
+            legend.box = "vertical"
+        )
 
     if (is.null(colour_by)) {
         p <- p + ggplot2::geom_point(size = 2, alpha = 0.75)
     } else {
-        p <- p +
-            ggplot2::geom_point(
-                data = df[!is.na(df[[colour_by]]), , drop = FALSE],
-                ggplot2::aes(colour = .data[[colour_by]]),
-                size = 2, alpha = 0.75
-            )
+        observed <- df[!is.na(df[[colour_by]]), , drop = FALSE]
         meta_col <- df[[colour_by]]
+        if (is.numeric(meta_col)) {
+            p <- p + ggplot2::geom_point(
+                data = observed,
+                ggplot2::aes(
+                    colour = .data[[colour_by]],
+                    size = .data[[colour_by]]
+                ),
+                shape = 16, alpha = 0.75
+            ) + ggplot2::scale_size_continuous(
+                range = c(1.4, 2.8),
+                name = paste0(colour_by, " (point size)")
+            )
+        } else {
+            p <- p + ggplot2::geom_point(
+                data = observed,
+                ggplot2::aes(
+                    colour = .data[[colour_by]],
+                    shape = .data[[colour_by]]
+                ),
+                size = 2, alpha = 0.75
+            ) + ggplot2::scale_shape_manual(
+                values = .metadata_shape_values(meta_col),
+                name = paste0(colour_by, " (shape)")
+            )
+        }
         p <- p + scale_colour_landscapeR(
             if (is.numeric(meta_col)) "continuous" else "categorical",
             name = colour_by
@@ -821,7 +942,14 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
             "Facets identify molecular layers; points show component ", plot_idx,
             " sample coordinates rank-ordered within each layer; the dotted horizontal line marks zero"
         ),
-        .plot_metadata_encoding(meta_col, colour_by, "Point colours")
+        .plot_metadata_encoding(
+            meta_col, colour_by,
+            if (is.numeric(meta_col)) {
+                "Point colours and point sizes"
+            } else {
+                "Point colours and point shapes"
+            }
+        )
     )
     if (nrow(angle_row)) {
         encodings <- c(

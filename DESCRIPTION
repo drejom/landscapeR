@@ -51,6 +51,8 @@ Suggests:
     targets,
     testthat (>= 3.0.0),
     pkgload,
+    png,
+    colorspace,
     knitr,
     rmarkdown,
     pkgdown
