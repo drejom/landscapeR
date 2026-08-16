@@ -3,10 +3,9 @@ experiment uses the rna layer to assess the declared condition target contrasts 
 control. (A) Component PC1 shows individual observations; no population trajectory or
 interaction interval is estimable. (B) Component PC2 shows individual observations; no
 population trajectory or interaction interval is estimable. Points show independent biological
-observations; labels give biological sample counts per design cell; crosses mark unobserved
-condition-by-time cells. The analysis unit is independent biological observation; the design is
-independent_time_course; the estimand is condition-by-time interaction on the rank scale; time
-is recorded as day. No interaction interval or resampling recurrence is available. Raw p-values
-are retained; q-values use Holm correction across declared components within each metadata
-field and evidence variant. No acceptance threshold is applied. No unique biological coordinate
-is identified.
+observations; labels give biological sample counts per design cell. The analysis unit is
+independent biological observation; the design is independent_time_course; the estimand is
+condition-by-time interaction on the rank scale; time is recorded as day. No interaction
+interval or resampling recurrence is available. Raw p-values are retained; q-values use Holm
+correction across declared components within each metadata field and evidence variant. No
+acceptance threshold is applied. No unique biological coordinate is identified.

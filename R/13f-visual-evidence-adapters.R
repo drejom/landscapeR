@@ -419,28 +419,71 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
             }
         }, character(1L))
     }
-    panel_terms <- stats::setNames(
-        if (has_trajectories) {
-            sprintf(
-                paste(
-                    "Component %s shows individual observations and stored",
-                    "population trajectories; the standardized condition-by-time",
-                    "interaction is %s"
-                ),
-                summaries$component_label,
-                interval_text[summaries$component_label]
-            )
-        } else {
-            sprintf(
-                paste(
-                    "Component %s shows individual observations; no population",
-                    "trajectory or interaction interval is estimable"
-                ),
-                summaries$component_label
-            )
-        },
-        panel_letters
-    )
+    panel_terms <- if (is_proposal && !is.null(ranking) && nrow(ranking)) {
+        proposal_rank_text <- vapply(
+            summaries$component_label,
+            function(label) {
+                index <- match(label, ranking$component_label)
+                if (is.na(index)) {
+                    return("proposal rank not available")
+                }
+                sprintf(
+                    "proposal rank %d; %s",
+                    ranking$proposal_rank[[index]],
+                    rank_text[[label]]
+                )
+            },
+            character(1L)
+        )
+        stats::setNames(
+            if (has_trajectories) {
+                sprintf(
+                    paste(
+                        "Component %s shows individual observations and",
+                        "stored population trajectories; the standardized",
+                        "condition-by-time interaction is %s; %s"
+                    ),
+                    summaries$component_label,
+                    interval_text[summaries$component_label],
+                    proposal_rank_text
+                )
+            } else {
+                sprintf(
+                    paste(
+                        "Component %s shows individual observations; no",
+                        "population trajectory or interaction interval is",
+                        "estimable; %s"
+                    ),
+                    summaries$component_label,
+                    proposal_rank_text
+                )
+            },
+            panel_letters
+        )
+    } else {
+        stats::setNames(
+            if (has_trajectories) {
+                sprintf(
+                    paste(
+                        "Component %s shows individual observations and stored",
+                        "population trajectories; the standardized condition-by-time",
+                        "interaction is %s"
+                    ),
+                    summaries$component_label,
+                    interval_text[summaries$component_label]
+                )
+            } else {
+                sprintf(
+                    paste(
+                        "Component %s shows individual observations; no population",
+                        "trajectory or interaction interval is estimable"
+                    ),
+                    summaries$component_label
+                )
+            },
+            panel_letters
+        )
+    }
     facet_labels <- if (!has_trajectories) {
         panel_labels
     } else if (!is.null(ranking) && nrow(ranking)) {
@@ -487,7 +530,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         sprintf("No component nominated for %s", x@target_field)
     } else if (is_proposal) {
         sprintf(
-            "Component ranking for %s across observed time",
+            "Component ranking: %s across time",
             x@target_field
         )
     } else if (!has_trajectories) {
@@ -690,7 +733,9 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
             c(
                 "Points show independent biological observations.",
                 "labels give biological sample counts per design cell.",
-                "crosses mark unobserved condition-by-time cells.",
+                if (nrow(display$missing_cells)) {
+                    "crosses mark unobserved condition-by-time cells."
+                },
                 if (has_trajectories) {
                     "lines show stored population trajectories."
                 }

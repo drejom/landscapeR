@@ -243,9 +243,22 @@ test_that("time-course proposal and confirmation use only the primary effect", {
     )
     proposal_plot <- plot(proposal)
     expect_s3_class(proposal_plot, "ggplot")
+    expect_identical(
+        proposal_plot$labels$title,
+        "Component ranking: condition across time"
+    )
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(proposal_plot)),
+        "(A) Component PC1",
+        fixed = TRUE
+    )
     expect_match(
         scientific_caption(proposal_plot),
-        "\\(A\\)\\s+Component PC1"
+        "proposal rank 1"
+    )
+    expect_match(
+        scientific_caption(proposal_plot),
+        "effect rank 1 in"
     )
     proposal_facets <- unname(proposal_plot$facet$params$labeller(
         data.frame(component_label = c("PC1", "PC2"))
@@ -502,6 +515,11 @@ test_that("a singly replicated overlapping cell causes design abstention", {
     )
     expect_false(grepl(
         "lines show stored population trajectories",
+        tolower(caption),
+        fixed = TRUE
+    ))
+    expect_false(grepl(
+        "crosses mark unobserved",
         tolower(caption),
         fixed = TRUE
     ))
