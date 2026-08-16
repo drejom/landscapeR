@@ -387,9 +387,10 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
     requested_searches <- display_state$requested_searches
     complete_searches <- display_state$complete_searches
     partial_resampling <- display_state$partial_resampling
+    multiple_panels <- nrow(summaries) > 1L
     panel_letters <- .publication_panel_letters(nrow(summaries))
     panel_labels <- stats::setNames(
-        if (repeated) {
+        if (multiple_panels) {
             paste(panel_letters, summaries$component_label)
         } else {
             summaries$component_label
@@ -672,7 +673,7 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         time_field = provenance$time_field,
         subject_field = if (repeated) provenance$subject_field else NA_character_,
         nuisance_fields = provenance$nuisance_fields,
-        panels = if (repeated) panel_terms else character(),
+        panels = if (multiple_panels) panel_terms else character(),
         encodings = if (repeated) {
             c(
                 "Thin lines connect repeated observations from each subject.",

@@ -1,0 +1,15 @@
+Component ranking for condition across observed time. The Issue 220 independent-time-course
+fixture experiment uses the rna layer to assess the declared condition target contrasts
+treatment with control. (A) Component PC1 shows individual observations and stored population
+trajectories; the standardized condition-by-time interaction is 1.98 [1.95, 2.00]. (B)
+Component PC2 shows individual observations and stored population trajectories; the
+standardized condition-by-time interaction is -0.00 [-0.11, 0.07]. Points show independent
+biological observations; labels give biological sample counts per design cell; crosses mark
+unobserved condition-by-time cells; lines show stored population trajectories. The analysis
+unit is independent biological observation; the design is independent_time_course; the estimand
+is condition-by-time interaction on the rank scale; time is recorded as day; adjustment uses
+batch. Facet labels report stored interaction estimates and 95% intervals; resampling
+recurrence remains in the evidence. Raw p-values are retained; q-values use Holm correction
+across declared components within each metadata field and evidence variant. No acceptance
+threshold is applied. Trajectory evidence is exploratory and does not establish biological
+validity.
