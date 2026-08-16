@@ -309,23 +309,27 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         }
     }
 
+    plot_labels <- list(
+        title = sprintf(
+            "Stage 1 component gallery: %s",
+            layer_name
+        ),
+        subtitle = subtitle,
+        x = "Coordinate",
+        y = "Density"
+    )
+    if (!is.null(meta_col)) {
+        plot_labels$colour <- colour_by
+        if (!is.numeric(meta_col)) plot_labels$fill <- colour_by
+    }
+
     p <- p +
         ggplot2::geom_vline(
             xintercept = 0, linetype = "dotted",
             colour = .landscapeR_colour("nuisance"), linewidth = 0.4
         ) +
         ggplot2::facet_wrap(~ component, scales = "free") +
-        ggplot2::labs(
-            title = sprintf(
-                "Stage 1 component gallery: %s",
-                layer_name
-            ),
-            subtitle = subtitle,
-            x = "Coordinate",
-            y = "Density",
-            colour = colour_by,
-            fill = colour_by
-        ) +
+        do.call(ggplot2::labs, plot_labels) +
         theme_landscapeR() +
         ggplot2::theme(legend.position = "bottom")
 
