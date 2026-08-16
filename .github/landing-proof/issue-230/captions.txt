@@ -1,57 +1,57 @@
-Stage 1 component distributions. The layer1 layer. Facets show components 1-2 in decomposition
-order; stored densities summarize sample-coordinate distributions; rugs mark sample
-coordinates; dotted vertical lines mark zero; Density fills, outlines, and rug colours;
-baseline stems use line type and height and redundantly encode categorical planted_group. The
-analysis unit is independent biological observation; the design is cross_sectional; the
+Stage 1 component distributions. The figure uses layer 1 molecular data. Facets show components
+1-2 in decomposition order; stored densities summarize sample-coordinate distributions; rugs
+mark sample coordinates; dotted vertical lines mark zero. Categorical metadata is shown by
+density fills, outlines, and rug colours. Baseline stems additionally use line type and height.
+The analysis unit is independent biological observation; the design is cross-sectional; the
 estimand is the descriptive distribution of sample coordinates. No component-selection
 threshold is applied. This descriptive gallery does not rank or nominate a biological
 coordinate.
-Stage 1 component distributions. The layer1 layer. Facets show components 1-2 in decomposition
-order; stored densities summarize sample-coordinate distributions; rugs mark sample
-coordinates; dotted vertical lines mark zero; Rug colours; baseline stems use width and height
-and redundantly encode continuous observed_time. The analysis unit is independent biological
-observation; the design is cross_sectional; the estimand is the descriptive distribution of
-sample coordinates. No component-selection threshold is applied. This descriptive gallery does
-not rank or nominate a biological coordinate.
-Stage 1 decomposition coordinates. Molecular layers layer1, layer2. Facets identify molecular
-layers; points show component 1 sample coordinates rank-ordered within each layer; the dotted
-horizontal line marks zero; Point colours and point shapes encode categorical planted_group;
-The subtitle reports the stored synthetic ground-truth angle for component 1. The analysis unit
-is independent biological observation; the design is cross_sectional; the estimand is the
-descriptive sample coordinate on component 1. No component-selection threshold is applied. This
-display does not select a component or establish biological interpretation.
-Stage 1 decomposition coordinates. Molecular layers layer1, layer2. Facets identify molecular
-layers; points show component 1 sample coordinates rank-ordered within each layer; the dotted
-horizontal line marks zero; Point colours and point sizes encode continuous observed_time; The
-subtitle reports the stored synthetic ground-truth angle for component 1. The analysis unit is
-independent biological observation; the design is cross_sectional; the estimand is the
-descriptive sample coordinate on component 1. No component-selection threshold is applied. This
-display does not select a component or establish biological interpretation.
-Density-derived quasi-potential landscape. Molecular layers layer1, layer2. The black curve
-shows U(x) = -log p(x), derived from the stored density estimate for component 1; Rug colours
-and baseline stem line type and height redundantly encode categorical planted_group;
-Critical-point symbols and barrier-height segments are omitted. The analysis unit is
-independent biological observation; the design is cross_sectional; the estimand is the
-density-derived quasi-potential along the selected component. No calibrated critical-point or
-barrier threshold is applied. The landscape is an exploratory description and does not by
-itself establish a biological state transition.
-Density-derived quasi-potential landscape. Molecular layers layer1, layer2. The black curve
-shows U(x) = -log p(x), derived from the stored density estimate for component 1; Rug colours
-and baseline stem width and height redundantly encode continuous observed_time; Critical-point
-symbols and barrier-height segments are omitted. The analysis unit is independent biological
-observation; the design is cross_sectional; the estimand is the density-derived quasi-potential
-along the selected component. No calibrated critical-point or barrier threshold is applied. The
-landscape is an exploratory description and does not by itself establish a biological state
-transition.
-Density-derived quasi-potential landscape. Molecular layers layer1, layer2. The black curve
-shows U(x) = -log p(x), derived from the stored density estimate for component 1; Rug colours
-and baseline stem width and height redundantly encode categorical planted_group; Exploratory
-downward triangles mark stored wells; symbols are offset from their stored coordinates and
-linked by dashed stems; exploratory upward triangles mark stored barriers; symbols are offset
-from their stored coordinates and linked by dashed stems; Dotted vertical segments show
-point-estimate barrier heights. The analysis unit is independent biological observation; the
-design is cross_sectional; the estimand is the density-derived quasi-potential along the
-selected component. Critical-point classifications and barrier heights are point estimates
-without uncertainty. No calibrated critical-point or barrier threshold is applied. The
-landscape is an exploratory description and does not by itself establish a biological state
-transition.
+Stage 1 component distributions. The figure uses layer 1 molecular data. Facets show components
+1-2 in decomposition order; stored densities summarize sample-coordinate distributions; rugs
+mark sample coordinates; dotted vertical lines mark zero. Continuous metadata is shown by rug
+colour. Baseline stems additionally use width and height. The analysis unit is independent
+biological observation; the design is cross-sectional; the estimand is the descriptive
+distribution of sample coordinates. No component-selection threshold is applied. This
+descriptive gallery does not rank or nominate a biological coordinate.
+Stage 1 decomposition coordinates. The figure uses layer 1, layer 2 molecular data. Facets
+identify molecular layers; points show component 1 sample coordinates rank-ordered within each
+layer; the dotted horizontal line marks zero. Point colours and point shapes encode categorical
+planted group. The subtitle reports the stored synthetic ground-truth angle for component 1.
+The analysis unit is independent biological observation; the design is cross-sectional; the
+estimand is the descriptive sample coordinate on component 1. No component-selection threshold
+is applied. This display does not select a component or establish biological interpretation.
+Stage 1 decomposition coordinates. The figure uses layer 1, layer 2 molecular data. Facets
+identify molecular layers; points show component 1 sample coordinates rank-ordered within each
+layer; the dotted horizontal line marks zero. Point colours and point sizes encode continuous
+observed time. The subtitle reports the stored synthetic ground-truth angle for component 1.
+The analysis unit is independent biological observation; the design is cross-sectional; the
+estimand is the descriptive sample coordinate on component 1. No component-selection threshold
+is applied. This display does not select a component or establish biological interpretation.
+Density-derived quasi-potential landscape. The figure uses layer 1, layer 2 molecular data. The
+black curve shows U(x) = -log p(x), derived from the stored density estimate for component 1.
+Rug colour identifies categorical planted group; baseline stem type and height provide
+redundant encodings. Critical-point symbols and barrier-height segments are omitted. The
+analysis unit is independent biological observation; the design is cross-sectional; the
+estimand is the density-derived quasi-potential along the selected component. No calibrated
+critical-point or barrier threshold is applied. The landscape is an exploratory description and
+does not by itself establish a biological state transition.
+Density-derived quasi-potential landscape. The figure uses layer 1, layer 2 molecular data. The
+black curve shows U(x) = -log p(x), derived from the stored density estimate for component 1.
+Rug colour identifies continuous observed time; baseline stem width and height provide
+redundant encodings. Critical-point symbols and barrier-height segments are omitted. The
+analysis unit is independent biological observation; the design is cross-sectional; the
+estimand is the density-derived quasi-potential along the selected component. No calibrated
+critical-point or barrier threshold is applied. The landscape is an exploratory description and
+does not by itself establish a biological state transition.
+Density-derived quasi-potential landscape. The figure uses layer 1, layer 2 molecular data. The
+black curve shows U(x) = -log p(x), derived from the stored density estimate for component 1.
+Rug colour identifies categorical planted group; baseline stem width and height provide
+redundant encodings. Exploratory downward triangles mark stored wells; symbols are offset from
+their stored coordinates and linked by dashed stems. Exploratory upward triangles mark stored
+barriers; symbols are offset from their stored coordinates and linked by dashed stems. Dotted
+vertical segments show point-estimate barrier heights. The analysis unit is independent
+biological observation; the design is cross-sectional; the estimand is the density-derived
+quasi-potential along the selected component. Critical-point classifications and barrier
+heights are point estimates without uncertainty. No calibrated critical-point or barrier
+threshold is applied. The landscape is an exploratory description and does not by itself
+establish a biological state transition.

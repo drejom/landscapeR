@@ -123,7 +123,8 @@ plot_potential <- function(std, colour_by = NULL,
         linewidth = 1, colour = unname(palette[["ink"]])
     ) +
         ggplot2::labs(
-            title = "Quasi-potential landscape  U(x) = -log p(x)",
+            title = "Quasi-potential landscape",
+            subtitle = "U(x) = -log p(x)",
             x = "State-transition coordinate",
             y = "U(x)"
         ) +
@@ -178,12 +179,12 @@ plot_potential <- function(std, colour_by = NULL,
             if (is.numeric(rug_df[[colour_by]])) {
                 p <- p + scale_colour_landscapeR(
                     "continuous",
-                    name = colour_by
+                    name = .scientific_caption_label(colour_by)
                 )
             } else {
                 p <- p + scale_colour_landscapeR(
                     "categorical",
-                    name = colour_by
+                    name = .scientific_caption_label(colour_by)
                 )
             }
             if (nrow(missing_rug)) {
@@ -221,7 +222,10 @@ plot_potential <- function(std, colour_by = NULL,
                     inherit.aes = FALSE
                 ) + ggplot2::scale_linewidth_continuous(
                     range = c(0.25, 0.8),
-                    name = paste0(colour_by, " (stem width)")
+                    name = paste0(
+                        .scientific_caption_label(colour_by),
+                        " (stem width)"
+                    )
                 )
             } else if (!isTRUE(show_critical_points)) {
                 levels <- sort(unique(as.character(observed_rug[[colour_by]])))
@@ -241,7 +245,10 @@ plot_potential <- function(std, colour_by = NULL,
                     inherit.aes = FALSE
                 ) + ggplot2::scale_linetype_manual(
                     values = .metadata_linetype_values(observed_rug[[colour_by]]),
-                    name = paste0(colour_by, " (stem type)")
+                    name = paste0(
+                        .scientific_caption_label(colour_by),
+                        " (stem type)"
+                    )
                 )
             } else {
                 levels <- names(.metadata_linetype_values(
@@ -264,7 +271,10 @@ plot_potential <- function(std, colour_by = NULL,
                     range = c(0.45, 1.1),
                     breaks = seq_along(levels),
                     labels = levels,
-                    name = paste0(colour_by, " (stem width)")
+                    name = paste0(
+                        .scientific_caption_label(colour_by),
+                        " (stem width)"
+                    )
                 )
             }
         } else {
@@ -325,15 +335,17 @@ plot_potential <- function(std, colour_by = NULL,
         "Grey rug marks show observed sample coordinates without metadata encoding"
     } else if (is.numeric(metadata_values)) {
         paste0(
-            "Rug colours and baseline stem width and height redundantly encode continuous ",
-            colour_by
+            "Rug colour identifies continuous ",
+            .scientific_caption_label(colour_by),
+            "; baseline stem width and height provide redundant encodings"
         )
     } else {
         paste0(
-            "Rug colours and baseline stem ",
-            if (isTRUE(show_critical_points)) "width" else "line type",
-            " and height redundantly encode categorical ",
-            colour_by
+            "Rug colour identifies categorical ",
+            .scientific_caption_label(colour_by),
+            "; baseline stem ",
+            if (isTRUE(show_critical_points)) "width" else "type",
+            " and height provide redundant encodings"
         )
     }
     cp_df <- displays$critical_points
@@ -355,7 +367,7 @@ plot_potential <- function(std, colour_by = NULL,
             },
             if (any(cp_df$type == "barrier")) {
                 paste(
-                    "exploratory upward triangles mark stored barriers;",
+                    "Exploratory upward triangles mark stored barriers;",
                     "symbols are offset from their stored coordinates and",
                     "linked by dashed stems"
                 )
@@ -406,7 +418,7 @@ plot_potential <- function(std, colour_by = NULL,
             sprintf(
                 "Dashed rug marks %d observations with missing %s",
                 length(unique(rug_df$.primary_sample[is.na(metadata_values)])),
-                colour_by
+                .scientific_caption_label(colour_by)
             )
         } else {
             NULL

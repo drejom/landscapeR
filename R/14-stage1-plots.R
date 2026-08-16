@@ -48,7 +48,10 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 .plot_metadata_encoding <- function(values, field, marks) {
     if (is.null(values)) return(paste0(marks, " do not encode sample metadata"))
     type <- if (is.numeric(values)) "continuous" else "categorical"
-    paste0(marks, " encode ", type, " ", field)
+    paste0(
+        marks, " encode ", type, " ",
+        .scientific_caption_label(field)
+    )
 }
 
 .metadata_shape_values <- function(values) {
@@ -255,9 +258,15 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     subtitle <- if (is.null(meta_col)) {
         "Components shown in decomposition order"
     } else if (is.numeric(meta_col)) {
-        sprintf("Decomposition order; rug colour shows %s", colour_by)
+        sprintf(
+            "Decomposition order; rug colour shows %s",
+            .scientific_caption_label(colour_by)
+        )
     } else {
-        sprintf("Decomposition order; colour shows %s", colour_by)
+        sprintf(
+            "Decomposition order; colour shows %s",
+            .scientific_caption_label(colour_by)
+        )
     }
 
     p <- ggplot2::ggplot(df, ggplot2::aes(x = coord))
@@ -319,7 +328,9 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             lineend = "round"
         ) + ggplot2::scale_linewidth_continuous(
             range = c(0.35, 1.1),
-            name = paste0(colour_by, " (stem width)")
+            name = paste0(
+                .scientific_caption_label(colour_by), " (stem width)"
+            )
         )
     } else {
         observed <- df[!is.na(df$metadata_value), , drop = FALSE]
@@ -391,22 +402,23 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             lineend = "round"
         ) + ggplot2::scale_linetype_manual(
             values = .metadata_linetype_values(observed$metadata_value),
-            name = paste0(colour_by, " (stem type)")
+            name = paste0(
+                .scientific_caption_label(colour_by), " (stem type)"
+            )
         )
     }
 
     plot_labels <- list(
-        title = sprintf(
-            "Stage 1 component gallery: %s",
-            layer_name
-        ),
+        title = "Stage 1 component distributions",
         subtitle = subtitle,
         x = "Coordinate",
         y = "Density"
     )
     if (!is.null(meta_col)) {
-        plot_labels$colour <- colour_by
-        if (!is.numeric(meta_col)) plot_labels$fill <- colour_by
+        plot_labels$colour <- .scientific_caption_label(colour_by)
+        if (!is.numeric(meta_col)) {
+            plot_labels$fill <- .scientific_caption_label(colour_by)
+        }
     }
 
     p <- p +
@@ -460,7 +472,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     missingness <- if (!is.null(meta_col) && anyNA(meta_col)) {
         sprintf(
             "Dashed rugs mark %d observations with missing %s",
-            sum(is.na(meta_col)), colour_by
+            sum(is.na(meta_col)), .scientific_caption_label(colour_by)
         )
     } else {
         NULL
@@ -493,7 +505,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 sprintf(
                     "%s (%s = %s)",
                     unavailable_grouped$component,
-                    colour_by,
+                    .scientific_caption_label(colour_by),
                     unavailable_grouped$metadata_value
                 )
             )
@@ -517,15 +529,16 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     context <- displays$caption_contexts[[layer_name]]
     metadata_marks <- if (!is.null(meta_col) && !is.numeric(meta_col)) {
         paste(
-            "Density fills, outlines, and rug colours; baseline stems use",
-            "line type and height and redundantly"
+            "Categorical metadata is shown by density fills, outlines, and",
+            "rug colours. Baseline stems additionally use line type and height."
         )
     } else if (!is.null(meta_col)) {
         paste(
-            "Rug colours; baseline stems use width and height and redundantly"
+            "Continuous metadata is shown by rug colour. Baseline stems",
+            "additionally use width and height."
         )
     } else {
-        "Rug colours"
+        "Rug colours show the available sample metadata."
     }
     caption <- .new_scientific_caption_view(
         title = "Stage 1 component distributions",
@@ -543,7 +556,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 " in decomposition order; stored densities summarize sample-coordinate ",
                 "distributions; rugs mark sample coordinates; dotted vertical lines mark zero"
             ),
-            .plot_metadata_encoding(meta_col, colour_by, metadata_marks)
+            metadata_marks
         ),
         estimand = "the descriptive distribution of sample coordinates",
         missingness = missingness,
@@ -688,7 +701,9 @@ plot_spectrum <- function(std, n_sv = 20L) {
                 "Lines and points show ordered raw-assay singular values ",
                 "for layer traces: ",
                 paste(
-                    visual_evidence_display(view, "experiment_names"),
+                    .scientific_caption_label(
+                        visual_evidence_display(view, "experiment_names")
+                    ),
                     collapse = ", "
                 )
             ),
@@ -849,14 +864,24 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
             linetype = "dotted",
             colour = .landscapeR_colour("nuisance")
         ) +
-        ggplot2::facet_wrap(~ layer, scales = "free_x") +
+        ggplot2::facet_wrap(
+            ~ layer,
+            scales = "free_x",
+            labeller = ggplot2::as_labeller(.scientific_caption_label)
+        ) +
         ggplot2::labs(
-            title    = sprintf("Sample coordinates on component %d", plot_idx),
+            title    = sprintf(
+                "Component %d scores by molecular layer", plot_idx
+            ),
             subtitle = if (!is.null(angle_label)) angle_label else
                 "Layers show rank-ordered sample coordinates",
             x        = "Sample (rank-ordered by coordinate)",
             y        = sprintf("Component %d coordinate", plot_idx),
-            colour   = colour_by
+            colour   = if (!is.null(colour_by)) {
+                .scientific_caption_label(colour_by)
+            } else {
+                NULL
+            }
         ) +
         theme_landscapeR() +
         ggplot2::theme(
@@ -879,7 +904,9 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
                 shape = 16, alpha = 0.75
             ) + ggplot2::scale_size_continuous(
                 range = c(1.4, 2.8),
-                name = paste0(colour_by, " (point size)")
+            name = paste0(
+                .scientific_caption_label(colour_by), " (point size)"
+            )
             )
         } else {
             p <- p + ggplot2::geom_point(
@@ -891,12 +918,14 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
                 size = 2, alpha = 0.75
             ) + ggplot2::scale_shape_manual(
                 values = .metadata_shape_values(meta_col),
-                name = paste0(colour_by, " (shape)")
+            name = paste0(
+                .scientific_caption_label(colour_by), " (shape)"
+            )
             )
         }
         p <- p + scale_colour_landscapeR(
             if (is.numeric(meta_col)) "continuous" else "categorical",
-            name = colour_by
+            name = .scientific_caption_label(colour_by)
         )
         missing <- df[is.na(meta_col), , drop = FALSE]
         if (nrow(missing)) {
@@ -977,7 +1006,7 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         missingness = if (!is.null(meta_col) && anyNA(meta_col)) {
             sprintf(
                 "Crosses mark %d observations with missing %s",
-                sum(is.na(meta_col)), colour_by
+                sum(is.na(meta_col)), .scientific_caption_label(colour_by)
             )
         } else {
             NULL

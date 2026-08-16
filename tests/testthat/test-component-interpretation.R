@@ -190,7 +190,7 @@ test_that("inappropriate declared target type returns a typed abstention", {
     )
     expect_match(
         scientific_caption(abstention_plot),
-        "design is cross_sectional"
+        "design is cross-sectional"
     )
     expect_match(
         scientific_caption(abstention_plot),

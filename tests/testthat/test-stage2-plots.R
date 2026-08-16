@@ -202,7 +202,7 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     plot <- plot_potential(std, colour_by = "planted_group")
 
     expect_null(plot$labels$caption)
-    expect_match(scientific_caption(plot), "categorical\\s+planted_group")
+    expect_match(scientific_caption(plot), "categorical\\s+planted group")
     expect_match(scientific_caption(plot), "Dashed rug marks\\s+1 observation")
     expect_s3_class(plot$scales$get_scales("linetype"), "ScaleDiscrete")
     expect_match(scientific_caption(plot), "baseline stem")

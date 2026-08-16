@@ -6,7 +6,7 @@ test_that("plot_spectrum returns a ggplot on a fresh StateTransitionData", {
     caption <- scientific_caption(p)
     expect_match(caption, "BBP")
     expect_match(caption, "model-based\\s+detectability reference")
-    expect_match(caption, "layer1")
+    expect_match(caption, "layer 1")
 })
 
 test_that("plot_components returns a ggplot after Stage 1 has run", {
@@ -16,7 +16,7 @@ test_that("plot_components returns a ggplot after Stage 1 has run", {
     p <- plot_components(std2, colour_by = "planted_group")
     expect_s3_class(p, "gg")
     caption <- scientific_caption(p)
-    expect_match(caption, "categorical\\s+planted_group")
+    expect_match(caption, "[Cc]ategorical metadata")
     expect_match(caption, "does\\s+not rank or nominate")
     expect_null(p$labels$caption)
 })
@@ -64,11 +64,11 @@ test_that("plot captions retain declared destructive and longitudinal design fie
 
     independent_caption <- scientific_caption(plot_spectrum(independent))
     longitudinal_caption <- scientific_caption(plot_spectrum(longitudinal_data))
-    expect_match(independent_caption, "collection_day")
+    expect_match(independent_caption, "collection day")
     expect_match(independent_caption, "days")
-    expect_match(longitudinal_caption, "collection_day")
+    expect_match(longitudinal_caption, "collection day")
     expect_match(longitudinal_caption, "days")
-    expect_match(longitudinal_caption, "animal_id")
+    expect_match(longitudinal_caption, "animal id")
 })
 
 test_that("plot_decomposition uses one effective component across unequal ranks", {
@@ -210,7 +210,7 @@ test_that("plot_decomposition renders continuous metadata and marks missing valu
     expect_s3_class(p$scales$get_scales("size"), "ScaleContinuous")
     expect_null(p$labels$caption)
     expect_match(scientific_caption(p), "Crosses mark 1 observation")
-    expect_match(scientific_caption(p), "continuous sample_weeks")
+    expect_match(scientific_caption(p), "[Cc]ontinuous sample weeks")
     expect_match(scientific_caption(p), "point sizes")
     expect_true(any(vapply(
         p$layers,
@@ -247,13 +247,13 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
     )
     expect_identical(
         p$labels$title,
-        "Stage 1 component gallery: rna"
+        "Stage 1 component distributions"
     )
     expect_false("bc" %in% names(p$data))
     expect_match(scientific_caption(p), "rna layer")
-    expect_match(scientific_caption(p), "categorical condition")
-    expect_match(scientific_caption(p), "Density fills")
-    expect_match(scientific_caption(p), "baseline stems")
+    expect_match(scientific_caption(p), "[Cc]ategorical metadata")
+    expect_match(scientific_caption(p), "[Dd]ensity\\s+fills")
+    expect_match(scientific_caption(p), "[Bb]aseline stems")
 })
 
 test_that("plot_components visibly renders continuous MAE metadata", {
@@ -279,8 +279,8 @@ test_that("plot_components visibly renders continuous MAE metadata", {
         function(layer) inherits(layer$geom, "GeomRug"),
         logical(1L)
     )))
-    expect_match(scientific_caption(p), "continuous sample_weeks")
-    expect_match(scientific_caption(p), "baseline stems use width")
+    expect_match(scientific_caption(p), "[Cc]ontinuous metadata")
+    expect_match(scientific_caption(p), "[Bb]aseline stems additionally use width")
 })
 
 test_that("plot_components renders eight categorical linetypes", {
