@@ -774,6 +774,11 @@ caller-declared experiment, layer, target, level, time, subject, and nuisance
 labels exactly. They format stored estimands, uncertainty, thresholds,
 missingness, and claim boundaries without recalculating scientific results.
 
+The Stage 1 component gallery follows the mapped aesthetic: categorical
+metadata use both density fill and rug colour, while continuous metadata use a
+colour scale for the rugs only. Missing metadata remain visible as missing
+marks rather than being assigned to a scale that is not mapped.
+
 The same boundary is available directly through `visual_evidence()`. It returns
 a validated `VisualEvidenceView` used by the canonical ggplot renderer:
 
