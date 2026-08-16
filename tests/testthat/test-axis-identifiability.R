@@ -628,6 +628,11 @@ test_that("identifiability assessment repeats the complete discovery search", {
         plot_component_identifiability(assessed, view = "radial"),
         "should be one of"
     )
+    expect_error(
+        plot_component_identifiability(assessed, compact = NA),
+        "compact must be a single non-missing logical",
+        class = "landscapeR_validation_error"
+    )
     expect_false(any(grepl(
         "human",
         c(surface$labels$title, surface$labels$subtitle),

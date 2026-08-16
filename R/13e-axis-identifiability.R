@@ -1742,7 +1742,9 @@ plot_component_identifiability <- function(
 ) {
     view <- match.arg(view)
     if (!is.logical(compact) || length(compact) != 1L || is.na(compact)) {
-        stop("compact must be a single non-missing logical")
+        .stop_landscapeR_validation(
+            "compact must be a single non-missing logical"
+        )
     }
     evidence <- proposal_identifiability(proposal)
     single_axis <- nrow(evidence$recurrence_summary) == 1L
@@ -2214,25 +2216,25 @@ plot_component_identifiability <- function(
             legend.position = "bottom",
             legend.box = "vertical",
             strip.text = ggplot2::element_text(
-                size = if (isTRUE(compact)) 7 else 7.5
+                size = if (isTRUE(compact)) 6.5 else 6.5
             ),
             axis.text = ggplot2::element_text(
-                size = if (isTRUE(compact)) 6 else 11
+                size = if (isTRUE(compact)) 6 else 7
             ),
             axis.title = ggplot2::element_text(
-                size = if (isTRUE(compact)) 7 else 11
+                size = if (isTRUE(compact)) 7 else 7
             ),
             plot.title = ggplot2::element_text(
-                size = if (isTRUE(compact)) 12 else 16
+                size = if (isTRUE(compact)) 10 else 10
             ),
             plot.subtitle = ggplot2::element_text(
-                size = if (isTRUE(compact)) 7 else 11
+                size = if (isTRUE(compact)) 6.5 else 7
             ),
             legend.text = ggplot2::element_text(
-                size = if (isTRUE(compact)) 6 else 11
+                size = if (isTRUE(compact)) 6 else 6.5
             ),
             legend.title = ggplot2::element_text(
-                size = if (isTRUE(compact)) 7 else 11
+                size = if (isTRUE(compact)) 6.5 else 7
             )
         )
     if (single_axis) {
