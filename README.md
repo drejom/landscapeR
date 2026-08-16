@@ -90,6 +90,11 @@ The caption names the plotted layer or component, metadata and missingness
 encodings, applicable sampling-design fields, model references or uncalibrated
 diagnostics, and the scientific claim boundary.
 
+The complete public plotting surface is audited through a retained
+[plotting contact sheet and review packet](.github/landing-proof/issue-226/).
+This is a coverage and visual-consistency record, not biological evidence or a
+claim that every diagnostic figure is publication-ready.
+
 For destructive-sampling developmental designs,
 `synthetic_branching_control()` provides a disclosed two-branch visualisation
 and development control. It is not validation evidence. Reproducible source
