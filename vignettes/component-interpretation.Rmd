@@ -573,6 +573,11 @@ atlas_associations(time_atlas)
 plot(time_atlas)
 ```
 
+Because this example has two component panels, the public figure labels them
+`A` and `B` in reading order, and `scientific_caption()` refers to those same
+letters. A single-component figure remains unlettered rather than inventing a
+panel reference.
+
 The registered ordinary linear model is
 `score_std ~ condition * time_scaled + nuisance_terms`. Scores have a
 deterministic orientation and SD scale. Observed study time is transformed

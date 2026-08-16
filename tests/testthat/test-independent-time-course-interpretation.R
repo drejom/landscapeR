@@ -44,8 +44,8 @@ test_that("independent time course fits the declared standardized interaction", 
     expect_identical(atlas_provenance(atlas)$model_engine, "stats::lm")
     expect_holm_multiplicity(atlas)
     atlas_caption <- scientific_caption(plot(atlas))
-    expect_false(grepl("(A)", atlas_caption, fixed = TRUE))
-    expect_false(grepl("(B)", atlas_caption, fixed = TRUE))
+    expect_match(atlas_caption, "\\(A\\)\\s+Component PC1")
+    expect_match(atlas_caption, "\\(B\\)\\s+Component PC2")
     expect_match(
         atlas_provenance(atlas)$scientific_model_formula_adjusted,
         "condition \\* scaled_time"
@@ -120,7 +120,8 @@ test_that("independent time course fits the declared standardized interaction", 
     expect_identical(
         facet_labels,
         sprintf(
-            "%s\ninteraction %.2f\n95%% CI %.2f to %.2f",
+            "%s %s\ninteraction %.2f\n95%% CI %.2f to %.2f",
+            c("A", "B"),
             effect_summary$component_label,
             effect_summary$estimate,
             effect_summary$effect_conf_low,
@@ -134,7 +135,7 @@ test_that("independent time course fits the declared standardized interaction", 
         c(1.5, 1.5)
     )
     expect_match(
-        scientific_caption(atlas_plot),
+        gsub("\\s+", " ", scientific_caption(atlas_plot)),
         "Facet labels report stored interaction estimates and 95% intervals",
         fixed = TRUE
     )
@@ -148,7 +149,7 @@ test_that("independent time course fits the declared standardized interaction", 
     )$component_label)
     expect_identical(
         nonfinite_labels[[1L]],
-        "PC1\ninteraction not estimated"
+        "A PC1\ninteraction not estimated"
     )
     expect_true(nrow(visual_evidence_display(atlas_view, "cells")) > 0L)
     expect_null(atlas_plot$labels$caption)
@@ -192,6 +193,38 @@ test_that("independent time course fits the declared standardized interaction", 
     )))
 })
 
+test_that("single-panel independent figures do not invent panel references", {
+    std <- independent_time_course_fixture(include_nuisance = FALSE)
+    stage1 <- metadata(std)$stage1
+    stage1@coords_k <- list(stage1@coords_k[[1L]][, 1L, drop = FALSE])
+    stage1@V_k <- stage1@V_k[, 1L, drop = FALSE]
+    stage1@sigma_k <- matrix(stage1@sigma_k[[1L]], nrow = 1L)
+    stage1@coords <- list(stage1@coords_k[[1L]][, 1L])
+    stage1@k <- 1L
+    md <- metadata(std)
+    md$stage1 <- stage1
+    metadata(std) <- md
+
+    atlas <- associate_metadata(
+        std,
+        specification = independent_time_course_specification(),
+        non_analytical_fields = "sample_id"
+    )
+    plot <- plot(atlas)
+    caption <- scientific_caption(plot)
+
+    expect_false(grepl("(A)", caption, fixed = TRUE))
+    expect_false(grepl("(B)", caption, fixed = TRUE))
+    facet_labels <- unname(plot$facet$params$labeller(
+        data.frame(component_label = "PC1")
+    )$component_label)
+    expect_false(grepl("^A ", facet_labels[[1L]]))
+    expect_identical(
+        facet_labels[[1L]],
+        "PC1\ninteraction not estimated"
+    )
+})
+
 test_that("time-course proposal and confirmation use only the primary effect", {
     atlas <- associate_metadata(
         independent_time_course_fixture(),
@@ -208,7 +241,29 @@ test_that("time-course proposal and confirmation use only the primary effect", {
         unique(proposal_ranking(proposal)$evidence_variant),
         "time-course-adjusted"
     )
-    expect_s3_class(plot(proposal), "ggplot")
+    proposal_plot <- plot(proposal)
+    expect_s3_class(proposal_plot, "ggplot")
+    expect_identical(
+        proposal_plot$labels$title,
+        "Component ranking: condition across time"
+    )
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(proposal_plot)),
+        "(A) Component PC1",
+        fixed = TRUE
+    )
+    expect_match(
+        scientific_caption(proposal_plot),
+        "proposal rank 1"
+    )
+    expect_match(
+        scientific_caption(proposal_plot),
+        "effect rank 1 in"
+    )
+    proposal_facets <- unname(proposal_plot$facet$params$labeller(
+        data.frame(component_label = c("PC1", "PC2"))
+    )$component_label)
+    expect_true(all(startsWith(proposal_facets, c("A ", "B "))))
     confirmed <- confirm_component(
         proposal,
         index = 1L,
@@ -453,8 +508,18 @@ test_that("a singly replicated overlapping cell causes design abstention", {
         caption,
         "interaction is not estimable"
     )
+    expect_match(
+        gsub("\\s+", " ", caption),
+        "(A) Component PC1",
+        fixed = TRUE
+    )
     expect_false(grepl(
         "lines show stored population trajectories",
+        tolower(caption),
+        fixed = TRUE
+    ))
+    expect_false(grepl(
+        "crosses mark unobserved",
         tolower(caption),
         fixed = TRUE
     ))
@@ -466,7 +531,7 @@ test_that("a singly replicated overlapping cell causes design abstention", {
     view <- visual_evidence(atlas)
     expect_identical(
         unname(visual_evidence_display(view, "facet_labels")),
-        names(visual_evidence_display(view, "facet_labels"))
+        c("A PC1", "B PC2")
     )
     expect_s4_class(propose_component(atlas), "ComponentAbstention")
 })
