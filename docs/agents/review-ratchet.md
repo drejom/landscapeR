@@ -44,13 +44,14 @@ found that body-only fingerprints, incomplete closure environments, and
 assign-before-record ordering could hide behavior changes or leave an
 unprovenanced registry mutation.
 ### RR-006 — Verify that visual encodings carry independent meaning
-Verify plotted quantities are independent and semantic colours retain their role;
-captions must match rendered marks, omit absent encodings, narrate each panel,
-and keep annotations/overlays recoverable at native and reduced reading sizes.
-**Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) plotted an
-exact cosine transform and misused focal red; issue #212 review found endpoint
-and A/B panel caption mismatches; issue #226 found clipped interaction intervals,
-occluded comparison/critical-point marks, and tile-level visual collisions.
+Open every committed proof image and caption individually at canonical native and
+reduced reading sizes before claiming visual proof; record filenames and result
+in the pull request. Verify independent quantities, semantic colours, captions
+against rendered marks/panels, and recoverable annotations rather than mere files.
+**Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) misused focal
+red; issue #212 found caption mismatches; issue #226 found clipped, occluded, and
+colliding marks; PR #240 showed proof files can pass link/test checks while titles,
+legends, layout, and caption prose remain unacceptable.
 ### RR-007 — Keep transient roots outside package builds
 Exclude repo scratch from Git and R package builds. Before trusting a package
 check, verify that generated sites, bundles, and prior checks missed the tarball.
@@ -146,5 +147,4 @@ against current code. Consolidate near 150 lines.
 - **Correct:** fix or remove outdated entries and name the correction.
 - **Deduplicate:** search before adding; consolidate overlapping rules.
 - **Graduate:** move mechanical rules into checks and recurring decisions into ADRs.
-- **Report:** select one disposition and give a substantive rationale.
-This document is only for review knowledge; other concerns belong to their existing authorities.
+- **Report:** select one disposition and give a substantive rationale. This document is only for review knowledge; other concerns belong to their existing authorities.
