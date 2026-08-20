@@ -52,12 +52,11 @@ utils::globalVariables(c("U", "type", "xend", "y", "yend", ".data"))
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage2} present
 #' @param colour_by character column name in \code{colData(std)} to colour
-#'   the rug of sample positions. Categorical metadata additionally use a
+#'   the displayed sample positions. Categorical metadata additionally use a
 #'   baseline stem with line type and height when critical points are hidden.
-#'   When \code{show_critical_points = TRUE}, categorical rugs additionally
-#'   occupy distinct short baseline lanes and use line type as a secondary
-#'   non-colour encoding, while variable-width stems are omitted so the
-#'   critical-point markers remain visually dominant. This diagnostic lane
+#'   When \code{show_critical_points = TRUE}, categorical sample positions use
+#'   directly labelled baseline rows, so row position and text provide
+#'   non-colour group identification without metadata stems. This diagnostic view
 #'   supports at most 4 observed levels; categorical fields with more than 8
 #'   observed levels are rejected as unavailable in other views. Use
 #'   \code{NULL} (default) for an unlabelled rug.
@@ -176,27 +175,92 @@ plot_potential <- function(std, colour_by = NULL,
                 ,
                 drop = FALSE
             ]
-            rug_aes <- ggplot2::aes(x = x, colour = .data[[colour_by]])
-            p <- p + ggplot2::geom_rug(
-                data = observed_rug,
-                mapping = rug_aes,
-                sides = "b", alpha = 0.6, linewidth = 0.55,
-                inherit.aes = FALSE
-            )
-            if (is.numeric(rug_df[[colour_by]])) {
-                p <- p + scale_colour_landscapeR(
-                    "continuous",
-                    name = .scientific_caption_label(colour_by)
+            marker_y <- min(curve_df$U, na.rm = TRUE)
+            marker_height <- max(diff(range(curve_df$U, na.rm = TRUE)) * 0.025, 0.02)
+            categorical_critical <- !is.numeric(rug_df[[colour_by]]) &&
+                isTRUE(show_critical_points)
+            if (categorical_critical) {
+                row_levels <- sort(unique(as.character(
+                    observed_rug[[colour_by]]
+                )))
+                if (length(row_levels) > 4L) {
+                    .stop_plot_evidence_unavailable(
+                        "Critical-point baseline rows support at most 4 levels"
+                    )
+                }
+                y_span <- diff(range(curve_df$U, na.rm = TRUE))
+                row_gap <- max(y_span * 0.06, 0.16)
+                observed_rug$row_y <- marker_y - row_gap * match(
+                    as.character(observed_rug[[colour_by]]), row_levels
                 )
-            } else {
-                p <- p + scale_colour_landscapeR(
+                x_span <- diff(range(curve_df$x, na.rm = TRUE))
+                row_label_x <- min(curve_df$x, na.rm = TRUE) + x_span * 0.02
+                row_labels <- data.frame(
+                    x = rep(row_label_x, length(row_levels)),
+                    row_y = marker_y - row_gap * seq_along(row_levels),
+                    label = row_levels
+                )
+                p <- p + ggplot2::geom_point(
+                    data = observed_rug,
+                    ggplot2::aes(
+                        x = x, y = .data$row_y,
+                        colour = .data[[colour_by]]
+                    ),
+                    shape = 16,
+                    size = 1.25,
+                    alpha = 0.75,
+                    inherit.aes = FALSE
+                ) + ggplot2::geom_text(
+                    data = row_labels,
+                    ggplot2::aes(
+                        x = .data$x, y = .data$row_y, label = .data$label
+                    ),
+                    hjust = 0,
+                    size = 2.2,
+                    colour = unname(palette[["nuisance"]]),
+                    inherit.aes = FALSE
+                ) + scale_colour_landscapeR(
                     "categorical",
                     name = .scientific_caption_label(colour_by)
                 )
-            }
-            if (nrow(missing_rug)) {
-                p <- p +
-                    ggplot2::geom_rug(
+                if (nrow(missing_rug)) {
+                    missing_y <- marker_y - row_gap * (length(row_levels) + 1L)
+                    missing_rug$row_y <- missing_y
+                    p <- p + ggplot2::geom_point(
+                        data = missing_rug,
+                        ggplot2::aes(x = x, y = .data$row_y),
+                        shape = 4,
+                        size = 1.25,
+                        colour = unname(palette[["nuisance"]]),
+                        inherit.aes = FALSE
+                    ) + ggplot2::annotate(
+                        "text",
+                        x = row_label_x, y = missing_y,
+                        label = "missing", hjust = 0, size = 2.2,
+                        colour = unname(palette[["nuisance"]])
+                    )
+                }
+            } else {
+                rug_aes <- ggplot2::aes(x = x, colour = .data[[colour_by]])
+                p <- p + ggplot2::geom_rug(
+                    data = observed_rug,
+                    mapping = rug_aes,
+                    sides = "b", alpha = 0.6, linewidth = 0.55,
+                    inherit.aes = FALSE
+                )
+                if (is.numeric(rug_df[[colour_by]])) {
+                    p <- p + scale_colour_landscapeR(
+                        "continuous",
+                        name = .scientific_caption_label(colour_by)
+                    )
+                } else {
+                    p <- p + scale_colour_landscapeR(
+                        "categorical",
+                        name = .scientific_caption_label(colour_by)
+                    )
+                }
+                if (nrow(missing_rug)) {
+                    p <- p + ggplot2::geom_rug(
                         data = missing_rug,
                         ggplot2::aes(x = x),
                         sides = "b",
@@ -205,53 +269,7 @@ plot_potential <- function(std, colour_by = NULL,
                         linewidth = 0.7,
                         inherit.aes = FALSE
                     )
-            }
-            marker_y <- min(curve_df$U, na.rm = TRUE)
-            marker_height <- max(diff(range(curve_df$U, na.rm = TRUE)) * 0.025, 0.02)
-            if (!is.numeric(rug_df[[colour_by]]) &&
-                isTRUE(show_critical_points)) {
-                if (length(unique(as.character(
-                    observed_rug[[colour_by]]
-                ))) > 4L) {
-                    .stop_plot_evidence_unavailable(
-                        "Critical-point baseline lanes support at most 4 levels"
-                    )
                 }
-                lane_levels <- names(.metadata_linetype_values(
-                    observed_rug[[colour_by]]
-                ))
-                lane_height <- max(
-                    diff(range(curve_df$U, na.rm = TRUE)) * 0.02,
-                    0.04
-                )
-                lane_gap <- max(
-                    diff(range(curve_df$U, na.rm = TRUE)) * 0.015,
-                    0.03
-                )
-                observed_rug$lane_y <- marker_y - lane_gap - lane_height -
-                    (match(as.character(observed_rug[[colour_by]]), lane_levels) - 1) *
-                    (lane_height + lane_gap)
-                p <- p + ggplot2::geom_segment(
-                    data = observed_rug,
-                    ggplot2::aes(
-                        x = x, xend = x,
-                        y = lane_y, yend = lane_y + lane_height,
-                        linetype = .data[[colour_by]]
-                    ),
-                    linewidth = 0.35,
-                    alpha = 0.65,
-                    colour = unname(palette[["nuisance"]]),
-                    lineend = "round",
-                    inherit.aes = FALSE
-                ) + ggplot2::scale_linetype_manual(
-                    values = .metadata_linetype_values(
-                        observed_rug[[colour_by]]
-                    ),
-                    name = paste0(
-                        .scientific_caption_label(colour_by),
-                        " (baseline lane and line type)"
-                    )
-                )
             }
             if (is.numeric(rug_df[[colour_by]]) &&
                 !isTRUE(show_critical_points)) {
@@ -371,15 +389,26 @@ plot_potential <- function(std, colour_by = NULL,
                 "; baseline stem width and height provide redundant encodings"
             }
         )
+    } else if (isTRUE(show_critical_points) && all(is.na(metadata_values))) {
+        paste0(
+            "No observed values are available for categorical ",
+            .scientific_caption_label(colour_by),
+            "; crosses show sample coordinates in a directly labelled missing row; ",
+            "no metadata stems are drawn"
+        )
+    } else if (isTRUE(show_critical_points)) {
+        paste0(
+            "Coloured points identify categorical ",
+            .scientific_caption_label(colour_by),
+            " and show sample coordinates in directly labelled baseline rows; ",
+            "row position and text provide non-colour group identification; ",
+            "no metadata stems are drawn"
+        )
     } else {
         paste0(
             "Rug colour identifies categorical ",
             .scientific_caption_label(colour_by),
-            if (isTRUE(show_critical_points)) {
-                "; categorical samples occupy distinct short baseline lanes and use rug line type as a restrained secondary non-colour group encoding; variable-width stems are omitted"
-            } else {
-                "; baseline stem type and height provide redundant encodings"
-            }
+            "; baseline stem type and height provide redundant encodings"
         )
     }
     cp_df <- displays$critical_points
@@ -449,11 +478,19 @@ plot_potential <- function(std, colour_by = NULL,
             NA_character_
         },
         missingness = if (!is.null(metadata_values) && anyNA(metadata_values)) {
+        if (isTRUE(show_critical_points) && !is.numeric(metadata_values)) {
+            sprintf(
+                "Crosses in the labelled missing row mark %d observations with missing %s",
+                length(unique(rug_df$.primary_sample[is.na(metadata_values)])),
+                .scientific_caption_label(colour_by)
+            )
+        } else {
             sprintf(
                 "Dashed rug marks %d observations with missing %s",
                 length(unique(rug_df$.primary_sample[is.na(metadata_values)])),
                 .scientific_caption_label(colour_by)
             )
+        }
         } else {
             NULL
         },

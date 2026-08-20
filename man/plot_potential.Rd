@@ -10,13 +10,14 @@ plot_potential(std, colour_by = NULL, show_critical_points = FALSE)
 \item{std}{\code{StateTransitionData} with \code{metadata()$stage2} present}
 
 \item{colour_by}{character column name in \code{colData(std)} to colour
-the rug of sample positions. Categorical metadata additionally use a
-baseline stem with line type and height when critical points are hidden;
-when \code{show_critical_points = TRUE}, stem width and height are used
-so shape remains available for critical-point classifications. Continuous
-metadata additionally use stem width and height. Categorical fields with
-more than 8 observed levels are rejected as unavailable. Use \code{NULL}
-(default) for an unlabelled rug.}
+the displayed sample positions. Categorical metadata additionally use a
+baseline stem with line type and height when critical points are hidden.
+When \code{show_critical_points = TRUE}, categorical sample positions use
+directly labelled baseline rows, so row position and text provide
+non-colour group identification without metadata stems. This diagnostic view
+supports at most 4 observed levels; categorical fields with more than 8
+observed levels are rejected as unavailable in other views. Use
+\code{NULL} (default) for an unlabelled rug.}
 
 \item{show_critical_points}{logical; explicitly opt in to point-estimate
 well/barrier classifications and barrier-height segments. Defaults to

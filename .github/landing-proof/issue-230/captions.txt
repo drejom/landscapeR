@@ -45,10 +45,10 @@ critical-point or barrier threshold is applied. The landscape is an exploratory 
 does not by itself establish a biological state transition.
 Density-derived quasi-potential landscape. The figure uses molecular layers layer 1, layer 2.
 The black curve shows U(x) = -log p(x), derived from the stored density estimate for component
-1. Rug colour identifies categorical planted group; categorical samples occupy distinct short
-baseline lanes and use rug line type as a restrained secondary non-colour group encoding;
-variable-width stems are omitted. Outlined downward triangles mark stored wells; symbols are
-offset and staggered from their stored coordinates and linked to the stored positions by dashed
+1. Coloured points identify categorical planted group and show sample coordinates in directly
+labelled baseline rows; row position and text provide non-colour group identification; no
+metadata stems are drawn. Outlined downward triangles mark stored wells; symbols are offset and
+staggered from their stored coordinates and linked to the stored positions by dashed
 connectors. Outlined upward triangles mark stored barriers; symbols are offset and staggered
 from their stored coordinates and linked to the stored positions by dashed connectors. Dotted
 vertical segments show point-estimate barrier heights. The analysis unit is independent

@@ -87,19 +87,21 @@ test_that("plot_potential requires explicit opt-in for point-estimate classifica
         std3, colour_by = "planted_group", show_critical_points = TRUE
     ))
     caption_with_metadata <- gsub("\\s+", " ", caption_with_metadata)
-    expect_false(grepl("stem width|stem type", caption_with_metadata))
+    expect_match(caption_with_metadata, "no metadata stems are drawn")
     expect_match(
         caption_with_metadata,
-        "categorical samples occupy distinct short baseline lanes"
+        "directly labelled baseline rows"
     )
     critical_metadata_plot <- plot_potential(
         std3, colour_by = "planted_group", show_critical_points = TRUE
     )
-    expect_s3_class(
-        critical_metadata_plot$scales$get_scales("linetype"),
-        "ScaleDiscrete"
-    )
+    expect_null(critical_metadata_plot$scales$get_scales("linetype"))
     expect_null(critical_metadata_plot$scales$get_scales("linewidth"))
+    expect_true(any(vapply(
+        critical_metadata_plot$layers,
+        function(layer) inherits(layer$geom, "GeomText"),
+        logical(1L)
+    )))
 })
 
 test_that("plot_potential rejects overlarge categorical critical-point encodings", {
@@ -114,7 +116,7 @@ test_that("plot_potential rejects overlarge categorical critical-point encodings
 
     expect_error(
         plot_potential(std3, colour_by = "many_groups", show_critical_points = TRUE),
-        "baseline lanes support at most 4 levels",
+        "baseline rows support at most 4 levels",
         class = "landscapeR_plot_evidence_unavailable"
     )
 })
@@ -222,6 +224,37 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     expect_match(scientific_caption(plot), "Dashed rug marks\\s+1 observation")
     expect_s3_class(plot$scales$get_scales("linetype"), "ScaleDiscrete")
     expect_match(scientific_caption(plot), "baseline stem type")
+
+    critical_plot <- plot_potential(
+        std, colour_by = "planted_group", show_critical_points = TRUE
+    )
+    critical_caption <- gsub("\\s+", " ", scientific_caption(critical_plot))
+    expect_match(
+        critical_caption,
+        "Crosses in the labelled missing row mark 1 observation"
+    )
+    expect_match(critical_caption, "no metadata stems are drawn")
+    expect_null(critical_plot$scales$get_scales("linetype"))
+    expect_null(critical_plot$scales$get_scales("linewidth"))
+
+    cd <- colData(std)
+    cd$planted_group <- factor(
+        rep(NA_character_, nrow(cd)), levels = c("high", "low")
+    )
+    colData(std) <- cd
+    std <- prepare_plot_evidence(std, stage = "stage2")
+    all_missing_plot <- plot_potential(
+        std, colour_by = "planted_group", show_critical_points = TRUE
+    )
+    all_missing_caption <- gsub(
+        "\\s+", " ", scientific_caption(all_missing_plot)
+    )
+    expect_s3_class(all_missing_plot, "gg")
+    expect_match(
+        all_missing_caption,
+        "No observed values are available for categorical planted group"
+    )
+    expect_match(all_missing_caption, "labelled missing row")
 })
 
 test_that("plot_potential redundantly encodes continuous rug metadata", {

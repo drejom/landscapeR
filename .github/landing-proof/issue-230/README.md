@@ -9,9 +9,9 @@ a fixed synthetic fixture. Categorical metadata retains colour and adds
 baseline stem line type and height when critical-point overlays are hidden.
 Continuous metadata retains colour and adds baseline stem height and width
 when critical-point overlays are hidden. Critical-point views omit those
-redundant baseline stems, retain distinct short baseline lanes with a
-secondary line-type encoding for recoverable group identity, and use
-outlined, staggered well/barrier markers. Critical lanes support at most
+redundant baseline stems, use directly labelled, colour-coded sample rows
+for recoverable group identity, and use outlined, staggered well/barrier
+markers. Critical rows support at most
 four observed groups.
 Decomposition points use colour plus shape or size in one layer. Native
 100 x 80 mm and reduced 90 x 72 mm renders, plus deuteranopia-simulated
