@@ -1,0 +1,88 @@
+name: Set up R with resolver retry
+description: Retry r-lib/actions setup when its external version resolver is transiently unavailable.
+
+inputs:
+  r-version:
+    description: R version specification passed unchanged to r-lib/actions/setup-r.
+    required: true
+  use-public-rspm:
+    description: Whether setup-r should configure the public Posit Package Manager.
+    required: false
+    default: "true"
+  test-outcomes:
+    description: Test-only comma-separated attempt outcomes; leave empty in production.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Validate controlled fixture boundary
+      if: inputs.test-outcomes != ''
+      shell: bash
+      env:
+        RETRY_R_VERSION: ${{ inputs.r-version }}
+        RETRY_TEST_OUTCOMES: ${{ inputs.test-outcomes }}
+      run: |
+        test "$GITHUB_JOB" = setup-r-retry-contract
+        test "$RETRY_R_VERSION" = test-fixture
+        [[ "$RETRY_TEST_OUTCOMES" =~ ^(success|failure)(,(success|failure)){0,2}$ ]]
+
+    - name: Controlled attempt 1 outcome
+      id: test-1
+      if: inputs.test-outcomes != ''
+      continue-on-error: true
+      shell: bash
+      env:
+        RETRY_TEST_OUTCOMES: ${{ inputs.test-outcomes }}
+      run: |
+        outcome="$RETRY_TEST_OUTCOMES"
+        [[ "${outcome%%,*}" == "success" ]]
+
+    - name: Set up R (attempt 1 of 3)
+      id: setup-r-1
+      if: inputs.test-outcomes == ''
+      continue-on-error: true
+      uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: ${{ inputs.r-version }}
+        use-public-rspm: ${{ inputs.use-public-rspm }}
+
+    - name: Controlled attempt 2 outcome
+      id: test-2
+      if: inputs.test-outcomes != '' && steps.test-1.outcome == 'failure'
+      continue-on-error: true
+      shell: bash
+      env:
+        RETRY_TEST_OUTCOMES: ${{ inputs.test-outcomes }}
+      run: |
+        outcome="$RETRY_TEST_OUTCOMES"
+        remainder="${outcome#*,}"
+        [[ "${remainder%%,*}" == "success" ]]
+
+    - name: Set up R (attempt 2 of 3)
+      id: setup-r-2
+      if: inputs.test-outcomes == '' && steps.setup-r-1.outcome == 'failure'
+      continue-on-error: true
+      uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: ${{ inputs.r-version }}
+        use-public-rspm: ${{ inputs.use-public-rspm }}
+
+    - name: Controlled attempt 3 outcome
+      if: inputs.test-outcomes != '' && steps.test-1.outcome == 'failure' && steps.test-2.outcome == 'failure'
+      shell: bash
+      env:
+        RETRY_TEST_OUTCOMES: ${{ inputs.test-outcomes }}
+      run: |
+        outcome="$RETRY_TEST_OUTCOMES"
+        remainder="${outcome#*,}"
+        remainder="${remainder#*,}"
+        [[ "${remainder%%,*}" == "success" ]]
+
+    - name: Set up R (attempt 3 of 3)
+      if: inputs.test-outcomes == '' && steps.setup-r-1.outcome == 'failure' && steps.setup-r-2.outcome == 'failure'
+      uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: ${{ inputs.r-version }}
+        use-public-rspm: ${{ inputs.use-public-rspm }}

@@ -1,0 +1,15 @@
+R setup retry contract
+
+Package check  -> shared setup-r wrapper -> attempt 1 -> attempt 2 if needed -> terminal attempt 3
+Pkgdown deploy -> shared setup-r wrapper -> attempt 1 -> attempt 2 if needed -> terminal attempt 3
+
+Runner-controlled evidence:
+failure -> success                    = workflow success
+failure -> failure -> success         = workflow success
+failure -> failure -> failure         = captured terminal failure
+
+R version specification: 4.5 (unchanged)
+Installer authority: r-lib/actions/setup-r@v2 (unchanged)
+Public package manager: enabled (unchanged)
+Maximum setup attempts: 3
+Scientific or package-runtime behavior: unchanged
