@@ -53,6 +53,10 @@ state_data <- synthetic_control(
 )
 state_cd <- colData(state_data)
 state_cd$observed_time <- seq_len(nrow(state_cd))
+state_cd$planted_group <- factor(
+    ifelse(state_cd$planted_group == "low", "Control", "Focal"),
+    levels = c("Control", "Focal")
+)
 colData(state_data) <- state_cd
 stage1 <- suppressWarnings(
     decompose(get_strategy("Decomposer", "hogsvd_averaged")(), state_data)
@@ -67,7 +71,10 @@ critical_data <- synthetic_k1_double_well_control(
     n = 200L, p = 500L, beta = 4, seed = 23002L
 )
 critical_cd <- colData(critical_data)
-critical_cd$planted_group <- critical_cd$well
+critical_cd$planted_group <- factor(
+    ifelse(critical_cd$well == "left", "Control", "Focal"),
+    levels = c("Control", "Focal")
+)
 colData(critical_data) <- critical_cd
 stage2_critical <- suppressWarnings(
     decompose(get_strategy("Decomposer", "svd")(), critical_data)
@@ -79,78 +86,45 @@ stage2_critical <- prepare_plot_evidence(stage2_critical, stage = "stage2")
 
 plots <- list(
     stage1_components_categorical = plot_components(
-        stage1, colour_by = "planted_group", n_components = 2L
+        stage1, colour_by = "planted_group", n_components = 2L,
+        reference_level = "Control", focal_level = "Focal"
     ),
     stage1_components_continuous = plot_components(
         stage1, colour_by = "observed_time", n_components = 2L
     ),
     stage1_decomposition = plot_decomposition(
-        stage1, colour_by = "planted_group", component = 1L
+        stage1, colour_by = "planted_group", component = 1L,
+        reference_level = "Control", focal_level = "Focal"
     ),
     stage1_decomposition_continuous = plot_decomposition(
         stage1, colour_by = "observed_time", component = 1L
     ),
     stage2_potential_categorical = plot_potential(
-        stage2, colour_by = "planted_group"
+        stage2, colour_by = "planted_group",
+        reference_level = "Control", focal_level = "Focal"
     ),
     stage2_potential_continuous = plot_potential(
         stage2, colour_by = "observed_time"
     ),
     stage2_potential_critical_points = plot_potential(
         stage2_critical, colour_by = "planted_group",
-        show_critical_points = TRUE
+        show_critical_points = TRUE,
+        reference_level = "Control", focal_level = "Focal"
     )
 )
 
 captions <- vapply(plots, scientific_caption, character(1L))
 names(captions) <- names(plots)
 
-compact_plot <- function(plot, plot_name) {
-    title <- switch(
-        plot_name,
-        stage1_components_categorical = "Stage 1 component distributions",
-        stage1_components_continuous = "Stage 1 component distributions",
-        stage1_decomposition = "Component 1 scores by molecular layer",
-        stage1_decomposition_continuous = "Component 1 scores by molecular layer",
-        stage2_potential_categorical = "Quasi-potential landscape",
-        stage2_potential_continuous = "Quasi-potential landscape",
-        stage2_potential_critical_points = "Quasi-potential landscape",
-        plot$labels$title
-    )
-    subtitle <- switch(
-        plot_name,
-        stage2_potential_categorical = "U(x) = -log p(x)",
-        stage2_potential_continuous = "U(x) = -log p(x)",
-        stage2_potential_critical_points = "U(x) = -log p(x)",
-        NULL
-    )
-    p <- plot + ggplot2::theme(
-        plot.title = ggplot2::element_text(size = 6.5, face = "bold"),
-        plot.subtitle = ggplot2::element_text(size = 5.5),
-        axis.title = ggplot2::element_text(size = 5.5),
-        axis.text = ggplot2::element_text(size = 4.5),
-        strip.text = ggplot2::element_text(size = 5.5),
-        legend.title = ggplot2::element_text(size = 4.5),
-        legend.text = ggplot2::element_text(size = 4),
-        legend.box = "vertical",
-        legend.spacing.x = grid::unit(2, "mm"),
-        panel.spacing = grid::unit(5, "mm"),
-        plot.margin = ggplot2::margin(2, 2, 2, 2),
-        aspect.ratio = 1
-    ) +
-        ggplot2::labs(title = title, subtitle = subtitle)
-    p
-}
-
 for (plot_name in names(plots)) {
     native <- file.path(output_dir, paste0(plot_name, ".png"))
     reduced <- file.path(output_dir, paste0(plot_name, "-reduced.png"))
     cvd <- file.path(output_dir, paste0(plot_name, "-deutan.png"))
-    save_landscapeR_plot(plots[[plot_name]], native, width_mm = 100, height_mm = 80)
+    save_landscapeR_plot(plots[[plot_name]], native, width_mm = 100, height_mm = 100)
     save_landscapeR_plot(
-        compact_plot(plots[[plot_name]], plot_name), reduced,
-        width_mm = 90,
-        height_mm = 72
+        plots[[plot_name]], reduced,
+        width_mm = 80,
+        height_mm = 80
     )
     simulate_deutan_png(native, cvd)
     simulate_deutan_png(reduced, paste0(reduced, "-deutan.png"))
@@ -186,15 +160,16 @@ writeLines(
         "verbatim. They show colour-only rugs and thin line swatches that are",
         "difficult to read at reduced size and under colour-vision deficiency.", "",
         "The after images are generated from the current plotting functions using",
-        "a fixed synthetic fixture. Categorical metadata retains colour and uses",
-        "line type, shape, or directly labelled sample rows as a restrained",
-        "non-colour channel. Continuous metadata uses colour and point size.",
-        "No categorical or continuous metadata stems are drawn. Critical-point",
+        "a fixed synthetic fixture. Declared binary focal groups use restrained",
+        "red and reference groups use neutral grey. Reference rugs occupy the",
+        "upper margin and focal rugs the lower margin; no metadata stems or",
+        "sample-point rows are drawn. Continuous metadata uses perceptually ordered",
+        "rug colour and opacity. Critical-point",
         "views place small open circles at stored wells and small red diamonds at",
-        "stored barriers, directly on the potential curve. Potential-plot rows support at most",
-        "four observed groups.",
+        "stored barriers, directly on the potential curve. Fine grey dashed lines",
+        "locate the stored critical-point positions.",
         "Decomposition points use colour plus shape or size in one layer. Native",
-        "100 x 80 mm and reduced 90 x 72 mm renders, plus deuteranopia-simulated",
+        "100 x 100 mm and unchanged reduced 80 x 80 mm renders, plus deuteranopia",
         "native and reduced outputs, are retained for inspection.",
         "",
         "Captions are generated by scientific_caption() and retained in",

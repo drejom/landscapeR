@@ -56,7 +56,7 @@ test_that("landscapeR palettes have stable semantic roles", {
             negative = "#356A88"
         )
     )
-    expect_identical(binary, c(reference = "#111111", focal = "#C43C39"))
+    expect_identical(binary, c(reference = "#8A8A8A", focal = "#C43C39"))
     expect_length(categorical, 8L)
     expect_length(landscapeR_palette("categorical", n = 9L), 9L)
     expect_error(
@@ -186,7 +186,7 @@ test_that("binary scales name the declared focal level independently of order", 
         )
 
     colours <- ggplot2::ggplot_build(plot)$data[[1L]]$colour
-    expect_identical(colours, c("#C43C39", "#111111"))
+    expect_identical(colours, c("#C43C39", "#8A8A8A"))
     expect_error(
         scale_colour_landscapeR("binary"),
         "reference_level and focal_level"
@@ -262,13 +262,13 @@ test_that("component galleries mark and label missing metadata explicitly", {
     expect_null(plot$labels$caption)
     expect_match(
         gsub("\\s+", " ", scientific_caption(plot)),
-        "Crosses at the baseline mark.*missing"
+        "Dashed black rugs mark.*missing"
     )
     expect_true(any(vapply(
         plot$layers,
         function(layer) {
-            inherits(layer$geom, "GeomPoint") &&
-                identical(layer$aes_params$shape, 4)
+            inherits(layer$geom, "GeomRug") &&
+                identical(layer$aes_params$linetype, "dashed")
         },
         logical(1L)
     )))
@@ -293,13 +293,13 @@ test_that("potential plots mark and label missing metadata explicitly", {
     expect_null(plot$labels$caption)
     expect_match(
         gsub("\\s+", " ", scientific_caption(plot)),
-        "Crosses in the labelled missing row mark.*missing"
+        "Dashed black rugs mark.*missing"
     )
     expect_true(any(vapply(
         plot$layers,
         function(layer) {
-            inherits(layer$geom, "GeomPoint") &&
-                identical(layer$aes_params$shape, 4)
+            inherits(layer$geom, "GeomRug") &&
+                identical(layer$aes_params$linetype, "dashed")
         },
         logical(1L)
     )))

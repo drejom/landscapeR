@@ -77,7 +77,7 @@ test_that("plot_potential requires explicit opt-in for point-estimate classifica
     caption <- gsub("\\s+", " ", scientific_caption(plot))
     expect_match(caption, "Small open circles mark stored stable wells directly on the curve")
     expect_match(caption, "Small red diamonds mark stored unstable barriers directly on the curve")
-    expect_match(caption, "Dashed vertical segments")
+    expect_match(caption, "Fine grey dashed lines")
     expect_match(caption, "vertical display is focused")
     expect_match(caption, "point\\s+estimates")
 
@@ -85,31 +85,38 @@ test_that("plot_potential requires explicit opt-in for point-estimate classifica
         std3, colour_by = "planted_group", show_critical_points = TRUE
     ))
     caption_with_metadata <- gsub("\\s+", " ", caption_with_metadata)
-    expect_match(caption_with_metadata, "no metadata stems are drawn")
-    expect_match(
-        caption_with_metadata,
-        "directly labelled baseline rows"
-    )
+    expect_match(caption_with_metadata, "Fine coloured rugs")
     critical_metadata_plot <- plot_potential(
         std3, colour_by = "planted_group", show_critical_points = TRUE
     )
-    expect_s3_class(
-        critical_metadata_plot$scales$get_scales("linetype"),
-        "ScaleDiscrete"
-    )
-    expect_gt(
-        nrow(ggplot2::get_guide_data(critical_metadata_plot, "linetype")),
-        0L
-    )
+    expect_null(critical_metadata_plot$scales$get_scales("linetype"))
     expect_null(critical_metadata_plot$scales$get_scales("linewidth"))
-    expect_true(any(vapply(
+    expect_false(any(vapply(
         critical_metadata_plot$layers,
         function(layer) inherits(layer$geom, "GeomText"),
         logical(1L)
     )))
+
+    binary_plot <- plot_potential(
+        std3,
+        colour_by = "planted_group",
+        show_critical_points = TRUE,
+        reference_level = "low",
+        focal_level = "high"
+    )
+    rug_sides <- vapply(
+        Filter(
+            function(layer) inherits(layer$geom, "GeomRug"),
+            binary_plot$layers
+        ),
+        function(layer) layer$geom_params$sides,
+        character(1L)
+    )
+    expect_setequal(rug_sides, c("t", "b"))
+    expect_match(scientific_caption(binary_plot), "upper margin")
 })
 
-test_that("plot_potential rejects overlarge categorical baseline-row encodings", {
+test_that("plot_potential renders large categorical rug encodings", {
     std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
     cd <- colData(std)
     cd$many_groups <- factor(seq_len(nrow(cd)))
@@ -119,14 +126,13 @@ test_that("plot_potential rejects overlarge categorical baseline-row encodings",
     std3 <- estimate_dynamics(
         get_strategy("DynamicsEstimator", "kde_logdensity")(), std2)@value
 
-    expect_error(
+    expect_s3_class(
         plot_potential(std3, colour_by = "many_groups", show_critical_points = TRUE),
-        "baseline rows support at most 4 levels",
-        class = "landscapeR_plot_evidence_unavailable"
+        "ggplot"
     )
 })
 
-test_that("plot_potential rejects eight categorical baseline rows", {
+test_that("plot_potential renders eight categorical rug levels", {
     std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
     cd <- colData(std)
     cd$eight_groups <- factor(rep(letters[1:8], length.out = nrow(cd)))
@@ -136,11 +142,7 @@ test_that("plot_potential rejects eight categorical baseline rows", {
     std3 <- estimate_dynamics(
         get_strategy("DynamicsEstimator", "kde_logdensity")(), std2)@value
 
-    expect_error(
-        plot_potential(std3, colour_by = "eight_groups"),
-        "baseline rows support at most 4 levels",
-        class = "landscapeR_plot_evidence_unavailable"
-    )
+    expect_s3_class(plot_potential(std3, colour_by = "eight_groups"), "ggplot")
 })
 
 test_that("plot_potential reports an empty requested critical-point overlay", {
@@ -161,7 +163,7 @@ test_that("plot_potential reports an empty requested critical-point overlay", {
 
     plot <- plot_potential(std, show_critical_points = TRUE)
     caption <- gsub("\\s+", " ", scientific_caption(plot))
-    expect_match(caption, "no stored wells, barriers, or barrier-height")
+    expect_match(caption, "no stored wells or barriers")
     expect_false(grepl("triangles mark", caption))
 })
 
@@ -227,9 +229,9 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     expect_null(plot$labels$caption)
     caption <- gsub("\\s+", " ", scientific_caption(plot))
     expect_match(caption, "categorical planted group")
-    expect_match(caption, "Crosses in the labelled missing row mark 1 observation")
+    expect_match(caption, "Dashed black rugs mark 1 observation")
     expect_null(plot$scales$get_scales("linetype"))
-    expect_match(caption, "directly labelled baseline rows")
+    expect_match(caption, "Fine coloured rugs")
 
     critical_plot <- plot_potential(
         std, colour_by = "planted_group", show_critical_points = TRUE
@@ -237,13 +239,10 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     critical_caption <- gsub("\\s+", " ", scientific_caption(critical_plot))
     expect_match(
         critical_caption,
-        "Crosses in the labelled missing row mark 1 observation"
+        "Dashed black rugs mark 1 observation"
     )
-    expect_match(critical_caption, "no metadata stems are drawn")
-    expect_s3_class(
-        critical_plot$scales$get_scales("linetype"),
-        "ScaleDiscrete"
-    )
+    expect_match(critical_caption, "Fine coloured rugs")
+    expect_null(critical_plot$scales$get_scales("linetype"))
     expect_null(critical_plot$scales$get_scales("linewidth"))
 
     cd <- colData(std)
@@ -263,10 +262,10 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
         all_missing_caption,
         "No observed values are available for categorical planted group"
     )
-    expect_match(all_missing_caption, "labelled missing row")
+    expect_match(all_missing_caption, "dashed black rugs")
 })
 
-test_that("plot_potential redundantly encodes continuous rug metadata", {
+test_that("plot_potential colour-encodes continuous rug metadata", {
     std <- synthetic_control(
         n = 40L, p = 500L, K = 2L, signal = 30, seed = 2L
     )
@@ -284,9 +283,9 @@ test_that("plot_potential redundantly encodes continuous rug metadata", {
     plot <- plot_potential(std, colour_by = "observed_time")
 
     expect_s3_class(plot$scales$get_scales("colour"), "ScaleContinuous")
-    expect_s3_class(plot$scales$get_scales("size"), "ScaleContinuous")
-    expect_gt(nrow(ggplot2::get_guide_data(plot, "size")), 0L)
-    expect_match(scientific_caption(plot), "Baseline-point colour and size")
+    expect_null(plot$scales$get_scales("size"))
+    expect_s3_class(plot$scales$get_scales("alpha"), "ScaleContinuous")
+    expect_match(scientific_caption(plot), "Fine rug colour and opacity")
 
     critical_plot <- plot_potential(
         std, colour_by = "observed_time", show_critical_points = TRUE
@@ -295,9 +294,12 @@ test_that("plot_potential redundantly encodes continuous rug metadata", {
         critical_plot$scales$get_scales("colour"),
         "ScaleContinuous"
     )
-    expect_s3_class(critical_plot$scales$get_scales("size"), "ScaleContinuous")
+    expect_null(critical_plot$scales$get_scales("size"))
+    expect_s3_class(
+        critical_plot$scales$get_scales("alpha"), "ScaleContinuous"
+    )
     critical_caption <- gsub("\\s+", " ", scientific_caption(critical_plot))
-    expect_match(critical_caption, "no metadata stems are drawn")
+    expect_match(critical_caption, "Fine rug colour and opacity")
 })
 
 test_that("plot_potential renders typed unavailability when Stage 2 is absent", {

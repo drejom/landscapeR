@@ -427,7 +427,7 @@ test_that("stored spectrum retains the legacy raw-assay estimand", {
     )
 })
 
-test_that("singleton categorical levels are retained as point-only evidence", {
+test_that("singleton categorical levels are retained as rug-only evidence", {
     std <- synthetic_control(
         n = 20L, p = 60L, K = 1L, signal = 20, seed = 121L
     )
@@ -450,7 +450,7 @@ test_that("singleton categorical levels are retained as point-only evidence", {
         scientific_caption(
             plot_components(stage1, colour_by = "planted_group")
         ),
-        "singleton.*baseline points only"
+        "singleton.*sample rugs only"
     )
 })
 
@@ -525,7 +525,7 @@ test_that("Stage 1 renderers derive component availability from stored evidence"
     expect_false(grepl("@display_data", renderer_text, fixed = TRUE))
 })
 
-test_that("numerically degenerate slices are retained as point-only evidence", {
+test_that("numerically degenerate slices are retained as rug-only evidence", {
     std <- synthetic_control(
         n = 20L, p = 60L, K = 1L, signal = 20, seed = 126L
     )
@@ -549,7 +549,7 @@ test_that("numerically degenerate slices are retained as point-only evidence", {
             " ",
             scientific_caption(plot_components(stage1))
         ),
-        "numerically degenerate.*baseline points only",
+        "numerically degenerate.*sample rugs only",
         ignore.case = TRUE
     )
 })

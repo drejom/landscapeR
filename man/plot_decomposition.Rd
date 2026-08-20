@@ -4,7 +4,13 @@
 \alias{plot_decomposition}
 \title{Plot sample coordinates on the recovered state-transition axis (Stage 1 output)}
 \usage{
-plot_decomposition(std, colour_by = NULL, component = 1L)
+plot_decomposition(
+  std,
+  colour_by = NULL,
+  component = 1L,
+  reference_level = NULL,
+  focal_level = NULL
+)
 }
 \arguments{
 \item{std}{\code{StateTransitionData} with \code{metadata()$stage1} present}
@@ -18,6 +24,12 @@ continuous fields additionally encode point size.}
 coordinate matrix (default \code{1L}). Use \code{plot_components()} to
 inspect descriptive distributions; scientific selection requires the
 atlas/proposal and confirmation workflow.}
+
+\item{reference_level}{optional declared reference level for binary
+categorical metadata. Supply together with \code{focal_level}.}
+
+\item{focal_level}{optional declared focal level for binary categorical
+metadata. Supply together with \code{reference_level}.}
 }
 \value{
 a \code{ggplot} object

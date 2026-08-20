@@ -4,7 +4,14 @@
 \alias{plot_components}
 \title{Component gallery coloured by canonically aligned sample metadata}
 \usage{
-plot_components(std, colour_by = NULL, n_components = 6L, layer = 1L)
+plot_components(
+  std,
+  colour_by = NULL,
+  n_components = 6L,
+  layer = 1L,
+  reference_level = NULL,
+  focal_level = NULL
+)
 }
 \arguments{
 \item{std}{\code{StateTransitionData} with \code{metadata()$stage1} present}
@@ -15,6 +22,14 @@ Categorical and continuous fields are supported.}
 \item{n_components}{integer number of components to show (default 6)}
 
 \item{layer}{integer selected assay layer (default 1)}
+
+\item{reference_level}{optional declared reference level for binary
+categorical metadata. Supply together with \code{focal_level}; the
+reference is drawn in neutral grey.}
+
+\item{focal_level}{optional declared focal level for binary categorical
+metadata. Supply together with \code{reference_level}; the focal group is
+drawn in the package focal red.}
 }
 \value{
 a \code{ggplot} object faceted over components in decomposition order
@@ -27,11 +42,11 @@ selected assay through its canonical \code{sampleMap}; row position is never
 treated as sample identity.
 }
 \details{
-Categorical metadata use colour and line type on grouped density outlines;
-sample points at the density baseline repeat group identity through colour
-and shape. Continuous metadata use colour and point size at the density
-baseline. These encodings retain individual sample positions without adding
-a second field of baseline stems. The gallery
+Categorical metadata use colour on grouped density fills and fine sample
+rugs. For a declared binary contrast, reference rugs occupy the upper margin
+and focal rugs the lower margin. Continuous metadata use perceptually ordered
+colour and opacity on fine sample rugs. These encodings retain individual sample positions without
+adding baseline stems or point rows. The gallery
 rejects categorical fields with more than 8 observed levels rather than
 assigning ambiguous marks. It does not calculate association scores or rank components; those
 responsibilities belong to the metadata atlas and proposal workflow.

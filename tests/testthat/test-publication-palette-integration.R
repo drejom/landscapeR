@@ -13,7 +13,7 @@ test_that("time-course renderers preserve canonical semantic colour roles", {
 
     expect_setequal(
         colours[nzchar(colours)],
-        unname(semantic[c("ink", "focal")])
+        unname(semantic[c("nuisance", "focal", "ink")])
     )
     expect_setequal(
         fills[nzchar(fills)],

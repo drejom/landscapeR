@@ -16,7 +16,7 @@ test_that("plot_components returns a ggplot after Stage 1 has run", {
     p <- plot_components(std2, colour_by = "planted_group")
     expect_s3_class(p, "gg")
     caption <- scientific_caption(p)
-    expect_match(caption, "[Cc]ategorical metadata")
+    expect_match(gsub("\\s+", " ", caption), "Categorical metadata")
     expect_match(caption, "does\\s+not rank or nominate")
     expect_null(p$labels$caption)
 })
@@ -31,6 +31,12 @@ test_that("plot_decomposition returns a ggplot after Stage 1 has run", {
     caption <- scientific_caption(p)
     expect_match(caption, "rank-ordered")
     expect_match(caption, "ground-truth angle")
+    facet_labels <- unname(p$facet$params$labeller(
+        data.frame(layer = unique(p$data$layer))
+    )$layer)
+    expect_true(all(grepl("^\\([A-Z]\\)", facet_labels)))
+    expect_match(caption, "\\(A\\)")
+    expect_match(caption, "\\(B\\)")
 })
 
 test_that("plot captions retain declared destructive and longitudinal design fields", {
@@ -235,7 +241,7 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
     expect_identical(p$data$metadata_value[seq_along(expected)], expected)
     expect_s3_class(p$scales$get_scales("colour"), "ScaleDiscrete")
     expect_s3_class(p$scales$get_scales("fill"), "ScaleDiscrete")
-    expect_s3_class(p$scales$get_scales("linetype"), "ScaleDiscrete")
+    expect_null(p$scales$get_scales("linetype"))
     density_layer <- p$layers[[1L]]$data
     expect_setequal(
         unique(density_layer$metadata_value),
@@ -258,7 +264,7 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
     expect_match(scientific_caption(p), "rna layer")
     expect_match(scientific_caption(p), "[Cc]ategorical metadata")
     expect_match(scientific_caption(p), "[Dd]ensity\\s+fills")
-    expect_match(scientific_caption(p), "baseline-point shape")
+    expect_match(scientific_caption(p), "fine sample rugs")
     expect_match(scientific_caption(p), "\\(A\\) Component 1")
     expect_match(scientific_caption(p), "\\(B\\) Component 2")
     expect_false(any(vapply(
@@ -266,6 +272,25 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
         function(layer) inherits(layer$geom, "GeomSegment"),
         logical(1L)
     )))
+
+    binary_values <- unique(as.character(expected))
+    binary_plot <- plot_components(
+        std,
+        colour_by = "condition",
+        n_components = 2L,
+        reference_level = binary_values[[1L]],
+        focal_level = binary_values[[2L]]
+    )
+    rug_sides <- vapply(
+        Filter(
+            function(layer) inherits(layer$geom, "GeomRug"),
+            binary_plot$layers
+        ),
+        function(layer) layer$geom_params$sides,
+        character(1L)
+    )
+    expect_setequal(rug_sides, c("t", "b"))
+    expect_match(scientific_caption(binary_plot), "upper margin")
 })
 
 test_that("plot_components visibly renders continuous MAE metadata", {
@@ -279,7 +304,8 @@ test_that("plot_components visibly renders continuous MAE metadata", {
 
     expect_identical(p$data$metadata_value[seq_along(expected)], expected)
     expect_s3_class(p$scales$get_scales("colour"), "ScaleContinuous")
-    expect_s3_class(p$scales$get_scales("size"), "ScaleContinuous")
+    expect_null(p$scales$get_scales("size"))
+    expect_s3_class(p$scales$get_scales("alpha"), "ScaleContinuous")
     expect_null(p$scales$get_scales("fill"))
     expect_true(any(vapply(
         p$layers,
@@ -288,11 +314,14 @@ test_that("plot_components visibly renders continuous MAE metadata", {
     )))
     expect_true(any(vapply(
         p$layers,
-        function(layer) inherits(layer$geom, "GeomPoint"),
+        function(layer) inherits(layer$geom, "GeomRug"),
         logical(1L)
     )))
-    expect_match(scientific_caption(p), "[Cc]ontinuous metadata")
-    expect_match(scientific_caption(p), "baseline-point colour and size")
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(p)),
+        "Continuous metadata"
+    )
+    expect_match(scientific_caption(p), "colour and opacity scale")
 
     cd <- colData(std)
     cd$sample_weeks[[1L]] <- NA_real_
@@ -303,11 +332,11 @@ test_that("plot_components visibly renders continuous MAE metadata", {
     )
     expect_match(
         gsub("\\s+", " ", scientific_caption(missing_plot)),
-        "Crosses at the baseline mark 1 observations with missing sample weeks"
+        "Dashed black rugs mark 1 observations with missing sample weeks"
     )
 })
 
-test_that("plot_components renders eight categorical outlines and point shapes", {
+test_that("plot_components renders eight categorical outlines and rugs", {
     std <- component_gallery_fixture()
     cd <- colData(std)
     cd$eight_groups <- factor(rep(letters[1:8], length.out = nrow(cd)))
@@ -317,8 +346,13 @@ test_that("plot_components renders eight categorical outlines and point shapes",
     p <- plot_components(std, colour_by = "eight_groups", n_components = 2L)
 
     expect_s3_class(p, "gg")
-    expect_s3_class(p$scales$get_scales("linetype"), "ScaleDiscrete")
-    expect_s3_class(p$scales$get_scales("shape"), "ScaleDiscrete")
+    expect_null(p$scales$get_scales("linetype"))
+    expect_null(p$scales$get_scales("shape"))
+    expect_true(any(vapply(
+        p$layers,
+        function(layer) inherits(layer$geom, "GeomRug"),
+        logical(1L)
+    )))
 })
 
 test_that("plot_components renders valid metadata without unknown-scale warnings", {
