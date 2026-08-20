@@ -208,6 +208,7 @@ test_that("plot_decomposition renders continuous metadata and marks missing valu
 
     expect_s3_class(p$scales$get_scales("colour"), "ScaleContinuous")
     expect_s3_class(p$scales$get_scales("size"), "ScaleContinuous")
+    expect_gt(nrow(ggplot2::get_guide_data(p, "size")), 0L)
     expect_null(p$labels$caption)
     expect_match(scientific_caption(p), "Crosses mark 1 observation")
     expect_match(scientific_caption(p), "[Cc]ontinuous sample weeks")
@@ -245,6 +246,10 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
         levels(p$data$component),
         c("PC1", "PC2", "PC3")
     )
+    facet_labels <- unname(p$facet$params$labeller(
+        data.frame(component = c("PC1", "PC2", "PC3"))
+    )$component)
+    expect_identical(facet_labels, c("(A) PC1", "(B) PC2", "(C) PC3"))
     expect_identical(
         p$labels$title,
         "Stage 1 component distributions"
@@ -253,7 +258,14 @@ test_that("plot_components canonically aligns categorical MAE metadata", {
     expect_match(scientific_caption(p), "rna layer")
     expect_match(scientific_caption(p), "[Cc]ategorical metadata")
     expect_match(scientific_caption(p), "[Dd]ensity\\s+fills")
-    expect_match(scientific_caption(p), "[Bb]aseline stems")
+    expect_match(scientific_caption(p), "baseline-point shape")
+    expect_match(scientific_caption(p), "\\(A\\) Component 1")
+    expect_match(scientific_caption(p), "\\(B\\) Component 2")
+    expect_false(any(vapply(
+        p$layers,
+        function(layer) inherits(layer$geom, "GeomSegment"),
+        logical(1L)
+    )))
 })
 
 test_that("plot_components visibly renders continuous MAE metadata", {
@@ -267,7 +279,7 @@ test_that("plot_components visibly renders continuous MAE metadata", {
 
     expect_identical(p$data$metadata_value[seq_along(expected)], expected)
     expect_s3_class(p$scales$get_scales("colour"), "ScaleContinuous")
-    expect_s3_class(p$scales$get_scales("linewidth"), "ScaleContinuous")
+    expect_s3_class(p$scales$get_scales("size"), "ScaleContinuous")
     expect_null(p$scales$get_scales("fill"))
     expect_true(any(vapply(
         p$layers,
@@ -276,14 +288,26 @@ test_that("plot_components visibly renders continuous MAE metadata", {
     )))
     expect_true(any(vapply(
         p$layers,
-        function(layer) inherits(layer$geom, "GeomRug"),
+        function(layer) inherits(layer$geom, "GeomPoint"),
         logical(1L)
     )))
     expect_match(scientific_caption(p), "[Cc]ontinuous metadata")
-    expect_match(scientific_caption(p), "[Bb]aseline stems additionally use width")
+    expect_match(scientific_caption(p), "baseline-point colour and size")
+
+    cd <- colData(std)
+    cd$sample_weeks[[1L]] <- NA_real_
+    colData(std) <- cd
+    std <- prepare_plot_evidence(std, stage = "stage1")
+    missing_plot <- plot_components(
+        std, colour_by = "sample_weeks", n_components = 2L
+    )
+    expect_match(
+        gsub("\\s+", " ", scientific_caption(missing_plot)),
+        "Crosses at the baseline mark 1 observations with missing sample weeks"
+    )
 })
 
-test_that("plot_components renders eight categorical linetypes", {
+test_that("plot_components renders eight categorical outlines and point shapes", {
     std <- component_gallery_fixture()
     cd <- colData(std)
     cd$eight_groups <- factor(rep(letters[1:8], length.out = nrow(cd)))
@@ -294,6 +318,7 @@ test_that("plot_components renders eight categorical linetypes", {
 
     expect_s3_class(p, "gg")
     expect_s3_class(p$scales$get_scales("linetype"), "ScaleDiscrete")
+    expect_s3_class(p$scales$get_scales("shape"), "ScaleDiscrete")
 })
 
 test_that("plot_components renders valid metadata without unknown-scale warnings", {

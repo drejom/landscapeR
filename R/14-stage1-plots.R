@@ -69,7 +69,7 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
     levels <- sort(unique(as.character(values[!is.na(values)])))
     if (length(levels) > 8L) {
         .stop_plot_evidence_unavailable(
-            "Categorical stem marks support at most 8 levels"
+            "Categorical density outlines support at most 8 levels"
         )
     }
     linetypes <- c(
@@ -79,33 +79,6 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
     stats::setNames(rep(linetypes, length.out = length(levels)), levels)
 }
 
-.metadata_stem_data <- function(observed, density_df, value_col = "metadata_value") {
-    if (!nrow(observed)) return(observed)
-    max_density <- tapply(
-        density_df$density,
-        density_df$component,
-        max,
-        na.rm = TRUE
-    )
-    component_max <- unname(max_density[as.character(observed$component)])
-    component_max[!is.finite(component_max) | component_max <= 0] <- 1
-    values <- observed[[value_col]]
-    if (is.numeric(values)) {
-        value_range <- range(values, na.rm = TRUE)
-        if (diff(value_range) == 0) {
-            scaled <- rep(0.6, length(values))
-        } else {
-            scaled <- (values - value_range[[1L]]) / diff(value_range)
-        }
-    } else {
-        levels <- sort(unique(as.character(values)))
-        scaled <- (match(as.character(values), levels) - 1) /
-            max(1, length(levels) - 1)
-    }
-    observed$metadata_height <- component_max * (0.035 + 0.075 * scaled)
-    observed$metadata_width <- 0.45 + 0.75 * scaled
-    observed
-}
 #
 # All functions take a StateTransitionData object and return a ggplot.
 # colour_by is always optional -- omit it for unlabelled exploratory plots,
@@ -140,9 +113,11 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 #' selected assay through its canonical \code{sampleMap}; row position is never
 #' treated as sample identity.
 #'
-#' Categorical and continuous metadata colour the rugs while retaining the
-#' stored overall density. Categorical metadata also use baseline stem type and
-#' height; continuous metadata use baseline stem width and height. The gallery
+#' Categorical metadata use colour and line type on grouped density outlines;
+#' sample points at the density baseline repeat group identity through colour
+#' and shape. Continuous metadata use colour and point size at the density
+#' baseline. These encodings retain individual sample positions without adding
+#' a second field of baseline stems. The gallery
 #' rejects categorical fields with more than 8 observed levels rather than
 #' assigning ambiguous marks. It does not calculate association scores or rank components; those
 #' responsibilities belong to the metadata atlas and proposal workflow.
@@ -254,12 +229,18 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         df$component,
         levels = sprintf("PC%d", seq_len(k_show))
     )
+    component_names <- levels(df$component)
+    component_letters <- .publication_panel_letters(k_show)
+    component_labels <- stats::setNames(
+        sprintf("(%s) %s", component_letters, component_names),
+        component_names
+    )
 
     subtitle <- if (is.null(meta_col)) {
         "Components shown in decomposition order"
     } else if (is.numeric(meta_col)) {
         sprintf(
-            "Decomposition order; rug colour shows %s",
+            "Decomposition order; baseline-point colour and size show %s",
             .scientific_caption_label(colour_by)
         )
     } else {
@@ -299,39 +280,31 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 alpha = 0.55,
                 linewidth = 0.5
             ) +
-            ggplot2::geom_rug(
+            ggplot2::geom_point(
                 data = observed,
-                ggplot2::aes(colour = .data[["metadata_value"]]),
-                alpha = 0.75,
-                sides = "b"
+                ggplot2::aes(
+                    y = 0,
+                    colour = .data[["metadata_value"]],
+                    size = .data[["metadata_value"]]
+                ),
+                alpha = 0.75
             ) +
-            scale_colour_landscapeR("continuous")
+            scale_colour_landscapeR("continuous") +
+            ggplot2::scale_size_continuous(
+                range = c(0.8, 2.2),
+                name = paste0(
+                    .scientific_caption_label(colour_by), " (point size)"
+                )
+            )
         if (nrow(missing)) {
-            p <- p + ggplot2::geom_rug(
+            p <- p + ggplot2::geom_point(
                 data = missing,
+                ggplot2::aes(y = 0),
                 colour = .landscapeR_colour("ink"),
-                linetype = "dashed",
-                linewidth = 0.7,
-                sides = "b"
+                shape = 4,
+                size = 1.4
             )
         }
-        observed <- .metadata_stem_data(observed, density_df)
-        p <- p + ggplot2::geom_segment(
-            data = observed,
-            ggplot2::aes(
-                x = coord, xend = coord,
-                y = 0, yend = metadata_height,
-                colour = .data[["metadata_value"]],
-                linewidth = metadata_width
-            ),
-            inherit.aes = FALSE,
-            lineend = "round"
-        ) + ggplot2::scale_linewidth_continuous(
-            range = c(0.35, 1.1),
-            name = paste0(
-                .scientific_caption_label(colour_by), " (stem width)"
-            )
-        )
     } else {
         observed <- df[!is.na(df$metadata_value), , drop = FALSE]
         missing <- df[is.na(df$metadata_value), , drop = FALSE]
@@ -359,53 +332,46 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                     x = .data$coord,
                     y = .data$density,
                     fill = .data$metadata_value,
-                    colour = .data$metadata_value
+                    colour = .data$metadata_value,
+                    linetype = .data$metadata_value
                 ),
                 inherit.aes = FALSE,
                 alpha = 0.35,
                 linewidth = 0.5,
                 position = "identity"
             ) +
-            ggplot2::geom_rug(
+            ggplot2::geom_point(
                 data = observed,
                 ggplot2::aes(
                     x = coord,
-                    colour = .data[["metadata_value"]]
+                    y = 0,
+                    colour = .data[["metadata_value"]],
+                    shape = .data[["metadata_value"]]
                 ),
-                alpha = 0.55,
-                sides = "b"
+                alpha = 0.7,
+                size = 1.3,
+                inherit.aes = FALSE
             ) +
             scale_fill_landscapeR("categorical") +
-            scale_colour_landscapeR("categorical")
+            scale_colour_landscapeR("categorical") +
+            ggplot2::scale_linetype_manual(
+                values = .metadata_linetype_values(observed$metadata_value),
+                name = .scientific_caption_label(colour_by)
+            ) +
+            ggplot2::scale_shape_manual(
+                values = .metadata_shape_values(observed$metadata_value),
+                name = .scientific_caption_label(colour_by)
+            )
         if (nrow(missing)) {
-            p <- p + ggplot2::geom_rug(
+            p <- p + ggplot2::geom_point(
                 data = missing,
-                ggplot2::aes(x = coord),
+                ggplot2::aes(x = coord, y = 0),
                 inherit.aes = FALSE,
                 colour = .landscapeR_colour("ink"),
-                linetype = "dashed",
-                linewidth = 0.7,
-                sides = "b"
+                shape = 4,
+                size = 1.4
             )
         }
-        observed <- .metadata_stem_data(observed, density_df)
-        p <- p + ggplot2::geom_segment(
-            data = observed,
-            ggplot2::aes(
-                x = coord, xend = coord,
-                y = 0, yend = metadata_height,
-                colour = .data[["metadata_value"]],
-                linetype = .data[["metadata_value"]]
-            ),
-            inherit.aes = FALSE,
-            linewidth = 0.65,
-            lineend = "round"
-        ) + ggplot2::scale_linetype_manual(
-            values = .metadata_linetype_values(observed$metadata_value),
-            name = paste0(
-                .scientific_caption_label(colour_by), " (stem type)"
-            )
-        )
     }
 
     plot_labels <- list(
@@ -426,14 +392,17 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             xintercept = 0, linetype = "dotted",
             colour = .landscapeR_colour("nuisance"), linewidth = 0.4
         ) +
-        ggplot2::facet_wrap(~ component, scales = "free") +
+        ggplot2::facet_wrap(
+            ~ component,
+            scales = "free",
+            labeller = ggplot2::as_labeller(component_labels)
+        ) +
         do.call(ggplot2::labs, plot_labels) +
         theme_landscapeR() +
         ggplot2::theme(
             legend.position = "bottom",
             legend.box = "vertical"
         )
-
     view <- .stage1_components_surface_view(
         view, layer_name, k_show, colour_by
     )
@@ -471,7 +440,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     )
     missingness <- if (!is.null(meta_col) && anyNA(meta_col)) {
         sprintf(
-            "Dashed rugs mark %d observations with missing %s",
+            "Crosses at the baseline mark %d observations with missing %s",
             sum(is.na(meta_col)), .scientific_caption_label(colour_by)
         )
     } else {
@@ -485,7 +454,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 c(
                     missingness,
                     sprintf(
-                        "Levels with fewer than two observations (%s) appear as rugs only",
+                        "Levels with fewer than two observations (%s) appear as baseline points only",
                         paste(unavailable, collapse = ", ")
                     )
                 ),
@@ -520,7 +489,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                     paste(unavailable_slices, collapse = ", "),
                     ") have insufficient coordinate spread for kernel-density ",
                     "estimation at sqrt(machine precision) x max(1, maximum ",
-                    "absolute coordinate); those slices appear as rugs only"
+                    "absolute coordinate); those slices appear as baseline points only"
                 )
             ),
             collapse = "; "
@@ -529,13 +498,12 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     context <- displays$caption_contexts[[layer_name]]
     metadata_marks <- if (!is.null(meta_col) && !is.numeric(meta_col)) {
         paste(
-            "Categorical metadata is shown by density fills, outlines, and",
-            "rug colours. Baseline stems additionally use line type and height."
+            "Categorical metadata is shown by density fills and outlines;",
+            "outline line type and baseline-point shape repeat group identity."
         )
     } else if (!is.null(meta_col)) {
         paste(
-            "Continuous metadata is shown by rug colour. Baseline stems",
-            "additionally use width and height."
+            "Continuous metadata is shown by baseline-point colour and size."
         )
     } else {
         "Rug colours show the available sample metadata."
@@ -550,18 +518,28 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         time_field = context$time_field,
         time_unit = context$time_unit,
         subject_field = context$subject_field,
+        panels = stats::setNames(
+            sprintf(
+                "Component %d sample-coordinate distribution",
+                seq_len(k_show)
+            ),
+            .publication_panel_letters(k_show)
+        ),
         encodings = c(
             paste0(
                 "Facets show components 1-", k_show,
                 " in decomposition order; stored densities summarize sample-coordinate ",
-                "distributions; rugs mark sample coordinates; dotted vertical lines mark zero"
+                "distributions; baseline marks show sample coordinates; dotted vertical lines mark zero"
             ),
             metadata_marks
         ),
         estimand = "the descriptive distribution of sample coordinates",
         missingness = missingness,
         uncertainty = if (identical(visual_evidence_state(view), "partial")) {
-            "Available density slices and sample-coordinate rugs are shown; unavailable slices remain explicit"
+            paste(
+                "Available density slices and baseline sample coordinates are shown;",
+                "unavailable slices remain explicit"
+            )
         } else {
             NA_character_
         },

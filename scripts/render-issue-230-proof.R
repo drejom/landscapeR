@@ -63,11 +63,18 @@ stage2 <- estimate_dynamics(
 stage1 <- prepare_plot_evidence(stage1, stage = "stage1")
 stage2 <- prepare_plot_evidence(stage2, stage = "stage2")
 
-stage2_critical <- stage2
-stage2_metadata <- metadata(stage2_critical)
-stage2_metadata$stage2$wells <- c(-1, 1)
-stage2_metadata$stage2$barriers <- 0
-metadata(stage2_critical) <- stage2_metadata
+critical_data <- synthetic_k1_double_well_control(
+    n = 200L, p = 500L, beta = 4, seed = 23002L
+)
+critical_cd <- colData(critical_data)
+critical_cd$planted_group <- critical_cd$well
+colData(critical_data) <- critical_cd
+stage2_critical <- suppressWarnings(
+    decompose(get_strategy("Decomposer", "svd")(), critical_data)
+)@value
+stage2_critical <- estimate_dynamics(
+    get_strategy("DynamicsEstimator", "kde_logdensity")(), stage2_critical
+)@value
 stage2_critical <- prepare_plot_evidence(stage2_critical, stage = "stage2")
 
 plots <- list(
@@ -132,11 +139,7 @@ compact_plot <- function(plot, plot_name) {
         aspect.ratio = 1
     ) +
         ggplot2::labs(title = title, subtitle = subtitle)
-    guides <- list()
-    if (!identical(plot_name, "stage2_potential_critical_points")) {
-        guides$linewidth <- ggplot2::guide_legend(title = "stem width")
-    }
-    p + do.call(ggplot2::guides, guides)
+    p
 }
 
 for (plot_name in names(plots)) {
@@ -183,13 +186,12 @@ writeLines(
         "verbatim. They show colour-only rugs and thin line swatches that are",
         "difficult to read at reduced size and under colour-vision deficiency.", "",
         "The after images are generated from the current plotting functions using",
-        "a fixed synthetic fixture. Categorical metadata retains colour and adds",
-        "baseline stem line type and height when critical-point overlays are hidden.",
-        "Continuous metadata retains colour and adds baseline stem height and width",
-        "when critical-point overlays are hidden. Critical-point views omit those",
-        "redundant baseline stems, use directly labelled, colour-coded sample rows",
-        "for recoverable group identity, and use outlined, staggered well/barrier",
-        "markers. Critical rows support at most",
+        "a fixed synthetic fixture. Categorical metadata retains colour and uses",
+        "line type, shape, or directly labelled sample rows as a restrained",
+        "non-colour channel. Continuous metadata uses colour and point size.",
+        "No categorical or continuous metadata stems are drawn. Critical-point",
+        "views place small open circles at stored wells and small red diamonds at",
+        "stored barriers, directly on the potential curve. Potential-plot rows support at most",
         "four observed groups.",
         "Decomposition points use colour plus shape or size in one layer. Native",
         "100 x 80 mm and reduced 90 x 72 mm renders, plus deuteranopia-simulated",

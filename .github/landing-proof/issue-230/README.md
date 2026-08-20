@@ -5,13 +5,12 @@ verbatim. They show colour-only rugs and thin line swatches that are
 difficult to read at reduced size and under colour-vision deficiency.
 
 The after images are generated from the current plotting functions using
-a fixed synthetic fixture. Categorical metadata retains colour and adds
-baseline stem line type and height when critical-point overlays are hidden.
-Continuous metadata retains colour and adds baseline stem height and width
-when critical-point overlays are hidden. Critical-point views omit those
-redundant baseline stems, use directly labelled, colour-coded sample rows
-for recoverable group identity, and use outlined, staggered well/barrier
-markers. Critical rows support at most
+a fixed synthetic fixture. Categorical metadata retains colour and uses
+line type, shape, or directly labelled sample rows as a restrained
+non-colour channel. Continuous metadata uses colour and point size.
+No categorical or continuous metadata stems are drawn. Critical-point
+views place small open circles at stored wells and small red diamonds at
+stored barriers, directly on the potential curve. Potential-plot rows support at most
 four observed groups.
 Decomposition points use colour plus shape or size in one layer. Native
 100 x 80 mm and reduced 90 x 72 mm renders, plus deuteranopia-simulated

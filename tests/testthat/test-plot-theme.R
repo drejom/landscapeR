@@ -262,13 +262,13 @@ test_that("component galleries mark and label missing metadata explicitly", {
     expect_null(plot$labels$caption)
     expect_match(
         gsub("\\s+", " ", scientific_caption(plot)),
-        "Dashed rugs? mark.*missing"
+        "Crosses at the baseline mark.*missing"
     )
     expect_true(any(vapply(
         plot$layers,
         function(layer) {
-            inherits(layer$geom, "GeomRug") &&
-                identical(layer$aes_params$linetype, "dashed")
+            inherits(layer$geom, "GeomPoint") &&
+                identical(layer$aes_params$shape, 4)
         },
         logical(1L)
     )))
@@ -293,13 +293,13 @@ test_that("potential plots mark and label missing metadata explicitly", {
     expect_null(plot$labels$caption)
     expect_match(
         gsub("\\s+", " ", scientific_caption(plot)),
-        "Dashed rug marks.*missing"
+        "Crosses in the labelled missing row mark.*missing"
     )
     expect_true(any(vapply(
         plot$layers,
         function(layer) {
-            inherits(layer$geom, "GeomRug") &&
-                identical(layer$aes_params$linetype, "dashed")
+            inherits(layer$geom, "GeomPoint") &&
+                identical(layer$aes_params$shape, 4)
         },
         logical(1L)
     )))
