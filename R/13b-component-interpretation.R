@@ -4087,17 +4087,32 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
     } else {
         "none"
     }
+    subtitle <- if (nrow(categorical) && nrow(numeric)) {
+        paste(
+            "Categorical distributions and numeric descriptive trends;",
+            "exploratory evidence only"
+        )
+    } else if (nrow(categorical)) {
+        "Categorical scores; exploratory evidence only"
+    } else if (nrow(monotone) || nrow(flexible)) {
+        paste(
+            "Raw observations with monotone and flexible fits;",
+            "exploratory evidence only"
+        )
+    } else {
+        "Numeric component scores; exploratory evidence only"
+    }
     plot <- ggplot2::ggplot(data) +
         ggplot2::geom_boxplot(
             data = categorical,
             mapping = ggplot2::aes(
-            x = .data[["metadata_value"]],
-            y = .data[["score"]]
+                x = .data[["metadata_value"]],
+                y = .data[["score"]],
+                fill = .data[["display_fill"]]
             ),
             width = 0.5,
             outlier.shape = NA,
             colour = .landscapeR_colour("ink"),
-            fill = .landscapeR_colour("paper"),
             linewidth = 0.45
         ) +
         ggplot2::geom_point(
@@ -4105,12 +4120,12 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             mapping = ggplot2::aes(
                 x = .data[["metadata_value"]],
                 y = .data[["score"]],
-                size = .data[["atom_count"]]
+                size = .data[["atom_count"]],
+                fill = .data[["display_fill"]]
             ),
             shape = 21,
             stroke = 0.45,
             colour = .landscapeR_colour("ink"),
-            fill = .landscapeR_colour("paper"),
             position = ggplot2::position_jitter(
                 width = 0.08,
                 height = 0,
@@ -4169,6 +4184,7 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
             limits = c(1, max(2L, max_atom_count)),
             guide = atom_guide
         ) +
+        ggplot2::scale_fill_identity() +
         ggplot2::scale_y_continuous(
             expand = ggplot2::expansion(mult = c(0.05, 0.22))
         ) +
@@ -4180,10 +4196,7 @@ plot.MetadataAssociationAtlas <- function(x, y, ...) {
         ) +
         ggplot2::labs(
             title = "Metadata association atlas",
-            subtitle = paste(
-                "Raw observations with monotone and flexible fits;",
-                "exploratory evidence only"
-            ),
+            subtitle = subtitle,
             x = "Metadata value",
             y = "Component score"
         ) +

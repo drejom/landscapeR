@@ -783,6 +783,13 @@ caller-declared experiment, layer, target, level, time, subject, and nuisance
 labels exactly. They format stored estimands, uncertainty, thresholds,
 missingness, and claim boundaries without recalculating scientific results.
 
+Cross-sectional captions describe only the evidence that the corresponding
+plot renders. For a declared binary contrast, categorical atlases identify the
+reference group in grey and the comparison group in red and describe the
+visible boxplots and observations; they do not claim continuous fitted curves.
+Association-abstention captions likewise describe the rendered black reason
+and diagnostic text and do not imply that an unavailable estimand was fitted.
+
 The Stage 1 component gallery follows the mapped aesthetic: categorical
 metadata use both density fill and rug colour, while continuous metadata use a
 colour scale for the rugs only. Missing metadata remain visible as missing
