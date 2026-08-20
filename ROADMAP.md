@@ -8,8 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#231, caption/render fidelity**. Complete
-the remaining #231--#233
+**Next task after this change lands:** **#232, contact-sheet tile isolation**.
+Complete the remaining #232--#233
 visual/warning follow-ups before **#193, execute the
 reviewed version 5 acceptance run; then complete #51 phase B**. Do not execute
 a version 5 row before the runner revision merges and its exact revision is
@@ -743,8 +743,8 @@ bodies may state dependencies but do not change this ordering.
 | [#228](https://github.com/drejom/landscapeR/issues/228) | Interpretation visual standards — continuous plot warning | complete on merge |
 | [#229](https://github.com/drejom/landscapeR/issues/229) | Interpretation visual standards — non-occluding evidence marks | complete |
 | [#230](https://github.com/drejom/landscapeR/issues/230) | Interpretation visual standards — accessible group/time encodings | complete on merge; then #231 |
-| [#231](https://github.com/drejom/landscapeR/issues/231) | Interpretation visual standards — caption/render fidelity | active — next |
-| [#232](https://github.com/drejom/landscapeR/issues/232) | Interpretation visual standards — contact-sheet tile isolation | queued; visual gate before #193 |
+| [#231](https://github.com/drejom/landscapeR/issues/231) | Interpretation visual standards — caption/render fidelity | complete on merge; then #232 |
+| [#232](https://github.com/drejom/landscapeR/issues/232) | Interpretation visual standards — contact-sheet tile isolation | active — next; visual gate before #193 |
 | [#233](https://github.com/drejom/landscapeR/issues/233) | Interpretation visual standards — empty-state/layout consistency | queued; visual gate before #193 |
 | [#239](https://github.com/drejom/landscapeR/issues/239) | Maintenance — reduce PR CI latency without weakening merge gates | queued; standalone maintenance lane |
 <!-- issue-map:end -->

@@ -196,9 +196,31 @@ test_that("inappropriate declared target type returns a typed abstention", {
         scientific_caption(abstention_plot),
         "no association[[:space:]]+estimand is available"
     )
+    expect_match(
+        scientific_caption(abstention_plot),
+        paste(
+            "black[[:space:]]+annotation text states the recorded",
+            "diagnostic"
+        ),
+        ignore.case = TRUE
+    )
+    expect_false(grepl(
+        "red subtitle text",
+        scientific_caption(abstention_plot),
+        fixed = TRUE
+    ))
     expect_identical(
         abstention_plot$labels$subtitle,
         "Declared target type does not match the observed metadata"
+    )
+    abstention_annotation <- Filter(
+        function(layer) inherits(layer$geom, "GeomText"),
+        abstention_plot$layers
+    )
+    expect_length(abstention_annotation, 1L)
+    expect_identical(
+        abstention_annotation[[1L]]$aes_params$colour,
+        landscapeR:::.landscapeR_colour("ink")
     )
     abstention_path <- tempfile(fileext = ".png")
     save_landscapeR_plot(
@@ -1131,6 +1153,74 @@ test_that("continuous atlas plot exposes monotone and flexible fits", {
         "red flexible fits",
         scientific_caption(atlas_plot)
     ))
+})
+
+test_that("categorical atlas caption describes only rendered encodings", {
+    specification <- analysis_specification(
+        id = "categorical-caption-orientation",
+        target_field = "condition",
+        target_type = "binary",
+        reference_level = "control",
+        comparison_level = "treatment"
+    )
+    atlas <- associate_metadata(
+        component_interpretation_fixture(),
+        specification = specification,
+        non_analytical_fields = "mouse_id"
+    )
+    atlas_plot <- plot(atlas)
+    caption <- scientific_caption(atlas_plot)
+    fitted_layer_rows <- vapply(
+        atlas_plot$layers,
+        function(layer) {
+            if (!inherits(layer$geom, "GeomLine") ||
+                !any(c(
+                    "monotone_fitted",
+                    "flexible_fitted"
+                ) %in% names(layer$data))) {
+                return(0L)
+            }
+            nrow(layer$data)
+        },
+        integer(1L)
+    )
+
+    expect_false(any(fitted_layer_rows > 0L))
+    expect_match(caption, "Boxplots summarize categorical component scores")
+    expect_match(
+        caption,
+        "point size records coincident observations",
+        ignore.case = TRUE
+    )
+    expect_false(grepl("monotone fits", caption, fixed = TRUE))
+    expect_false(grepl("flexible fits", caption, fixed = TRUE))
+    expect_match(caption, "control to treatment")
+    expect_match(caption, "grey identifies control \\(reference\\)")
+    expect_match(
+        caption,
+        "red identifies[[:space:]]+treatment \\(comparison\\)"
+    )
+    categorical_build <- ggplot2::ggplot_build(atlas_plot)$data
+    expect_true(any(vapply(
+        categorical_build,
+        function(layer) {
+            "fill" %in% names(layer) &&
+                landscapeR:::.landscapeR_colour("nuisance") %in% layer$fill
+        },
+        logical(1L)
+    )))
+    expect_true(any(vapply(
+        categorical_build,
+        function(layer) {
+            "fill" %in% names(layer) &&
+                landscapeR:::.landscapeR_colour("focal") %in% layer$fill
+        },
+        logical(1L)
+    )))
+    expect_identical(
+        atlas_plot$labels$subtitle,
+        "Categorical scores; exploratory evidence only"
+    )
 })
 
 test_that("coincident continuous observations expose atom mass", {

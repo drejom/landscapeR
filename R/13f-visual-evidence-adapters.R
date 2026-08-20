@@ -77,7 +77,9 @@
     stored_visual_evidence,
     ranking = NULL,
     recommended_component = NA_integer_,
-    comparison_level = NA_character_
+    comparison_level = NA_character_,
+    target_field = NA_character_,
+    reference_level = NA_character_
 ) {
     available <- observations[observations$available, , drop = FALSE]
     categorical <- available[
@@ -85,6 +87,21 @@
         ,
         drop = FALSE
     ]
+    categorical$display_fill <- rep(
+        .landscapeR_colour("paper"),
+        nrow(categorical)
+    )
+    if (.is_scalar_nonempty_text(target_field) &&
+        .is_scalar_nonempty_text(reference_level) &&
+        .is_scalar_nonempty_text(comparison_level)) {
+        target_row <- categorical$metadata_field == target_field
+        categorical$display_fill[
+            target_row & categorical$metadata_value == reference_level
+        ] <- .landscapeR_colour("nuisance")
+        categorical$display_fill[
+            target_row & categorical$metadata_value == comparison_level
+        ] <- .landscapeR_colour("focal")
+    }
     numeric <- available[
         available$metadata_type %in% c("continuous", "ordered"),
         ,
@@ -192,6 +209,72 @@
     list(display = display, diagnostics = diagnostics)
 }
 
+.cross_sectional_encoding_caption <- function(
+    display,
+    target_field = NA_character_,
+    reference_level = NA_character_,
+    comparison_level = NA_character_
+) {
+    encodings <- character()
+    if (nrow(display$categorical_observations)) {
+        encodings <- c(
+            encodings,
+            paste(
+                "Boxplots summarize categorical component scores;",
+                "points show individual observations"
+            )
+        )
+        if (.is_scalar_nonempty_text(target_field) &&
+            .is_scalar_nonempty_text(reference_level) &&
+            .is_scalar_nonempty_text(comparison_level)) {
+            encodings <- c(
+                encodings,
+                sprintf(
+                    paste(
+                        "For the declared %s to %s contrast, grey identifies",
+                        "%s (reference) and red identifies %s (comparison)"
+                    ),
+                    reference_level,
+                    comparison_level,
+                    reference_level,
+                    comparison_level
+                )
+            )
+        }
+    }
+    if (nrow(display$numeric_observations)) {
+        fit_encodings <- character()
+        if (nrow(display$monotone_fit)) {
+            fit_encodings <- c(fit_encodings, "black monotone fits")
+        }
+        if (nrow(display$flexible_fit)) {
+            fit_encodings <- c(fit_encodings, "grey flexible fits")
+        }
+        fit_text <- if (length(fit_encodings)) {
+            paste(
+                paste(fit_encodings, collapse = " and "),
+                "show the stored descriptive trends"
+            )
+        } else {
+            "No fitted trend is available"
+        }
+        encodings <- c(
+            encodings,
+            paste(
+                "Points show numeric observations;",
+                fit_text
+            )
+        )
+    }
+    if (!length(encodings)) {
+        return("No available observations are rendered")
+    }
+    paste0(
+        paste(encodings, collapse = ". "),
+        ". Point size records coincident observations"
+    )
+}
+
 #' @rdname visual_evidence
 #' @export
 setMethod("visual_evidence", "MetadataAssociationAtlas", function(x) {
@@ -200,22 +283,37 @@ setMethod("visual_evidence", "MetadataAssociationAtlas", function(x) {
     )) {
         return(.time_course_visual_evidence(x))
     }
+    target_field <- x@provenance$target_field
+    reference_level <- x@provenance$reference_level
+    comparison_level <- x@provenance$comparison_level
     prepared <- .cross_sectional_visual_display(
         x@observations,
         x@associations,
-        x@provenance$visual_evidence
+        x@provenance$visual_evidence,
+        target_field = target_field,
+        reference_level = reference_level,
+        comparison_level = comparison_level
     )
+    oriented <- if (.is_scalar_nonempty_text(reference_level) &&
+        .is_scalar_nonempty_text(comparison_level)) {
+        c(reference_level, comparison_level)
+    } else {
+        character()
+    }
     caption_view <- .new_scientific_caption_view(
         title = "Metadata association atlas",
         experiment_label = x@dataset_id,
         molecular_layer = x@provenance$layer,
+        target_field = target_field,
+        oriented_levels = oriented,
         sampling_unit = "independent biological observation",
         nuisance_fields = x@provenance$nuisance_fields,
         panels = .atlas_panel_terms(x@observations),
-        encodings = paste(
-            "Black monotone fits and grey flexible fits expose agreement or",
-            "possible non-monotone structure; point size records coincident",
-            "observations"
+        encodings = .cross_sectional_encoding_caption(
+            prepared$display,
+            target_field,
+            reference_level,
+            comparison_level
         ),
         estimand = "prespecified component-metadata association",
         design = x@sampling_design@kind,
@@ -263,7 +361,9 @@ setMethod("visual_evidence", "ComponentProposal", function(x) {
         ),
         ranking = x@ranking,
         recommended_component = x@recommended_component,
-        comparison_level = x@comparison_level
+        comparison_level = x@comparison_level,
+        target_field = x@target_field,
+        reference_level = x@reference_level
     )
     prepared$display$title <- sprintf(
         "Component proposal for %s",
@@ -1051,8 +1151,9 @@ setMethod("visual_evidence", "AssociationAbstention", function(x) {
         ),
         target_field = x@target_field,
         encodings = paste(
-            "The annotation explains why the association was not estimated;",
-            "red subtitle text identifies the recorded reason"
+            "The title identifies the declared target and the subtitle states",
+            "the public reason; black annotation text states the recorded",
+            "diagnostic"
         ),
         design = x@sampling_design@kind,
         missingness = x@diagnostic,
