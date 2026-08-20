@@ -1,6 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.Renviron$
+^AGENTS\.md$
 ^\.git$
 ^decisions$
 ^ROADMAP\.md$
