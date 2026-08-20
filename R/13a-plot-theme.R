@@ -153,7 +153,7 @@ landscapeR_palette <- function(
     if (identical(palette, "semantic")) return(semantic)
     if (identical(palette, "binary")) {
         values <- c(
-            reference = unname(semantic[["ink"]]),
+            reference = unname(semantic[["nuisance"]]),
             focal = unname(semantic[["focal"]])
         )
     } else {
@@ -189,6 +189,47 @@ landscapeR_palette <- function(
         )
     }
     unname(semantic[[role]])
+}
+
+.declared_binary_plot_levels <- function(
+    values,
+    reference_level = NULL,
+    focal_level = NULL,
+    caller = "plot"
+) {
+    supplied <- c(!is.null(reference_level), !is.null(focal_level))
+    if (!any(supplied)) return(NULL)
+    if (!all(supplied)) {
+        .stop_landscapeR_validation(paste0(
+            caller,
+            ": reference_level and focal_level must be supplied together"
+        ))
+    }
+    if (is.numeric(values)) {
+        .stop_landscapeR_validation(paste0(
+            caller,
+            ": binary levels apply only to categorical metadata"
+        ))
+    }
+    declared <- c(
+        reference = as.character(reference_level),
+        focal = as.character(focal_level)
+    )
+    if (anyNA(declared) || any(!nzchar(declared)) ||
+        identical(declared[[1L]], declared[[2L]])) {
+        .stop_landscapeR_validation(paste0(
+            caller,
+            ": reference_level and focal_level must be distinct non-empty values"
+        ))
+    }
+    observed <- unique(as.character(values[!is.na(values)]))
+    if (length(observed) != 2L || !setequal(observed, unname(declared))) {
+        .stop_landscapeR_validation(paste0(
+            caller,
+            ": declared binary levels must equal the two observed metadata levels"
+        ))
+    }
+    declared
 }
 
 .landscapeR_call_scale <- function(scale_fun, defaults, dots) {
@@ -231,6 +272,7 @@ landscapeR_palette <- function(
             scale_fun,
             list(
                 values = values,
+                breaks = unname(levels),
                 na.value = unname(semantic[["missing"]])
             ),
             list(...)

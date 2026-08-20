@@ -67,18 +67,82 @@ test_that("plot_potential requires explicit opt-in for point-estimate classifica
 
     plot <- plot_potential(std3, show_critical_points = TRUE)
 
-    expect_identical(plot$labels$shape, "Critical point")
+    expect_identical(plot$scales$get_scales("shape")$name, "Critical point")
+    expect_identical(plot$scales$get_scales("fill")$name, "Critical point")
     expect_true(any(vapply(
         plot$layers,
         function(layer) inherits(layer$geom, "GeomPoint"),
         logical(1L)
     )))
     caption <- gsub("\\s+", " ", scientific_caption(plot))
-    expect_match(caption, "downward triangles mark stored wells")
-    expect_match(caption, "symbols are offset from their stored coordinates")
-    expect_match(caption, "upward triangles mark stored barriers")
-    expect_match(caption, "Dotted vertical segments")
+    expect_match(caption, "Small open circles mark stored stable wells directly on the curve")
+    expect_match(caption, "Small red diamonds mark stored unstable barriers directly on the curve")
+    expect_match(caption, "Fine grey dashed lines")
+    expect_match(caption, "vertical display is focused")
     expect_match(caption, "point\\s+estimates")
+
+    caption_with_metadata <- scientific_caption(plot_potential(
+        std3, colour_by = "planted_group", show_critical_points = TRUE
+    ))
+    caption_with_metadata <- gsub("\\s+", " ", caption_with_metadata)
+    expect_match(caption_with_metadata, "Fine coloured rugs")
+    critical_metadata_plot <- plot_potential(
+        std3, colour_by = "planted_group", show_critical_points = TRUE
+    )
+    expect_null(critical_metadata_plot$scales$get_scales("linetype"))
+    expect_null(critical_metadata_plot$scales$get_scales("linewidth"))
+    expect_false(any(vapply(
+        critical_metadata_plot$layers,
+        function(layer) inherits(layer$geom, "GeomText"),
+        logical(1L)
+    )))
+
+    binary_plot <- plot_potential(
+        std3,
+        colour_by = "planted_group",
+        show_critical_points = TRUE,
+        reference_level = "low",
+        focal_level = "high"
+    )
+    rug_sides <- vapply(
+        Filter(
+            function(layer) inherits(layer$geom, "GeomRug"),
+            binary_plot$layers
+        ),
+        function(layer) layer$geom_params$sides,
+        character(1L)
+    )
+    expect_setequal(rug_sides, c("t", "b"))
+    expect_match(scientific_caption(binary_plot), "upper margin")
+})
+
+test_that("plot_potential renders large categorical rug encodings", {
+    std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+    cd <- colData(std)
+    cd$many_groups <- factor(seq_len(nrow(cd)))
+    colData(std) <- cd
+    std2 <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std))@value
+    std3 <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std2)@value
+
+    expect_s3_class(
+        plot_potential(std3, colour_by = "many_groups", show_critical_points = TRUE),
+        "ggplot"
+    )
+})
+
+test_that("plot_potential renders eight categorical rug levels", {
+    std <- synthetic_control(n = 40L, p = 500L, K = 2L, signal = 30, seed = 1L)
+    cd <- colData(std)
+    cd$eight_groups <- factor(rep(letters[1:8], length.out = nrow(cd)))
+    colData(std) <- cd
+    std2 <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std))@value
+    std3 <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std2)@value
+
+    expect_s3_class(plot_potential(std3, colour_by = "eight_groups"), "ggplot")
 })
 
 test_that("plot_potential reports an empty requested critical-point overlay", {
@@ -99,7 +163,7 @@ test_that("plot_potential reports an empty requested critical-point overlay", {
 
     plot <- plot_potential(std, show_critical_points = TRUE)
     caption <- gsub("\\s+", " ", scientific_caption(plot))
-    expect_match(caption, "no stored wells, barriers, or barrier-height")
+    expect_match(caption, "no stored wells or barriers")
     expect_false(grepl("triangles mark", caption))
 })
 
@@ -121,7 +185,7 @@ test_that("plot_potential describes wells without claiming barrier heights", {
 
     plot <- plot_potential(std, show_critical_points = TRUE)
     caption <- gsub("\\s+", " ", scientific_caption(plot))
-    expect_match(caption, "downward triangles mark stored wells")
+    expect_match(caption, "open circles mark stored stable wells")
     expect_match(
         caption,
         "Critical-point classifications are point estimates without uncertainty"
@@ -129,7 +193,7 @@ test_that("plot_potential describes wells without claiming barrier heights", {
     expect_false(grepl("barrier heights are point estimates", caption))
 })
 
-test_that("critical-point display offsets preserve exact coordinates", {
+test_that("critical-point markers retain exact stored coordinates", {
     curve <- data.frame(
         x = seq(-2, 2, length.out = 20L),
         U = seq(0, 4, length.out = 20L)
@@ -137,13 +201,12 @@ test_that("critical-point display offsets preserve exact coordinates", {
     points <- data.frame(
         x = c(0, 0), U = c(1, 1), type = c("well", "barrier")
     )
-    display <- landscapeR:::.stage2_critical_point_display(points, curve)
-
-    expect_gt(length(unique(display$points$display_x)), 1L)
-    expect_equal(display$connectors$x, points$x)
-    expect_equal(display$connectors$y, points$U)
-    expect_equal(display$connectors$xend, display$points$display_x)
-    expect_equal(display$connectors$yend, display$points$display_U)
+    plot <- ggplot2::ggplot(curve, ggplot2::aes(x, U)) +
+        ggplot2::geom_line() +
+        ggplot2::geom_point(data = points, ggplot2::aes(shape = type))
+    point_layer <- plot$layers[[2L]]$data
+    expect_equal(point_layer$x, points$x)
+    expect_equal(point_layer$U, points$U)
 })
 
 test_that("plot_potential caption combines metadata and missing-rug evidence", {
@@ -164,8 +227,79 @@ test_that("plot_potential caption combines metadata and missing-rug evidence", {
     plot <- plot_potential(std, colour_by = "planted_group")
 
     expect_null(plot$labels$caption)
-    expect_match(scientific_caption(plot), "categorical\\s+planted_group")
-    expect_match(scientific_caption(plot), "Dashed rug marks\\s+1 observation")
+    caption <- gsub("\\s+", " ", scientific_caption(plot))
+    expect_match(caption, "categorical planted group")
+    expect_match(caption, "Dashed black rugs mark 1 observation")
+    expect_null(plot$scales$get_scales("linetype"))
+    expect_match(caption, "Fine coloured rugs")
+
+    critical_plot <- plot_potential(
+        std, colour_by = "planted_group", show_critical_points = TRUE
+    )
+    critical_caption <- gsub("\\s+", " ", scientific_caption(critical_plot))
+    expect_match(
+        critical_caption,
+        "Dashed black rugs mark 1 observation"
+    )
+    expect_match(critical_caption, "Fine coloured rugs")
+    expect_null(critical_plot$scales$get_scales("linetype"))
+    expect_null(critical_plot$scales$get_scales("linewidth"))
+
+    cd <- colData(std)
+    cd$planted_group <- factor(
+        rep(NA_character_, nrow(cd)), levels = c("high", "low")
+    )
+    colData(std) <- cd
+    std <- prepare_plot_evidence(std, stage = "stage2")
+    all_missing_plot <- plot_potential(
+        std, colour_by = "planted_group", show_critical_points = TRUE
+    )
+    all_missing_caption <- gsub(
+        "\\s+", " ", scientific_caption(all_missing_plot)
+    )
+    expect_s3_class(all_missing_plot, "gg")
+    expect_match(
+        all_missing_caption,
+        "No observed values are available for categorical planted group"
+    )
+    expect_match(all_missing_caption, "dashed black rugs")
+})
+
+test_that("plot_potential colour-encodes continuous rug metadata", {
+    std <- synthetic_control(
+        n = 40L, p = 500L, K = 2L, signal = 30, seed = 2L
+    )
+    cd <- colData(std)
+    cd$observed_time <- seq_len(nrow(cd))
+    colData(std) <- cd
+    std <- suppressWarnings(
+        decompose(get_strategy("Decomposer", "hogsvd_averaged")(), std)
+    )@value
+    std <- estimate_dynamics(
+        get_strategy("DynamicsEstimator", "kde_logdensity")(), std
+    )@value
+    std <- prepare_plot_evidence(std, stage = "stage2")
+
+    plot <- plot_potential(std, colour_by = "observed_time")
+
+    expect_s3_class(plot$scales$get_scales("colour"), "ScaleContinuous")
+    expect_null(plot$scales$get_scales("size"))
+    expect_s3_class(plot$scales$get_scales("alpha"), "ScaleContinuous")
+    expect_match(scientific_caption(plot), "Fine rug colour and opacity")
+
+    critical_plot <- plot_potential(
+        std, colour_by = "observed_time", show_critical_points = TRUE
+    )
+    expect_s3_class(
+        critical_plot$scales$get_scales("colour"),
+        "ScaleContinuous"
+    )
+    expect_null(critical_plot$scales$get_scales("size"))
+    expect_s3_class(
+        critical_plot$scales$get_scales("alpha"), "ScaleContinuous"
+    )
+    critical_caption <- gsub("\\s+", " ", scientific_caption(critical_plot))
+    expect_match(critical_caption, "Fine rug colour and opacity")
 })
 
 test_that("plot_potential renders typed unavailability when Stage 2 is absent", {

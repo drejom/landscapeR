@@ -77,6 +77,14 @@ marks; and explicit categorical or continuous scales. The public helpers are
 defaults to a 100 mm square, 450 dpi figure; pass explicit dimensions when a
 journal layout requires another aspect ratio.
 
+When Stage 1 or Stage 2 plots use metadata, colour is retained but is not the
+sole encoding. Categorical Stage 1 points add shape and categorical rugs add
+baseline stem geometry; continuous values add point size or stem width/height.
+Stage 2 critical-point overlays reserve shape for the critical-point classes,
+so categorical rugs use stem width/height in that view. Categorical encodings
+support at most eight observed levels and otherwise return typed unavailable
+evidence rather than assigning ambiguous marks.
+
 Every public scientific plot carries a separate, state-derived caption. Keep
 the graphic uncluttered and retrieve the corresponding publication text with
 `scientific_caption(plot)`, for example:

@@ -264,7 +264,7 @@ test_that("operating map exposes exact evidence and a separate scientific captio
     expect_setequal(unique(display$template_id),
         c("balanced_1", "isolated_library_failure"))
     expect_match(caption, "independently\\s+collected animal")
-    expect_match(caption, "isolated_library_failure")
+    expect_match(caption, "complete, isolated library failure")
     expect_match(caption, "without imputation")
     expect_match(caption, "or rebalancing")
     expect_match(caption, "not an")

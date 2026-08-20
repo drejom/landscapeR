@@ -450,7 +450,7 @@ test_that("singleton categorical levels are retained as rug-only evidence", {
         scientific_caption(
             plot_components(stage1, colour_by = "planted_group")
         ),
-        "singleton.*rugs only"
+        "singleton.*sample rugs only"
     )
 })
 
@@ -549,7 +549,7 @@ test_that("numerically degenerate slices are retained as rug-only evidence", {
             " ",
             scientific_caption(plot_components(stage1))
         ),
-        "numerically degenerate.*rugs only",
+        "numerically degenerate.*sample rugs only",
         ignore.case = TRUE
     )
 })
@@ -579,7 +579,7 @@ test_that("degenerate grouped densities retain their component and group identit
     )
     expect_match(
         caption,
-        sprintf("PC1 \\(planted_group = %s\\)", focal_group)
+        sprintf("PC1 \\(planted group = %s\\)", focal_group)
     )
     expect_match(caption, "numerically degenerate", ignore.case = TRUE)
 })

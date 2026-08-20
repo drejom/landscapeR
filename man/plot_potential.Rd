@@ -4,25 +4,43 @@
 \alias{plot_potential}
 \title{Plot the quasi-potential landscape (Stage 2 output)}
 \usage{
-plot_potential(std, colour_by = NULL, show_critical_points = FALSE)
+plot_potential(
+  std,
+  colour_by = NULL,
+  show_critical_points = FALSE,
+  reference_level = NULL,
+  focal_level = NULL
+)
 }
 \arguments{
 \item{std}{\code{StateTransitionData} with \code{metadata()$stage2} present}
 
 \item{colour_by}{character column name in \code{colData(std)} to colour
-the rug of sample positions, or \code{NULL} (default \code{NULL})}
+the displayed sample positions. Categorical and continuous sample
+positions use fine rugs without metadata stems. Declared binary reference
+and focal groups occupy the upper and lower margins, respectively;
+continuous metadata uses colour plus opacity. Use
+\code{NULL} (default) for an unlabelled rug.}
 
 \item{show_critical_points}{logical; explicitly opt in to point-estimate
-well/barrier classifications and barrier-height segments. Defaults to
+well/barrier classifications and fine dashed position guides. Defaults to
 \code{FALSE} because current output does not estimate critical-point
 uncertainty; opt-in output is exploratory diagnostic information only.}
+
+\item{reference_level}{optional declared reference level for binary
+categorical metadata. Supply together with \code{focal_level}; the
+reference is drawn in neutral grey.}
+
+\item{focal_level}{optional declared focal level for binary categorical
+metadata. Supply together with \code{reference_level}; the focal group is
+drawn in the package focal red.}
 }
 \value{
 a \code{ggplot} object
 }
 \description{
 Shows U(x) = -log p(x) along the state-transition axis. Point-estimate
-critical-point classifications and barrier heights are omitted by default;
+critical-point classifications are omitted by default;
 they require explicit diagnostic opt-in until uncertainty is available.
 The returned scientific caption describes the selected component, plotted
 encodings, missing observations, and exploratory claim boundary separately

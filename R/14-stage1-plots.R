@@ -48,8 +48,37 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 .plot_metadata_encoding <- function(values, field, marks) {
     if (is.null(values)) return(paste0(marks, " do not encode sample metadata"))
     type <- if (is.numeric(values)) "continuous" else "categorical"
-    paste0(marks, " encode ", type, " ", field)
+    paste0(
+        marks, " encode ", type, " ",
+        .scientific_caption_label(field)
+    )
 }
+
+.metadata_shape_values <- function(values) {
+    levels <- sort(unique(as.character(values[!is.na(values)])))
+    if (length(levels) > 8L) {
+        .stop_plot_evidence_unavailable(
+            "Categorical decomposition marks support at most 8 levels"
+        )
+    }
+    shapes <- c(16, 17, 15, 18, 8, 3, 4, 7)
+    stats::setNames(rep(shapes, length.out = length(levels)), levels)
+}
+
+.metadata_linetype_values <- function(values) {
+    levels <- sort(unique(as.character(values[!is.na(values)])))
+    if (length(levels) > 8L) {
+        .stop_plot_evidence_unavailable(
+            "Categorical density outlines support at most 8 levels"
+        )
+    }
+    linetypes <- c(
+        "solid", "dashed", "dotted", "dotdash",
+        "longdash", "twodash", "11", "33"
+    )
+    stats::setNames(rep(linetypes, length.out = length(levels)), levels)
+}
+
 #
 # All functions take a StateTransitionData object and return a ggplot.
 # colour_by is always optional -- omit it for unlabelled exploratory plots,
@@ -84,16 +113,26 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 #' selected assay through its canonical \code{sampleMap}; row position is never
 #' treated as sample identity.
 #'
-#' Categorical and continuous metadata colour the rugs while retaining the
-#' stored overall density. The gallery does not calculate association scores or rank
-#' components; those responsibilities belong to the metadata atlas and proposal
-#' workflow.
+#' Categorical metadata use colour on grouped density fills and fine sample
+#' rugs. For a declared binary contrast, reference rugs occupy the upper margin
+#' and focal rugs the lower margin. Continuous metadata use perceptually ordered
+#' colour and opacity on fine sample rugs. These encodings retain individual sample positions without
+#' adding baseline stems or point rows. The gallery
+#' rejects categorical fields with more than 8 observed levels rather than
+#' assigning ambiguous marks. It does not calculate association scores or rank components; those
+#' responsibilities belong to the metadata atlas and proposal workflow.
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage1} present
 #' @param colour_by optional single MAE-level \code{colData} column name.
 #'   Categorical and continuous fields are supported.
 #' @param n_components integer number of components to show (default 6)
 #' @param layer integer selected assay layer (default 1)
+#' @param reference_level optional declared reference level for binary
+#'   categorical metadata. Supply together with \code{focal_level}; the
+#'   reference is drawn in neutral grey.
+#' @param focal_level optional declared focal level for binary categorical
+#'   metadata. Supply together with \code{reference_level}; the focal group is
+#'   drawn in the package focal red.
 #' @return a \code{ggplot} object faceted over components in decomposition order
 #'
 #' @examples
@@ -103,7 +142,9 @@ utils::globalVariables(c("coord", "sample_ord", ".data", "x", "sv", "layer"))
 #' plot_components(std2, colour_by = "planted_group")
 #'
 #' @export
-plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L) {
+plot_components <- function(std, colour_by = NULL, n_components = 6L,
+                            layer = 1L, reference_level = NULL,
+                            focal_level = NULL) {
     if (!is(std, "StateTransitionData"))
         .stop_landscapeR_validation(
             "plot_components(): std must be a StateTransitionData object"
@@ -196,13 +237,36 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         df$component,
         levels = sprintf("PC%d", seq_len(k_show))
     )
+    component_names <- levels(df$component)
+    component_letters <- .publication_panel_letters(k_show)
+    component_labels <- stats::setNames(
+        sprintf("(%s) %s", component_letters, component_names),
+        component_names
+    )
+    binary_levels <- .declared_binary_plot_levels(
+        meta_col,
+        reference_level = reference_level,
+        focal_level = focal_level,
+        caller = "plot_components()"
+    )
 
     subtitle <- if (is.null(meta_col)) {
         "Components shown in decomposition order"
     } else if (is.numeric(meta_col)) {
-        sprintf("Decomposition order; rug colour shows %s", colour_by)
+        sprintf(
+            "Decomposition order; rug colour and opacity show %s",
+            .scientific_caption_label(colour_by)
+        )
+    } else if (!is.null(binary_levels)) {
+        sprintf(
+            "Decomposition order; rug margin and colour show %s",
+            .scientific_caption_label(colour_by)
+        )
     } else {
-        sprintf("Decomposition order; colour shows %s", colour_by)
+        sprintf(
+            "Decomposition order; colour shows %s",
+            .scientific_caption_label(colour_by)
+        )
     }
 
     p <- ggplot2::ggplot(df, ggplot2::aes(x = coord))
@@ -237,18 +301,35 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             ) +
             ggplot2::geom_rug(
                 data = observed,
-                ggplot2::aes(colour = .data[["metadata_value"]]),
-                alpha = 0.75,
-                sides = "b"
+                ggplot2::aes(
+                    x = .data$coord,
+                    colour = .data[["metadata_value"]],
+                    alpha = .data[["metadata_value"]]
+                ),
+                inherit.aes = FALSE,
+                sides = "b",
+                length = grid::unit(2, "mm"),
+                linewidth = 0.3,
+                alpha = 0.75
             ) +
-            scale_colour_landscapeR("continuous")
+            scale_colour_landscapeR("continuous") +
+            ggplot2::scale_alpha_continuous(
+                range = c(0.35, 0.9),
+                breaks = range(observed$metadata_value, na.rm = TRUE),
+                name = paste0(
+                    .scientific_caption_label(colour_by), " (rug opacity)"
+                )
+            )
         if (nrow(missing)) {
             p <- p + ggplot2::geom_rug(
                 data = missing,
+                ggplot2::aes(x = .data$coord),
+                inherit.aes = FALSE,
                 colour = .landscapeR_colour("ink"),
                 linetype = "dashed",
-                linewidth = 0.7,
-                sides = "b"
+                sides = "b",
+                length = grid::unit(2, "mm"),
+                linewidth = 0.3
             )
         }
     } else {
@@ -281,21 +362,75 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                     colour = .data$metadata_value
                 ),
                 inherit.aes = FALSE,
-                alpha = 0.35,
-                linewidth = 0.5,
+                alpha = 0.28,
+                linewidth = 0.4,
                 position = "identity"
-            ) +
-            ggplot2::geom_rug(
+            )
+        if (is.null(binary_levels)) {
+            p <- p + ggplot2::geom_rug(
                 data = observed,
                 ggplot2::aes(
                     x = coord,
                     colour = .data[["metadata_value"]]
                 ),
-                alpha = 0.55,
-                sides = "b"
-            ) +
-            scale_fill_landscapeR("categorical") +
-            scale_colour_landscapeR("categorical")
+                inherit.aes = FALSE,
+                sides = "b",
+                length = grid::unit(2, "mm"),
+                linewidth = 0.3,
+                alpha = 0.75
+            )
+        } else {
+            reference_rug <- observed[
+                observed$metadata_value == binary_levels[["reference"]],
+                , drop = FALSE
+            ]
+            focal_rug <- observed[
+                observed$metadata_value == binary_levels[["focal"]],
+                , drop = FALSE
+            ]
+            p <- p +
+                ggplot2::geom_rug(
+                    data = reference_rug,
+                    ggplot2::aes(
+                        x = coord,
+                        colour = .data[["metadata_value"]]
+                    ),
+                    inherit.aes = FALSE,
+                    sides = "t",
+                    length = grid::unit(2, "mm"),
+                    linewidth = 0.3,
+                    alpha = 0.75
+                ) +
+                ggplot2::geom_rug(
+                    data = focal_rug,
+                    ggplot2::aes(
+                        x = coord,
+                        colour = .data[["metadata_value"]]
+                    ),
+                    inherit.aes = FALSE,
+                    sides = "b",
+                    length = grid::unit(2, "mm"),
+                    linewidth = 0.3,
+                    alpha = 0.75
+                )
+        }
+        if (is.null(binary_levels)) {
+            p <- p +
+                scale_fill_landscapeR("categorical") +
+                scale_colour_landscapeR("categorical")
+        } else {
+            p <- p +
+                scale_fill_landscapeR(
+                    "binary",
+                    reference_level = binary_levels[["reference"]],
+                    focal_level = binary_levels[["focal"]]
+                ) +
+                scale_colour_landscapeR(
+                    "binary",
+                    reference_level = binary_levels[["reference"]],
+                    focal_level = binary_levels[["focal"]]
+                )
+        }
         if (nrow(missing)) {
             p <- p + ggplot2::geom_rug(
                 data = missing,
@@ -303,24 +438,24 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 inherit.aes = FALSE,
                 colour = .landscapeR_colour("ink"),
                 linetype = "dashed",
-                linewidth = 0.7,
-                sides = "b"
+                sides = "b",
+                length = grid::unit(2, "mm"),
+                linewidth = 0.3
             )
         }
     }
 
     plot_labels <- list(
-        title = sprintf(
-            "Stage 1 component gallery: %s",
-            layer_name
-        ),
+        title = "Stage 1 component distributions",
         subtitle = subtitle,
         x = "Coordinate",
         y = "Density"
     )
     if (!is.null(meta_col)) {
-        plot_labels$colour <- colour_by
-        if (!is.numeric(meta_col)) plot_labels$fill <- colour_by
+        plot_labels$colour <- .scientific_caption_label(colour_by)
+        if (!is.numeric(meta_col)) {
+            plot_labels$fill <- .scientific_caption_label(colour_by)
+        }
     }
 
     p <- p +
@@ -328,13 +463,19 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
             xintercept = 0, linetype = "dotted",
             colour = .landscapeR_colour("nuisance"), linewidth = 0.4
         ) +
-        ggplot2::facet_wrap(~ component, scales = "free") +
+        ggplot2::facet_wrap(
+            ~ component,
+            scales = "free",
+            labeller = ggplot2::as_labeller(component_labels)
+        ) +
         do.call(ggplot2::labs, plot_labels) +
         theme_landscapeR() +
-        ggplot2::theme(legend.position = "bottom")
-
+        ggplot2::theme(
+            legend.position = "bottom",
+            legend.box = "vertical"
+        )
     view <- .stage1_components_surface_view(
-        view, layer_name, k_show, colour_by
+        view, layer_name, k_show, colour_by, binary_levels
     )
     .with_scientific_caption(p, visual_evidence_caption(view))
 }
@@ -355,7 +496,8 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     view,
     layer_name,
     k_show,
-    colour_by
+    colour_by,
+    binary_levels = NULL
 ) {
     displays <- .visual_evidence_displays(view)
     meta_col <- displays$aligned_metadata[[layer_name]]
@@ -370,8 +512,8 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     )
     missingness <- if (!is.null(meta_col) && anyNA(meta_col)) {
         sprintf(
-            "Dashed rugs mark %d observations with missing %s",
-            sum(is.na(meta_col)), colour_by
+            "Dashed black rugs mark %d observations with missing %s",
+            sum(is.na(meta_col)), .scientific_caption_label(colour_by)
         )
     } else {
         NULL
@@ -384,7 +526,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 c(
                     missingness,
                     sprintf(
-                        "Levels with fewer than two observations (%s) appear as rugs only",
+                        "Levels with fewer than two observations (%s) appear as sample rugs only",
                         paste(unavailable, collapse = ", ")
                     )
                 ),
@@ -404,7 +546,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                 sprintf(
                     "%s (%s = %s)",
                     unavailable_grouped$component,
-                    colour_by,
+                    .scientific_caption_label(colour_by),
                     unavailable_grouped$metadata_value
                 )
             )
@@ -419,7 +561,7 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
                     paste(unavailable_slices, collapse = ", "),
                     ") have insufficient coordinate spread for kernel-density ",
                     "estimation at sqrt(machine precision) x max(1, maximum ",
-                    "absolute coordinate); those slices appear as rugs only"
+                    "absolute coordinate); those slices appear as sample rugs only"
                 )
             ),
             collapse = "; "
@@ -427,9 +569,25 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
     }
     context <- displays$caption_contexts[[layer_name]]
     metadata_marks <- if (!is.null(meta_col) && !is.numeric(meta_col)) {
-        "Density fills, outlines, and rug colours"
+        if (is.null(binary_levels)) {
+            paste(
+                "Categorical metadata is shown by restrained density fills and",
+                "solid outlines; fine sample rugs show individual coordinates."
+            )
+        } else {
+            paste(
+                "Categorical metadata is shown by restrained density fills and",
+                "solid outlines; reference rugs occupy the upper margin and",
+                "focal rugs the lower margin."
+            )
+        }
+    } else if (!is.null(meta_col)) {
+        paste(
+            "Continuous metadata is shown by fine sample rugs with a",
+            "perceptually ordered colour and opacity scale."
+        )
     } else {
-        "Rug colours"
+        "Rug colours show the available sample metadata."
     }
     caption <- .new_scientific_caption_view(
         title = "Stage 1 component distributions",
@@ -441,18 +599,28 @@ plot_components <- function(std, colour_by = NULL, n_components = 6L, layer = 1L
         time_field = context$time_field,
         time_unit = context$time_unit,
         subject_field = context$subject_field,
+        panels = stats::setNames(
+            sprintf(
+                "Component %d sample-coordinate distribution",
+                seq_len(k_show)
+            ),
+            .publication_panel_letters(k_show)
+        ),
         encodings = c(
             paste0(
                 "Facets show components 1-", k_show,
                 " in decomposition order; stored densities summarize sample-coordinate ",
-                "distributions; rugs mark sample coordinates; dotted vertical lines mark zero"
+                "distributions; fine rugs show sample coordinates; dotted vertical lines mark zero"
             ),
-            .plot_metadata_encoding(meta_col, colour_by, metadata_marks)
+            metadata_marks
         ),
         estimand = "the descriptive distribution of sample coordinates",
         missingness = missingness,
         uncertainty = if (identical(visual_evidence_state(view), "partial")) {
-            "Available density slices and sample-coordinate rugs are shown; unavailable slices remain explicit"
+            paste(
+                "Available density slices and sample rugs are shown;",
+                "unavailable slices remain explicit"
+            )
         } else {
             NA_character_
         },
@@ -592,7 +760,9 @@ plot_spectrum <- function(std, n_sv = 20L) {
                 "Lines and points show ordered raw-assay singular values ",
                 "for layer traces: ",
                 paste(
-                    visual_evidence_display(view, "experiment_names"),
+                    .scientific_caption_label(
+                        visual_evidence_display(view, "experiment_names")
+                    ),
                     collapse = ", "
                 )
             ),
@@ -646,11 +816,17 @@ plot_spectrum <- function(std, n_sv = 20L) {
 #'
 #' @param std \code{StateTransitionData} with \code{metadata()$stage1} present
 #' @param colour_by character column name in \code{colData(std)} to colour
-#'   samples by, or \code{NULL} for unlabelled points (default \code{NULL})
+#'   samples by, or \code{NULL} for unlabelled points (default \code{NULL}).
+#'   Categorical fields additionally encode shape (up to 8 observed levels);
+#'   continuous fields additionally encode point size.
 #' @param component integer -- which component column to plot from each layer's
 #'   coordinate matrix (default \code{1L}). Use \code{plot_components()} to
 #'   inspect descriptive distributions; scientific selection requires the
 #'   atlas/proposal and confirmation workflow.
+#' @param reference_level optional declared reference level for binary
+#'   categorical metadata. Supply together with \code{focal_level}.
+#' @param focal_level optional declared focal level for binary categorical
+#'   metadata. Supply together with \code{reference_level}.
 #' @return a \code{ggplot} object
 #'
 #' @examples
@@ -660,7 +836,8 @@ plot_spectrum <- function(std, n_sv = 20L) {
 #' plot_decomposition(std2)
 #'
 #' @export
-plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
+plot_decomposition <- function(std, colour_by = NULL, component = 1L,
+                               reference_level = NULL, focal_level = NULL) {
     stopifnot(is(std, "StateTransitionData"))
     view <- .stage_visual_evidence(
         std, "stage1", colour_by = colour_by, caller = "plot_decomposition"
@@ -742,6 +919,19 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
     }
 
     palette <- landscapeR_palette("semantic")
+    layer_letters <- .publication_panel_letters(n_layers)
+    layer_labels <- stats::setNames(
+        if (n_layers > 1L) {
+            sprintf(
+                "(%s) %s",
+                layer_letters,
+                vapply(layer_nms, .scientific_caption_label, character(1L))
+            )
+        } else {
+            vapply(layer_nms, .scientific_caption_label, character(1L))
+        },
+        layer_nms
+    )
     p <- ggplot2::ggplot(
         df,
         ggplot2::aes(x = sample_ord, y = coord)
@@ -751,38 +941,88 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
             linetype = "dotted",
             colour = .landscapeR_colour("nuisance")
         ) +
-        ggplot2::facet_wrap(~ layer, scales = "free_x") +
+        ggplot2::facet_wrap(
+            ~ layer,
+            scales = "free_x",
+            labeller = ggplot2::as_labeller(layer_labels)
+        ) +
         ggplot2::labs(
-            title    = sprintf("Sample coordinates on component %d", plot_idx),
+            title    = sprintf(
+                "Component %d scores by molecular layer", plot_idx
+            ),
             subtitle = if (!is.null(angle_label)) angle_label else
                 "Layers show rank-ordered sample coordinates",
             x        = "Sample (rank-ordered by coordinate)",
             y        = sprintf("Component %d coordinate", plot_idx),
-            colour   = colour_by
+            colour   = if (!is.null(colour_by)) {
+                .scientific_caption_label(colour_by)
+            } else {
+                NULL
+            }
         ) +
         theme_landscapeR() +
-        ggplot2::theme(legend.position = "bottom")
+        ggplot2::theme(
+            legend.position = "bottom",
+            legend.box = "vertical"
+        )
 
     if (is.null(colour_by)) {
-        p <- p + ggplot2::geom_point(size = 2, alpha = 0.75)
+        p <- p + ggplot2::geom_point(size = 1.4, alpha = 0.7)
     } else {
-        p <- p +
-            ggplot2::geom_point(
-                data = df[!is.na(df[[colour_by]]), , drop = FALSE],
-                ggplot2::aes(colour = .data[[colour_by]]),
-                size = 2, alpha = 0.75
-            )
+        observed <- df[!is.na(df[[colour_by]]), , drop = FALSE]
         meta_col <- df[[colour_by]]
-        p <- p + scale_colour_landscapeR(
-            if (is.numeric(meta_col)) "continuous" else "categorical",
-            name = colour_by
+        binary_levels <- .declared_binary_plot_levels(
+            meta_col,
+            reference_level = reference_level,
+            focal_level = focal_level,
+            caller = "plot_decomposition()"
         )
+        if (is.numeric(meta_col)) {
+            p <- p + ggplot2::geom_point(
+                data = observed,
+                ggplot2::aes(
+                    colour = .data[[colour_by]],
+                    size = .data[[colour_by]]
+                ),
+                shape = 16, alpha = 0.7
+            ) + ggplot2::scale_size_continuous(
+                range = c(0.9, 1.8),
+            name = paste0(
+                .scientific_caption_label(colour_by), " (point size)"
+            )
+            )
+        } else {
+            p <- p + ggplot2::geom_point(
+                data = observed,
+                ggplot2::aes(
+                    colour = .data[[colour_by]],
+                    shape = .data[[colour_by]]
+                ),
+                size = 1.4, alpha = 0.7
+            ) + ggplot2::scale_shape_manual(
+                values = .metadata_shape_values(meta_col),
+                name = .scientific_caption_label(colour_by)
+            )
+        }
+        if (is.null(binary_levels)) {
+            p <- p + scale_colour_landscapeR(
+                if (is.numeric(meta_col)) "continuous" else "categorical",
+                name = .scientific_caption_label(colour_by)
+            )
+        } else {
+            p <- p + scale_colour_landscapeR(
+                "binary",
+                reference_level = binary_levels[["reference"]],
+                focal_level = binary_levels[["focal"]],
+                name = .scientific_caption_label(colour_by)
+            )
+        }
         missing <- df[is.na(meta_col), , drop = FALSE]
         if (nrow(missing)) {
             p <- p + ggplot2::geom_point(
                 data = missing, shape = 4,
                 colour = unname(palette[["ink"]]),
-                size = 2.4, stroke = 0.7
+                size = 1.8, stroke = 0.6
             )
         }
     }
@@ -816,12 +1056,31 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         drop = FALSE
     ]
     context <- displays$caption_context
+    layer_nms <- unique(df$layer)
+    panels <- if (length(layer_nms) > 1L) {
+        stats::setNames(
+            sprintf(
+                "%s molecular-layer coordinates",
+                vapply(layer_nms, .scientific_caption_label, character(1L))
+            ),
+            .publication_panel_letters(length(layer_nms))
+        )
+    } else {
+        NULL
+    }
     encodings <- c(
         paste0(
             "Facets identify molecular layers; points show component ", plot_idx,
             " sample coordinates rank-ordered within each layer; the dotted horizontal line marks zero"
         ),
-        .plot_metadata_encoding(meta_col, colour_by, "Point colours")
+        .plot_metadata_encoding(
+            meta_col, colour_by,
+            if (is.numeric(meta_col)) {
+                "Point colours and point sizes"
+            } else {
+                "Point colours and point shapes"
+            }
+        )
     )
     if (nrow(angle_row)) {
         encodings <- c(
@@ -842,6 +1101,7 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         time_field = context$time_field,
         time_unit = context$time_unit,
         subject_field = context$subject_field,
+        panels = panels,
         encodings = encodings,
         estimand = paste0(
             "the descriptive sample coordinate on component ", plot_idx
@@ -849,7 +1109,7 @@ plot_decomposition <- function(std, colour_by = NULL, component = 1L) {
         missingness = if (!is.null(meta_col) && anyNA(meta_col)) {
             sprintf(
                 "Crosses mark %d observations with missing %s",
-                sum(is.na(meta_col)), colour_by
+                sum(is.na(meta_col)), .scientific_caption_label(colour_by)
             )
         } else {
             NULL

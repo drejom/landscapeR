@@ -197,37 +197,51 @@
     invisible(TRUE)
 }
 
+.scientific_caption_label <- function(value) {
+    if (!is.character(value) || !length(value)) return(value)
+    value <- gsub("([[:alpha:]])([[:digit:]])", "\\1 \\2", value)
+    value <- gsub("[_\\.]+", " ", value)
+    value <- gsub("[[:space:]]+", " ", value)
+    trimws(value)
+}
+
 .scientific_caption_context <- function(view) {
     context <- character()
     if (!is.na(view$experiment_label)) {
-        context <- paste0("The ", view$experiment_label, " experiment")
+        experiment <- .scientific_caption_label(view$experiment_label)
+        context <- paste0("The ", experiment, " experiment")
         if (!is.na(view$molecular_layer)) {
+            layer <- .scientific_caption_label(view$molecular_layer)
             context <- if (
                 !is.na(view$molecular_layer_count) &&
                     view$molecular_layer_count > 1L
             ) {
-                paste0(
-                    context, " uses molecular layers ",
-                    view$molecular_layer
-                )
+                paste0(context, " uses molecular layers ", layer)
+            } else if (grepl("^layer [0-9]+$", layer)) {
+                paste0(context, " uses ", layer, " molecular data")
             } else {
-                paste0(
-                    context, " uses the ", view$molecular_layer, " layer"
-                )
+                paste0(context, " uses the ", layer, " layer")
             }
         }
     } else if (!is.na(view$molecular_layer)) {
+        layer <- .scientific_caption_label(view$molecular_layer)
         context <- if (
             !is.na(view$molecular_layer_count) &&
                 view$molecular_layer_count > 1L
         ) {
-            paste0("Molecular layers ", view$molecular_layer)
+            paste0("The figure uses molecular layers ", layer)
+        } else if (grepl("^layer [0-9]+$", layer)) {
+            paste0("The figure uses ", layer, " molecular data")
         } else {
-            paste0("The ", view$molecular_layer, " layer")
+            paste0("The figure uses the ", layer, " layer")
         }
     }
     if (!is.na(view$target_field)) {
-        target <- paste0("the declared ", view$target_field, " target")
+        target <- paste0(
+            "the declared ",
+            .scientific_caption_label(view$target_field),
+            " target"
+        )
         if (length(view$oriented_levels) == 2L) {
             target <- paste0(
                 target, " contrasts ", view$oriented_levels[[2L]],
@@ -263,9 +277,10 @@
         ))
     }
     if (length(view$encodings)) {
-        sentences <- c(sentences, paste0(
-            paste(sub("[.]+$", "", view$encodings), collapse = "; "), "."
-        ))
+        encoding_sentences <- paste0(
+            sub("[.]+$", "", view$encodings), "."
+        )
+        sentences <- c(sentences, paste(encoding_sentences, collapse = " "))
     }
     analysis <- character()
     if (!is.na(view$sampling_unit)) {
@@ -274,25 +289,34 @@
         ))
     }
     if (!is.na(view$design)) {
-        analysis <- c(analysis, paste0("the design is ", view$design))
+        design <- .scientific_caption_label(view$design)
+        design <- sub("^cross sectional$", "cross-sectional", design)
+        analysis <- c(analysis, paste0("the design is ", design))
     }
     if (!is.na(view$estimand)) {
         analysis <- c(analysis, paste0("the estimand is ", view$estimand))
     }
     if (!is.na(view$time_field)) {
-        time <- paste0("time is recorded as ", view$time_field)
+        time <- paste0(
+            "time is recorded as ",
+            .scientific_caption_label(view$time_field)
+        )
         if (!is.na(view$time_unit)) time <- paste(time, "in", view$time_unit)
         analysis <- c(analysis, time)
     }
     if (!is.na(view$subject_field)) {
         analysis <- c(analysis, paste0(
-            "subjects are identified by ", view$subject_field
+            "subjects are identified by ",
+            .scientific_caption_label(view$subject_field)
         ))
     }
     if (length(view$nuisance_fields)) {
         analysis <- c(analysis, paste0(
             "adjustment uses ",
-            paste(view$nuisance_fields, collapse = ", ")
+            paste(
+                .scientific_caption_label(view$nuisance_fields),
+                collapse = ", "
+            )
         ))
     }
     if (length(analysis)) {
