@@ -746,6 +746,7 @@ bodies may state dependencies but do not change this ordering.
 | [#231](https://github.com/drejom/landscapeR/issues/231) | Interpretation visual standards — caption/render fidelity | complete on merge; then #232 |
 | [#232](https://github.com/drejom/landscapeR/issues/232) | Interpretation visual standards — contact-sheet tile isolation | complete on merge; then #233 |
 | [#233](https://github.com/drejom/landscapeR/issues/233) | Interpretation visual standards — empty-state/layout consistency | active — next; visual gate before #193 |
+| [#245](https://github.com/drejom/landscapeR/issues/245) | Interpretation visual standards — semantic palette contract | queued; human decision follow-up to #226; does not reorder #233 |
 | [#239](https://github.com/drejom/landscapeR/issues/239) | Maintenance — reduce PR CI latency without weakening merge gates | queued; standalone maintenance lane |
 | [#242](https://github.com/drejom/landscapeR/issues/242) | Maintenance — retry transient setup-r resolver failures | complete on merge; standalone CI reliability fix; does not reorder #232 |
 <!-- issue-map:end -->
