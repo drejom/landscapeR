@@ -10,6 +10,20 @@ test_that("theme_landscapeR provides the square publication grammar", {
     expect_identical(theme$text$family, "Helvetica")
 })
 
+test_that("compact status surfaces use shared layout tokens", {
+    tokens <- landscapeR:::.landscapeR_layout_tokens()
+
+    expect_named(
+        tokens,
+        c(
+            "base_size", "title_size", "subtitle_size", "subtitle_width",
+            "status_size", "annotation_size", "plot_margin"
+        )
+    )
+    expect_identical(tokens$base_size, 7)
+    expect_s3_class(tokens$plot_margin, "unit")
+})
+
 test_that("publication visual helpers use typed validation", {
     invalid_calls <- list(
         function() theme_landscapeR(base_size = 0),

@@ -1151,8 +1151,8 @@ setMethod("visual_evidence", "AssociationAbstention", function(x) {
         ),
         target_field = x@target_field,
         encodings = paste(
-            "The title identifies the declared target and the subtitle states",
-            "the public reason; black annotation text states the recorded",
+            "The title identifies the declared target; a grey tag marks abstention;",
+            "the subtitle gives the public reason; black text gives the recorded",
             "diagnostic"
         ),
         design = x@sampling_design@kind,

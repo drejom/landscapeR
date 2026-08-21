@@ -1,0 +1,5 @@
+No component nominated for condition. The Issue 233 empty-state fixture experiment uses the rna
+layer to assess the declared condition target. Text reports that no adjusted effect is estimable.
+The design is cross-sectional; the estimand is adjusted-rank-score-contrast; adjustment uses batch.
+No estimable adjusted effect is available. No acceptance threshold is applied. No component is
+eligible for nomination and no runner-up is promoted.

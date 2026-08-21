@@ -790,6 +790,14 @@ visible boxplots and observations; they do not claim continuous fitted curves.
 Association-abstention captions likewise describe the rendered black reason
 and diagnostic text and do not imply that an unavailable estimand was fitted.
 
+Abstention plots use a shared compact layout contract. A grey `ABSTENTION`
+tag identifies the state, the subtitle gives the public reason, and the black
+annotation records the machine-readable diagnostic in readable form. The
+surface does not invent a substitute result; intentional whitespace is kept
+only where it separates these status elements and preserves a publication-size
+reading order. The same layout tokens are used for association and empty
+component-nomination abstentions.
+
 The Stage 1 component gallery follows the mapped aesthetic: categorical
 metadata use both density fill and rug colour, while continuous metadata use a
 colour scale for the rugs only. Missing metadata remain visible as missing
