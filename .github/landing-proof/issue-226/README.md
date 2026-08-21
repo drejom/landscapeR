@@ -10,9 +10,11 @@ sheet; the inventory records source-file digests and explicit exclusions.
 This is an audit gate, not a claim that every figure is publication-ready. The
 adversarial findings and queued follow-up issues are recorded in audit-findings.tsv.
 
-Review at native size and at reduced contact-sheet size. Record inconsistent
-visual grammar, clipped labels, unreadable legends, caption mismatch, or
-public-language leaks as follow-up issues rather than silently changing them.
+Review the native and reduced contact sheets. Tile-local labels are concise
+and isolated; full scientific captions remain in the inventory and separate
+files. Record inconsistent visual grammar, clipped labels, unreadable
+legends, caption mismatch, or public-language leaks as follow-up issues
+rather than silently changing them.
 
 Regenerate with:
 

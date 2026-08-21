@@ -12,8 +12,9 @@ sign-corrected biological-effect direction agrees with its discovery estimate. (
 rank records the repeated biological-effect ranking. (H) Largest principal angles summarize
 recurrence of each enclosing subspace dimension. (I) Replicate completion equals one only when
 the complete assessment succeeded. Larger red points denote the nominated component and smaller
-black points denote the remaining candidate components in component-indexed panels. Components
-were matched jointly by maximizing total absolute feature-loading cosine similarity. No
-stability threshold was applied. The nominated axis therefore remains exploratory and must not
-be interpreted as stably recovered. These results describe numerical identifiability and do
-not, by themselves, establish biological validity.
+black points denote the remaining candidate components in component-indexed panels. Comparison
+series are horizontally separated at shared evidence positions so each series remains
+recoverable. Components were matched jointly by maximizing total absolute feature-loading
+cosine similarity. No stability threshold was applied. The nominated axis therefore remains
+exploratory and must not be interpreted as stably recovered. These results describe numerical
+identifiability and do not, by themselves, establish biological validity.

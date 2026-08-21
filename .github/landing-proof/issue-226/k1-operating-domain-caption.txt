@@ -1,9 +1,9 @@
 Experiment location within calibrated K=1 operating evidence. The declared real-data experiment
 to assess the declared K=1 coordinate target. (A) Target-axis recovery probability in
 compatible calibration cells. (B) Downstream estimability probability after target-axis
-recovery. Black circles are exact compatible calibration-cell summaries; The pale grey band is
+recovery. Black circles are exact compatible calibration-cell summaries. The pale grey band is
 the calibrated signal/noise domain; red dashed lines are the declared experiment point or
-interval; The red dashed line and triangles show the experiment point and summaries from its
+interval. The red dashed line and triangles show the experiment point and summaries from its
 exact supporting calibration cells. The analysis unit is independent_time_course; the design is
 1 exact design cells and 1 of 2 compatible signal cells support placement. One diagnostic value
 is a point; two values define an interval whose supporting calibration cells are retained. The

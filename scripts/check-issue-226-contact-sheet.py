@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import re
+import struct
 import sys
 from pathlib import Path
 
@@ -31,6 +32,13 @@ def _inventory(path: Path) -> list[dict[str, str]]:
     if not rows or not required.issubset(rows[0]):
         raise ValueError("issue #226 inventory has an incomplete schema")
     return rows
+
+
+def _png_dimensions(path: Path) -> tuple[int, int]:
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+        raise ValueError(f"not a valid PNG: {path}")
+    return struct.unpack(">II", data[16:24])
 
 
 def check_contact_sheet_contract(repo_root: Path) -> list[str]:
@@ -73,6 +81,24 @@ def check_contact_sheet_contract(repo_root: Path) -> list[str]:
             f"{absent_from_renderer}"
         )
 
+    native_sheet = proof_root / "public-plot-contact-sheet.png"
+    reduced_sheet = proof_root / "public-plot-contact-sheet-reduced.png"
+    for sheet in (native_sheet, reduced_sheet):
+        if not sheet.is_file():
+            raise ValueError(f"missing contact-sheet QA artifact: {sheet}")
+    native_width, native_height = _png_dimensions(native_sheet)
+    reduced_width, reduced_height = _png_dimensions(reduced_sheet)
+    if reduced_width >= native_width or reduced_height >= native_height:
+        raise ValueError(
+            "reduced contact sheet must have strictly smaller pixel dimensions "
+            f"than native ({native_width}x{native_height} vs "
+            f"{reduced_width}x{reduced_height})"
+        )
+    if "contact_sheet_tile" not in script_text or "subtitle = NULL" not in script_text:
+        raise ValueError("renderer does not enforce concise, subtitle-free tile labels")
+    if "public-plot-contact-sheet-reduced.png" not in script_text:
+        raise ValueError("renderer does not generate the reduced contact-sheet QA artifact")
+
     for row in included:
         for column in ("figure", "caption"):
             artifact = proof_root / row[column]
@@ -90,6 +116,7 @@ def check_contact_sheet_contract(repo_root: Path) -> list[str]:
         "validated "
         f"{len(included)} included and {len(excluded)} excluded public plotters",
         "validated NAMESPACE parity, renderer coverage, and retained artifacts",
+        "validated native/reduced dimensions and isolated tile-label rendering",
     ]
 
 

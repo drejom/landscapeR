@@ -34,7 +34,7 @@ class Issue226ContactSheetContractTest(unittest.TestCase):
 
     def test_committed_contract_is_valid(self) -> None:
         messages = CHECKER.check_contact_sheet_contract(ROOT)
-        self.assertEqual(len(messages), 2)
+        self.assertEqual(len(messages), 3)
 
     def test_checker_rejects_inventory_symbol_drift(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -58,6 +58,23 @@ class Issue226ContactSheetContractTest(unittest.TestCase):
             (root / ".github" / "landing-proof" / "issue-226" /
              "stage1-spectrum.png").unlink()
             with self.assertRaisesRegex(ValueError, "missing included figure"):
+                CHECKER.check_contact_sheet_contract(root)
+
+    def test_checker_rejects_missing_reduced_contact_sheet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._copy_contract(temporary)
+            (root / ".github" / "landing-proof" / "issue-226" /
+             "public-plot-contact-sheet-reduced.png").unlink()
+            with self.assertRaisesRegex(ValueError, "missing contact-sheet QA artifact"):
+                CHECKER.check_contact_sheet_contract(root)
+
+    def test_checker_rejects_non_reduced_contact_sheet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._copy_contract(temporary)
+            proof = root / ".github" / "landing-proof" / "issue-226"
+            shutil.copy(proof / "public-plot-contact-sheet.png",
+                        proof / "public-plot-contact-sheet-reduced.png")
+            with self.assertRaisesRegex(ValueError, "strictly smaller"):
                 CHECKER.check_contact_sheet_contract(root)
 
     def test_checker_rejects_invalid_included_excluded_counts(self) -> None:

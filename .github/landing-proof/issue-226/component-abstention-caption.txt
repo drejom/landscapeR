@@ -1,5 +1,5 @@
 No component nominated for condition. The Issue 226 cross-sectional fixture experiment uses the
 rna layer to assess the declared condition target. Grey bars retain finite effects from the
 complete eligible search; no bar is highlighted as a nominated coordinate. The design is
-cross_sectional; the estimand is signed-rank-biserial. No acceptance threshold is applied. No
+cross-sectional; the estimand is signed-rank-biserial. No acceptance threshold is applied. No
 component is eligible for nomination and no runner-up is promoted.

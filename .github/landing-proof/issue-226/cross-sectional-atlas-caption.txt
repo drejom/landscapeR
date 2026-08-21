@@ -1,9 +1,11 @@
-Metadata association atlas. The Issue 226 cross-sectional fixture experiment uses the rna
-layer. (A) condition observations are shown against component PC1. (B) condition observations
-are shown against component PC2. Black monotone fits and grey flexible fits expose agreement or
-possible non-monotone structure; point size records coincident observations. The analysis unit
-is independent biological observation; the design is cross_sectional; the estimand is
-prespecified component-metadata association. Stored intervals and diagnostics remain
-descriptive. Raw p-values are retained; q-values use Holm correction across declared components
-within each metadata field and evidence variant. No acceptance threshold is applied. The atlas
-is exploratory and does not nominate a biological coordinate.
+Metadata association atlas. The Issue 226 cross-sectional fixture experiment uses the rna layer
+to assess the declared condition target contrasts treatment with control. (A) condition
+observations are shown against component PC1. (B) condition observations are shown against
+component PC2. Boxplots summarize categorical component scores; points show individual
+observations. For the declared control to treatment contrast, grey identifies control
+(reference) and red identifies treatment (comparison). Point size records coincident
+observations. The analysis unit is independent biological observation; the design is
+cross-sectional; the estimand is prespecified component-metadata association. Stored intervals
+and diagnostics remain descriptive. Raw p-values are retained; q-values use Holm correction
+across declared components within each metadata field and evidence variant. No acceptance
+threshold is applied. The atlas is exploratory and does not nominate a biological coordinate.
