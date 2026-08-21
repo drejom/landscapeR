@@ -449,14 +449,14 @@ findings <- data.frame(
     finding = c("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"),
     severity = c(
         "follow-up issue", "pre-existing queued issue", "follow-up issue",
-        "follow-up issue", "follow-up issue", "resolved",
+        "resolved", "follow-up issue", "resolved",
         "follow-up issue", "follow-up issue"
     ),
     observation = c(
         "Independent-time-course interaction headings are clipped at the default 100 mm output.",
         "Independent-time-course facets do not yet carry the visible A/B panel labels required by the publication policy.",
         "Identifiability comparison markers and Stage 2 critical-point annotations can occlude one another or the landscape evidence.",
-        "Stage 1 and Stage 2 group/time rugs rely on thin colour-only marks that weaken at reduced size and under colour-vision deficiency.",
+        "Stage 1 and Stage 2 group/time encodings now use the declared package palette and the accessible positional/opacity cues delivered by issue #230.",
         "Cross-sectional, abstention, and operating-domain captions need reconciliation with the rendered encodings and public analysis-unit wording.",
         "Concise tile labels replace long plot subtitles; full scientific captions remain separate.",
         "Continuous component plots emit an unknown fill-scale warning for a valid continuous metadata field.",
@@ -476,7 +476,7 @@ findings <- data.frame(
         "issue #227",
         "issue #220",
         "issue #229",
-        "issue #230",
+        "issue #230 (resolved)",
         "issue #231",
         "issue #232 (resolved in this proof)",
         "issue #228",
