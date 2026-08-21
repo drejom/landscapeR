@@ -2,8 +2,8 @@ Stage 1 component distributions. The figure uses layer 1 molecular data. (A) Com
 sample-coordinate distribution. (B) Component 2 sample-coordinate distribution. Facets show
 components 1-2 in decomposition order; stored densities summarize sample-coordinate
 distributions; fine rugs show sample coordinates; dotted vertical lines mark zero. Categorical
-metadata is shown by restrained density fills and solid outlines; fine sample rugs show
-individual coordinates. The analysis unit is independent biological observation; the design is
-cross-sectional; the estimand is the descriptive distribution of sample coordinates. No
-component-selection threshold is applied. This descriptive gallery does not rank or nominate a
-biological coordinate.
+metadata is shown by restrained density fills and solid outlines; reference rugs occupy the
+upper margin and focal rugs the lower margin. The analysis unit is independent biological
+observation; the design is cross-sectional; the estimand is the descriptive distribution of
+sample coordinates. No component-selection threshold is applied. This descriptive gallery does
+not rank or nominate a biological coordinate.

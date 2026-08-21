@@ -1,12 +1,12 @@
 Density-derived quasi-potential landscape. The figure uses molecular layers layer 1, layer 2.
 The black curve shows U(x) = -log p(x), derived from the stored density estimate for component
-1. Fine coloured rugs identify categorical planted group and show individual sample
-coordinates. Small open circles mark stored stable wells directly on the curve. Small red
-diamonds mark stored unstable barriers directly on the curve. Fine grey dashed lines locate
-stored critical-point positions. The vertical display is focused on the stored critical-point
-range; higher low-density tails continue beyond the panel. The analysis unit is independent
-biological observation; the design is cross-sectional; the estimand is the density-derived
-quasi-potential along the selected component. Critical-point classifications are point
-estimates without uncertainty. No calibrated critical-point or barrier threshold is applied.
-The landscape is an exploratory description and does not by itself establish a biological state
-transition.
+1. Reference rugs occupy the upper margin and focal rugs the lower margin; grey and red
+redundantly identify categorical planted group. Small open circles mark stored stable wells
+directly on the curve. Small red diamonds mark stored unstable barriers directly on the curve.
+Fine grey dashed lines locate stored critical-point positions. The vertical display is focused
+on the stored critical-point range; higher low-density tails continue beyond the panel. The
+analysis unit is independent biological observation; the design is cross-sectional; the
+estimand is the density-derived quasi-potential along the selected component. Critical-point
+classifications are point estimates without uncertainty. No calibrated critical-point or
+barrier threshold is applied. The landscape is an exploratory description and does not by
+itself establish a biological state transition.

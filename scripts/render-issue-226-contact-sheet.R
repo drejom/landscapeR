@@ -205,7 +205,10 @@ included <- list(
          "categorical metadata", "Descriptive component distributions by category",
          "scientific user", "StateTransitionData with Stage 1",
          "public scientific evidence",
-         plot_components(state_stage1, colour_by = "planted_group", n_components = 2L)),
+         plot_components(
+             state_stage1, colour_by = "planted_group", n_components = 2L,
+             reference_level = "low", focal_level = "high"
+         )),
     list("stage1-components-continuous", "plot_components", "R/14-stage1-plots.R",
          "continuous observed-time metadata",
          "Descriptive component distributions by continuous metadata", "scientific user",
@@ -215,7 +218,10 @@ included <- list(
          "sample coordinates on component 1",
          "Sample-level state-space coordinates by molecular layer", "scientific user",
          "StateTransitionData with Stage 1", "public scientific evidence",
-         plot_decomposition(state_stage1, colour_by = "planted_group", component = 1L)),
+         plot_decomposition(
+             state_stage1, colour_by = "planted_group", component = 1L,
+             reference_level = "low", focal_level = "high"
+         )),
     list("stage1-spectrum", "plot_spectrum", "R/14-stage1-plots.R",
          "singular-value spectrum",
          "Spectral structure and model-based detectability reference", "scientific user",
@@ -225,13 +231,19 @@ included <- list(
          "quasi-potential without critical-point overlay",
          "Exploratory one-dimensional state-transition landscape", "scientific user",
          "StateTransitionData with Stage 2", "public exploratory evidence",
-         plot_potential(state_stage2, colour_by = "planted_group")),
+         plot_potential(
+             state_stage2, colour_by = "planted_group",
+             reference_level = "low", focal_level = "high"
+         )),
     list("stage2-potential-critical-points", "plot_potential", "R/16-stage2-plots.R",
          "quasi-potential with explicit critical-point overlay",
          "Optional stored-well and barrier-point display", "scientific user",
          "StateTransitionData with Stage 2", "public exploratory evidence",
-         plot_potential(state_stage2, colour_by = "planted_group",
-                        show_critical_points = TRUE)),
+         plot_potential(
+             state_stage2, colour_by = "planted_group",
+             reference_level = "low", focal_level = "high",
+             show_critical_points = TRUE
+         )),
     list("k1-operating-domain", "plot_k1_operating_domain",
          "R/13o-stage0-k1-operating-domain-locator.R",
          "calibrated operating-domain location",

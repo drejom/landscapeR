@@ -125,6 +125,10 @@ def check_contact_sheet_contract(repo_root: Path) -> list[str]:
         raise ValueError("renderer does not enforce concise, subtitle-free tile labels")
     if "public-plot-contact-sheet-reduced.png" not in script_text:
         raise ValueError("renderer does not generate the reduced contact-sheet QA artifact")
+    if 'reference_level = "low"' not in script_text or 'focal_level = "high"' not in script_text:
+        raise ValueError(
+            "renderer does not declare the binary reference/focal palette for Stage 1/2 proofs"
+        )
 
     for row in included:
         for column in ("figure", "caption"):
