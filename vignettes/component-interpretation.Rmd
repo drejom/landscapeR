@@ -823,6 +823,17 @@ Stage 1 and Stage 2 use the same consumer contract. Their digest-bound
 invalid or stale display evidence produces a captioned unavailable plot rather
 than changing the success status of decomposition or dynamics estimation.
 
+## Contact-sheet audit index
+
+The repository retains a native and reduced contact sheet as an audit index for
+the public plotting families. It is useful for checking panel order, tile-local
+labels, palette consistency, and reduced-size legibility across a release. It
+is not a substitute for the individual 100 mm figures: scientific captions,
+estimands, and detailed diagnostics remain attached to and reviewed with each
+individual plot. Dense abstention, calibration, and identifiability surfaces
+may therefore be split into companion audit sheets rather than compressed into
+a single publication figure.
+
 ## Registering additional methods
 
 Method authors register an R closure under one `contract:name` key with

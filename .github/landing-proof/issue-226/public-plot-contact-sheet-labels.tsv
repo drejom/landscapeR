@@ -1,0 +1,18 @@
+panel	id	label	characters
+A	cross-sectional-atlas	Association atlas	17
+B	component-proposal	Component proposal	18
+C	permutation-evidence	Permutation null	16
+D	association-abstention	Association abstention	22
+E	component-abstention	Component abstention	20
+F	independent-time-course	Independent time course	23
+G	repeated-subject-time-course	Repeated time course	20
+H	stage1-components-categorical	Stage 1: category	17
+I	stage1-components-continuous	Stage 1: time	13
+J	stage1-decomposition	Stage 1 coordinates	19
+K	stage1-spectrum	Stage 1 spectrum	16
+L	stage2-potential	Stage 2 potential	17
+M	stage2-potential-critical-points	Critical points	15
+N	k1-operating-domain	K=1 operating	13
+O	identifiability-primary	ID: primary	11
+P	identifiability-diagnostic	ID: diagnostic	14
+Q	identifiability-audit	ID: audit	9

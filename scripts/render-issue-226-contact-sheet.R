@@ -8,7 +8,10 @@ if (!requireNamespace("patchwork", quietly = TRUE)) {
 source(file.path("tests", "testthat", "helper-independent-time-course.R"))
 source(file.path("tests", "testthat", "helper-repeated-time-course.R"))
 
-output_dir <- file.path(".github", "landing-proof", "issue-226")
+output_dir <- Sys.getenv(
+    "LANDSCAPER_CONTACT_SHEET_OUTPUT",
+    unset = file.path(".github", "landing-proof", "issue-226")
+)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 cross_sectional_fixture <- function() {
     primary <- sprintf("sample_%02d", seq_len(10L))
@@ -202,7 +205,10 @@ included <- list(
          "categorical metadata", "Descriptive component distributions by category",
          "scientific user", "StateTransitionData with Stage 1",
          "public scientific evidence",
-         plot_components(state_stage1, colour_by = "planted_group", n_components = 2L)),
+         plot_components(
+             state_stage1, colour_by = "planted_group", n_components = 2L,
+             reference_level = "low", focal_level = "high"
+         )),
     list("stage1-components-continuous", "plot_components", "R/14-stage1-plots.R",
          "continuous observed-time metadata",
          "Descriptive component distributions by continuous metadata", "scientific user",
@@ -212,7 +218,10 @@ included <- list(
          "sample coordinates on component 1",
          "Sample-level state-space coordinates by molecular layer", "scientific user",
          "StateTransitionData with Stage 1", "public scientific evidence",
-         plot_decomposition(state_stage1, colour_by = "planted_group", component = 1L)),
+         plot_decomposition(
+             state_stage1, colour_by = "planted_group", component = 1L,
+             reference_level = "low", focal_level = "high"
+         )),
     list("stage1-spectrum", "plot_spectrum", "R/14-stage1-plots.R",
          "singular-value spectrum",
          "Spectral structure and model-based detectability reference", "scientific user",
@@ -222,13 +231,19 @@ included <- list(
          "quasi-potential without critical-point overlay",
          "Exploratory one-dimensional state-transition landscape", "scientific user",
          "StateTransitionData with Stage 2", "public exploratory evidence",
-         plot_potential(state_stage2, colour_by = "planted_group")),
+         plot_potential(
+             state_stage2, colour_by = "planted_group",
+             reference_level = "low", focal_level = "high"
+         )),
     list("stage2-potential-critical-points", "plot_potential", "R/16-stage2-plots.R",
          "quasi-potential with explicit critical-point overlay",
          "Optional stored-well and barrier-point display", "scientific user",
          "StateTransitionData with Stage 2", "public exploratory evidence",
-         plot_potential(state_stage2, colour_by = "planted_group",
-                        show_critical_points = TRUE)),
+         plot_potential(
+             state_stage2, colour_by = "planted_group",
+             reference_level = "low", focal_level = "high",
+             show_critical_points = TRUE
+         )),
     list("k1-operating-domain", "plot_k1_operating_domain",
          "R/13o-stage0-k1-operating-domain-locator.R",
          "calibrated operating-domain location",
@@ -285,6 +300,8 @@ excluded <- list(
          "K1RevisedAcceptanceSummary", "Acceptance runner proof")
 )
 
+contact_sheet_tile_labels <- .contact_sheet_tile_labels()
+
 source_files <- unique(c(
     vapply(included, function(x) x[[3L]], character(1L)),
     vapply(excluded, function(x) x[[3L]], character(1L))
@@ -323,6 +340,23 @@ if (length(missing_plot_symbols) || length(unexpected_plot_symbols)) {
         ), call. = FALSE
     )
 }
+if (!setequal(names(contact_sheet_tile_labels), vapply(included, `[[`, character(1L), 1L))) {
+    stop("contact-sheet tile labels are out of sync with included plots", call. = FALSE)
+}
+if (any(nchar(contact_sheet_tile_labels, type = "chars") > 25L)) {
+    stop("contact-sheet tile labels exceed the 25-character isolation budget", call. = FALSE)
+}
+utils::write.table(
+    data.frame(
+        panel = LETTERS[seq_along(contact_sheet_tile_labels)],
+        id = names(contact_sheet_tile_labels),
+        label = unname(contact_sheet_tile_labels),
+        characters = nchar(contact_sheet_tile_labels, type = "chars"),
+        stringsAsFactors = FALSE
+    ),
+    file.path(output_dir, "public-plot-contact-sheet-labels.tsv"),
+    sep = "\t", quote = FALSE, row.names = FALSE
+)
 
 included_rows <- lapply(seq_along(included), function(i) {
     record <- included[[i]]
@@ -415,16 +449,16 @@ findings <- data.frame(
     finding = c("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"),
     severity = c(
         "follow-up issue", "pre-existing queued issue", "follow-up issue",
-        "follow-up issue", "follow-up issue", "follow-up issue",
+        "resolved", "follow-up issue", "resolved",
         "follow-up issue", "follow-up issue"
     ),
     observation = c(
         "Independent-time-course interaction headings are clipped at the default 100 mm output.",
         "Independent-time-course facets do not yet carry the visible A/B panel labels required by the publication policy.",
         "Identifiability comparison markers and Stage 2 critical-point annotations can occlude one another or the landscape evidence.",
-        "Stage 1 and Stage 2 group/time rugs rely on thin colour-only marks that weaken at reduced size and under colour-vision deficiency.",
+        "Stage 1 and Stage 2 group/time encodings now use the declared package palette and the accessible positional/opacity cues delivered by issue #230.",
         "Cross-sectional, abstention, and operating-domain captions need reconciliation with the rendered encodings and public analysis-unit wording.",
-        "The contact-sheet tile subtitles collide across tile boundaries at reduced reading size.",
+        "Concise tile labels replace long plot subtitles; full scientific captions remain separate.",
         "Continuous component plots emit an unknown fill-scale warning for a valid continuous metadata field.",
         "The abstention empty state and cross-figure layout tokens need a consistency pass after the higher-severity fixes."
     ),
@@ -442,9 +476,9 @@ findings <- data.frame(
         "issue #227",
         "issue #220",
         "issue #229",
-        "issue #230",
+        "issue #230 (resolved)",
         "issue #231",
-        "issue #232",
+        "issue #232 (resolved in this proof)",
         "issue #228",
         "issue #233"
     ),
@@ -456,7 +490,8 @@ utils::write.table(
 )
 
 contact_sheet <- patchwork::wrap_plots(
-    lapply(included, function(x) x[[9L]]), ncol = 4L, guides = "collect"
+    lapply(included, function(x) .contact_sheet_tile(x[[9L]], x[[1L]])),
+    ncol = 4L, guides = "collect"
 ) + patchwork::plot_annotation(
     title = "landscapeR public-facing plot contact sheet",
     subtitle = paste(
@@ -471,15 +506,22 @@ contact_sheet <- patchwork::wrap_plots(
         plot.margin = ggplot2::margin(5, 5, 5, 5)
     )
 )
+native_sheet <- file.path(output_dir, "public-plot-contact-sheet.png")
+reduced_sheet <- file.path(output_dir, "public-plot-contact-sheet-reduced.png")
 ggplot2::ggsave(
-    file.path(output_dir, "public-plot-contact-sheet.png"), contact_sheet,
-    width = 360, height = 330, units = "mm", dpi = 300, bg = "white"
+    native_sheet, contact_sheet, width = 360, height = 330,
+    units = "mm", dpi = 300, bg = "white"
+)
+ggplot2::ggsave(
+    reduced_sheet, contact_sheet, width = 270, height = 247.5,
+    units = "mm", dpi = 300, bg = "white"
 )
 
 writeLines(c(
     "Figure 1. Public-facing landscapeR plot contact sheet.",
     "Panels A--Q show representative outputs from the current package source,",
-    "with panel identity, plotting function, input class, purpose, and separate",
+    "with panel identity, concise tile labels, plotting function, input class,",
+    "purpose, and separate",
     "scientific caption recorded in public-plot-inventory.tsv.",
     "Panels A--G cover component-association evidence across cross-sectional,",
     "independent-time-course, and repeated-subject designs. Panels H--M cover",
@@ -490,6 +532,7 @@ writeLines(c(
     "inventory with their development/validation boundary; they are not package",
     "user result figures.",
     "All included figures use the package scientific-caption accessor; the contact",
+    "sheet is retained at native and reduced dimensions for tile-isolation QA; the",
     "sheet itself is an audit artifact and carries no scientific claim.",
     "The adversarial review found follow-up work rather than silently declaring the",
     "current visual language complete. Findings and issue links are recorded in",
@@ -499,7 +542,9 @@ writeLines(c(
 
 manifest <- data.frame(
     artifact = c("public-plot-contact-sheet.png",
-                 "public-plot-contact-sheet-caption.txt",
+                 "public-plot-contact-sheet-reduced.png",
+    "public-plot-contact-sheet-caption.txt",
+                 "public-plot-contact-sheet-labels.tsv",
                  "public-plot-inventory.tsv",
                  "visual-review-framework.md",
                  "adversarial-review.md"),
@@ -518,6 +563,8 @@ writeLines(c(
     "# Issue #226 public-facing visual audit", "",
     "Generated from the current package source; source-file digests are recorded",
     "in public-plot-inventory.tsv.",
+    "Tile-local labels and their bounded text budget are recorded in",
+    "public-plot-contact-sheet-labels.tsv.",
     "",
     "The contact sheet is an audit surface, not a scientific result. Included",
     "figures are rendered by current package plotting functions from deterministic",
@@ -526,9 +573,12 @@ writeLines(c(
     "This is an audit gate, not a claim that every figure is publication-ready. The",
     "adversarial findings and queued follow-up issues are recorded in audit-findings.tsv.",
     "",
-    "Review at native size and at reduced contact-sheet size. Record inconsistent",
-    "visual grammar, clipped labels, unreadable legends, caption mismatch, or",
-    "public-language leaks as follow-up issues rather than silently changing them.",
+    "Review the native and reduced contact sheets. The checker enforces dimensions",
+    "and the tile-label text budget; direct visual inspection remains mandatory.",
+    "Tile-local labels are concise and isolated; full scientific captions remain",
+    "in the inventory and separate files. Record inconsistent visual grammar, clipped labels, unreadable",
+    "legends, caption mismatch, or public-language leaks as follow-up issues",
+    "rather than silently changing them.",
     "",
     "Regenerate with:", "",
     "Rscript scripts/render-issue-226-contact-sheet.R"

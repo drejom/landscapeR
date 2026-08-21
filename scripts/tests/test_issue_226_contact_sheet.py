@@ -27,6 +27,11 @@ class Issue226ContactSheetContractTest(unittest.TestCase):
             ROOT / "scripts" / "render-issue-226-contact-sheet.R",
             root / "scripts" / "render-issue-226-contact-sheet.R",
         )
+        (root / "R").mkdir()
+        shutil.copy(
+            ROOT / "R" / "13q-contact-sheet.R",
+            root / "R" / "13q-contact-sheet.R",
+        )
         (root / ".github" / "landing-proof").mkdir(parents=True)
         proof = root / ".github" / "landing-proof" / "issue-226"
         shutil.copytree(ROOT / ".github" / "landing-proof" / "issue-226", proof)
@@ -34,7 +39,7 @@ class Issue226ContactSheetContractTest(unittest.TestCase):
 
     def test_committed_contract_is_valid(self) -> None:
         messages = CHECKER.check_contact_sheet_contract(ROOT)
-        self.assertEqual(len(messages), 2)
+        self.assertEqual(len(messages), 3)
 
     def test_checker_rejects_inventory_symbol_drift(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -58,6 +63,55 @@ class Issue226ContactSheetContractTest(unittest.TestCase):
             (root / ".github" / "landing-proof" / "issue-226" /
              "stage1-spectrum.png").unlink()
             with self.assertRaisesRegex(ValueError, "missing included figure"):
+                CHECKER.check_contact_sheet_contract(root)
+
+    def test_checker_rejects_missing_reduced_contact_sheet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._copy_contract(temporary)
+            (root / ".github" / "landing-proof" / "issue-226" /
+             "public-plot-contact-sheet-reduced.png").unlink()
+            with self.assertRaisesRegex(ValueError, "missing contact-sheet QA artifact"):
+                CHECKER.check_contact_sheet_contract(root)
+
+    def test_checker_rejects_missing_tile_label_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._copy_contract(temporary)
+            (root / ".github" / "landing-proof" / "issue-226" /
+             "public-plot-contact-sheet-labels.tsv").unlink()
+            with self.assertRaisesRegex(ValueError, "tile-label contract"):
+                CHECKER.check_contact_sheet_contract(root)
+
+    def test_checker_rejects_overlong_tile_label(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._copy_contract(temporary)
+            labels = (root / ".github" / "landing-proof" / "issue-226" /
+                      "public-plot-contact-sheet-labels.tsv")
+            text = labels.read_text(encoding="utf-8")
+            labels.write_text(text.replace("Association atlas", "A" * 26, 1),
+                              encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "exceeds 25"):
+                CHECKER.check_contact_sheet_contract(root)
+
+    def test_checker_rejects_tile_panel_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._copy_contract(temporary)
+            labels = (root / ".github" / "landing-proof" / "issue-226" /
+                      "public-plot-contact-sheet-labels.tsv")
+            text = labels.read_text(encoding="utf-8")
+            labels.write_text(
+                text.replace("A\tcross-sectional-atlas", "Q\tcross-sectional-atlas", 1),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "invalid panel order"):
+                CHECKER.check_contact_sheet_contract(root)
+
+    def test_checker_rejects_non_reduced_contact_sheet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._copy_contract(temporary)
+            proof = root / ".github" / "landing-proof" / "issue-226"
+            shutil.copy(proof / "public-plot-contact-sheet.png",
+                        proof / "public-plot-contact-sheet-reduced.png")
+            with self.assertRaisesRegex(ValueError, "strictly smaller"):
                 CHECKER.check_contact_sheet_contract(root)
 
     def test_checker_rejects_invalid_included_excluded_counts(self) -> None:
