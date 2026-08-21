@@ -45,3 +45,10 @@ If WebSearch or WebFetch fails, use:
 
 The command uses the self-hosted SearXNG instance at `search.omeally.com` and
 returns one JSON line per result. Do not call that endpoint with bare `curl`.
+
+## Review ratchet standing order
+
+Before substantial work, read [`docs/agents/review-ratchet.md`](docs/agents/review-ratchet.md)
+and perform its brief hygiene pass. Maintain it in the same change under the
+Add, Correct, Deduplicate, and Graduate duties; report any ratchet change or
+deliberate no-change disposition when finishing the work.

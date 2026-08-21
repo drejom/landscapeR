@@ -1,8 +1,13 @@
 # Review ratchet
 
-Review knowledge must accumulate in the repository, not in a session. Read the
-relevant entries before substantial work and report the ratchet disposition in
-every pull request. ADR 0022 governs this document.
+Review knowledge must accumulate in the repository, not in a session. This is a
+bounded, self-correcting queue of review knowledge only, not a style guide,
+architecture record, domain glossary, or session log. Read it before substantial
+work, maintain it in the triggering change, and report the disposition in every
+pull request. ADR 0022 governs it.
+
+Lifecycle: incident → review rule → recurring pattern → deterministic
+enforcement → retire rule. Tests, hooks, linters, schemas, and CI outrank prose.
 
 ## Gate sequence
 Complete these gates in order for every implementation issue:
@@ -19,7 +24,15 @@ Complete these gates in order for every implementation issue:
 10. Resolve merge conflicts without discarding either intent, then revalidate.
 11. Merge only after every preceding gate is satisfied.
 
-Reporting “I could not satisfy this, because X” is correct; inventing work is not.
+## Two-minute hygiene pass
+Before substantial work, scan for contradictions with current authorities,
+spot-check two or three entries against code or configuration, identify rules
+ready to graduate, and consolidate duplicates. Near 150 lines, additions
+require subtraction; a repeatedly full document signals missing enforcement.
+
+Reporting “I could not satisfy this requirement because X” is a correct outcome;
+inventing work to fill a ticket is not.
+
 ## Never-touch list
 No entries yet; add one only after a concrete incident demonstrates a hazard.
 ## Earned defect checklist
@@ -27,8 +40,7 @@ No entries yet; add one only after a concrete incident demonstrates a hazard.
 Do not treat a newly opened, green pull request as review-complete. Monitor every
 requested asynchronous reviewer and inspect all threads before merge.
 **Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137)
-received two actionable findings after internal review; [PR #139](https://github.com/drejom/landscapeR/pull/139)
-required repeated manual prompts while Copilot reviews were pending.
+received two actionable findings after internal review; [PR #139](https://github.com/drejom/landscapeR/pull/139) required repeated manual prompts while Copilot reviews were pending.
 ### RR-002 — Send Markdown API bodies from files
 Use a file-backed request body; never interpolate Markdown containing backticks.
 **Incident:** [PR #137](https://github.com/drejom/landscapeR/pull/137) had a review reply corrupted by shell interpolation.
@@ -36,25 +48,24 @@ Use a file-backed request body; never interpolate Markdown containing backticks.
 Policy parsers must accept equivalent Markdown forms; test semantic variants.
 **Incident:** [PR #139](https://github.com/drejom/landscapeR/pull/139) initially rejected valid checkbox variants.
 ### RR-005 — Make governed identity behavioral and transactional
-When governed identity authorizes registration or replacement, include relevant
-captured state across the lexical environment chain. Validate complete
-provenance before mutation; test that failure leaves state and history unchanged.
+When governed identity authorizes registration or replacement, include captured
+state across the lexical environment chain. Validate provenance before mutation;
+test that failure leaves state and history unchanged.
 **Incident:** [Issue #120 implementation review](https://github.com/drejom/landscapeR/issues/120#issuecomment-5150510334)
-found that body-only fingerprints, incomplete closure environments, and
-assign-before-record ordering could hide behavior changes or leave an
-unprovenanced registry mutation.
+found body-only fingerprints, incomplete closure environments, and assign-before-
+record ordering could hide behavior changes or leave an unprovenanced mutation.
 ### RR-006 — Verify that visual encodings carry independent meaning
 Open every committed proof image and caption individually at canonical native and
-reduced reading sizes before claiming visual proof; record filenames and result
-in the pull request. Verify independent quantities, semantic colours, captions
-against rendered marks/panels, and recoverable annotations rather than mere files.
+reduced sizes before claiming visual proof; record filenames and result in the
+pull request. Verify quantities, colours, captions against rendered marks/panels,
+and recoverable annotations rather than mere files.
 **Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) misused focal
-red; issue #212 found caption mismatches; issue #226 found clipped, occluded, and
-colliding marks; PR #240 showed proof files can pass link/test checks while titles,
-legends, layout, and caption prose remain unacceptable.
+red; issue #212 found caption mismatches; issue #226 found clipped or colliding
+marks; PR #240 showed proof files can pass link/test checks while titles, legends,
+layout, and caption prose remain unacceptable.
 ### RR-007 — Keep transient roots outside package builds
 Exclude repo scratch from Git and R package builds. Before trusting a package
-check, verify that generated sites, bundles, and prior checks missed the tarball.
+check, verify generated sites, bundles, and prior checks missed the tarball.
 **Incident:** [Issue #117](https://github.com/drejom/landscapeR/issues/117) found `.scratch/` entered `R CMD build` and exhausted file handles.
 ### RR-008 — Preserve orthogonal typed state during adaptation
 Presentation adapters must not overwrite independent state such as availability.
@@ -79,72 +90,61 @@ alone leaves the scientific decision unchanged.
 execution backend and was also used as a candidate-selection gate.
 ### RR-012 — Build and inspect pull-request bodies from the repository template
 Read `.github/pull_request_template.md`, populate it from committed evidence,
-and inspect the rendered GitHub body before review. Required proof must exist,
-every repository-hosted proof path must resolve to its committed file or proof
-directory, and each link must use the current full PR-head commit SHA. Never use
-a feature-branch URL: deleting the branch after merge must not break the review
-record.
+and inspect the rendered body. Required proof paths must resolve to committed
+files, and links must use the current full PR-head SHA, never a feature branch.
 **Incident:** [PR #167](https://github.com/drejom/landscapeR/pull/167) claimed
-proof in a malformed body while none was visible. In [PR #182](https://github.com/drejom/landscapeR/pull/182),
-two committed PNGs rendered as 404s because the body omitted `-surface`.
-[PR #207](https://github.com/drejom/landscapeR/pull/207) rendered correctly
-before merge but its proof URLs failed after the feature branch was deleted; a
-repository-wide audit then found 46 broken images across 16 merged PRs and
-feature-branch proof references in 42 historical PR bodies.
+invisible proof; [PR #182](https://github.com/drejom/landscapeR/pull/182) had
+404 PNGs; [PR #207](https://github.com/drejom/landscapeR/pull/207) left broken
+feature-branch links, leading to an audit of 46 images across 16 PRs.
 ### RR-013 — Replay governed artifacts after schema extensions
-When a typed result or summary gains phase-specific fields, replay every
-committed governed artifact through its semantic verifier before merge. New
-fields must not change the reconstructed payload, field order, digest, or
-caption contract of an earlier artifact unless a declared migration governs
-that change. Test validators with the actual producer-shaped evidence.
+When typed results gain fields, replay every committed governed artifact through
+its semantic verifier before merge. A declared migration must govern any change
+to payload, order, digest, or caption; test actual producer-shaped evidence.
 **Incident:** issue #67 added AML-only summary fields that passed focused tests
 but broke phase-B1 artifact replay; issue #193's collector required fields its repeated producer never recorded.
 ### RR-014 — Compare governed identities independently of orchestration labels
-When parallel orchestration attaches names or labels to a result container,
-compare the governed identity values and their required order independently of
-those incidental attributes. Continue to reject missing, duplicate, unexpected,
-or reordered identities.
+When orchestration attaches labels, compare governed identities and required
+order independently; reject missing, duplicate, unexpected, or reordered values.
 **Incident:** issue #67 completed all 900 unique Gemini result branches, but its
 collector rejected the valid ordered identities because `targets` branch names
 were present on one character vector and absent from the other.
 ### RR-015 — Preserve typed non-estimability through aggregation
-When an analysis contract permits a method to abstain, aggregation and artifact
-validation must accept the corresponding typed missing estimate and retain its
-diagnostic. Do not require a finite value, substitute zero, or weaken the model
-after the worker has correctly reported non-estimability. Continue to reject
-infinite, nonnumeric, or structurally invalid estimates.
+When a contract permits abstention, aggregation must retain the typed missing
+estimate and diagnostic. Do not require finite values, substitute zero, or
+weaken the model; continue rejecting infinite, nonnumeric, or malformed values.
 **Incident:** issue #67 completed all 900 Gemini AML branches, but artifact
 collection rejected 162 otherwise valid results whose required random-slope
 models were singular and therefore returned `NA` target-effect estimates.
 ### RR-016 — Encode the complete RNG algorithm in deterministic streams
-Constructed `.Random.seed` streams must encode and validate the RNG kind, normal
-generator, and discrete sampler, and work under warnings-as-errors.
+Constructed `.Random.seed` streams must encode and validate RNG kind, normal
+generator, and discrete sampler under warnings-as-errors.
 **Incident:** issue #190 review found package-derived L'Ecuyer streams used the
 obsolete `Rounding` discrete sampler header. Nested bootstrap tasks emitted a
 warning and became execution failures under `options(warn = 2)`.
 ### RR-017 — Never exercise acceptance task rows as smoke tests
-Do not run, benchmark, or visually inspect any task from a newly revealed
-acceptance manifest before the revision-stamped runner has passed review and
-merged. Integration smoke tests must use a separately labelled development
-fixture with RNG streams that cannot enter acceptance evidence. If an
-acceptance task is run early, retire the complete seed set and freeze a new
-protocol without changing scientific settings in response to its outcomes.
+Do not run, benchmark, or inspect acceptance rows before the revision-stamped
+runner merges. Smoke tests use labelled development fixtures with disjoint RNG
+streams; if acceptance ran early, retire its seed set and refreeze unchanged
+science.
 **Incident:** issue #193 ran version 3 smoke rows and later version 4 acceptance
 branches before their runner revisions merged. Both complete seed sets were
 retired; version 5 refroze unchanged science and reserved fixture RNG explicitly.
 ### RR-018 — Preserve public call sequences during infrastructure migrations
 Retain arguments, paths, return shape, and verifier sequence, or provide a tested
-migration path. Exact-path compatibility must preserve raced destination data.
+migration path; exact-path compatibility must preserve raced destination data.
 **Incident:** [PR #218](https://github.com/drejom/landscapeR/pull/218) reinterpreted `write_stage1_benchmark_artifact(path)` as a content-addressed root.
 ## Verify, never assume
-A reviewer is not an oracle. Treat every finding as a claim to investigate. A
-wrong “fix” is worse than a declined comment: respond with evidence when a
-finding does not apply.
-Before substantial work, scan for contradictions and spot-check relevant entries
-against current code. Consolidate near 150 lines.
+A reviewer is not an oracle. Treat every finding as a claim to investigate; a
+wrong fix is worse than a declined comment. If a finding is wrong, say so with
+evidence. Tests, bots, documentation, and this Ratchet are evidence, not
+oracles; when they disagree with observable repository state, investigate.
+
 ## Maintenance duties
-- **Add:** record new defect classes with concrete incidents; reject speculation.
-- **Correct:** fix or remove outdated entries and name the correction.
-- **Deduplicate:** search before adding; consolidate overlapping rules.
-- **Graduate:** move mechanical rules into checks and recurring decisions into ADRs.
-- **Report:** select one disposition and give a substantive rationale. This document is only for review knowledge; other concerns belong to their existing authorities.
+Every agent that reads or benefits from this document owes these duties in the
+same change as the triggering work:
+- **Add:** record a new defect class only with a durable incident; reject speculation.
+- **Correct:** fix or remove obsolete or misleading entries and report the correction.
+- **Deduplicate:** search first; consolidate overlapping formulations.
+- **Graduate:** move mechanical rules into deterministic enforcement and recurring
+  decisions into ADRs, deleting detailed prose once no judgement remains.
+- **Report:** select one PR disposition and give a substantive rationale.
