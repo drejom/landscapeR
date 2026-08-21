@@ -1245,7 +1245,10 @@ setMethod("visual_evidence", "ComponentAbstention", function(x) {
                 "No component nominated for %s",
                 x@target_field
             ),
-            subtitle = x@reason,
+            subtitle = .public_abstention_message(
+                x@reason,
+                diagnostics$diagnostic
+            ),
             empty_annotation = "No estimable adjusted effect"
         ),
         caption_view = caption_view

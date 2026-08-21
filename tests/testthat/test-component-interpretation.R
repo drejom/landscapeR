@@ -622,6 +622,15 @@ test_that("target-confounded adjustment abstains without replacing raw evidence"
     abstention_view <- visual_evidence(abstention)
     expect_s3_class(abstention_plot, "ggplot")
     expect_identical(
+        abstention_plot$labels$subtitle,
+        "The declared sampling design was not identifiable"
+    )
+    expect_false(grepl(
+        "non-identifiable-design",
+        abstention_plot$labels$subtitle,
+        fixed = TRUE
+    ))
+    expect_identical(
         visual_evidence_state(abstention_view),
         "abstention"
     )
