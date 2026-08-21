@@ -16,6 +16,21 @@
     plot
 }
 
+# Shared layout tokens for compact, status-bearing public surfaces. Keeping
+# these values in one place prevents empty-state plots from acquiring their own
+# title, annotation, and margin conventions as new modules are added.
+.landscapeR_layout_tokens <- function() {
+    list(
+        base_size = 7,
+        title_size = 12,
+        subtitle_size = 8.5,
+        subtitle_width = 52L,
+        status_size = 2.6,
+        annotation_size = 2.8,
+        plot_margin = ggplot2::margin(4, 5, 4, 4)
+    )
+}
+
 #' Retrieve a landscapeR scientific figure caption
 #'
 #' User-facing landscapeR plots carry their dynamically generated scientific

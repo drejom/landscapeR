@@ -186,7 +186,11 @@ test_that("inappropriate declared target type returns a typed abstention", {
     expect_null(abstention_plot$labels$caption)
     expect_match(
         scientific_caption(abstention_plot),
-        "No[[:space:]]+target type or association is substituted"
+        "target type or association"
+    )
+    expect_match(
+        scientific_caption(abstention_plot),
+        "is substituted"
     )
     expect_match(
         scientific_caption(abstention_plot),
@@ -198,10 +202,12 @@ test_that("inappropriate declared target type returns a typed abstention", {
     )
     expect_match(
         scientific_caption(abstention_plot),
-        paste(
-            "black[[:space:]]+annotation text states the recorded",
-            "diagnostic"
-        ),
+        "grey tag marks abstention",
+        ignore.case = TRUE
+    )
+    expect_match(
+        scientific_caption(abstention_plot),
+        "black text gives the recorded diagnostic",
         ignore.case = TRUE
     )
     expect_false(grepl(
@@ -209,10 +215,17 @@ test_that("inappropriate declared target type returns a typed abstention", {
         scientific_caption(abstention_plot),
         fixed = TRUE
     ))
-    expect_identical(
+    expect_match(
         abstention_plot$labels$subtitle,
-        "Declared target type does not match the observed metadata"
+        "Declared target type does not match the observed[[:space:]]+metadata"
     )
+    status_label <- Filter(
+        function(layer) inherits(layer$geom, "GeomLabel"),
+        abstention_plot$layers
+    )
+    expect_length(status_label, 1L)
+    expect_identical(status_label[[1L]]$aes_params$fill,
+                     landscapeR:::.landscapeR_colour("structure"))
     abstention_annotation <- Filter(
         function(layer) inherits(layer$geom, "GeomText"),
         abstention_plot$layers
@@ -608,6 +621,15 @@ test_that("target-confounded adjustment abstains without replacing raw evidence"
     abstention_plot <- plot(abstention)
     abstention_view <- visual_evidence(abstention)
     expect_s3_class(abstention_plot, "ggplot")
+    expect_identical(
+        abstention_plot$labels$subtitle,
+        "The declared sampling design was not identifiable"
+    )
+    expect_false(grepl(
+        "non-identifiable-design",
+        abstention_plot$labels$subtitle,
+        fixed = TRUE
+    ))
     expect_identical(
         visual_evidence_state(abstention_view),
         "abstention"

@@ -3572,6 +3572,91 @@ as.data.frame.ComponentAbstention <- function(
     "No eligible component met the declared analysis requirements"
 }
 
+.render_abstention_text <- function(view, annotation_key = "annotation") {
+    tokens <- .landscapeR_layout_tokens()
+    annotation <- visual_evidence_display(view, annotation_key)
+    annotation <- paste(
+        strwrap(annotation, width = 60L),
+        collapse = "\n"
+    )
+    subtitle <- paste(
+        strwrap(
+            visual_evidence_display(view, "subtitle"),
+            width = tokens$subtitle_width
+        ),
+        collapse = "\n"
+    )
+    status <- data.frame(
+        x = 0.06,
+        y = 0.78,
+        label = "ABSTENTION",
+        stringsAsFactors = FALSE
+    )
+    plot <- ggplot2::ggplot(data.frame(x = 0, y = 0)) +
+        ggplot2::geom_blank(ggplot2::aes(
+            x = .data[["x"]],
+            y = .data[["y"]]
+        )) +
+        ggplot2::geom_label(
+            data = status,
+            ggplot2::aes(
+                x = .data[["x"]],
+                y = .data[["y"]],
+                label = .data[["label"]]
+            ),
+            inherit.aes = FALSE,
+            hjust = 0,
+            vjust = 0.5,
+            colour = .landscapeR_colour("ink"),
+            fill = .landscapeR_colour("structure"),
+            linewidth = 0.25,
+            label.padding = grid::unit(1.2, "mm"),
+            size = tokens$status_size
+        ) +
+        ggplot2::annotate(
+            "text",
+            x = 0.06,
+            y = 0.45,
+            label = annotation,
+            hjust = 0,
+            vjust = 0.5,
+            colour = .landscapeR_colour("ink"),
+            size = tokens$annotation_size
+        ) +
+        ggplot2::scale_x_continuous(
+            limits = c(0, 1),
+            expand = c(0, 0)
+        ) +
+        ggplot2::scale_y_continuous(
+            limits = c(0, 1),
+            expand = c(0, 0)
+        ) +
+        ggplot2::coord_cartesian(clip = "off") +
+        ggplot2::labs(
+            title = visual_evidence_display(view, "title"),
+            subtitle = subtitle,
+            x = NULL,
+            y = NULL
+        ) +
+        theme_landscapeR(base_size = tokens$base_size) +
+        ggplot2::theme(
+            plot.title = ggplot2::element_text(
+                size = tokens$title_size,
+                margin = ggplot2::margin(b = 1.5)
+            ),
+            plot.subtitle = ggplot2::element_text(
+                colour = .landscapeR_colour("ink"),
+                size = tokens$subtitle_size,
+                margin = ggplot2::margin(b = 3)
+            ),
+            plot.margin = tokens$plot_margin,
+            axis.text = ggplot2::element_blank(),
+            axis.ticks = ggplot2::element_blank(),
+            axis.line = ggplot2::element_blank()
+        )
+    .with_scientific_caption(plot, visual_evidence_caption(view))
+}
+
 #' Extract the diagnostic from an association abstention
 #'
 #' @param abstention an `AssociationAbstention`
@@ -3601,41 +3686,7 @@ plot.AssociationAbstention <- function(x, y, ...) {
         stop("plot.AssociationAbstention(): x must be AssociationAbstention")
     }
     view <- visual_evidence(x)
-    plot <- ggplot2::ggplot(data.frame(x = 0, y = 0)) +
-        ggplot2::geom_blank(ggplot2::aes(
-            x = .data[["x"]],
-            y = .data[["y"]]
-        )) +
-        ggplot2::annotate(
-            "text",
-            x = 0,
-            y = 0,
-            label = paste(
-                strwrap(
-                    visual_evidence_display(view, "annotation"),
-                    width = 46L
-                ),
-                collapse = "\n"
-            ),
-            colour = .landscapeR_colour("ink"),
-            size = 3.2
-        ) +
-        ggplot2::labs(
-            title = visual_evidence_display(view, "title"),
-            subtitle = visual_evidence_display(view, "subtitle"),
-            x = NULL,
-            y = NULL
-        ) +
-        theme_landscapeR() +
-        ggplot2::theme(
-            plot.subtitle = ggplot2::element_text(
-                colour = .landscapeR_colour("ink")
-            ),
-            axis.text = ggplot2::element_blank(),
-            axis.ticks = ggplot2::element_blank(),
-            axis.line = ggplot2::element_blank()
-        )
-    .with_scientific_caption(plot, visual_evidence_caption(view))
+    .render_abstention_text(view)
 }
 
 #' Plot a component-nomination abstention
@@ -3679,20 +3730,7 @@ plot.ComponentAbstention <- function(x, y, ...) {
                 linewidth = 0.45
             )
     } else {
-        plot <- ggplot2::ggplot(data.frame(x = 0, y = 0)) +
-            ggplot2::geom_blank(ggplot2::aes(
-                x = .data[["x"]],
-                y = .data[["y"]]
-            )) +
-            ggplot2::annotate(
-                "text",
-                x = 0,
-                y = 0,
-                label = visual_evidence_display(
-                    view, "empty_annotation"
-                ),
-                colour = .landscapeR_colour("ink")
-            )
+        return(.render_abstention_text(view, "empty_annotation"))
     }
     plot <- plot +
         ggplot2::labs(
