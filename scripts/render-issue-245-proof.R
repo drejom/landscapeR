@@ -46,7 +46,7 @@ rule <- c(
     `follow-up` = "known redundant-encoding gap retained for a subsequent visual issue"
 )
 follow_up <- c(
-    `stage1-components-categorical` = "Non-binary categories currently use colour-only rugs; add a restrained non-colour channel.",
+    `stage1-components-categorical` = "Non-binary categories currently use colour-only grouped densities and rugs; add a restrained non-colour channel.",
     `stage1-spectrum` = "Molecular-layer traces currently use colour without a line-type or shape companion.",
     `stage2-potential` = "Non-binary categorical metadata currently uses colour-only rugs; add a restrained non-colour channel.",
     `stage2-potential-critical-points` = "Non-binary categorical metadata currently uses colour-only rugs; add a restrained non-colour channel."
@@ -59,6 +59,12 @@ out$follow_up <- ifelse(
     unname(follow_up[out$id]),
     ""
 )
+if (any(
+    out$classification == "follow-up" &
+        (is.na(out$follow_up) | !nzchar(trimws(out$follow_up)))
+)) {
+    stop("Issue 245 follow-up classifications require an explicit rationale")
+}
 out$claim_status <- included$evidence_state
 utils::write.table(
     out,
