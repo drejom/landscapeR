@@ -107,6 +107,9 @@ def check_contact_sheet_contract(repo_root: Path) -> list[str]:
     labels = _tile_labels(label_path)
     if [row["id"] for row in labels] != [row["id"] for row in included]:
         raise ValueError("contact-sheet tile labels are out of inventory order")
+    expected_panels = [chr(ord("A") + index) for index in range(len(labels))]
+    if [row["panel"] for row in labels] != expected_panels:
+        raise ValueError("contact-sheet tile labels have invalid panel order")
     for sheet in (native_sheet, reduced_sheet):
         if not sheet.is_file():
             raise ValueError(f"missing contact-sheet QA artifact: {sheet}")
@@ -140,7 +143,7 @@ def check_contact_sheet_contract(repo_root: Path) -> list[str]:
         "validated "
         f"{len(included)} included and {len(excluded)} excluded public plotters",
         "validated NAMESPACE parity, renderer coverage, and retained artifacts",
-        "validated native/reduced dimensions and bounded tile-label contract",
+        "validated native/reduced dimensions and bounded tile-label contract; manual visual QA remains required",
     ]
 
 

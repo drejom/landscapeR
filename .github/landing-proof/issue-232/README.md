@@ -9,8 +9,10 @@ in the issue #226 inventory and separate caption files.
 
 The reduced after image is the required smaller-dimension QA render. The
 label manifest records the bounded text budget checked by the renderer and
-contract checker. Inspect both after images for tile isolation, label
-legibility, clipping, and legend collisions.
+contract checker. The checker cannot prove pixel-level separation, so direct
+visual inspection of the native and reduced renders is a required QA step.
+Inspect both after images for tile isolation, label legibility, clipping, and
+legend collisions.
 
 Reproduce with:
 

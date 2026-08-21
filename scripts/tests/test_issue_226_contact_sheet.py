@@ -92,6 +92,19 @@ class Issue226ContactSheetContractTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "exceeds 25"):
                 CHECKER.check_contact_sheet_contract(root)
 
+    def test_checker_rejects_tile_panel_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._copy_contract(temporary)
+            labels = (root / ".github" / "landing-proof" / "issue-226" /
+                      "public-plot-contact-sheet-labels.tsv")
+            text = labels.read_text(encoding="utf-8")
+            labels.write_text(
+                text.replace("A\tcross-sectional-atlas", "Q\tcross-sectional-atlas", 1),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "invalid panel order"):
+                CHECKER.check_contact_sheet_contract(root)
+
     def test_checker_rejects_non_reduced_contact_sheet(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = self._copy_contract(temporary)
