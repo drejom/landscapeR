@@ -790,6 +790,15 @@ visible boxplots and observations; they do not claim continuous fitted curves.
 Association-abstention captions likewise describe the rendered black reason
 and diagnostic text and do not imply that an unavailable estimand was fitted.
 
+The public palette is semantic rather than decorative. Ink and neutral grey
+carry ordinary structure, reference/control, comparison, and unavailable
+states; one restrained red marks an explicitly declared focal result. Signed
+quantities use a blue–neutral–red diverging scale. Multi-level categorical,
+molecular-layer, and ordered continuous variables may use a named module
+palette only when the legend and caption identify it and a redundant non-colour
+encoding preserves interpretation. The family-by-family classification used
+for this contract is retained in the issue #245 proof packet.
+
 Abstention plots use a shared compact layout contract. A grey `ABSTENTION`
 tag identifies the state, the subtitle gives the public reason, and the black
 annotation records the machine-readable diagnostic in readable form. The

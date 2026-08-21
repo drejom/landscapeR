@@ -79,6 +79,29 @@ test_that("landscapeR palettes have stable semantic roles", {
     )
 })
 
+test_that("signed scales reserve blue and red for signed direction", {
+    data <- data.frame(
+        x = seq_len(3L),
+        y = seq_len(3L),
+        effect = c(-1, 0, 1)
+    )
+    plot <- ggplot2::ggplot(
+        data,
+        ggplot2::aes(x, y, colour = effect)
+    ) +
+        ggplot2::geom_point() +
+        scale_colour_landscapeR("diverging")
+    colours <- ggplot2::ggplot_build(plot)$data[[1L]]$colour
+    expect_identical(
+        colours,
+        c(
+            landscapeR:::.landscapeR_colour("negative"),
+            landscapeR:::.landscapeR_colour("paper"),
+            landscapeR:::.landscapeR_colour("focal")
+        )
+    )
+})
+
 test_that("publication helpers reject every invalid public boundary with typed errors", {
     plot <- ggplot2::ggplot(
         data.frame(x = 1, y = 1),
