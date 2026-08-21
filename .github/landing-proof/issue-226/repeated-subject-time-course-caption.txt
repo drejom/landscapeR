@@ -3,11 +3,11 @@ the rna layer to assess the declared condition target contrasts treatment with c
 Component PC1 shows individual observations and stored population trajectories; the
 standardized condition-by-time interaction is 2.22 [2.18, 2.25]. (B) Component PC2 shows
 individual observations and stored population trajectories; the standardized condition-by-time
-interaction is 0.08 [-0.08, 0.10]. Thin lines connect repeated observations from each subject.
+interaction is 0.08 [-0.08, 0.10]. Thin lines connect repeated observations from each subject;
 Bold lines show stored population trajectories from the rank-scale model with subject-specific
 random intercepts and time slopes. The analysis unit is complete subject trajectory; the design
 is longitudinal; the estimand is condition-by-time interaction on the rank scale; time is
-recorded as day; subjects are identified by mouse id; adjustment uses batch. Facet labels
+recorded as day; subjects are identified by mouse_id; adjustment uses batch. Facet labels
 report stored interaction intervals and resampling recurrence. Raw p-values are retained;
 q-values use Holm correction across declared components within each metadata field and evidence
 variant. No acceptance threshold is applied. Trajectory evidence is exploratory and does not

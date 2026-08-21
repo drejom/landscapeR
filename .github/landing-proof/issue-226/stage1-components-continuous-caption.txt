@@ -1,9 +1,7 @@
-Stage 1 component distributions. The figure uses layer 1 molecular data. (A) Component 1
-sample-coordinate distribution. (B) Component 2 sample-coordinate distribution. Facets show
-components 1-2 in decomposition order; stored densities summarize sample-coordinate
-distributions; fine rugs show sample coordinates; dotted vertical lines mark zero. Continuous
-metadata is shown by fine sample rugs with a perceptually ordered colour and opacity scale. The
-analysis unit is independent biological observation; the design is cross-sectional; the
+Stage 1 component distributions. The layer1 layer. Facets show components 1-2 in decomposition
+order; stored densities summarize sample-coordinate distributions; rugs mark sample
+coordinates; dotted vertical lines mark zero; Rug colours encode continuous observed_time. The
+analysis unit is independent biological observation; the design is cross_sectional; the
 estimand is the descriptive distribution of sample coordinates. No component-selection
 threshold is applied. This descriptive gallery does not rank or nominate a biological
 coordinate.

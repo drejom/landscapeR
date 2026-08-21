@@ -15,7 +15,8 @@ source(file.path("scripts", "render-issue-226-contact-sheet.R"), local = new.env
 required <- c(
     "public-plot-contact-sheet.png",
     "public-plot-contact-sheet-reduced.png",
-    "public-plot-contact-sheet-caption.txt"
+    "public-plot-contact-sheet-caption.txt",
+    "public-plot-contact-sheet-labels.tsv"
 )
 stopifnot(all(file.exists(file.path(scratch_dir, required))))
 stopifnot(file.exists(file.path(output_dir, "contact-sheet-before.png")))
@@ -31,6 +32,10 @@ file.copy(
     file.path(scratch_dir, "public-plot-contact-sheet-caption.txt"),
     file.path(output_dir, "contact-sheet-after-caption.txt"), overwrite = TRUE
 )
+file.copy(
+    file.path(scratch_dir, "public-plot-contact-sheet-labels.tsv"),
+    file.path(output_dir, "contact-sheet-after-labels.tsv"), overwrite = TRUE
+)
 writeLines(c(
     "# Issue #232 contact-sheet tile-isolation proof", "",
     "The before image is the issue #226 contact sheet whose full plot subtitles",
@@ -38,9 +43,10 @@ writeLines(c(
     "The after image uses concise tile-local labels and suppresses only the",
     "underlying plot subtitles in the audit sheet. Full scientific captions remain",
     "in the issue #226 inventory and separate caption files.", "",
-    "The reduced after image is the required smaller-dimension QA render. Inspect",
-    "both after images for tile isolation, label legibility, clipping, and legend",
-    "collisions.", "",
+    "The reduced after image is the required smaller-dimension QA render. The",
+    "label manifest records the bounded text budget checked by the renderer and",
+    "contract checker. Inspect both after images for tile isolation, label",
+    "legibility, clipping, and legend collisions.", "",
     "Reproduce with:", "", "Rscript scripts/render-issue-232-proof.R", "",
     "Claim status: implementation proof; no biological claim."
 ), file.path(output_dir, "README.md"))

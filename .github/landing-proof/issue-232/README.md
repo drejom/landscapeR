@@ -7,9 +7,10 @@ The after image uses concise tile-local labels and suppresses only the
 underlying plot subtitles in the audit sheet. Full scientific captions remain
 in the issue #226 inventory and separate caption files.
 
-The reduced after image is the required smaller-dimension QA render. Inspect
-both after images for tile isolation, label legibility, clipping, and legend
-collisions.
+The reduced after image is the required smaller-dimension QA render. The
+label manifest records the bounded text budget checked by the renderer and
+contract checker. Inspect both after images for tile isolation, label
+legibility, clipping, and legend collisions.
 
 Reproduce with:
 

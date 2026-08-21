@@ -3,7 +3,7 @@ layer to assess the declared condition target contrasts treatment with control. 
 declared target observations are shown for component PC1. (B) The declared target observations
 are shown for component PC2. The red diamond marks the uniquely nominated component; black and
 white marks retain the complete ranked search. The analysis unit is independent biological
-observation; the design is cross-sectional; the estimand is signed-rank-biserial. Facet labels
+observation; the design is cross_sectional; the estimand is signed-rank-biserial. Facet labels
 report stored effect rank and magnitude. Raw p-values are retained; q-values use Holm
 correction across declared components within each metadata field and evidence variant. No
 acceptance threshold is applied. The proposal is exploratory and does not confirm biological

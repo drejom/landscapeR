@@ -2,6 +2,8 @@
 
 Generated from the current package source; source-file digests are recorded
 in public-plot-inventory.tsv.
+Tile-local labels and their bounded text budget are recorded in
+public-plot-contact-sheet-labels.tsv.
 
 The contact sheet is an audit surface, not a scientific result. Included
 figures are rendered by current package plotting functions from deterministic

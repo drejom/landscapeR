@@ -288,42 +288,7 @@ excluded <- list(
          "K1RevisedAcceptanceSummary", "Acceptance runner proof")
 )
 
-contact_sheet_tile_labels <- c(
-    "cross-sectional-atlas" = "Association atlas",
-    "component-proposal" = "Component proposal",
-    "permutation-evidence" = "Permutation null",
-    "association-abstention" = "Association abstention",
-    "component-abstention" = "Component abstention",
-    "independent-time-course" = "Independent time course",
-    "repeated-subject-time-course" = "Repeated time course",
-    "stage1-components-categorical" = "Stage 1: category",
-    "stage1-components-continuous" = "Stage 1: time",
-    "stage1-decomposition" = "Stage 1 coordinates",
-    "stage1-spectrum" = "Stage 1 spectrum",
-    "stage2-potential" = "Stage 2 potential",
-    "stage2-potential-critical-points" = "Critical points",
-    "k1-operating-domain" = "K=1 operating",
-    "identifiability-primary" = "ID: primary",
-    "identifiability-diagnostic" = "ID: diagnostic",
-    "identifiability-audit" = "ID: audit"
-)
-
-contact_sheet_tile <- function(plot_object, tile_id) {
-    label <- unname(contact_sheet_tile_labels[[tile_id]])
-    if (is.null(label) || is.na(label) || !nzchar(label)) {
-        stop(sprintf("no contact-sheet label is defined for %s", tile_id), call. = FALSE)
-    }
-    plot_object +
-        ggplot2::labs(title = label, subtitle = NULL, caption = NULL) +
-        ggplot2::theme(
-            plot.title = ggplot2::element_text(
-                face = "bold", size = 7, margin = ggplot2::margin(b = 2)
-            ),
-            plot.subtitle = ggplot2::element_blank(),
-            plot.caption = ggplot2::element_blank(),
-            plot.margin = ggplot2::margin(3, 3, 3, 3)
-        )
-}
+contact_sheet_tile_labels <- .contact_sheet_tile_labels()
 
 source_files <- unique(c(
     vapply(included, function(x) x[[3L]], character(1L)),
@@ -366,6 +331,20 @@ if (length(missing_plot_symbols) || length(unexpected_plot_symbols)) {
 if (!setequal(names(contact_sheet_tile_labels), vapply(included, `[[`, character(1L), 1L))) {
     stop("contact-sheet tile labels are out of sync with included plots", call. = FALSE)
 }
+if (any(nchar(contact_sheet_tile_labels, type = "chars") > 25L)) {
+    stop("contact-sheet tile labels exceed the 25-character isolation budget", call. = FALSE)
+}
+utils::write.table(
+    data.frame(
+        panel = LETTERS[seq_along(contact_sheet_tile_labels)],
+        id = names(contact_sheet_tile_labels),
+        label = unname(contact_sheet_tile_labels),
+        characters = nchar(contact_sheet_tile_labels, type = "chars"),
+        stringsAsFactors = FALSE
+    ),
+    file.path(output_dir, "public-plot-contact-sheet-labels.tsv"),
+    sep = "\t", quote = FALSE, row.names = FALSE
+)
 
 included_rows <- lapply(seq_along(included), function(i) {
     record <- included[[i]]
@@ -499,7 +478,7 @@ utils::write.table(
 )
 
 contact_sheet <- patchwork::wrap_plots(
-    lapply(included, function(x) contact_sheet_tile(x[[9L]], x[[1L]])),
+    lapply(included, function(x) .contact_sheet_tile(x[[9L]], x[[1L]])),
     ncol = 4L, guides = "collect"
 ) + patchwork::plot_annotation(
     title = "landscapeR public-facing plot contact sheet",
@@ -552,7 +531,8 @@ writeLines(c(
 manifest <- data.frame(
     artifact = c("public-plot-contact-sheet.png",
                  "public-plot-contact-sheet-reduced.png",
-                 "public-plot-contact-sheet-caption.txt",
+    "public-plot-contact-sheet-caption.txt",
+                 "public-plot-contact-sheet-labels.tsv",
                  "public-plot-inventory.tsv",
                  "visual-review-framework.md",
                  "adversarial-review.md"),
@@ -571,6 +551,8 @@ writeLines(c(
     "# Issue #226 public-facing visual audit", "",
     "Generated from the current package source; source-file digests are recorded",
     "in public-plot-inventory.tsv.",
+    "Tile-local labels and their bounded text budget are recorded in",
+    "public-plot-contact-sheet-labels.tsv.",
     "",
     "The contact sheet is an audit surface, not a scientific result. Included",
     "figures are rendered by current package plotting functions from deterministic",
