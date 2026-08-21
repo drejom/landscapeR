@@ -39,5 +39,8 @@ package-wide default, or embed hex values in a renderer. Use
 
 The existing family-by-family classification is the review baseline at
 `.github/landing-proof/issue-245/palette-classification.tsv`. A classification
-of intentional exception is not a failure; it means the data role is explicit
-and the exception remains bounded.
+of intentional exception is not a failure; it means the data role is explicit,
+bounded, and redundantly encoded. A `follow-up` classification is different:
+it is a recorded public-figure gap that must not be mistaken for compliance.
+The proof packet names the missing non-colour encoding so a later visual issue
+can close it without changing the semantic contract.

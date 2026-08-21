@@ -25,12 +25,12 @@ classification <- c(
     `component-abstention` = "compliant",
     `independent-time-course` = "compliant",
     `repeated-subject-time-course` = "compliant",
-    `stage1-components-categorical` = "intentional-exception",
+    `stage1-components-categorical` = "follow-up",
     `stage1-components-continuous` = "intentional-exception",
-    `stage1-decomposition` = "intentional-exception",
-    `stage1-spectrum` = "compliant",
-    `stage2-potential` = "intentional-exception",
-    `stage2-potential-critical-points` = "intentional-exception",
+    `stage1-decomposition` = "compliant",
+    `stage1-spectrum` = "follow-up",
+    `stage2-potential` = "follow-up",
+    `stage2-potential-critical-points` = "follow-up",
     `k1-operating-domain` = "compliant",
     `identifiability-primary` = "compliant",
     `identifiability-diagnostic` = "compliant",
@@ -42,11 +42,23 @@ if (!setequal(included$id, names(classification))) {
 
 rule <- c(
     compliant = "canonical semantic roles or signed diverging roles are explicit",
-    `intentional-exception` = "data-role scale is permitted when named and captioned"
+    `intentional-exception` = "data-role scale is permitted when named, captioned, and redundantly encoded",
+    `follow-up` = "known redundant-encoding gap retained for a subsequent visual issue"
+)
+follow_up <- c(
+    `stage1-components-categorical` = "Non-binary categories currently use colour-only rugs; add a restrained non-colour channel.",
+    `stage1-spectrum` = "Molecular-layer traces currently use colour without a line-type or shape companion.",
+    `stage2-potential` = "Non-binary categorical metadata currently uses colour-only rugs; add a restrained non-colour channel.",
+    `stage2-potential-critical-points` = "Non-binary categorical metadata currently uses colour-only rugs; add a restrained non-colour channel."
 )
 out <- included[, c("id", "function_name", "source_file", "source_sha256", "purpose")]
 out$classification <- unname(classification[out$id])
 out$palette_rule <- unname(rule[out$classification])
+out$follow_up <- ifelse(
+    out$classification == "follow-up",
+    unname(follow_up[out$id]),
+    ""
+)
 out$claim_status <- included$evidence_state
 utils::write.table(
     out,
@@ -65,9 +77,12 @@ writeLines(
         "It does not recolour figures or change scientific evidence.",
         "",
         "`compliant` means the existing renderer already uses canonical semantic",
-        "roles. `intentional-exception` means a categorical, molecular-layer,",
-        "continuous, or quasi-potential data-role scale is permitted when its",
-        "legend, caption, and non-colour interpretation remain explicit.",
+        "roles. `intentional-exception` means a named data-role scale is permitted",
+        "and already has the required legend, caption, and redundant encoding.",
+        "`follow-up` records a real public-family gap: the current figure is",
+        "unchanged in this contract-only PR, but its consequential distinction",
+        "still needs a non-colour encoding in a subsequent visual issue. The",
+        "follow-up text in the TSV states the missing encoding for each family.",
         "",
         "Regenerate with `Rscript scripts/render-issue-245-proof.R`."
     ),
