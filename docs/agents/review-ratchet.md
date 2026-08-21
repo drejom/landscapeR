@@ -57,7 +57,7 @@ record ordering could hide behavior changes or leave an unprovenanced mutation.
 ### RR-006 — Verify that visual encodings carry independent meaning
 Open every committed proof image and caption individually at canonical native and
 reduced sizes before claiming visual proof; record filenames and result in the
-pull request. Verify quantities, colours, captions against rendered marks/panels,
+pull request. Verify independent visual quantities and semantic colours against rendered marks/panels,
 and recoverable annotations rather than mere files.
 **Incident:** [PR #150](https://github.com/drejom/landscapeR/pull/150) misused focal
 red; issue #212 found caption mismatches; issue #226 found clipped or colliding
@@ -90,8 +90,8 @@ alone leaves the scientific decision unchanged.
 execution backend and was also used as a candidate-selection gate.
 ### RR-012 — Build and inspect pull-request bodies from the repository template
 Read `.github/pull_request_template.md`, populate it from committed evidence,
-and inspect the rendered body. Required proof paths must resolve to committed
-files, and links must use the current full PR-head SHA, never a feature branch.
+and inspect the rendered body. Required proof paths must resolve to a committed
+file or proof directory, and links must use the current full PR-head SHA, never a feature branch.
 **Incident:** [PR #167](https://github.com/drejom/landscapeR/pull/167) claimed
 invisible proof; [PR #182](https://github.com/drejom/landscapeR/pull/182) had
 404 PNGs; [PR #207](https://github.com/drejom/landscapeR/pull/207) left broken
@@ -143,7 +143,7 @@ oracles; when they disagree with observable repository state, investigate.
 Every agent that reads or benefits from this document owes these duties in the
 same change as the triggering work:
 - **Add:** record a new defect class only with a durable incident; reject speculation.
-- **Correct:** fix or remove obsolete or misleading entries and report the correction.
+- **Correct:** fix or remove obsolete or misleading entries and record the correction in the commit.
 - **Deduplicate:** search first; consolidate overlapping formulations.
 - **Graduate:** move mechanical rules into deterministic enforcement and recurring
   decisions into ADRs, deleting detailed prose once no judgement remains.
