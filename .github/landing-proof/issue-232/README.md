@@ -6,6 +6,8 @@ collided across tile boundaries at reduced reading size.
 The after image uses concise tile-local labels and suppresses only the
 underlying plot subtitles in the audit sheet. Full scientific captions remain
 in the issue #226 inventory and separate caption files.
+The retained Stage 1 and Stage 2 figures and captions are synchronized with the
+recent accessible-encoding plot update already present on `main`.
 
 The reduced after image is the required smaller-dimension QA render. The
 label manifest records the bounded text budget checked by the renderer and
