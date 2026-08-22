@@ -69,6 +69,7 @@ fi
 [[ "$protocol_merge" =~ ^[0-9a-f]{40}$ ]] || die "protocol merge must be a 40-character lowercase SHA"
 [[ "$runner_merge" =~ ^[0-9a-f]{40}$ ]] || die "runner merge must be a 40-character lowercase SHA"
 [[ "$source_revision" = "$runner_merge" ]] || die "source and runner revisions must match"
+[[ "$protocol_merge" != "$runner_merge" ]] || die "protocol and runner revisions must differ"
 [[ "$bioconductor_version" =~ ^[0-9]+\.[0-9]+$ ]] || die "Bioconductor version must look like 3.22"
 
 git rev-parse --verify "$source_revision^{commit}" >/dev/null || die "source revision is not present"
