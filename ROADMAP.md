@@ -8,9 +8,8 @@ and architecture; neither independently changes the schedule.
 **Roadmap bootstrap:** issue #70 established this document and the
 source-document boundary.
 
-**Next task after this change lands:** **#245, semantic palette contract**.
-Complete the #245 visual-governance decision and contract before **#193, execute the
-reviewed version 5 acceptance run; then complete #51 phase B**. Do not execute
+**Next task after this change lands:** **#193, execute the reviewed version 5
+acceptance run**; then complete #51 phase B. Do not execute
 a version 5 row before the runner revision merges and its exact revision is
 recorded by the workers.
 The maintainer deliberately reopened the architecture-maintenance lane on
@@ -724,7 +723,7 @@ bodies may state dependencies but do not change this ordering.
 | [#190](https://github.com/drejom/landscapeR/issues/190) | K=1 repeated-subject operating map | complete on merge |
 | [#191](https://github.com/drejom/landscapeR/issues/191) | K=1 high-dimensional signal regimes | complete on merge; then #193 |
 | [#192](https://github.com/drejom/landscapeR/issues/192) | K=1 real-experiment operating-domain locator | complete on merge; does not block acceptance |
-| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | queued after the #226 visual gate — execute the reviewed v5 acceptance run |
+| [#193](https://github.com/drejom/landscapeR/issues/193) | K=1 revised independent acceptance | active — next; execute the reviewed v5 acceptance run |
 | [#198](https://github.com/drejom/landscapeR/issues/198) | Maintenance — shared K=1 calibration publication seams | complete on merge; shared artifact machinery extracted and high-dimensional policy split from assessment/publication |
 | [#204](https://github.com/drejom/landscapeR/issues/204) | Maintenance — revised acceptance semantic palette | complete |
 | [#209](https://github.com/drejom/landscapeR/issues/209) | Architecture deepening — immutable scientific-artifact publication | complete |
@@ -745,7 +744,7 @@ bodies may state dependencies but do not change this ordering.
 | [#231](https://github.com/drejom/landscapeR/issues/231) | Interpretation visual standards — caption/render fidelity | complete on merge; then #232 |
 | [#232](https://github.com/drejom/landscapeR/issues/232) | Interpretation visual standards — contact-sheet tile isolation | complete on merge; then #233 |
 | [#233](https://github.com/drejom/landscapeR/issues/233) | Interpretation visual standards — empty-state/layout consistency | complete on merge; visual gate before #193 |
-| [#245](https://github.com/drejom/landscapeR/issues/245) | Interpretation visual standards — semantic palette contract | active — next; human decision settled; visual-governance gate before #193 |
+| [#245](https://github.com/drejom/landscapeR/issues/245) | Interpretation visual standards — semantic palette contract | complete on merge; human decision settled; visual-governance gate before #193 |
 | [#239](https://github.com/drejom/landscapeR/issues/239) | Maintenance — reduce PR CI latency without weakening merge gates | queued; standalone maintenance lane |
 | [#242](https://github.com/drejom/landscapeR/issues/242) | Maintenance — retry transient setup-r resolver failures | complete on merge; standalone CI reliability fix; does not reorder #232 |
 <!-- issue-map:end -->
