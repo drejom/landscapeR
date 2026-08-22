@@ -476,6 +476,35 @@ materially different designs, evidence states, encodings, and calibrated
 versus uncalibrated boundaries. Captions describe stored evidence and never
 become a second place where scientific results are calculated.
 
+### Semantic palette contract (#245)
+
+Public figures use colour to carry a declared semantic role, not to decorate a
+module. The default contract is deliberately restrained:
+
+| Role | Default treatment | Boundary |
+|---|---|---|
+| ordinary structure, axes, labels, neutral annotations | ink/black | carries no focal or inferential meaning |
+| reference, control, comparison, background, unavailable | neutral grey | must not be mistaken for a focal result |
+| focal biological result, nominated component, declared comparison | one restrained red accent | reserved for an explicitly declared attention-worthy result |
+| signed quantity | negative blue, neutral midpoint, positive red | used only when the quantity itself has a signed direction |
+| genuinely multi-level categorical or molecular-layer variable | named qualitative palette | permitted only with an explicit legend/caption and a redundant non-colour encoding |
+| ordered but non-signed continuous variable | named sequential palette | permitted when a gradient is scientifically necessary and its direction is labelled |
+
+The binary reference/focal grammar is mandatory for declared two-level
+contrasts. Arbitrary categories must not silently inherit that grammar, and
+Viridis is not a package-wide default. A module-specific qualitative or
+sequential exception is a documented data-role decision, not a new semantic
+status colour. Legends and captions identify the exception and its direction;
+shape, position, line type, or another independent channel preserves
+interpretability when colour is not sufficient.
+
+The current public-family classification is retained in
+`.github/landing-proof/issue-245/palette-classification.tsv`; it classifies
+existing figures as compliant, intentional exception, or follow-up without
+changing stored evidence or scientific estimands. New plotting modules must
+use `landscapeR_palette()` and `scale_*_landscapeR()` rather than embedding
+hex values or inventing a module-local status grammar.
+
 The shared implementation seam is
 `landscapeR_scientific_caption_view`, an internal typed formatting view whose
 fields contain only declared context and facts already computed in scientific

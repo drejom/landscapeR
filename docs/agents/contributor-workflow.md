@@ -12,6 +12,7 @@ not define scientific methods, architecture, or scheduling.
   architecture choices.
 - [`docs/architecture/`](../architecture/) records current module ownership and
   dependency direction without replacing ADRs.
+- [`docs/agents/visual-palette.md`](visual-palette.md) applies the public semantic palette contract for new plotting modules.
 - [`docs/agents/review-ratchet.md`](review-ratchet.md) owns the merge-gate
   sequence and incident-backed review lessons.
 - [`docs/agents/repo-hygiene.md`](repo-hygiene.md) owns transient-output policy.
