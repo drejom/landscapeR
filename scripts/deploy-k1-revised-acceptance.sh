@@ -176,6 +176,46 @@ if (!grepl("^[0-9a-f]{64}$", payload_verifier_sha256)) {
     deployment_abort("remote preflight received an invalid payload verifier digest")
 }
 
+if (!dir.exists(run_root) &&
+    !dir.create(run_root, recursive = TRUE, showWarnings = FALSE)) {
+    deployment_abort("could not create the configured deployment run root")
+}
+preflight_path <- file.path(run_root, "deployment-preflight.tsv")
+preflight_lock <- paste0(preflight_path, ".lock")
+if (!dir.create(preflight_lock, showWarnings = FALSE)) {
+    deployment_abort("another deployment preflight is using this run root")
+}
+on.exit(unlink(preflight_lock, recursive = TRUE, force = TRUE), add = TRUE)
+required_preflight_fields <- c(
+    "source_revision", "protocol_merge", "runner_merge",
+    "bioconductor_version", "source_archive_sha256",
+    "payload_verifier_sha256", "installed_payload_sha256",
+    "installed_revision", "submission_requested"
+)
+read_preflight <- function(path) {
+    previous <- tryCatch(
+        read.delim(path, stringsAsFactors = FALSE),
+        error = function(condition) NULL
+    )
+    if (!is.data.frame(previous) || nrow(previous) != 1L ||
+        !all(required_preflight_fields %in% names(previous))) {
+        deployment_abort("existing deployment preflight marker is unreadable")
+    }
+    submission_state <- as.character(previous$submission_requested[[1L]])
+    if (length(submission_state) != 1L ||
+        !submission_state %in% c("TRUE", "FALSE")) {
+        deployment_abort("existing deployment preflight submission state is invalid")
+    }
+    previous
+}
+if (file.exists(preflight_path)) {
+    previous <- read_preflight(preflight_path)
+    if (identical(as.character(previous$submission_requested[[1L]]), "TRUE")) {
+        deployment_abort(
+            "a submission is already recorded for this run root; use a new run root"
+        )
+    }
+}
 if (!dir.exists(library_path)) deployment_abort("configured shared R library is unavailable")
 source_parent <- file.path(run_root, "landscapeR-source")
 if (dir.exists(source_parent)) unlink(source_parent, recursive = TRUE, force = TRUE)
@@ -320,13 +360,6 @@ copy_or_verify <- function(source, destination, label) {
     }
 }
 
-preflight_path <- file.path(run_root, "deployment-preflight.tsv")
-preflight_lock <- paste0(preflight_path, ".lock")
-if (!dir.create(preflight_lock, showWarnings = FALSE)) {
-    deployment_abort("another deployment preflight is using this run root")
-}
-on.exit(unlink(preflight_lock, recursive = TRUE, force = TRUE), add = TRUE)
-
 recorded_value <- function(path, expected, label) {
     if (!file.exists(path)) deployment_abort(paste0("run root is missing the ", label))
     observed <- trimws(readLines(path, warn = FALSE))
@@ -349,20 +382,7 @@ write_record <- function(path, value, label) {
 }
 
 if (file.exists(preflight_path)) {
-    previous <- tryCatch(
-        read.delim(preflight_path, stringsAsFactors = FALSE),
-        error = function(condition) NULL
-    )
-    required <- c(
-        "source_revision", "protocol_merge", "runner_merge",
-        "bioconductor_version", "source_archive_sha256",
-        "payload_verifier_sha256", "installed_payload_sha256",
-        "installed_revision", "submission_requested"
-    )
-    if (!is.data.frame(previous) || nrow(previous) != 1L ||
-        !all(required %in% names(previous))) {
-        deployment_abort("existing deployment preflight marker is unreadable")
-    }
+    previous <- read_preflight(preflight_path)
     expected <- c(
         source_revision = source_revision,
         protocol_merge = protocol_merge,
