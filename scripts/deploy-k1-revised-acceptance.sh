@@ -81,12 +81,21 @@ fi
 [[ "$source_revision" = "$runner_merge" ]] || die "source and runner revisions must match"
 [[ "$protocol_merge" != "$runner_merge" ]] || die "protocol and runner revisions must differ"
 [[ "$bioconductor_version" =~ ^[0-9]+\.[0-9]+$ ]] || die "Bioconductor version must look like 3.22"
+command -v python3 >/dev/null 2>&1 || die "python3 is required for deterministic archive creation"
 
 git rev-parse --verify "$source_revision^{commit}" >/dev/null || die "source revision is not present"
 git rev-parse --verify "$protocol_merge^{commit}" >/dev/null || die "protocol revision is not present"
 git rev-parse --verify "$runner_merge^{commit}" >/dev/null || die "runner revision is not present"
 if [[ -n "$(git status --porcelain)" ]]; then
     die "working tree must be clean before packaging a reviewed revision"
+fi
+if "$submit"; then
+    git merge-base --is-ancestor "$source_revision" origin/main || {
+        die "submission source revision must be an ancestor of origin/main"
+    }
+    git merge-base --is-ancestor "$protocol_merge" origin/main || {
+        die "submission protocol revision must be an ancestor of origin/main"
+    }
 fi
 
 scratch_root=${LANDSCAPER_DEPLOY_SCRATCH:-.scratch}
@@ -102,8 +111,32 @@ sed -i.bak '/^Config\/landscapeR\/Revision:/d' "$description_path"
 printf '\nConfig/landscapeR/Revision: %s\n' "$source_revision" >> "$description_path"
 rm -f "$description_path.bak"
 find "$bundle_root/landscapeR-source" -exec touch -t 197001010000 {} +
-tar -cf - -C "$bundle_root" landscapeR-source \
-    | gzip -n > "$bundle_root/landscapeR-source.tar.gz"
+python3 - "$bundle_root/landscapeR-source" "$bundle_root/landscapeR-source.tar.gz" <<'PY'
+import gzip
+import pathlib
+import sys
+import tarfile
+
+root = pathlib.Path(sys.argv[1])
+destination = pathlib.Path(sys.argv[2])
+paths = [root, *sorted(root.rglob("*"), key=lambda path: path.relative_to(root).as_posix())]
+
+with destination.open("wb") as raw:
+    with gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as compressed:
+        with tarfile.open(fileobj=compressed, mode="w") as archive:
+            for path in paths:
+                info = archive.gettarinfo(str(path), arcname=path.relative_to(root.parent))
+                info.uid = 0
+                info.gid = 0
+                info.uname = ""
+                info.gname = ""
+                info.mtime = 0
+                if info.isfile():
+                    with path.open("rb") as payload:
+                        archive.addfile(info, payload)
+                else:
+                    archive.addfile(info)
+PY
 source_sha256=$(sha256_file "$bundle_root/landscapeR-source.tar.gz")
 printf 'field\tvalue\nsource_revision\t%s\nprotocol_merge\t%s\nrunner_merge\t%s\nbioconductor_version\t%s\nsource_archive_sha256\t%s\n' \
     "$source_revision" "$protocol_merge" "$runner_merge" \
@@ -117,7 +150,7 @@ deployment_abort <- function(message, cause = NULL) {
         class = c("landscapeR_deployment_error", "error", "condition")
     ))
 }
-if (length(args) != 7L) deployment_abort("remote preflight received the wrong arguments")
+if (length(args) != 8L) deployment_abort("remote preflight received the wrong arguments")
 
 tryCatch({
 
@@ -127,7 +160,8 @@ source_revision <- args[[3L]]
 protocol_merge <- args[[4L]]
 runner_merge <- args[[5L]]
 library_path <- args[[6L]]
-submit <- identical(args[[7L]], "true")
+bioconductor_version <- args[[7L]]
+submit <- identical(args[[8L]], "true")
 
 if (!dir.exists(library_path)) deployment_abort("configured shared R library is unavailable")
 source_parent <- file.path(run_root, "landscapeR-source")
@@ -209,6 +243,18 @@ copy_or_verify(targets_source, file.path(run_root, "_targets.R"), "targets profi
 copy_or_verify(launcher_source, file.path(run_root, "k1-revised-acceptance-launch.sh"), "launcher")
 Sys.chmod(file.path(run_root, "k1-revised-acceptance-launch.sh"), mode = "0755")
 
+preflight_path <- file.path(run_root, "deployment-preflight.tsv")
+if (submit && file.exists(preflight_path)) {
+    previous <- tryCatch(
+        read.delim(preflight_path, stringsAsFactors = FALSE),
+        error = function(condition) NULL
+    )
+    if (is.data.frame(previous) && nrow(previous) == 1L &&
+        isTRUE(previous$submission_requested[[1L]])) {
+        deployment_abort("a submission is already recorded for this run root")
+    }
+}
+
 write.table(
     data.frame(
         source_revision = source_revision,
@@ -218,7 +264,7 @@ write.table(
         submission_requested = submit,
         stringsAsFactors = FALSE
     ),
-    file = file.path(run_root, "deployment-preflight.tsv"),
+    file = preflight_path,
     sep = "\t", quote = FALSE, row.names = FALSE
 )
 
@@ -226,7 +272,8 @@ if (submit) {
     Sys.setenv(
         LANDSCAPER_K1_PROTOCOL_MERGE = protocol_merge,
         LANDSCAPER_K1_RUNNER_MERGE = runner_merge,
-        LANDSCAPER_RUN_ROOT = run_root
+        LANDSCAPER_RUN_ROOT = run_root,
+        BIOCONDUCTOR_VERSION = bioconductor_version
     )
     status <- system2("bash", file.path(run_root, "k1-revised-acceptance-launch.sh"))
     if (!identical(status, 0L)) deployment_abort("tracked acceptance launcher failed")
@@ -323,7 +370,8 @@ source_q=$(printf '%q' "$source_revision")
 protocol_q=$(printf '%q' "$protocol_merge")
 runner_q=$(printf '%q' "$runner_merge")
 library_q=$(printf '%q' "$library_path")
+bioc_q=$(printf '%q' "$bioconductor_version")
 submit_q=$(printf '%q' "$submit")
 run_in_container "$bioconductor_version" \
-    "Rscript --vanilla $preflight $archive $run_root_q $source_q $protocol_q $runner_q $library_q $submit_q"
+    "Rscript --vanilla $preflight $archive $run_root_q $source_q $protocol_q $runner_q $library_q $bioc_q $submit_q"
 REMOTE_RUN
