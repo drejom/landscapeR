@@ -69,8 +69,12 @@ done
 [[ -n "$remote_host" ]] || die "--remote-host is required"
 [[ -n "$remote_config" ]] || die "--remote-config is required"
 [[ -n "$remote_run_root" ]] || die "--remote-run-root is required"
+[[ "$remote_host" =~ ^[A-Za-z0-9._@:-]+$ ]] || die "--remote-host contains unsafe shell characters"
+[[ "$remote_config" = /* && "$remote_config" =~ ^/[A-Za-z0-9._/-]+$ ]] || \
+    die "--remote-config must be an absolute path with safe characters"
 [[ "$remote_run_root" = /* ]] || die "--remote-run-root must be an absolute remote path"
-[[ "$remote_run_root" != *[[:space:]]* ]] || die "remote paths may not contain whitespace"
+[[ "$remote_run_root" =~ ^/[A-Za-z0-9._/-]+$ ]] || \
+    die "--remote-run-root contains unsafe shell characters"
 
 if [[ -z "$source_revision" ]]; then
     source_revision=$(git rev-parse HEAD)
@@ -150,7 +154,7 @@ deployment_abort <- function(message, cause = NULL) {
         class = c("landscapeR_deployment_error", "error", "condition")
     ))
 }
-if (length(args) != 8L) deployment_abort("remote preflight received the wrong arguments")
+if (length(args) != 9L) deployment_abort("remote preflight received the wrong arguments")
 
 tryCatch({
 
@@ -161,12 +165,18 @@ protocol_merge <- args[[4L]]
 runner_merge <- args[[5L]]
 library_path <- args[[6L]]
 bioconductor_version <- args[[7L]]
-submit <- identical(args[[8L]], "true")
+source_archive_sha256 <- args[[8L]]
+submit <- identical(args[[9L]], "true")
+if (!grepl("^[0-9a-f]{64}$", source_archive_sha256)) {
+    deployment_abort("remote preflight received an invalid source archive digest")
+}
 
 if (!dir.exists(library_path)) deployment_abort("configured shared R library is unavailable")
 source_parent <- file.path(run_root, "landscapeR-source")
 if (dir.exists(source_parent)) unlink(source_parent, recursive = TRUE, force = TRUE)
-dir.create(source_parent, recursive = TRUE, showWarnings = FALSE)
+if (!dir.create(source_parent, recursive = TRUE, showWarnings = FALSE)) {
+    deployment_abort("could not create the remote source staging directory")
+}
 utils::untar(source_archive, exdir = source_parent)
 source_dir <- file.path(source_parent, "landscapeR-source")
 if (!dir.exists(source_dir)) deployment_abort("source archive did not contain its expected root")
@@ -224,8 +234,67 @@ launcher_source <- system.file(
     "extdata", "k1-revised-acceptance-launch.sh",
     package = "landscapeR", lib.loc = library_path
 )
-if (!nzchar(targets_source) || !nzchar(launcher_source)) {
+payload_digest_source <- system.file(
+    "extdata", "k1-revised-acceptance-payload-digest.sh",
+    package = "landscapeR", lib.loc = library_path
+)
+if (!nzchar(targets_source) || !nzchar(launcher_source) ||
+    !nzchar(payload_digest_source)) {
     deployment_abort("installed landscapeR is missing the reviewed acceptance profile")
+}
+
+payload_digest <- function(package_root, label) {
+    output <- system2(
+        "bash", c(payload_digest_source, package_root),
+        stdout = TRUE, stderr = TRUE
+    )
+    status <- attr(output, "status")
+    if (!is.null(status) && !identical(as.integer(status), 0L)) {
+        deployment_abort(paste0("could not hash the ", label, " landscapeR payload"))
+    }
+    digest <- trimws(tail(output, 1L))
+    if (length(digest) != 1L || !grepl("^[0-9a-f]{64}$", digest)) {
+        deployment_abort(paste0("the ", label, " payload verifier returned no SHA-256 digest"))
+    }
+    digest
+}
+
+installed_description <- system.file(
+    "DESCRIPTION", package = "landscapeR", lib.loc = library_path
+)
+if (!nzchar(installed_description)) {
+    deployment_abort("installed landscapeR has no DESCRIPTION file")
+}
+installed_root <- dirname(installed_description)
+installed_payload_sha256 <- payload_digest(installed_root, "installed")
+reference_library <- tempfile("landscapeR-reference-library-")
+if (!dir.create(reference_library, recursive = TRUE, showWarnings = FALSE)) {
+    deployment_abort("could not create the reference package library")
+}
+on.exit(unlink(reference_library, recursive = TRUE, force = TRUE), add = TRUE)
+reference_install <- system2(
+    file.path(R.home("bin"), "R"),
+    c(
+        "CMD", "INSTALL", "--no-byte-compile", "--no-test-load",
+        "--library", reference_library, source_dir
+    ),
+    stdout = TRUE, stderr = TRUE,
+    env = paste0("R_LIBS_USER=", library_path)
+)
+reference_status <- attr(reference_install, "status")
+if (!is.null(reference_status) && !identical(as.integer(reference_status), 0L)) {
+    deployment_abort("fresh reference installation of the reviewed source failed")
+}
+reference_description <- system.file(
+    "DESCRIPTION", package = "landscapeR", lib.loc = reference_library
+)
+reference_root <- dirname(reference_description)
+if (!nzchar(reference_description) || !dir.exists(reference_root)) {
+    deployment_abort("fresh reference installation produced no landscapeR package")
+}
+reference_payload_sha256 <- payload_digest(reference_root, "reference")
+if (!identical(installed_payload_sha256, reference_payload_sha256)) {
+    deployment_abort("installed landscapeR payload differs from a fresh reviewed-source installation")
 }
 copy_or_verify <- function(source, destination, label) {
     if (file.exists(destination)) {
@@ -241,17 +310,37 @@ copy_or_verify <- function(source, destination, label) {
 }
 copy_or_verify(targets_source, file.path(run_root, "_targets.R"), "targets profile")
 copy_or_verify(launcher_source, file.path(run_root, "k1-revised-acceptance-launch.sh"), "launcher")
+copy_or_verify(
+    payload_digest_source,
+    file.path(run_root, "k1-revised-acceptance-payload-digest.sh"),
+    "payload verifier"
+)
 Sys.chmod(file.path(run_root, "k1-revised-acceptance-launch.sh"), mode = "0755")
+Sys.chmod(file.path(run_root, "k1-revised-acceptance-payload-digest.sh"), mode = "0755")
+writeLines(installed_payload_sha256, file.path(run_root, "landscapeR-payload-sha256.txt"))
 
 preflight_path <- file.path(run_root, "deployment-preflight.tsv")
-if (submit && file.exists(preflight_path)) {
+if (file.exists(preflight_path)) {
     previous <- tryCatch(
         read.delim(preflight_path, stringsAsFactors = FALSE),
         error = function(condition) NULL
     )
-    if (is.data.frame(previous) && nrow(previous) == 1L &&
-        isTRUE(previous$submission_requested[[1L]])) {
-        deployment_abort("a submission is already recorded for this run root")
+    if (!is.data.frame(previous) || nrow(previous) != 1L ||
+        !all(c(
+            "source_revision", "protocol_merge", "runner_merge",
+            "submission_requested"
+        ) %in% names(previous))) {
+        deployment_abort("existing deployment preflight marker is unreadable")
+    }
+    if (!identical(previous$source_revision[[1L]], source_revision) ||
+        !identical(previous$protocol_merge[[1L]], protocol_merge) ||
+        !identical(previous$runner_merge[[1L]], runner_merge)) {
+        deployment_abort("run root contains a preflight for different revisions")
+    }
+    if (isTRUE(previous$submission_requested[[1L]])) {
+        deployment_abort(
+            "a submission is already recorded for this run root; use a new run root"
+        )
     }
 }
 
@@ -260,6 +349,9 @@ write.table(
         source_revision = source_revision,
         protocol_merge = protocol_merge,
         runner_merge = runner_merge,
+        bioconductor_version = bioconductor_version,
+        source_archive_sha256 = source_archive_sha256,
+        installed_payload_sha256 = installed_payload_sha256,
         installed_revision = installed_revision,
         submission_requested = submit,
         stringsAsFactors = FALSE
@@ -354,7 +446,8 @@ fi
 for pair in \
     "source_revision:$source_revision" \
     "protocol_merge:$protocol_merge" \
-    "runner_merge:$runner_merge"; do
+    "runner_merge:$runner_merge" \
+    "bioconductor_version:$bioconductor_version"; do
     field=${pair%%:*}
     expected=${pair#*:}
     observed=$(awk -F '\t' -v key="$field" '$1 == key {print $2}' "$manifest")
@@ -371,7 +464,8 @@ protocol_q=$(printf '%q' "$protocol_merge")
 runner_q=$(printf '%q' "$runner_merge")
 library_q=$(printf '%q' "$library_path")
 bioc_q=$(printf '%q' "$bioconductor_version")
+archive_sha_q=$(printf '%q' "$expected_source_sha")
 submit_q=$(printf '%q' "$submit")
 run_in_container "$bioconductor_version" \
-    "Rscript --vanilla $preflight $archive $run_root_q $source_q $protocol_q $runner_q $library_q $bioc_q $submit_q"
+    "Rscript --vanilla $preflight $archive $run_root_q $source_q $protocol_q $runner_q $library_q $bioc_q $archive_sha_q $submit_q"
 REMOTE_RUN
