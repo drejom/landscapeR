@@ -30,6 +30,16 @@ die() {
     exit 2
 }
 
+sha256_file() {
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$1" | awk '{print $1}'
+    elif command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        die "neither shasum nor sha256sum is available"
+    fi
+}
+
 remote_host=${LANDSCAPER_REMOTE_HOST:-}
 remote_config=${RBIOCVERSE_CONFIG_REMOTE:-}
 remote_run_root=${LANDSCAPER_RUN_ROOT:-}
@@ -94,7 +104,7 @@ rm -f "$description_path.bak"
 find "$bundle_root/landscapeR-source" -exec touch -t 197001010000 {} +
 tar -cf - -C "$bundle_root" landscapeR-source \
     | gzip -n > "$bundle_root/landscapeR-source.tar.gz"
-source_sha256=$(shasum -a 256 "$bundle_root/landscapeR-source.tar.gz" | awk '{print $1}')
+source_sha256=$(sha256_file "$bundle_root/landscapeR-source.tar.gz")
 printf 'field\tvalue\nsource_revision\t%s\nprotocol_merge\t%s\nrunner_merge\t%s\nbioconductor_version\t%s\nsource_archive_sha256\t%s\n' \
     "$source_revision" "$protocol_merge" "$runner_merge" \
     "$bioconductor_version" "$source_sha256" > "$bundle_root/deployment-manifest.tsv"
@@ -282,7 +292,14 @@ incoming="$run_root/.landscapeR-incoming"
 manifest="$incoming/deployment-manifest.tsv"
 [[ -f "$manifest" ]] || { echo "deployment manifest is missing" >&2; exit 1; }
 expected_source_sha=$(awk -F '\t' '$1 == "source_archive_sha256" {print $2}' "$manifest")
-actual_source_sha=$(shasum -a 256 "$incoming/landscapeR-source.tar.gz" | awk '{print $1}')
+if command -v sha256sum >/dev/null 2>&1; then
+    actual_source_sha=$(sha256sum "$incoming/landscapeR-source.tar.gz" | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+    actual_source_sha=$(shasum -a 256 "$incoming/landscapeR-source.tar.gz" | awk '{print $1}')
+else
+    echo "neither sha256sum nor shasum is available" >&2
+    exit 1
+fi
 [[ -n "$expected_source_sha" && "$expected_source_sha" = "$actual_source_sha" ]] || {
     echo "source archive hash does not match the transferred manifest" >&2
     exit 1
