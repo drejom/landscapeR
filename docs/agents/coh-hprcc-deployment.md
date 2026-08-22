@@ -89,8 +89,8 @@ already provide it, then uses `pak` for the declared targets/crew/hprcc stack
 and the local landscapeR archive.
 It also compares the installed package payload with a fresh installation from
 the transferred archive, records the resulting external payload digest in the
-run root, and makes the Slurm launcher recompute that digest before workers
-start.
+run root, records the reviewed verifier digest alongside it, and makes the
+Slurm launcher recompute both digests before workers start.
 The source revision and runner merge must be the same reviewed commit because
 the installed package is the code that the acceptance runner independently
 checks on every worker.
@@ -120,8 +120,9 @@ run directory as `_targets.R`, and copy
 `k1-revised-acceptance-launch.sh` beside it. Supply the reviewed upstream
 rbiocverse `container/scripts/cluster-config.sh`, both reviewed revisions, and
 the run directory through the declared environment variables. The preflight
-must have left `k1-revised-acceptance-payload-digest.sh` and
-`landscapeR-payload-sha256.txt` beside the launcher. Invoke the tracked
+must have left `k1-revised-acceptance-payload-digest.sh`,
+`landscapeR-payload-sha256.txt`, and
+`landscapeR-payload-verifier-sha256.txt` beside the launcher. Invoke the tracked
 launcher rather than reconstructing the controller command ad hoc:
 
 ```bash

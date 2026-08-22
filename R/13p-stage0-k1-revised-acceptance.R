@@ -488,6 +488,12 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
 .k1_revised_run_task <- function(task, protocol, expected_identity = NULL) {
     .k1_revised_assert_execution_authorized(protocol)
     identity <- .k1_acceptance_worker_identity()
+    if (identical(protocol$artifact_version, "5") &&
+            is.null(identity$payload_sha256)) {
+        .k1_acceptance_runner_abort(
+            "v5 acceptance requires the tracked launcher payload identity"
+        )
+    }
     if (!is.null(expected_identity) &&
             !identical(identity$source_revision,
                 expected_identity$source_revision)) {

@@ -17,6 +17,7 @@ run_root=$(cd "${LANDSCAPER_RUN_ROOT:-.}" && pwd)
 launch_script=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
 payload_digest_script="$run_root/k1-revised-acceptance-payload-digest.sh"
 payload_digest_file="$run_root/landscapeR-payload-sha256.txt"
+payload_verifier_digest_file="$run_root/landscapeR-payload-verifier-sha256.txt"
 
 [[ -x "$payload_digest_script" ]] || {
     printf 'landscapeR payload verifier is missing\n' >&2
@@ -26,13 +27,33 @@ payload_digest_file="$run_root/landscapeR-payload-sha256.txt"
     printf 'landscapeR payload identity file is missing\n' >&2
     exit 2
 }
+[[ -f "$payload_verifier_digest_file" ]] || {
+    printf 'landscapeR payload verifier identity file is missing\n' >&2
+    exit 2
+}
 expected_payload_digest=$(tr -d '[:space:]' < "$payload_digest_file")
+expected_payload_verifier_digest=$(tr -d '[:space:]' < "$payload_verifier_digest_file")
 [[ "$expected_payload_digest" =~ ^[0-9a-f]{64}$ ]] || {
     printf 'landscapeR payload identity is invalid\n' >&2
     exit 2
 }
+[[ "$expected_payload_verifier_digest" =~ ^[0-9a-f]{64}$ ]] || {
+    printf 'landscapeR payload verifier identity is invalid\n' >&2
+    exit 2
+}
+if command -v sha256sum >/dev/null 2>&1; then
+    observed_payload_verifier_digest=$(sha256sum "$payload_digest_script" | awk '{print $1}')
+else
+    observed_payload_verifier_digest=$(shasum -a 256 "$payload_digest_script" | awk '{print $1}')
+fi
+[[ "$observed_payload_verifier_digest" = "$expected_payload_verifier_digest" ]] || {
+    printf 'landscapeR payload verifier differs from the reviewed identity\n' >&2
+    exit 2
+}
 export LANDSCAPER_PAYLOAD_SHA256="$expected_payload_digest"
 export LANDSCAPER_PAYLOAD_VERIFIER="$payload_digest_script"
+export LANDSCAPER_PAYLOAD_VERIFIER_SHA256="$expected_payload_verifier_digest"
+export LANDSCAPER_ACCEPTANCE_RUN=true
 
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     exec sbatch \

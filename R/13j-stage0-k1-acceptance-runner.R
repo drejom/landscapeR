@@ -1152,11 +1152,31 @@ print.K1AcceptanceManifest <- function(x, ...) {
 .k1_acceptance_payload_identity <- function() {
     expected <- Sys.getenv("LANDSCAPER_PAYLOAD_SHA256", unset = "")
     verifier <- Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER", unset = "")
-    if (!nzchar(expected) && !nzchar(verifier)) return(NULL)
-    if (!grepl("^[0-9a-f]{64}$", expected) || !nzchar(verifier) ||
+    verifier_digest <- Sys.getenv(
+        "LANDSCAPER_PAYLOAD_VERIFIER_SHA256", unset = ""
+    )
+    if (!nzchar(expected) && !nzchar(verifier) && !nzchar(verifier_digest)) {
+        return(NULL)
+    }
+    if (!grepl("^[0-9a-f]{64}$", expected) ||
+            !grepl("^[0-9a-f]{64}$", verifier_digest) ||
+            !nzchar(verifier) ||
             !file.exists(verifier) || file.access(verifier, 1L) != 0L) {
         .k1_acceptance_runner_abort(
             "external landscapeR payload identity configuration is invalid"
+        )
+    }
+    observed_verifier_digest <- tryCatch(
+        digest::digest(verifier, algo = "sha256", file = TRUE),
+        error = function(condition) {
+            .k1_acceptance_runner_abort(
+                "external landscapeR payload verifier cannot be hashed"
+            )
+        }
+    )
+    if (!identical(observed_verifier_digest, verifier_digest)) {
+        .k1_acceptance_runner_abort(
+            "external landscapeR payload verifier differs from the reviewed identity"
         )
     }
     package_root <- system.file(package = "landscapeR")
@@ -1584,7 +1604,11 @@ print.K1AcceptanceManifest <- function(x, ...) {
 
 .k1_acceptance_validate_identity <- function(identity) {
     required <- c("source_revision", "r_version", "package_versions")
-    if (!is.list(identity) || !identical(names(identity), required) ||
+    allowed <- c(required, "payload_sha256")
+    if (!is.list(identity) ||
+            any(!names(identity) %in% allowed) ||
+            anyDuplicated(names(identity)) ||
+            !all(required %in% names(identity)) ||
             !is.character(identity$source_revision) ||
             length(identity$source_revision) != 1L ||
             !grepl("^[0-9a-f]{40}$", identity$source_revision) ||
@@ -1598,6 +1622,14 @@ print.K1AcceptanceManifest <- function(x, ...) {
             anyDuplicated(names(identity$package_versions))) {
         .k1_acceptance_runner_abort(
             "acceptance runtime identity must be exact installed metadata"
+        )
+    }
+    if ("payload_sha256" %in% names(identity) &&
+            (!is.character(identity$payload_sha256) ||
+                length(identity$payload_sha256) != 1L ||
+                !grepl("^[0-9a-f]{64}$", identity$payload_sha256))) {
+        .k1_acceptance_runner_abort(
+            "acceptance payload identity must be a lowercase SHA-256 digest"
         )
     }
     invisible(TRUE)

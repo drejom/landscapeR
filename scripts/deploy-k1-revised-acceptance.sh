@@ -142,9 +142,10 @@ with destination.open("wb") as raw:
                     archive.addfile(info)
 PY
 source_sha256=$(sha256_file "$bundle_root/landscapeR-source.tar.gz")
-printf 'field\tvalue\nsource_revision\t%s\nprotocol_merge\t%s\nrunner_merge\t%s\nbioconductor_version\t%s\nsource_archive_sha256\t%s\n' \
+payload_verifier_sha256=$(sha256_file "$bundle_root/landscapeR-source/inst/extdata/k1-revised-acceptance-payload-digest.sh")
+printf 'field\tvalue\nsource_revision\t%s\nprotocol_merge\t%s\nrunner_merge\t%s\nbioconductor_version\t%s\nsource_archive_sha256\t%s\npayload_verifier_sha256\t%s\n' \
     "$source_revision" "$protocol_merge" "$runner_merge" \
-    "$bioconductor_version" "$source_sha256" > "$bundle_root/deployment-manifest.tsv"
+    "$bioconductor_version" "$source_sha256" "$payload_verifier_sha256" > "$bundle_root/deployment-manifest.tsv"
 
 cat > "$bundle_root/remote-preflight.R" <<'REMOTE_R'
 args <- commandArgs(trailingOnly = TRUE)
@@ -154,7 +155,7 @@ deployment_abort <- function(message, cause = NULL) {
         class = c("landscapeR_deployment_error", "error", "condition")
     ))
 }
-if (length(args) != 9L) deployment_abort("remote preflight received the wrong arguments")
+if (length(args) != 10L) deployment_abort("remote preflight received the wrong arguments")
 
 tryCatch({
 
@@ -166,9 +167,13 @@ runner_merge <- args[[5L]]
 library_path <- args[[6L]]
 bioconductor_version <- args[[7L]]
 source_archive_sha256 <- args[[8L]]
-submit <- identical(args[[9L]], "true")
+payload_verifier_sha256 <- args[[9L]]
+submit <- identical(args[[10L]], "true")
 if (!grepl("^[0-9a-f]{64}$", source_archive_sha256)) {
     deployment_abort("remote preflight received an invalid source archive digest")
+}
+if (!grepl("^[0-9a-f]{64}$", payload_verifier_sha256)) {
+    deployment_abort("remote preflight received an invalid payload verifier digest")
 }
 
 if (!dir.exists(library_path)) deployment_abort("configured shared R library is unavailable")
@@ -242,6 +247,12 @@ if (!nzchar(targets_source) || !nzchar(launcher_source) ||
     !file.exists(payload_digest_source)) {
     deployment_abort("installed landscapeR is missing the reviewed acceptance profile")
 }
+observed_payload_verifier_sha256 <- digest::digest(
+    payload_digest_source, algo = "sha256", file = TRUE
+)
+if (!identical(observed_payload_verifier_sha256, payload_verifier_sha256)) {
+    deployment_abort("source payload verifier differs from the reviewed archive manifest")
+}
 
 payload_digest <- function(package_root, label) {
     output <- system2(
@@ -275,7 +286,7 @@ on.exit(unlink(reference_library, recursive = TRUE, force = TRUE), add = TRUE)
 reference_install <- system2(
     file.path(R.home("bin"), "R"),
     c(
-        "CMD", "INSTALL", "--no-byte-compile", "--no-test-load",
+        "CMD", "INSTALL", "--no-test-load",
         "-l", reference_library, source_dir
     ),
     stdout = TRUE, stderr = TRUE,
@@ -318,6 +329,10 @@ copy_or_verify(
 Sys.chmod(file.path(run_root, "k1-revised-acceptance-launch.sh"), mode = "0755")
 Sys.chmod(file.path(run_root, "k1-revised-acceptance-payload-digest.sh"), mode = "0755")
 writeLines(installed_payload_sha256, file.path(run_root, "landscapeR-payload-sha256.txt"))
+writeLines(
+    payload_verifier_sha256,
+    file.path(run_root, "landscapeR-payload-verifier-sha256.txt")
+)
 
 preflight_path <- file.path(run_root, "deployment-preflight.tsv")
 if (file.exists(preflight_path)) {
@@ -351,6 +366,7 @@ write.table(
         runner_merge = runner_merge,
         bioconductor_version = bioconductor_version,
         source_archive_sha256 = source_archive_sha256,
+        payload_verifier_sha256 = payload_verifier_sha256,
         installed_payload_sha256 = installed_payload_sha256,
         installed_revision = installed_revision,
         submission_requested = submit,
@@ -431,6 +447,7 @@ incoming="$run_root/.landscapeR-incoming"
 manifest="$incoming/deployment-manifest.tsv"
 [[ -f "$manifest" ]] || { echo "deployment manifest is missing" >&2; exit 1; }
 expected_source_sha=$(awk -F '\t' '$1 == "source_archive_sha256" {print $2}' "$manifest")
+expected_payload_verifier_sha=$(awk -F '\t' '$1 == "payload_verifier_sha256" {print $2}' "$manifest")
 if command -v sha256sum >/dev/null 2>&1; then
     actual_source_sha=$(sha256sum "$incoming/landscapeR-source.tar.gz" | awk '{print $1}')
 elif command -v shasum >/dev/null 2>&1; then
@@ -441,6 +458,15 @@ else
 fi
 [[ -n "$expected_source_sha" && "$expected_source_sha" = "$actual_source_sha" ]] || {
     echo "source archive hash does not match the transferred manifest" >&2
+    exit 1
+}
+archive_verifier_sha=$(tar -xOf "$incoming/landscapeR-source.tar.gz" \
+    landscapeR-source/inst/extdata/k1-revised-acceptance-payload-digest.sh \
+    | { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; } \
+    | awk '{print $1}')
+[[ "$expected_payload_verifier_sha" =~ ^[0-9a-f]{64}$ && \
+    "$expected_payload_verifier_sha" = "$archive_verifier_sha" ]] || {
+    echo "payload verifier hash does not match the transferred source archive" >&2
     exit 1
 }
 for pair in \
@@ -465,7 +491,8 @@ runner_q=$(printf '%q' "$runner_merge")
 library_q=$(printf '%q' "$library_path")
 bioc_q=$(printf '%q' "$bioconductor_version")
 archive_sha_q=$(printf '%q' "$expected_source_sha")
+payload_verifier_sha_q=$(printf '%q' "$expected_payload_verifier_sha")
 submit_q=$(printf '%q' "$submit")
 run_in_container "$bioconductor_version" \
-    "Rscript --vanilla $preflight $archive $run_root_q $source_q $protocol_q $runner_q $library_q $bioc_q $archive_sha_q $submit_q"
+    "Rscript --vanilla $preflight $archive $run_root_q $source_q $protocol_q $runner_q $library_q $bioc_q $archive_sha_q $payload_verifier_sha_q $submit_q"
 REMOTE_RUN

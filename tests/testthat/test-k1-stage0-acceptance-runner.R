@@ -32,10 +32,14 @@ test_that("acceptance workers independently observe the external payload identit
     on.exit(unlink(verifier), add = TRUE)
     Sys.setenv(
         LANDSCAPER_PAYLOAD_SHA256 = expected,
-        LANDSCAPER_PAYLOAD_VERIFIER = verifier
+        LANDSCAPER_PAYLOAD_VERIFIER = verifier,
+        LANDSCAPER_PAYLOAD_VERIFIER_SHA256 = digest::digest(
+            verifier, algo = "sha256", file = TRUE
+        )
     )
     on.exit(Sys.unsetenv(c(
-        "LANDSCAPER_PAYLOAD_SHA256", "LANDSCAPER_PAYLOAD_VERIFIER"
+        "LANDSCAPER_PAYLOAD_SHA256", "LANDSCAPER_PAYLOAD_VERIFIER",
+        "LANDSCAPER_PAYLOAD_VERIFIER_SHA256"
     )), add = TRUE)
 
     expect_identical(
@@ -45,6 +49,22 @@ test_that("acceptance workers independently observe the external payload identit
     expect_error(
         landscapeR:::.k1_acceptance_payload_identity(),
         "differs from the reviewed identity",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("acceptance identity permits and validates external payload digests", {
+    identity <- list(
+        source_revision = strrep("a", 40L),
+        r_version = paste(R.version$major, R.version$minor, sep = "."),
+        package_versions = c(landscapeR = "0.3.0"),
+        payload_sha256 = strrep("b", 64L)
+    )
+    expect_true(landscapeR:::.k1_acceptance_validate_identity(identity))
+    identity$payload_sha256 <- "not-a-digest"
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_identity(identity),
+        "payload identity must be",
         class = "k1_acceptance_runner_error"
     )
 })
