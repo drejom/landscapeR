@@ -319,6 +319,74 @@ copy_or_verify <- function(source, destination, label) {
         deployment_abort(paste0("could not stage the installed ", label))
     }
 }
+
+preflight_path <- file.path(run_root, "deployment-preflight.tsv")
+preflight_lock <- paste0(preflight_path, ".lock")
+if (!dir.create(preflight_lock, showWarnings = FALSE)) {
+    deployment_abort("another deployment preflight is using this run root")
+}
+on.exit(unlink(preflight_lock, recursive = TRUE, force = TRUE), add = TRUE)
+
+recorded_value <- function(path, expected, label) {
+    if (!file.exists(path)) deployment_abort(paste0("run root is missing the ", label))
+    observed <- trimws(readLines(path, warn = FALSE))
+    if (length(observed) != 1L || !identical(observed[[1L]], expected)) {
+        deployment_abort(paste0("run root contains a different ", label))
+    }
+}
+write_record <- function(path, value, label) {
+    if (file.exists(path)) {
+        recorded_value(path, value, label)
+        return(invisible(TRUE))
+    }
+    temporary <- tempfile(paste0(".", basename(path), "-"), tmpdir = run_root)
+    on.exit(unlink(temporary, force = TRUE), add = TRUE)
+    writeLines(value, temporary)
+    if (!file.rename(temporary, path)) {
+        deployment_abort(paste0("could not stage the ", label))
+    }
+    invisible(TRUE)
+}
+
+if (file.exists(preflight_path)) {
+    previous <- tryCatch(
+        read.delim(preflight_path, stringsAsFactors = FALSE),
+        error = function(condition) NULL
+    )
+    required <- c(
+        "source_revision", "protocol_merge", "runner_merge",
+        "bioconductor_version", "source_archive_sha256",
+        "payload_verifier_sha256", "installed_payload_sha256",
+        "installed_revision", "submission_requested"
+    )
+    if (!is.data.frame(previous) || nrow(previous) != 1L ||
+        !all(required %in% names(previous))) {
+        deployment_abort("existing deployment preflight marker is unreadable")
+    }
+    expected <- c(
+        source_revision = source_revision,
+        protocol_merge = protocol_merge,
+        runner_merge = runner_merge,
+        bioconductor_version = bioconductor_version,
+        source_archive_sha256 = source_archive_sha256,
+        payload_verifier_sha256 = payload_verifier_sha256,
+        installed_payload_sha256 = installed_payload_sha256,
+        installed_revision = installed_revision
+    )
+    observed <- vapply(
+        names(expected),
+        function(field) as.character(previous[[field]][[1L]]),
+        character(1L)
+    )
+    if (!identical(unname(observed), unname(expected))) {
+        deployment_abort("run root contains a preflight for a different deployment identity")
+    }
+    if (identical(as.character(previous$submission_requested[[1L]]), "TRUE")) {
+        deployment_abort(
+            "a submission is already recorded for this run root; use a new run root"
+        )
+    }
+}
 copy_or_verify(targets_source, file.path(run_root, "_targets.R"), "targets profile")
 copy_or_verify(launcher_source, file.path(run_root, "k1-revised-acceptance-launch.sh"), "launcher")
 copy_or_verify(
@@ -328,37 +396,19 @@ copy_or_verify(
 )
 Sys.chmod(file.path(run_root, "k1-revised-acceptance-launch.sh"), mode = "0755")
 Sys.chmod(file.path(run_root, "k1-revised-acceptance-payload-digest.sh"), mode = "0755")
-writeLines(installed_payload_sha256, file.path(run_root, "landscapeR-payload-sha256.txt"))
-writeLines(
+write_record(
+    file.path(run_root, "landscapeR-payload-sha256.txt"),
+    installed_payload_sha256,
+    "payload identity"
+)
+write_record(
+    file.path(run_root, "landscapeR-payload-verifier-sha256.txt"),
     payload_verifier_sha256,
-    file.path(run_root, "landscapeR-payload-verifier-sha256.txt")
+    "payload verifier identity"
 )
 
-preflight_path <- file.path(run_root, "deployment-preflight.tsv")
-if (file.exists(preflight_path)) {
-    previous <- tryCatch(
-        read.delim(preflight_path, stringsAsFactors = FALSE),
-        error = function(condition) NULL
-    )
-    if (!is.data.frame(previous) || nrow(previous) != 1L ||
-        !all(c(
-            "source_revision", "protocol_merge", "runner_merge",
-            "submission_requested"
-        ) %in% names(previous))) {
-        deployment_abort("existing deployment preflight marker is unreadable")
-    }
-    if (!identical(previous$source_revision[[1L]], source_revision) ||
-        !identical(previous$protocol_merge[[1L]], protocol_merge) ||
-        !identical(previous$runner_merge[[1L]], runner_merge)) {
-        deployment_abort("run root contains a preflight for different revisions")
-    }
-    if (isTRUE(previous$submission_requested[[1L]])) {
-        deployment_abort(
-            "a submission is already recorded for this run root; use a new run root"
-        )
-    }
-}
-
+preflight_temporary <- tempfile(".deployment-preflight-", tmpdir = run_root)
+on.exit(unlink(preflight_temporary, force = TRUE), add = TRUE)
 write.table(
     data.frame(
         source_revision = source_revision,
@@ -372,16 +422,24 @@ write.table(
         submission_requested = submit,
         stringsAsFactors = FALSE
     ),
-    file = preflight_path,
+    file = preflight_temporary,
     sep = "\t", quote = FALSE, row.names = FALSE
 )
+if (!file.rename(preflight_temporary, preflight_path)) {
+    deployment_abort("could not atomically record the deployment preflight")
+}
 
 if (submit) {
     Sys.setenv(
         LANDSCAPER_K1_PROTOCOL_MERGE = protocol_merge,
         LANDSCAPER_K1_RUNNER_MERGE = runner_merge,
         LANDSCAPER_RUN_ROOT = run_root,
-        BIOCONDUCTOR_VERSION = bioconductor_version
+        BIOCONDUCTOR_VERSION = bioconductor_version,
+        LANDSCAPER_PAYLOAD_SHA256 = installed_payload_sha256,
+        LANDSCAPER_PAYLOAD_VERIFIER = file.path(
+            run_root, "k1-revised-acceptance-payload-digest.sh"
+        ),
+        LANDSCAPER_PAYLOAD_VERIFIER_SHA256 = payload_verifier_sha256
     )
     status <- system2("bash", file.path(run_root, "k1-revised-acceptance-launch.sh"))
     if (!identical(status, 0L)) deployment_abort("tracked acceptance launcher failed")
@@ -394,11 +452,15 @@ if (submit) {
 })
 REMOTE_R
 
+preflight_sha256=$(sha256_file "$bundle_root/remote-preflight.R")
+printf 'preflight_sha256\t%s\n' "$preflight_sha256" >> "$bundle_root/deployment-manifest.tsv"
+
 printf 'Prepared reviewed deployment bundle\n'
 printf '  source revision: %s\n' "$source_revision"
 printf '  protocol merge:  %s\n' "$protocol_merge"
 printf '  runner merge:    %s\n' "$runner_merge"
 printf '  archive SHA-256:  %s\n' "$source_sha256"
+printf '  preflight SHA-256: %s\n' "$preflight_sha256"
 printf '  remote host:      %s\n' "$remote_host"
 printf '  remote run root:  %s\n' "$remote_run_root"
 printf '  submission:       %s\n' "$submit"
@@ -424,7 +486,7 @@ scp -q "$bundle_root/landscapeR-source.tar.gz" \
 ssh "$remote_host" bash -s -- \
     "$remote_run_root" "$remote_config" "$source_revision" "$protocol_merge" \
     "$runner_merge" "$bioconductor_version" "$source_sha256" \
-    "$payload_verifier_sha256" "$submit" <<'REMOTE_RUN'
+    "$payload_verifier_sha256" "$preflight_sha256" "$submit" <<'REMOTE_RUN'
 set -euo pipefail
 run_root=$1
 cluster_config=$2
@@ -434,7 +496,8 @@ runner_merge=$5
 bioconductor_version=$6
 trusted_source_sha=$7
 trusted_payload_verifier_sha=$8
-submit=$9
+trusted_preflight_sha=$9
+submit=${10}
 
 source "$cluster_config"
 cluster=$(validate_cluster)
@@ -457,8 +520,13 @@ manifest="$incoming/deployment-manifest.tsv"
     echo "trusted payload verifier hash is invalid" >&2
     exit 1
 }
+[[ "$trusted_preflight_sha" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "trusted preflight hash is invalid" >&2
+    exit 1
+}
 manifest_source_sha=$(awk -F '\t' '$1 == "source_archive_sha256" {print $2}' "$manifest")
 manifest_payload_verifier_sha=$(awk -F '\t' '$1 == "payload_verifier_sha256" {print $2}' "$manifest")
+manifest_preflight_sha=$(awk -F '\t' '$1 == "preflight_sha256" {print $2}' "$manifest")
 if command -v sha256sum >/dev/null 2>&1; then
     actual_source_sha=$(sha256sum "$incoming/landscapeR-source.tar.gz" | awk '{print $1}')
 elif command -v shasum >/dev/null 2>&1; then
@@ -479,6 +547,16 @@ archive_verifier_sha=$(tar -xOf "$incoming/landscapeR-source.tar.gz" \
 [[ "$trusted_payload_verifier_sha" = "$archive_verifier_sha" && \
     "$manifest_payload_verifier_sha" = "$trusted_payload_verifier_sha" ]] || {
     echo "payload verifier hash does not match the trusted local identity" >&2
+    exit 1
+}
+actual_preflight_sha=$(if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$incoming/remote-preflight.R"
+else
+    shasum -a 256 "$incoming/remote-preflight.R"
+fi | awk '{print $1}')
+[[ "$trusted_preflight_sha" = "$actual_preflight_sha" && \
+    "$manifest_preflight_sha" = "$trusted_preflight_sha" ]] || {
+    echo "remote preflight hash does not match the trusted local identity" >&2
     exit 1
 }
 for pair in \

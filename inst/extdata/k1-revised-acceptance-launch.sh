@@ -9,30 +9,23 @@ set -euo pipefail
 : "${RBIOCVERSE_CONFIG:?set RBIOCVERSE_CONFIG to rbiocverse cluster-config.sh}"
 : "${LANDSCAPER_K1_PROTOCOL_MERGE:?set the reviewed protocol revision}"
 : "${LANDSCAPER_K1_RUNNER_MERGE:?set the reviewed runner revision}"
+: "${LANDSCAPER_PAYLOAD_SHA256:?set the preflight payload identity}"
+: "${LANDSCAPER_PAYLOAD_VERIFIER:?set the preflight payload verifier path}"
+: "${LANDSCAPER_PAYLOAD_VERIFIER_SHA256:?set the preflight verifier identity}"
 
 # shellcheck source=/dev/null
 source "$RBIOCVERSE_CONFIG"
 cluster=$(validate_cluster)
 run_root=$(cd "${LANDSCAPER_RUN_ROOT:-.}" && pwd)
 launch_script=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
-payload_digest_script="$run_root/k1-revised-acceptance-payload-digest.sh"
-payload_digest_file="$run_root/landscapeR-payload-sha256.txt"
-payload_verifier_digest_file="$run_root/landscapeR-payload-verifier-sha256.txt"
+payload_digest_script="$LANDSCAPER_PAYLOAD_VERIFIER"
 
 [[ -x "$payload_digest_script" ]] || {
     printf 'landscapeR payload verifier is missing\n' >&2
     exit 2
 }
-[[ -f "$payload_digest_file" ]] || {
-    printf 'landscapeR payload identity file is missing\n' >&2
-    exit 2
-}
-[[ -f "$payload_verifier_digest_file" ]] || {
-    printf 'landscapeR payload verifier identity file is missing\n' >&2
-    exit 2
-}
-expected_payload_digest=$(tr -d '[:space:]' < "$payload_digest_file")
-expected_payload_verifier_digest=$(tr -d '[:space:]' < "$payload_verifier_digest_file")
+expected_payload_digest="$LANDSCAPER_PAYLOAD_SHA256"
+expected_payload_verifier_digest="$LANDSCAPER_PAYLOAD_VERIFIER_SHA256"
 [[ "$expected_payload_digest" =~ ^[0-9a-f]{64}$ ]] || {
     printf 'landscapeR payload identity is invalid\n' >&2
     exit 2

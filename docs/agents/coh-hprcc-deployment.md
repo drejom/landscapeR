@@ -120,15 +120,19 @@ run directory as `_targets.R`, and copy
 `k1-revised-acceptance-launch.sh` beside it. Supply the reviewed upstream
 rbiocverse `container/scripts/cluster-config.sh`, both reviewed revisions, and
 the run directory through the declared environment variables. The preflight
-must have left `k1-revised-acceptance-payload-digest.sh`,
-`landscapeR-payload-sha256.txt`, and
-`landscapeR-payload-verifier-sha256.txt` beside the launcher. Invoke the tracked
-launcher rather than reconstructing the controller command ad hoc:
+must have left the verifier and the two digest records beside the launcher.
+Those records are audit output; the launcher accepts the reviewed values from
+the preflight environment rather than treating mutable run-root sidecars as
+authority. Invoke the tracked launcher rather than reconstructing the
+controller command ad hoc:
 
 ```bash
 RBIOCVERSE_CONFIG=/path/to/rbiocverse/container/scripts/cluster-config.sh \
 LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-merge-SHA-1> \
 LANDSCAPER_K1_RUNNER_MERGE=<reviewed-runner-merge-SHA-1> \
+LANDSCAPER_PAYLOAD_SHA256=<preflight-payload-SHA-256> \
+LANDSCAPER_PAYLOAD_VERIFIER=/path/to/shared/run/k1-revised-acceptance-payload-digest.sh \
+LANDSCAPER_PAYLOAD_VERIFIER_SHA256=<preflight-verifier-SHA-256> \
 LANDSCAPER_RUN_ROOT=/path/to/shared/run \
 bash /path/to/k1-revised-acceptance-launch.sh
 ```

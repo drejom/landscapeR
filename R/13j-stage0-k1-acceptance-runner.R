@@ -1206,10 +1206,21 @@ print.K1AcceptanceManifest <- function(x, ...) {
 }
 
 .k1_acceptance_worker_identity <- function() {
+    verifier_path <- Sys.getenv(
+        "LANDSCAPER_PAYLOAD_VERIFIER", unset = ""
+    )
+    verifier_file_digest <- if (nzchar(verifier_path) &&
+            file.exists(verifier_path)) {
+        tryCatch(
+            digest::digest(verifier_path, algo = "sha256", file = TRUE),
+            error = function(condition) "unavailable"
+        )
+    } else "unavailable"
     cache_key <- paste(
         Sys.getenv("LANDSCAPER_PAYLOAD_SHA256", unset = ""),
-        Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER", unset = ""),
+        verifier_path,
         Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER_SHA256", unset = ""),
+        verifier_file_digest,
         system.file(package = "landscapeR"),
         sep = "\r"
     )

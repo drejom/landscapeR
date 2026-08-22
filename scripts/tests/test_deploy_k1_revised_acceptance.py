@@ -14,7 +14,7 @@ SCRIPT = ROOT / "scripts" / "deploy-k1-revised-acceptance.sh"
 class DeploymentContractTest(unittest.TestCase):
     def test_script_uses_cluster_owned_runtime_contract(self):
         text = SCRIPT.read_text()
-        for required in ("scp", "ssh", "validate_cluster", "get_library_path", "get_container_path", "run_in_container", "pak::pkg_install", "pak::local_install", "BIOCONDUCTOR_VERSION", "merge-base", "k1-revised-acceptance-payload-digest.sh", "payload_verifier_sha256", "trusted_source_sha", "trusted_payload_verifier_sha", '"-l", reference_library'):
+        for required in ("scp", "ssh", "validate_cluster", "get_library_path", "get_container_path", "run_in_container", "pak::pkg_install", "pak::local_install", "BIOCONDUCTOR_VERSION", "merge-base", "k1-revised-acceptance-payload-digest.sh", "payload_verifier_sha256", "preflight_sha256", "trusted_source_sha", "trusted_payload_verifier_sha", "trusted_preflight_sha", "preflight_lock", "write_record", '"-l", reference_library'):
             self.assertIn(required, text)
         for forbidden in ("/packages/", "/opt/singularity", "controller_constructor"):
             self.assertNotIn(forbidden, text.lower())
@@ -27,6 +27,7 @@ class DeploymentContractTest(unittest.TestCase):
         source = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         protocol = "f668e1e0f49f66b8bd8c244ca6fb667a9b39d896"
         archive_hashes = []
+        preflight_hashes = []
         for host in ("apollo", "gemini"):
             result = subprocess.run(
                 [
@@ -55,7 +56,15 @@ class DeploymentContractTest(unittest.TestCase):
                     if line.startswith("  archive SHA-256:")
                 )
             )
+            preflight_hashes.append(
+                next(
+                    line.split(":", 1)[1].strip()
+                    for line in result.stdout.splitlines()
+                    if line.startswith("  preflight SHA-256:")
+                )
+            )
         self.assertEqual(len(set(archive_hashes)), 1)
+        self.assertEqual(len(set(preflight_hashes)), 1)
 
     def test_submission_is_explicit(self):
         result = subprocess.run(
