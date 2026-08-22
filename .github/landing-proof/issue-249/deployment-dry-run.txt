@@ -1,0 +1,10 @@
+Prepared reviewed deployment bundle
+  source revision: <reviewed-source-sha>
+  protocol merge:  <reviewed-protocol-merge-sha>
+  runner merge:    <reviewed-runner-merge-sha>
+  remote host:      <caller-supplied-ssh-alias>
+  remote run root:  <caller-supplied-shared-run-root>
+  submission:       false
+DRY RUN: would create <caller-supplied-shared-run-root>/.landscapeR-incoming
+DRY RUN: scp archive, manifest, and preflight to <caller-supplied-ssh-alias>:<caller-supplied-shared-run-root>/.landscapeR-incoming/
+DRY RUN: ssh <caller-supplied-ssh-alias> to run rbiocverse preflight and the tracked Slurm launcher

@@ -1,0 +1,6 @@
+field	value
+workflow	tracked local package -> scp -> ssh -> rbiocverse/hprcc preflight -> tracked Slurm launcher
+cluster_contract	one deployer for caller-supplied cluster SSH alias
+path_ownership	rbiocverse and hprcc resolve cluster paths, image, library, partition, binds, and controllers
+submission_boundary	prepare-only by default; --submit is explicit
+scientific_claim	implementation proof only; no acceptance result is claimed

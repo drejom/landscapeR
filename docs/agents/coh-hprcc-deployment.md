@@ -69,6 +69,39 @@ identities, RNG streams, scientific inputs, thresholds, and results are
 unchanged. Remove the internal constructor call when hprcc's public API
 forwards the worker limit.
 
+## Tracked local deployment
+
+Use the repository's tracked deployer when the package has to cross from a
+local checkout to a supported cluster. It packages the reviewed source
+revision, transfers the bundle with `scp`, and runs a quoted remote preflight
+through `ssh`. The same command works with either SSH alias; the supplied
+rbiocverse configuration and hprcc installation own all cluster-specific paths
+and resource choices.
+
+The default is prepare-only: it installs and independently verifies the
+revision and stages the run files without submitting acceptance rows. Add
+`--submit` only after the preflight manifest has been inspected.
+The preflight bootstraps `pak` only when the configured shared library does not
+already provide it, then uses `pak` for the declared targets/crew/hprcc stack
+and the local landscapeR archive.
+
+```bash
+scripts/deploy-k1-revised-acceptance.sh \
+  --remote-host <cluster-ssh-alias> \
+  --remote-config /path/to/rbiocverse/container/scripts/cluster-config.sh \
+  --remote-run-root /path/to/shared/landscapeR/k1-revised-acceptance \
+  --source-revision <reviewed-source-sha> \
+  --protocol-merge <reviewed-protocol-merge-sha> \
+  --runner-merge <reviewed-runner-merge-sha>
+```
+
+Run the same command with `--dry-run` to inspect the transfer and launch
+contract without contacting the cluster. The deployer never records host
+details or credentials in the package, and it never runs the target graph on a
+login node. It hands the staged files to the tracked Slurm launcher, which
+enters the standard rbiocverse container before calling `targets::tar_make()`.
+
+
 ## Launch revised acceptance
 
 Only after the protocol and runner revisions are reviewed, merged, and
