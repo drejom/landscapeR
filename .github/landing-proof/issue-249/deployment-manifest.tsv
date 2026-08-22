@@ -1,8 +1,8 @@
 field	value
-source_revision	71f9eaf3c45edd57c24508087bb0ac7c7169d782
+source_revision	05f86cf8afc312987340111c6a9b4203f3183596
 protocol_merge	f668e1e0f49f66b8bd8c244ca6fb667a9b39d896
-runner_merge	71f9eaf3c45edd57c24508087bb0ac7c7169d782
-source_archive_sha256	99a3329b73dd58406491f43bc2ac7863c0aaf1084ee6339c7988d30550455b4c
+runner_merge	05f86cf8afc312987340111c6a9b4203f3183596
+source_archive_sha256	451131ef51a162090d9425ef6b9211d472634b17f2d747dcd32a3358c52c159a
 workflow	tracked local package -> scp -> ssh -> rbiocverse/hprcc preflight -> tracked Slurm launcher
 cluster_contract	one deployer for caller-supplied cluster SSH alias
 path_ownership	rbiocverse and hprcc resolve cluster paths, image, library, partition, binds, and controllers
