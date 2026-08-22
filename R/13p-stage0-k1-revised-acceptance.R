@@ -495,6 +495,14 @@ validate_k1_revised_acceptance_manifest <- function(manifest) {
             "worker source revision differs from the preflight revision"
         )
     }
+    if (!is.null(expected_identity) &&
+            !is.null(expected_identity$payload_sha256) &&
+            !identical(identity$payload_sha256,
+                expected_identity$payload_sha256)) {
+        .k1_acceptance_runner_abort(
+            "worker payload identity differs from the preflight identity"
+        )
+    }
     tryCatch({
         control <- task$control[[1L]]
         seeds <- task$stream_seeds[[1L]]

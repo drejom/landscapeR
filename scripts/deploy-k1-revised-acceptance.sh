@@ -234,12 +234,12 @@ launcher_source <- system.file(
     "extdata", "k1-revised-acceptance-launch.sh",
     package = "landscapeR", lib.loc = library_path
 )
-payload_digest_source <- system.file(
-    "extdata", "k1-revised-acceptance-payload-digest.sh",
-    package = "landscapeR", lib.loc = library_path
+payload_digest_source <- file.path(
+    source_dir, "inst", "extdata",
+    "k1-revised-acceptance-payload-digest.sh"
 )
 if (!nzchar(targets_source) || !nzchar(launcher_source) ||
-    !nzchar(payload_digest_source)) {
+    !file.exists(payload_digest_source)) {
     deployment_abort("installed landscapeR is missing the reviewed acceptance profile")
 }
 

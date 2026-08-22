@@ -1149,6 +1149,40 @@ print.K1AcceptanceManifest <- function(x, ...) {
     list(status = "success", reason = "", metrics = metrics)
 }
 
+.k1_acceptance_payload_identity <- function() {
+    expected <- Sys.getenv("LANDSCAPER_PAYLOAD_SHA256", unset = "")
+    verifier <- Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER", unset = "")
+    if (!nzchar(expected) && !nzchar(verifier)) return(NULL)
+    if (!grepl("^[0-9a-f]{64}$", expected) || !nzchar(verifier) ||
+            !file.exists(verifier) || file.access(verifier, 1L) != 0L) {
+        .k1_acceptance_runner_abort(
+            "external landscapeR payload identity configuration is invalid"
+        )
+    }
+    package_root <- system.file(package = "landscapeR")
+    if (!nzchar(package_root)) {
+        .k1_acceptance_runner_abort(
+            "loaded landscapeR package has no payload root"
+        )
+    }
+    observed <- system2(
+        "bash", c(verifier, package_root), stdout = TRUE, stderr = TRUE
+    )
+    status <- attr(observed, "status")
+    if (!is.null(status) && !identical(as.integer(status), 0L)) {
+        .k1_acceptance_runner_abort(
+            "external landscapeR payload verifier failed"
+        )
+    }
+    observed <- trimws(tail(observed, 1L))
+    if (length(observed) != 1L || !identical(observed, expected)) {
+        .k1_acceptance_runner_abort(
+            "installed landscapeR payload differs from the reviewed identity"
+        )
+    }
+    observed
+}
+
 .k1_acceptance_worker_identity <- function() {
     packages <- c(
         "landscapeR", "digest", "future", "future.apply", "targets", "crew",
@@ -1158,11 +1192,14 @@ print.K1AcceptanceManifest <- function(x, ...) {
         if (!requireNamespace(package, quietly = TRUE)) return(NA_character_)
         as.character(utils::packageVersion(package))
     }, character(1L))
-    list(
+    identity <- list(
         source_revision = landscapeR_revision(),
         r_version = paste(R.version$major, R.version$minor, sep = "."),
         package_versions = versions
     )
+    payload <- .k1_acceptance_payload_identity()
+    if (!is.null(payload)) identity$payload_sha256 <- payload
+    identity
 }
 
 .k1_acceptance_check_identity <- function(expected) {

@@ -15,7 +15,24 @@ source "$RBIOCVERSE_CONFIG"
 cluster=$(validate_cluster)
 run_root=$(cd "${LANDSCAPER_RUN_ROOT:-.}" && pwd)
 launch_script=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+payload_digest_script="$run_root/k1-revised-acceptance-payload-digest.sh"
 payload_digest_file="$run_root/landscapeR-payload-sha256.txt"
+
+[[ -x "$payload_digest_script" ]] || {
+    printf 'landscapeR payload verifier is missing\n' >&2
+    exit 2
+}
+[[ -f "$payload_digest_file" ]] || {
+    printf 'landscapeR payload identity file is missing\n' >&2
+    exit 2
+}
+expected_payload_digest=$(tr -d '[:space:]' < "$payload_digest_file")
+[[ "$expected_payload_digest" =~ ^[0-9a-f]{64}$ ]] || {
+    printf 'landscapeR payload identity is invalid\n' >&2
+    exit 2
+}
+export LANDSCAPER_PAYLOAD_SHA256="$expected_payload_digest"
+export LANDSCAPER_PAYLOAD_VERIFIER="$payload_digest_script"
 
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     exec sbatch \
@@ -31,24 +48,7 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
         "$launch_script"
 fi
 
-[[ -f "$payload_digest_file" ]] || {
-    printf 'landscapeR payload identity file is missing\n' >&2
-    exit 2
-}
-
 load_singularity "$cluster"
 cd "$run_root"
-package_root=$(Rscript --vanilla -e 'cat(system.file(package = "landscapeR"))')
-payload_digest_script=$(Rscript --vanilla -e 'cat(system.file("extdata", "k1-revised-acceptance-payload-digest.sh", package = "landscapeR"))')
-[[ -x "$payload_digest_script" ]] || {
-    printf 'installed landscapeR payload verifier is missing\n' >&2
-    exit 2
-}
-observed_payload_digest=$("$payload_digest_script" "$package_root")
-expected_payload_digest=$(tr -d '[:space:]' < "$payload_digest_file")
-[[ "$observed_payload_digest" = "$expected_payload_digest" ]] || {
-    printf 'installed landscapeR payload does not match the reviewed identity\n' >&2
-    exit 2
-}
 run_in_container "${BIOCONDUCTOR_VERSION:-3.22}" \
-    'targets::tar_make(use_crew = TRUE, callr_function = NULL)'
+    'expected <- Sys.getenv("LANDSCAPER_PAYLOAD_SHA256"); verifier <- Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER"); package_root <- system.file(package = "landscapeR"); observed <- system2("bash", c(verifier, package_root), stdout = TRUE, stderr = TRUE); observed <- trimws(tail(observed, 1L)); if (!nzchar(package_root) || !identical(observed, expected)) stop("installed landscapeR payload does not match the reviewed identity"); targets::tar_make(use_crew = TRUE, callr_function = NULL)'

@@ -24,6 +24,31 @@ fake_aml_acceptance_provenance <- function() list(
     stage2 = list(fixture = TRUE)
 )
 
+test_that("acceptance workers independently observe the external payload identity", {
+    verifier <- tempfile("landscapeR-payload-verifier-")
+    expected <- strrep("a", 64L)
+    writeLines(c("#!/bin/sh", paste0("echo ", expected)), verifier)
+    Sys.chmod(verifier, mode = "0755")
+    on.exit(unlink(verifier), add = TRUE)
+    Sys.setenv(
+        LANDSCAPER_PAYLOAD_SHA256 = expected,
+        LANDSCAPER_PAYLOAD_VERIFIER = verifier
+    )
+    on.exit(Sys.unsetenv(c(
+        "LANDSCAPER_PAYLOAD_SHA256", "LANDSCAPER_PAYLOAD_VERIFIER"
+    )), add = TRUE)
+
+    expect_identical(
+        landscapeR:::.k1_acceptance_payload_identity(), expected
+    )
+    Sys.setenv(LANDSCAPER_PAYLOAD_SHA256 = strrep("b", 64L))
+    expect_error(
+        landscapeR:::.k1_acceptance_payload_identity(),
+        "differs from the reviewed identity",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
 test_that("acceptance manifest expands every frozen cell and replicate", {
     manifest <- k1_acceptance_manifest(fake_phase_a_merge())
 
