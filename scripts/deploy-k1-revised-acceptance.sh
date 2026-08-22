@@ -210,6 +210,28 @@ read_preflight <- function(path) {
 }
 if (file.exists(preflight_path)) {
     previous <- read_preflight(preflight_path)
+    known_expected <- c(
+        source_revision = source_revision,
+        protocol_merge = protocol_merge,
+        runner_merge = runner_merge,
+        bioconductor_version = bioconductor_version,
+        source_archive_sha256 = source_archive_sha256,
+        payload_verifier_sha256 = payload_verifier_sha256
+    )
+    known_observed <- vapply(
+        names(known_expected),
+        function(field) as.character(previous[[field]][[1L]]),
+        character(1L)
+    )
+    if (!identical(unname(known_observed), unname(known_expected))) {
+        deployment_abort("run root contains a preflight for a different deployment identity")
+    }
+    recorded_payload <- as.character(previous$installed_payload_sha256[[1L]])
+    recorded_revision <- as.character(previous$installed_revision[[1L]])
+    if (!grepl("^[0-9a-f]{64}$", recorded_payload) ||
+        !grepl("^[0-9a-f]{40}$", recorded_revision)) {
+        deployment_abort("existing deployment preflight identity is invalid")
+    }
     if (identical(as.character(previous$submission_requested[[1L]]), "TRUE")) {
         deployment_abort(
             "a submission is already recorded for this run root; use a new run root"
