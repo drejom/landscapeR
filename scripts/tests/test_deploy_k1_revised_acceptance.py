@@ -63,6 +63,12 @@ class DeploymentContractTest(unittest.TestCase):
         )
         self.assertIn("Without --submit", result.stdout)
 
+    def test_public_proof_redacts_cluster_identifiers(self):
+        proof = (ROOT / ".github" / "landing-proof" / "issue-249" / "deployment-dry-run.txt").read_text()
+        self.assertNotIn("apollo", proof.lower())
+        self.assertNotIn("gemini", proof.lower())
+        self.assertNotIn("/shared/", proof)
+
 
 if __name__ == "__main__":
     unittest.main()

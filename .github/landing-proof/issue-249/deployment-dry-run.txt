@@ -1,14 +1,15 @@
 Prepared reviewed deployment bundle
-  source revision: 6c86cb4cd15a54ca4b3b6ebf4caa4e461ff1f8b7
+  source revision: 71f9eaf3c45edd57c24508087bb0ac7c7169d782
   protocol merge:  f668e1e0f49f66b8bd8c244ca6fb667a9b39d896
-  runner merge:    6c86cb4cd15a54ca4b3b6ebf4caa4e461ff1f8b7
-  archive SHA-256: 638f953db931d55115a440ba1ae37b0640b32c366f88e4c7fff9f66095aa5c24
-  remote host:      apollo
-  remote run root:  /shared/landscapeR/k1-revised-acceptance
+  runner merge:    71f9eaf3c45edd57c24508087bb0ac7c7169d782
+  archive SHA-256: 99a3329b73dd58406491f43bc2ac7863c0aaf1084ee6339c7988d30550455b4c
+  remote host:      <cluster-ssh-alias>
+  remote run root:  <shared-run-root>
   submission:       false
-DRY RUN: would create /shared/landscapeR/k1-revised-acceptance/.landscapeR-incoming
-DRY RUN: scp archive, manifest, and preflight to apollo:/shared/landscapeR/k1-revised-acceptance/.landscapeR-incoming/
-DRY RUN: ssh apollo to run rbiocverse preflight and the tracked Slurm launcher
+DRY RUN: would create <shared-run-root>/.landscapeR-incoming
+DRY RUN: scp archive, manifest, and preflight to <cluster-ssh-alias>:<shared-run-root>/.landscapeR-incoming/
+DRY RUN: ssh <cluster-ssh-alias> to run rbiocverse preflight and the tracked Slurm launcher
 
-The same command and digest were independently rerun with remote host alias
-gemini; only the caller-supplied SSH alias differed.
+The same command and digest were independently rerun with a second supported
+cluster alias; only the caller-supplied SSH alias differed. Operational host
+names and shared paths are redacted from this public proof.
