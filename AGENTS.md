@@ -35,6 +35,18 @@ locations. Do not probe credential paths. If the managed connector is
 unavailable and an authorized mutation cannot be completed, report the exact
 failed capability and request the approved credential-injection mechanism.
 
+## Required two-pass review
+
+Before merging a pull request, run two local review passes against the complete
+diff. The first is the repository-native review against the issue, specification,
+tests, and current implementation. The second is an independent review using
+`.github/copilot-instructions.md` as its explicit checklist, including typed
+boundaries, provenance, deterministic behaviour, visual proof, documentation,
+and merge-gate requirements. Address every actionable finding and rerun the
+affected pass after fixes. A hosted Copilot review is supplementary: quota or
+service unavailability must not suppress the instruction-driven second pass,
+and must not trigger repeated requests once unavailable.
+
 ## Web search fallback
 
 If WebSearch or WebFetch fails, use:

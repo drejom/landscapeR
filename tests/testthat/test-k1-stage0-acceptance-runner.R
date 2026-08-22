@@ -24,6 +24,70 @@ fake_aml_acceptance_provenance <- function() list(
     stage2 = list(fixture = TRUE)
 )
 
+test_that("acceptance workers independently observe the external payload identity", {
+    verifier <- tempfile("landscapeR-payload-verifier-")
+    expected <- strrep("a", 64L)
+    writeLines(c("#!/bin/sh", paste0("echo ", expected)), verifier)
+    Sys.chmod(verifier, mode = "0755")
+    on.exit(unlink(verifier), add = TRUE)
+    Sys.setenv(
+        LANDSCAPER_PAYLOAD_SHA256 = expected,
+        LANDSCAPER_PAYLOAD_VERIFIER = verifier,
+        LANDSCAPER_PAYLOAD_VERIFIER_SHA256 = digest::digest(
+            verifier, algo = "sha256", file = TRUE
+        )
+    )
+    on.exit(Sys.unsetenv(c(
+        "LANDSCAPER_PAYLOAD_SHA256", "LANDSCAPER_PAYLOAD_VERIFIER",
+        "LANDSCAPER_PAYLOAD_VERIFIER_SHA256"
+    )), add = TRUE)
+
+    expect_identical(
+        landscapeR:::.k1_acceptance_payload_identity(), expected
+    )
+    Sys.setenv(LANDSCAPER_PAYLOAD_SHA256 = strrep("b", 64L))
+    expect_error(
+        landscapeR:::.k1_acceptance_payload_identity(),
+        "differs from the reviewed identity",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("acceptance identity permits and validates external payload digests", {
+    identity <- list(
+        source_revision = strrep("a", 40L),
+        r_version = paste(R.version$major, R.version$minor, sep = "."),
+        package_versions = c(landscapeR = "0.3.0"),
+        payload_sha256 = strrep("b", 64L)
+    )
+    expect_true(landscapeR:::.k1_acceptance_validate_identity(identity))
+    identity$payload_sha256 <- "not-a-digest"
+    expect_error(
+        landscapeR:::.k1_acceptance_validate_identity(identity),
+        "payload identity must be",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
+test_that("worker identity is cached within a worker process", {
+    marker <- strrep("c", 64L)
+    Sys.setenv(LANDSCAPER_PAYLOAD_SHA256 = marker)
+    on.exit(Sys.unsetenv("LANDSCAPER_PAYLOAD_SHA256"), add = TRUE)
+    calls <- 0L
+    testthat::local_mocked_bindings(
+        .k1_acceptance_payload_identity = function() {
+            calls <<- calls + 1L
+            NULL
+        },
+        landscapeR_revision = function() strrep("d", 40L),
+        .package = "landscapeR"
+    )
+    first <- landscapeR:::.k1_acceptance_worker_identity()
+    second <- landscapeR:::.k1_acceptance_worker_identity()
+    expect_identical(first, second)
+    expect_identical(calls, 1L)
+})
+
 test_that("acceptance manifest expands every frozen cell and replicate", {
     manifest <- k1_acceptance_manifest(fake_phase_a_merge())
 
@@ -767,6 +831,13 @@ test_that("published artifacts bind runtime identity and semantic contents", {
     expect_invisible(
         landscapeR:::.k1_acceptance_validate_collector_identity(
             recovery_identity
+        )
+    )
+    payload_identity <- identity
+    payload_identity$payload_sha256 <- strrep("b", 64L)
+    expect_invisible(
+        landscapeR:::.k1_acceptance_validate_collector_identity(
+            payload_identity
         )
     )
     invalid_recovery <- recovery_identity

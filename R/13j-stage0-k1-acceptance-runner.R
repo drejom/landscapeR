@@ -4,6 +4,8 @@
 # post-merge seeds, executes independent branches, and publishes immutable
 # evidence. Scheduler resources remain caller-owned operational policy.
 
+.k1_acceptance_worker_identity_cache <- new.env(parent = emptyenv())
+
 .k1_acceptance_runner_abort <- function(message) {
     stop(structure(
         list(message = message, call = NULL),
@@ -1149,7 +1151,84 @@ print.K1AcceptanceManifest <- function(x, ...) {
     list(status = "success", reason = "", metrics = metrics)
 }
 
+.k1_acceptance_payload_identity <- function() {
+    expected <- Sys.getenv("LANDSCAPER_PAYLOAD_SHA256", unset = "")
+    verifier <- Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER", unset = "")
+    verifier_digest <- Sys.getenv(
+        "LANDSCAPER_PAYLOAD_VERIFIER_SHA256", unset = ""
+    )
+    if (!nzchar(expected) && !nzchar(verifier) && !nzchar(verifier_digest)) {
+        return(NULL)
+    }
+    if (!grepl("^[0-9a-f]{64}$", expected) ||
+            !grepl("^[0-9a-f]{64}$", verifier_digest) ||
+            !nzchar(verifier) ||
+            !file.exists(verifier) || file.access(verifier, 1L) != 0L) {
+        .k1_acceptance_runner_abort(
+            "external landscapeR payload identity configuration is invalid"
+        )
+    }
+    observed_verifier_digest <- tryCatch(
+        digest::digest(verifier, algo = "sha256", file = TRUE),
+        error = function(condition) {
+            .k1_acceptance_runner_abort(
+                "external landscapeR payload verifier cannot be hashed"
+            )
+        }
+    )
+    if (!identical(observed_verifier_digest, verifier_digest)) {
+        .k1_acceptance_runner_abort(
+            "external landscapeR payload verifier differs from the reviewed identity"
+        )
+    }
+    package_root <- system.file(package = "landscapeR")
+    if (!nzchar(package_root)) {
+        .k1_acceptance_runner_abort(
+            "loaded landscapeR package has no payload root"
+        )
+    }
+    observed <- system2(
+        "bash", c(verifier, package_root), stdout = TRUE, stderr = TRUE
+    )
+    status <- attr(observed, "status")
+    if (!is.null(status) && !identical(as.integer(status), 0L)) {
+        .k1_acceptance_runner_abort(
+            "external landscapeR payload verifier failed"
+        )
+    }
+    observed <- trimws(tail(observed, 1L))
+    if (length(observed) != 1L || !identical(observed, expected)) {
+        .k1_acceptance_runner_abort(
+            "installed landscapeR payload differs from the reviewed identity"
+        )
+    }
+    observed
+}
+
 .k1_acceptance_worker_identity <- function() {
+    verifier_path <- Sys.getenv(
+        "LANDSCAPER_PAYLOAD_VERIFIER", unset = ""
+    )
+    verifier_file_digest <- if (nzchar(verifier_path) &&
+            file.exists(verifier_path)) {
+        tryCatch(
+            digest::digest(verifier_path, algo = "sha256", file = TRUE),
+            error = function(condition) "unavailable"
+        )
+    } else "unavailable"
+    cache_key <- paste(
+        Sys.getenv("LANDSCAPER_PAYLOAD_SHA256", unset = ""),
+        verifier_path,
+        Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER_SHA256", unset = ""),
+        verifier_file_digest,
+        system.file(package = "landscapeR"),
+        sep = "\r"
+    )
+    if (exists(cache_key, envir = .k1_acceptance_worker_identity_cache,
+            inherits = FALSE)) {
+        return(get(cache_key, envir = .k1_acceptance_worker_identity_cache,
+            inherits = FALSE))
+    }
     packages <- c(
         "landscapeR", "digest", "future", "future.apply", "targets", "crew",
         "ggplot2", "lme4", "clue"
@@ -1158,11 +1237,15 @@ print.K1AcceptanceManifest <- function(x, ...) {
         if (!requireNamespace(package, quietly = TRUE)) return(NA_character_)
         as.character(utils::packageVersion(package))
     }, character(1L))
-    list(
+    identity <- list(
         source_revision = landscapeR_revision(),
         r_version = paste(R.version$major, R.version$minor, sep = "."),
         package_versions = versions
     )
+    payload <- .k1_acceptance_payload_identity()
+    if (!is.null(payload)) identity$payload_sha256 <- payload
+    assign(cache_key, identity, envir = .k1_acceptance_worker_identity_cache)
+    identity
 }
 
 .k1_acceptance_check_identity <- function(expected) {
@@ -1547,7 +1630,11 @@ print.K1AcceptanceManifest <- function(x, ...) {
 
 .k1_acceptance_validate_identity <- function(identity) {
     required <- c("source_revision", "r_version", "package_versions")
-    if (!is.list(identity) || !identical(names(identity), required) ||
+    allowed <- c(required, "payload_sha256")
+    if (!is.list(identity) ||
+            any(!names(identity) %in% allowed) ||
+            anyDuplicated(names(identity)) ||
+            !all(required %in% names(identity)) ||
             !is.character(identity$source_revision) ||
             length(identity$source_revision) != 1L ||
             !grepl("^[0-9a-f]{40}$", identity$source_revision) ||
@@ -1563,20 +1650,31 @@ print.K1AcceptanceManifest <- function(x, ...) {
             "acceptance runtime identity must be exact installed metadata"
         )
     }
+    if ("payload_sha256" %in% names(identity) &&
+            (!is.character(identity$payload_sha256) ||
+                length(identity$payload_sha256) != 1L ||
+                !grepl("^[0-9a-f]{64}$", identity$payload_sha256))) {
+        .k1_acceptance_runner_abort(
+            "acceptance payload identity must be a lowercase SHA-256 digest"
+        )
+    }
     invisible(TRUE)
 }
 
 .k1_acceptance_validate_collector_identity <- function(identity) {
     required <- c("source_revision", "r_version", "package_versions")
+    allowed <- c(required, "payload_sha256", "recovery")
     if (!is.list(identity) ||
-            any(!names(identity) %in% c(required, "recovery")) ||
+            any(!names(identity) %in% allowed) ||
             anyDuplicated(names(identity)) ||
             !all(required %in% names(identity))) {
         .k1_acceptance_runner_abort(
             "acceptance collector identity has an invalid schema"
         )
     }
-    .k1_acceptance_validate_identity(identity[required])
+    .k1_acceptance_validate_identity(
+        identity[setdiff(names(identity), "recovery")]
+    )
     if (!"recovery" %in% names(identity)) return(invisible(TRUE))
     recovery <- identity$recovery
     recovery_names <- c(

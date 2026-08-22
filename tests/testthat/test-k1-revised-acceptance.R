@@ -391,6 +391,27 @@ test_that("retired version 4 tasks cannot execute", {
     )
 })
 
+test_that("version 5 workers refuse execution without the tracked payload identity", {
+    protocol <- k1_acceptance_protocol("5")
+    manifest <- k1_revised_acceptance_manifest(
+        protocol_merge_v5(), runner_revision_v5(), protocol
+    )
+    identity <- revised_identity_v3()
+    identity$source_revision <- runner_revision_v5()
+    testthat::local_mocked_bindings(
+        .k1_acceptance_worker_identity = function() identity,
+        .package = "landscapeR"
+    )
+    expect_error(
+        landscapeR:::.k1_revised_run_task(
+            manifest$tasks[1L, , drop = FALSE], protocol,
+            expected_identity = identity
+        ),
+        "requires the tracked launcher payload identity",
+        class = "k1_acceptance_runner_error"
+    )
+})
+
 test_that("revised acceptance maps use established encodings and captions", {
     protocol <- k1_acceptance_protocol("3")
     manifest <- k1_revised_acceptance_manifest(

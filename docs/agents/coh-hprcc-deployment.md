@@ -69,6 +69,49 @@ identities, RNG streams, scientific inputs, thresholds, and results are
 unchanged. Remove the internal constructor call when hprcc's public API
 forwards the worker limit.
 
+## Tracked local deployment
+
+Use the repository's tracked deployer when the package has to cross from a
+local checkout to a supported cluster. It packages the reviewed source
+revision, transfers the bundle with `scp`, and runs a quoted remote preflight
+through `ssh`. The same command works with either SSH alias; the supplied
+rbiocverse configuration and hprcc installation own all cluster-specific paths
+and resource choices.
+
+The default is prepare-only: it installs and independently verifies the
+revision and stages the run files without submitting acceptance rows. Add
+`--submit` only after the preflight manifest has been inspected. Submission
+also fails closed unless the supplied source/protocol revisions are already
+ancestors of the local `origin/main`, and a run root that records a prior
+submission cannot be submitted again by accident.
+The preflight bootstraps `pak` only when the configured shared library does not
+already provide it, then uses `pak` for the declared targets/crew/hprcc stack
+and the local landscapeR archive.
+It also compares the installed package payload with a fresh installation from
+the transferred archive, records the resulting external payload digest in the
+run root, records the reviewed verifier digest alongside it, and makes the
+Slurm launcher recompute both digests before workers start.
+The source revision and runner merge must be the same reviewed commit because
+the installed package is the code that the acceptance runner independently
+checks on every worker.
+
+```bash
+scripts/deploy-k1-revised-acceptance.sh \
+  --remote-host <cluster-ssh-alias> \
+  --remote-config /path/to/rbiocverse/container/scripts/cluster-config.sh \
+  --remote-run-root /path/to/shared/landscapeR/k1-revised-acceptance \
+  --source-revision <reviewed-source-sha> \
+  --protocol-merge <reviewed-protocol-merge-sha> \
+  --runner-merge <reviewed-runner-merge-sha>
+```
+
+Run the same command with `--dry-run` to inspect the transfer and launch
+contract without contacting the cluster. The deployer never records host
+details or credentials in the package, and it never runs the target graph on a
+login node. It hands the staged files to the tracked Slurm launcher, which
+enters the standard rbiocverse container before calling `targets::tar_make()`.
+
+
 ## Launch revised acceptance
 
 Only after the protocol and runner revisions are reviewed, merged, and
@@ -76,13 +119,20 @@ installed, copy the installed cluster-neutral profile into a dedicated shared
 run directory as `_targets.R`, and copy
 `k1-revised-acceptance-launch.sh` beside it. Supply the reviewed upstream
 rbiocverse `container/scripts/cluster-config.sh`, both reviewed revisions, and
-the run directory through the declared environment variables. Invoke the
-tracked launcher rather than reconstructing the controller command ad hoc:
+the run directory through the declared environment variables. The preflight
+must have left the verifier and the two digest records beside the launcher.
+Those records are audit output; the launcher accepts the reviewed values from
+the preflight environment rather than treating mutable run-root sidecars as
+authority. Invoke the tracked launcher rather than reconstructing the
+controller command ad hoc:
 
 ```bash
 RBIOCVERSE_CONFIG=/path/to/rbiocverse/container/scripts/cluster-config.sh \
 LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-merge-SHA-1> \
 LANDSCAPER_K1_RUNNER_MERGE=<reviewed-runner-merge-SHA-1> \
+LANDSCAPER_PAYLOAD_SHA256=<preflight-payload-SHA-256> \
+LANDSCAPER_PAYLOAD_VERIFIER=/path/to/shared/run/k1-revised-acceptance-payload-digest.sh \
+LANDSCAPER_PAYLOAD_VERIFIER_SHA256=<preflight-verifier-SHA-256> \
 LANDSCAPER_RUN_ROOT=/path/to/shared/run \
 bash /path/to/k1-revised-acceptance-launch.sh
 ```
