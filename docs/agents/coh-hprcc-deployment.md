@@ -84,6 +84,9 @@ revision and stages the run files without submitting acceptance rows. Add
 The preflight bootstraps `pak` only when the configured shared library does not
 already provide it, then uses `pak` for the declared targets/crew/hprcc stack
 and the local landscapeR archive.
+The source revision and runner merge must be the same reviewed commit because
+the installed package is the code that the acceptance runner independently
+checks on every worker.
 
 ```bash
 scripts/deploy-k1-revised-acceptance.sh \

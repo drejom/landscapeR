@@ -1,10 +1,14 @@
 Prepared reviewed deployment bundle
-  source revision: <reviewed-source-sha>
-  protocol merge:  <reviewed-protocol-merge-sha>
-  runner merge:    <reviewed-runner-merge-sha>
-  remote host:      <caller-supplied-ssh-alias>
-  remote run root:  <caller-supplied-shared-run-root>
+  source revision: b4d7e386bb603f9e8d8715ad46c7b8b8f9bdf8e7
+  protocol merge:  f668e1e0f49f66b8bd8c244ca6fb667a9b39d896
+  runner merge:    b4d7e386bb603f9e8d8715ad46c7b8b8f9bdf8e7
+  archive SHA-256: d741dd4b6c9d3e55af35592012a4112888f0da574072f7b66065f541afb38662
+  remote host:      apollo
+  remote run root:  /shared/landscapeR/k1-revised-acceptance
   submission:       false
-DRY RUN: would create <caller-supplied-shared-run-root>/.landscapeR-incoming
-DRY RUN: scp archive, manifest, and preflight to <caller-supplied-ssh-alias>:<caller-supplied-shared-run-root>/.landscapeR-incoming/
-DRY RUN: ssh <caller-supplied-ssh-alias> to run rbiocverse preflight and the tracked Slurm launcher
+DRY RUN: would create /shared/landscapeR/k1-revised-acceptance/.landscapeR-incoming
+DRY RUN: scp archive, manifest, and preflight to apollo:/shared/landscapeR/k1-revised-acceptance/.landscapeR-incoming/
+DRY RUN: ssh apollo to run rbiocverse preflight and the tracked Slurm launcher
+
+The same command and digest were independently rerun with remote host alias
+gemini; only the caller-supplied SSH alias differed.
