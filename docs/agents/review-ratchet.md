@@ -134,17 +134,17 @@ Retain arguments, paths, return shape, and verifier sequence, or provide a teste
 migration path; exact-path compatibility must preserve raced destination data.
 **Incident:** [PR #218](https://github.com/drejom/landscapeR/pull/218) reinterpreted `write_stage1_benchmark_artifact(path)` as a content-addressed root.
 ## Verify, never assume
-A reviewer is not an oracle. Treat every finding as a claim to investigate; a
-wrong fix is worse than a declined comment. If a finding is wrong, say so with
-evidence. Tests, bots, documentation, and this Ratchet are evidence, not
-oracles; when they disagree with observable repository state, investigate.
+A reviewer is not an oracle. Treat every finding as a claim to investigate; a wrong
+fix is worse than a declined comment. If a finding is wrong, say so with evidence.
+Tests, bots, documentation, and this Ratchet are evidence, not oracles; when they
+disagree with observable repository state, investigate.
 
 ## Maintenance duties
-Every agent that reads or benefits from this document owes these duties in the
-same change as the triggering work:
+Every agent that reads or benefits from this document owes these duties in the same triggering change:
 - **Add:** record a new defect class only with a durable incident; reject speculation.
 - **Correct:** fix or remove obsolete or misleading entries and record the correction in the commit.
 - **Deduplicate:** search first; consolidate overlapping formulations.
-- **Graduate:** move mechanical rules into deterministic enforcement and recurring
-  decisions into ADRs, deleting detailed prose once no judgement remains.
-- **Report:** select one PR disposition and give a substantive rationale.
+- **Graduate:** move mechanical rules into deterministic enforcement and recurring decisions into ADRs; delete detailed prose once no judgement remains.
+- **Report:** select one PR disposition and give a substantive rationale. At a
+  stopping point after closure or merge, report the completed issue/PR number and
+  summary, the next roadmap issue number/title, and the work that follows.

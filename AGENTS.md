@@ -52,3 +52,7 @@ Before substantial work, read [`docs/agents/review-ratchet.md`](docs/agents/revi
 and perform its brief hygiene pass. Maintain it in the same change under the
 Add, Correct, Deduplicate, and Graduate duties; report any ratchet change or
 deliberate no-change disposition when finishing the work.
+At a stopping point after an issue closes, a pull request merges, or work
+intentionally pauses, report the
+completed issue or PR number and summary, the next roadmap issue number/title,
+and a brief summary of the work that follows.
