@@ -14,7 +14,7 @@ SCRIPT = ROOT / "scripts" / "deploy-k1-revised-acceptance.sh"
 class DeploymentContractTest(unittest.TestCase):
     def test_script_uses_cluster_owned_runtime_contract(self):
         text = SCRIPT.read_text()
-        for required in ("scp", "ssh", "validate_cluster", "get_library_path", "get_container_path", "run_in_container", "pak::pkg_install", "pak::local_install", "BIOCONDUCTOR_VERSION", "merge-base", "k1-revised-acceptance-payload-digest.sh"):
+        for required in ("scp", "ssh", "validate_cluster", "get_library_path", "get_container_path", "run_in_container", "pak::pkg_install", "pak::local_install", "BIOCONDUCTOR_VERSION", "merge-base", "k1-revised-acceptance-payload-digest.sh", '"-l", reference_library'):
             self.assertIn(required, text)
         for forbidden in ("/packages/", "/opt/singularity", "controller_constructor"):
             self.assertNotIn(forbidden, text.lower())

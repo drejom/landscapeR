@@ -276,7 +276,7 @@ reference_install <- system2(
     file.path(R.home("bin"), "R"),
     c(
         "CMD", "INSTALL", "--no-byte-compile", "--no-test-load",
-        "--library", reference_library, source_dir
+        "-l", reference_library, source_dir
     ),
     stdout = TRUE, stderr = TRUE,
     env = paste0("R_LIBS_USER=", library_path)
