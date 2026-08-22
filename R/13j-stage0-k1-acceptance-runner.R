@@ -1637,15 +1637,18 @@ print.K1AcceptanceManifest <- function(x, ...) {
 
 .k1_acceptance_validate_collector_identity <- function(identity) {
     required <- c("source_revision", "r_version", "package_versions")
+    allowed <- c(required, "payload_sha256", "recovery")
     if (!is.list(identity) ||
-            any(!names(identity) %in% c(required, "recovery")) ||
+            any(!names(identity) %in% allowed) ||
             anyDuplicated(names(identity)) ||
             !all(required %in% names(identity))) {
         .k1_acceptance_runner_abort(
             "acceptance collector identity has an invalid schema"
         )
     }
-    .k1_acceptance_validate_identity(identity[required])
+    .k1_acceptance_validate_identity(
+        identity[setdiff(names(identity), "recovery")]
+    )
     if (!"recovery" %in% names(identity)) return(invisible(TRUE))
     recovery <- identity$recovery
     recovery_names <- c(

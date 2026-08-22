@@ -814,6 +814,13 @@ test_that("published artifacts bind runtime identity and semantic contents", {
             recovery_identity
         )
     )
+    payload_identity <- identity
+    payload_identity$payload_sha256 <- strrep("b", 64L)
+    expect_invisible(
+        landscapeR:::.k1_acceptance_validate_collector_identity(
+            payload_identity
+        )
+    )
     invalid_recovery <- recovery_identity
     invalid_recovery$recovery$worker_results_modified <- TRUE
     expect_error(
