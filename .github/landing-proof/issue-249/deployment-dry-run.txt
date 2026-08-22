@@ -1,8 +1,9 @@
 Prepared reviewed deployment bundle
-  source revision: f9fba3c909be177265de38d2ff73c771ffbdc28b
+  source revision: 4d58a14caf8042c8ba2d0071af774e207a5f381f
   protocol merge:  f668e1e0f49f66b8bd8c244ca6fb667a9b39d896
-  runner merge:    f9fba3c909be177265de38d2ff73c771ffbdc28b
-  archive SHA-256: 08b37edd16c9e08ede37c2cbb34628c91f92700be19db2d2018b3c086a4f6763
+  runner merge:    4d58a14caf8042c8ba2d0071af774e207a5f381f
+  archive SHA-256: 0f17d2dff114d51ae627e87996bdeca2c097ca3fbb67b836ae7650da16099904
+  preflight SHA-256: f8d8edcd1a5f859e0d48f7425e6fc2892b6db77e8361c3ecdd9d181859ba145a
   remote host:      <cluster-ssh-alias>
   remote run root:  <shared-run-root>
   submission:       false
