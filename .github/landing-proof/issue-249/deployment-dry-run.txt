@@ -1,8 +1,8 @@
 Prepared reviewed deployment bundle
-  source revision: b4d7e386bb603f9e8d8715ad46c7b8b8f9bdf8e7
+  source revision: 6c86cb4cd15a54ca4b3b6ebf4caa4e461ff1f8b7
   protocol merge:  f668e1e0f49f66b8bd8c244ca6fb667a9b39d896
-  runner merge:    b4d7e386bb603f9e8d8715ad46c7b8b8f9bdf8e7
-  archive SHA-256: d741dd4b6c9d3e55af35592012a4112888f0da574072f7b66065f541afb38662
+  runner merge:    6c86cb4cd15a54ca4b3b6ebf4caa4e461ff1f8b7
+  archive SHA-256: 638f953db931d55115a440ba1ae37b0640b32c366f88e4c7fff9f66095aa5c24
   remote host:      apollo
   remote run root:  /shared/landscapeR/k1-revised-acceptance
   submission:       false
