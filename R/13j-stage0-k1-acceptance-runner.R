@@ -4,6 +4,8 @@
 # post-merge seeds, executes independent branches, and publishes immutable
 # evidence. Scheduler resources remain caller-owned operational policy.
 
+.k1_acceptance_worker_identity_cache <- new.env(parent = emptyenv())
+
 .k1_acceptance_runner_abort <- function(message) {
     stop(structure(
         list(message = message, call = NULL),
@@ -1204,6 +1206,18 @@ print.K1AcceptanceManifest <- function(x, ...) {
 }
 
 .k1_acceptance_worker_identity <- function() {
+    cache_key <- paste(
+        Sys.getenv("LANDSCAPER_PAYLOAD_SHA256", unset = ""),
+        Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER", unset = ""),
+        Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER_SHA256", unset = ""),
+        system.file(package = "landscapeR"),
+        sep = "\r"
+    )
+    if (exists(cache_key, envir = .k1_acceptance_worker_identity_cache,
+            inherits = FALSE)) {
+        return(get(cache_key, envir = .k1_acceptance_worker_identity_cache,
+            inherits = FALSE))
+    }
     packages <- c(
         "landscapeR", "digest", "future", "future.apply", "targets", "crew",
         "ggplot2", "lme4", "clue"
@@ -1219,6 +1233,7 @@ print.K1AcceptanceManifest <- function(x, ...) {
     )
     payload <- .k1_acceptance_payload_identity()
     if (!is.null(payload)) identity$payload_sha256 <- payload
+    assign(cache_key, identity, envir = .k1_acceptance_worker_identity_cache)
     identity
 }
 

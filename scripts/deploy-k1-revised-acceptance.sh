@@ -423,7 +423,8 @@ scp -q "$bundle_root/landscapeR-source.tar.gz" \
 
 ssh "$remote_host" bash -s -- \
     "$remote_run_root" "$remote_config" "$source_revision" "$protocol_merge" \
-    "$runner_merge" "$bioconductor_version" "$submit" <<'REMOTE_RUN'
+    "$runner_merge" "$bioconductor_version" "$source_sha256" \
+    "$payload_verifier_sha256" "$submit" <<'REMOTE_RUN'
 set -euo pipefail
 run_root=$1
 cluster_config=$2
@@ -431,7 +432,9 @@ source_revision=$3
 protocol_merge=$4
 runner_merge=$5
 bioconductor_version=$6
-submit=$7
+trusted_source_sha=$7
+trusted_payload_verifier_sha=$8
+submit=$9
 
 source "$cluster_config"
 cluster=$(validate_cluster)
@@ -446,8 +449,16 @@ export R_LIBS_USER="$library_path"
 incoming="$run_root/.landscapeR-incoming"
 manifest="$incoming/deployment-manifest.tsv"
 [[ -f "$manifest" ]] || { echo "deployment manifest is missing" >&2; exit 1; }
-expected_source_sha=$(awk -F '\t' '$1 == "source_archive_sha256" {print $2}' "$manifest")
-expected_payload_verifier_sha=$(awk -F '\t' '$1 == "payload_verifier_sha256" {print $2}' "$manifest")
+[[ "$trusted_source_sha" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "trusted source archive hash is invalid" >&2
+    exit 1
+}
+[[ "$trusted_payload_verifier_sha" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "trusted payload verifier hash is invalid" >&2
+    exit 1
+}
+manifest_source_sha=$(awk -F '\t' '$1 == "source_archive_sha256" {print $2}' "$manifest")
+manifest_payload_verifier_sha=$(awk -F '\t' '$1 == "payload_verifier_sha256" {print $2}' "$manifest")
 if command -v sha256sum >/dev/null 2>&1; then
     actual_source_sha=$(sha256sum "$incoming/landscapeR-source.tar.gz" | awk '{print $1}')
 elif command -v shasum >/dev/null 2>&1; then
@@ -456,17 +467,18 @@ else
     echo "neither sha256sum nor shasum is available" >&2
     exit 1
 fi
-[[ -n "$expected_source_sha" && "$expected_source_sha" = "$actual_source_sha" ]] || {
-    echo "source archive hash does not match the transferred manifest" >&2
+[[ "$trusted_source_sha" = "$actual_source_sha" && \
+    "$manifest_source_sha" = "$trusted_source_sha" ]] || {
+    echo "source archive hash does not match the trusted local identity" >&2
     exit 1
 }
 archive_verifier_sha=$(tar -xOf "$incoming/landscapeR-source.tar.gz" \
     landscapeR-source/inst/extdata/k1-revised-acceptance-payload-digest.sh \
     | { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; } \
     | awk '{print $1}')
-[[ "$expected_payload_verifier_sha" =~ ^[0-9a-f]{64}$ && \
-    "$expected_payload_verifier_sha" = "$archive_verifier_sha" ]] || {
-    echo "payload verifier hash does not match the transferred source archive" >&2
+[[ "$trusted_payload_verifier_sha" = "$archive_verifier_sha" && \
+    "$manifest_payload_verifier_sha" = "$trusted_payload_verifier_sha" ]] || {
+    echo "payload verifier hash does not match the trusted local identity" >&2
     exit 1
 }
 for pair in \
@@ -490,8 +502,8 @@ protocol_q=$(printf '%q' "$protocol_merge")
 runner_q=$(printf '%q' "$runner_merge")
 library_q=$(printf '%q' "$library_path")
 bioc_q=$(printf '%q' "$bioconductor_version")
-archive_sha_q=$(printf '%q' "$expected_source_sha")
-payload_verifier_sha_q=$(printf '%q' "$expected_payload_verifier_sha")
+archive_sha_q=$(printf '%q' "$trusted_source_sha")
+payload_verifier_sha_q=$(printf '%q' "$trusted_payload_verifier_sha")
 submit_q=$(printf '%q' "$submit")
 run_in_container "$bioconductor_version" \
     "Rscript --vanilla $preflight $archive $run_root_q $source_q $protocol_q $runner_q $library_q $bioc_q $archive_sha_q $payload_verifier_sha_q $submit_q"

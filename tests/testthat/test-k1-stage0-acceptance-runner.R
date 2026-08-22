@@ -69,6 +69,25 @@ test_that("acceptance identity permits and validates external payload digests", 
     )
 })
 
+test_that("worker identity is cached within a worker process", {
+    marker <- strrep("c", 64L)
+    Sys.setenv(LANDSCAPER_PAYLOAD_SHA256 = marker)
+    on.exit(Sys.unsetenv("LANDSCAPER_PAYLOAD_SHA256"), add = TRUE)
+    calls <- 0L
+    testthat::local_mocked_bindings(
+        .k1_acceptance_payload_identity = function() {
+            calls <<- calls + 1L
+            NULL
+        },
+        landscapeR_revision = function() strrep("d", 40L),
+        .package = "landscapeR"
+    )
+    first <- landscapeR:::.k1_acceptance_worker_identity()
+    second <- landscapeR:::.k1_acceptance_worker_identity()
+    expect_identical(first, second)
+    expect_identical(calls, 1L)
+})
+
 test_that("acceptance manifest expands every frozen cell and replicate", {
     manifest <- k1_acceptance_manifest(fake_phase_a_merge())
 
