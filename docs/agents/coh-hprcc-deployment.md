@@ -80,7 +80,10 @@ and resource choices.
 
 The default is prepare-only: it installs and independently verifies the
 revision and stages the run files without submitting acceptance rows. Add
-`--submit` only after the preflight manifest has been inspected.
+`--submit` only after the preflight manifest has been inspected. Submission
+also fails closed unless the supplied source/protocol revisions are already
+ancestors of the local `origin/main`, and a run root that records a prior
+submission cannot be submitted again by accident.
 The preflight bootstraps `pak` only when the configured shared library does not
 already provide it, then uses `pak` for the declared targets/crew/hprcc stack
 and the local landscapeR archive.
