@@ -629,6 +629,12 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
 
 ## Implementation index
 
+- **2026-08-22 — Tracked cluster-neutral K=1 deployment:** issue
+  [#249](https://github.com/drejom/landscapeR/issues/249) adds a reviewed
+  source-package handoff that transfers a prepared bundle, verifies its
+  identity, and leaves submission explicit. Cluster-specific configuration is
+  supplied outside the package and remains owned by the deployment framework;
+  this is implementation infrastructure, not an acceptance result.
 - **2026-08-11 — Typed AML abstention and Gemini controller boundary:** issue
   [#67](https://github.com/drejom/landscapeR/issues/67) found 162 of 900
   completed AML replicates in which the required random-slope model was
@@ -655,4 +661,4 @@ This means adding a new algorithm (e.g. Kempf HO-GSVD, neural SDE) is a
   co-located with the diff in [PR #69](https://github.com/drejom/landscapeR/pull/69).
   This remains implementation work, not K=1 acceptance evidence.
 
-*Last updated: 2026-08-11. Documentation site: <https://drejom.github.io/landscapeR/>.*
+*Last updated: 2026-08-22. Documentation site: <https://drejom.github.io/landscapeR/>.*
