@@ -1,9 +1,9 @@
 field	value
-source_revision	3743b44d3e91dd9fe3c86e32e10336e16b8419e7
+source_revision	f9fba3c909be177265de38d2ff73c771ffbdc28b
 protocol_merge	f668e1e0f49f66b8bd8c244ca6fb667a9b39d896
-runner_merge	3743b44d3e91dd9fe3c86e32e10336e16b8419e7
+runner_merge	f9fba3c909be177265de38d2ff73c771ffbdc28b
 bioconductor_version	3.22
-source_archive_sha256	0c17fb6d733873cb5be00d7f7222ed696dba6175d74c751601fcfa98602b8b57
+source_archive_sha256	08b37edd16c9e08ede37c2cbb34628c91f92700be19db2d2018b3c086a4f6763
 payload_verifier_sha256	41e2f983404e0c16fd6165d01bc0ad568d4fc303280fed8314093c06c45ded24
 workflow	tracked local package -> scp -> ssh -> rbiocverse/hprcc preflight -> tracked Slurm launcher
 cluster_contract	one deployer for caller-supplied cluster SSH alias
