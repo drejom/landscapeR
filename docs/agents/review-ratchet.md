@@ -81,9 +81,9 @@ inner-sequential path under an ambient backend, and test private worker entry
 points from an installed package. Track the complete HPC launcher and measure
 worker reuse; nominal pool size can hide scheduler churn or ad hoc deployment.
 **Incident:** issue #135 found hidden nested futures; issue #212 lost a private fitter on multisession; issue #193 recycled every worker after eight tasks.
-Cluster-neutral launchers must use active hprcc/rbiocverse defaults from their
-Slurm session, not a second shell path/configuration map. **Incident:** issue
-#251 found the deployer requiring an invented `cluster-config.sh` contract.
+Cluster-neutral launchers must use active hprcc/rbiocverse defaults, not a
+second shell path map, and must prepend the declared library before loading
+hprcc. **Incidents:** #251 found an invented `cluster-config.sh` contract; #253 found an older base `rlang` shadowing it.
 ### RR-011 — Keep backend-dependent measurements out of scientific decisions
 Runtime and resource measurements may be retained for operational diagnostics,
 but they must not affect candidate selection or the scientific evidence digest

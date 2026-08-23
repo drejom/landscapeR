@@ -164,84 +164,125 @@ class DeploymentContractTest(unittest.TestCase):
         if r_executable is None or rscript_executable is None:
             self.skipTest("R and Rscript are required for the hprcc resolver test")
         text = SCRIPT.read_text()
-        start_marker = 'if (!requireNamespace("hprcc", quietly = TRUE)) {'
+        start_marker = "runtime_libraries <- unlist(lapply("
         end_marker = "\nif (!dir.exists(run_root)"
         start = text.index(start_marker)
         end = text.index(end_marker, start)
         resolver = text[start:end]
+        self.assertLess(
+            start,
+            text.index('if (!requireNamespace("hprcc", quietly = TRUE)) {', start),
+            "the active runtime library must be prepended before hprcc loads",
+        )
 
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
-            package_source = root / "hprcc"
-            (package_source / "R").mkdir(parents=True)
-            (package_source / "DESCRIPTION").write_text(
-                "Package: hprcc\n"
-                "Type: Package\n"
-                "Title: Deployment resolver test double\n"
-                "Version: 0.0.1\n"
-                "Authors@R: person('Test', 'Harness', email = 'test@example.org', role = c('aut', 'cre'))\n"
-                "Description: Test-only hprcc runtime resolver.\n"
-                "License: MIT\n"
-                "Encoding: UTF-8\n"
-            )
-            (package_source / "NAMESPACE").write_text("export(get_cluster)\n")
-            (package_source / "R" / "runtime.R").write_text(
-                "get_cluster <- function() Sys.getenv('TEST_HPRCC_CLUSTER')\n"
-                "singularity_container <- function() Sys.getenv('TEST_HPRCC_CONTAINER')\n"
-                "r_libs_site <- function() Sys.getenv('TEST_HPRCC_LIBRARY')\n"
-            )
-            package_library = root / "package-library"
-            package_library.mkdir()
-            install = subprocess.run(
-                [
-                    r_executable,
-                    "CMD",
-                    "INSTALL",
-                    "-l",
-                    str(package_library),
-                    str(package_source),
-                ],
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(install.returncode, 0, install.stdout + install.stderr)
-
-            resolver_script = root / "resolve-runtime.R"
-            resolver_script.write_text(
-                "deployment_abort <- function(message, cause = NULL) stop(message)\n"
-                "bioconductor_version <- '3.22'\n"
-                + resolver
-                + "\ncat('resolved\\t', cluster, '\\t', basename(container_path), '\\t', library_path, '\\n', sep = '')\n"
-            )
-            for cluster in ("apollo", "gemini"):
-                runtime_library = root / ("runtime-" + cluster)
-                runtime_library.mkdir()
-                container = runtime_library / "rbiocverse_3.22.sif"
-                container.touch()
-                environment = os.environ.copy()
-                environment.update(
-                    {
-                        "R_LIBS_USER": str(package_library),
-                        "TEST_HPRCC_CLUSTER": cluster,
-                        "TEST_HPRCC_CONTAINER": str(container),
-                        "TEST_HPRCC_LIBRARY": str(runtime_library),
-                        "SLURM_JOB_ID": "12345",
-                        "SINGULARITY_CONTAINER": str(container),
-                    }
+            def install_hprcc(library, version, implementation):
+                package_source = root / ("hprcc-" + version)
+                (package_source / "R").mkdir(parents=True)
+                (package_source / "DESCRIPTION").write_text(
+                    "Package: hprcc\n"
+                    "Type: Package\n"
+                    "Title: Deployment resolver test double\n"
+                    f"Version: {version}\n"
+                    "Authors@R: person('Test', 'Harness', email = 'test@example.org', role = c('aut', 'cre'))\n"
+                    "Description: Test-only hprcc runtime resolver.\n"
+                    "License: MIT\n"
+                    "Encoding: UTF-8\n"
                 )
-                result = subprocess.run(
-                    [rscript_executable, "--vanilla", str(resolver_script)],
+                (package_source / "NAMESPACE").write_text(
+                    "export(get_cluster, singularity_container, r_libs_site)\n"
+                )
+                (package_source / "R" / "runtime.R").write_text(implementation)
+                library.mkdir()
+                install = subprocess.run(
+                    [r_executable, "CMD", "INSTALL", "-l", str(library), str(package_source)],
                     text=True,
                     capture_output=True,
-                    env=environment,
                     check=False,
                 )
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn(
-                    f"resolved\t{cluster}\trbiocverse_3.22.sif\t{runtime_library}",
-                    result.stdout,
+                self.assertEqual(install.returncode, 0, install.stdout + install.stderr)
+
+            stale_library = root / "stale-library"
+            active_library = root / "active-library"
+            install_hprcc(
+                stale_library,
+                "0.0.1",
+                "get_cluster <- function() 'stale-runtime'\n"
+                "singularity_container <- function() 'stale-container.sif'\n"
+                "r_libs_site <- function() 'stale-library'\n",
+            )
+            install_hprcc(
+                active_library,
+                "0.0.2",
+                "get_cluster <- function() Sys.getenv('TEST_HPRCC_CLUSTER')\n"
+                "singularity_container <- function() Sys.getenv('TEST_HPRCC_CONTAINER')\n"
+                "r_libs_site <- function() Sys.getenv('TEST_HPRCC_LIBRARY')\n",
+            )
+
+            launcher_text = (ROOT / "inst" / "extdata" / "k1-revised-acceptance-launch.sh").read_text()
+            launcher_start_marker = "Rscript --vanilla -e '\n"
+            launcher_end_marker = "\nexpected <-"
+            self.assertIn(launcher_start_marker, launcher_text)
+            launcher_start = launcher_text.index(launcher_start_marker) + len(launcher_start_marker)
+            launcher_end = launcher_text.index(launcher_end_marker, launcher_start)
+            launcher_resolver = launcher_text[launcher_start:launcher_end]
+            resolver_variants = {
+                "deployer preflight": (
+                    resolver,
+                    "cat('resolved\\t', cluster, '\\t', basename(container_path), '\\t', library_path, '\\n', sep = '')\n",
+                ),
+                "tracked launcher": (
+                    launcher_resolver,
+                    "cat('resolved\\t', hprcc::get_cluster(), '\\t', basename(Sys.getenv('SINGULARITY_CONTAINER')), '\\t', library_path, '\\n', sep = '')\n",
+                ),
+            }
+            for resolver_name, (resolver_body, result_probe) in resolver_variants.items():
+                resolver_script = root / (resolver_name.replace(" ", "-") + ".R")
+                resolver_script.write_text(
+                    "deployment_abort <- function(message, cause = NULL) stop(message)\n"
+                    "bioconductor_version <- '3.22'\n"
+                    "# Simulate a standard container whose base library shadows the active environment.\n"
+                    ".libPaths(unique(c(Sys.getenv('TEST_HPRCC_STALE_LIBRARY'), Sys.getenv('TEST_HPRCC_ACTIVE_LIBRARY'), .libPaths())))\n"
+                    + resolver_body
+                    + "\n"
+                    + result_probe
                 )
+                for cluster in ("apollo", "gemini"):
+                    runtime_library = root / (resolver_name.replace(" ", "-") + "-runtime-" + cluster)
+                    runtime_library.mkdir()
+                    container = runtime_library / "rbiocverse_3.22.sif"
+                    container.touch()
+                    environment = os.environ.copy()
+                    environment.update(
+                        {
+                            "R_LIBS_USER": str(stale_library),
+                            "R_LIBS_SITE": str(active_library),
+                            "TEST_HPRCC_STALE_LIBRARY": str(stale_library),
+                            "TEST_HPRCC_ACTIVE_LIBRARY": str(active_library),
+                            "TEST_HPRCC_CLUSTER": cluster,
+                            "TEST_HPRCC_CONTAINER": str(container),
+                            "TEST_HPRCC_LIBRARY": str(runtime_library),
+                            "SLURM_JOB_ID": "12345",
+                            "SINGULARITY_CONTAINER": str(container),
+                        }
+                    )
+                    result = subprocess.run(
+                        [rscript_executable, "--vanilla", str(resolver_script)],
+                        text=True,
+                        capture_output=True,
+                        env=environment,
+                        check=False,
+                    )
+                    self.assertEqual(
+                        result.returncode,
+                        0,
+                        f"{resolver_name} ({cluster}) failed:\n{result.stderr}{result.stdout}",
+                    )
+                    self.assertIn(
+                        f"resolved\t{cluster}\trbiocverse_3.22.sif\t{runtime_library}",
+                        result.stdout,
+                    )
 
     def test_public_proof_redacts_cluster_identifiers(self):
         proof = (ROOT / ".github" / "landing-proof" / "issue-249" / "deployment-dry-run.txt").read_text()

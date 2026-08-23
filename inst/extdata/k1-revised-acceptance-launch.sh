@@ -66,6 +66,20 @@ export LANDSCAPER_PAYLOAD_VERIFIER_SHA256="$expected_payload_verifier_digest"
 export LANDSCAPER_ACCEPTANCE_RUN=true
 cd "$run_root"
 Rscript --vanilla -e '
+# A standard container may place its base site library ahead of the shared
+# hprcc/rbiocverse library.  Prepend the active environment-declared runtime
+# libraries before loading hprcc; the active environment owns these values.
+runtime_libraries <- unlist(lapply(
+    c(Sys.getenv("R_LIBS_SITE", unset = ""), Sys.getenv("R_LIBS_USER", unset = "")),
+    function(value) strsplit(value, .Platform$path.sep, fixed = TRUE)[[1L]]
+), use.names = FALSE)
+runtime_libraries <- unique(runtime_libraries[
+    nzchar(runtime_libraries) & dir.exists(runtime_libraries)
+])
+if (length(runtime_libraries)) {
+    .libPaths(unique(c(runtime_libraries, .libPaths())))
+}
+
 if (!requireNamespace("hprcc", quietly = TRUE)) {
     stop("active rbiocverse session does not provide hprcc")
 }

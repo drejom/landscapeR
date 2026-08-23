@@ -175,6 +175,20 @@ if (!nzchar(Sys.getenv("SLURM_JOB_ID")) || !nzchar(Sys.getenv("SINGULARITY_CONTA
     deployment_abort("remote preflight must run inside an active rbiocverse Slurm session")
 }
 
+# A standard container may place its base site library ahead of the shared
+# hprcc/rbiocverse library.  Prepend the active environment's declared runtime
+# libraries before loading hprcc; the environment still owns their values.
+runtime_libraries <- unlist(lapply(
+    c(Sys.getenv("R_LIBS_SITE", unset = ""), Sys.getenv("R_LIBS_USER", unset = "")),
+    function(value) strsplit(value, .Platform$path.sep, fixed = TRUE)[[1L]]
+), use.names = FALSE)
+runtime_libraries <- unique(runtime_libraries[
+    nzchar(runtime_libraries) & dir.exists(runtime_libraries)
+])
+if (length(runtime_libraries)) {
+    .libPaths(unique(c(runtime_libraries, .libPaths())))
+}
+
 if (!requireNamespace("hprcc", quietly = TRUE)) {
     deployment_abort("active Slurm session does not provide hprcc")
 }
