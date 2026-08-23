@@ -169,6 +169,11 @@ class DeploymentContractTest(unittest.TestCase):
         start = text.index(start_marker)
         end = text.index(end_marker, start)
         resolver = text[start:end]
+        self.assertLess(
+            text.index("runtime_libraries <-", 0, start),
+            start,
+            "the active runtime library must be prepended before hprcc loads",
+        )
 
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
