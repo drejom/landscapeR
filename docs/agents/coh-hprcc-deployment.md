@@ -69,6 +69,15 @@ identities, RNG streams, scientific inputs, thresholds, and results are
 unchanged. Remove the internal constructor call when hprcc's public API
 forwards the worker limit.
 
+The deployment preflight and tracked launcher use two hprcc resolver helpers
+that are not exported in hprcc 0.2.3: `singularity_container()` and
+`r_libs_site()`. This is a narrow compatibility seam, not a second cluster
+configuration. Both calls are made only after `hprcc::get_cluster()` succeeds,
+their returned container/library are checked against the reviewed version and
+filesystem, and the launcher test exercises the same handoff. Remove these
+namespace lookups when hprcc exposes equivalent public resolvers; do not
+replace them with cluster-specific paths.
+
 ## Tracked local deployment
 
 Use the repository's tracked deployer when the package has to cross from a
@@ -128,6 +137,7 @@ the controller command ad hoc:
 ```bash
 LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-merge-SHA-1> \
 LANDSCAPER_K1_RUNNER_MERGE=<reviewed-runner-merge-SHA-1> \
+BIOCONDUCTOR_VERSION=3.22 \
 LANDSCAPER_PAYLOAD_SHA256=<preflight-payload-SHA-256> \
 LANDSCAPER_PAYLOAD_VERIFIER=/path/to/shared/run/k1-revised-acceptance-payload-digest.sh \
 LANDSCAPER_PAYLOAD_VERIFIER_SHA256=<preflight-verifier-SHA-256> \

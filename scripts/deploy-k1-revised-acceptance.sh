@@ -198,6 +198,14 @@ if (!is.character(container_path) || length(container_path) != 1L ||
     !nzchar(container_path) || !file.exists(container_path)) {
     deployment_abort("hprcc-selected rbiocverse container is unavailable")
 }
+container_pattern <- paste0(
+    "^(rbiocverse|vscode-rbioc)_",
+    gsub("\\.", "\\\\.", bioconductor_version),
+    "\\.sif$"
+)
+if (!grepl(container_pattern, basename(container_path))) {
+    deployment_abort("hprcc-selected container does not match the reviewed Bioconductor version")
+}
 library_path <- tryCatch(
     getFromNamespace("r_libs_site", "hprcc")(),
     error = function(condition) {
@@ -208,6 +216,8 @@ if (!is.character(library_path) || length(library_path) != 1L ||
     !nzchar(library_path) || !dir.exists(library_path)) {
     deployment_abort("hprcc-selected shared R library is unavailable")
 }
+.libPaths(unique(c(library_path, .libPaths())))
+Sys.setenv(R_LIBS_USER = library_path)
 
 if (!dir.exists(run_root) &&
     !dir.create(run_root, recursive = TRUE, showWarnings = FALSE)) {

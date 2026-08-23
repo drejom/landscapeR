@@ -68,8 +68,11 @@ test_that("revised K=1 launch delegates deployment to rbiocverse", {
 
     expect_match(launch, "SLURM_JOB_ID", fixed = TRUE)
     expect_match(launch, "SINGULARITY_CONTAINER", fixed = TRUE)
+    expect_match(launch, "BIOCONDUCTOR_VERSION", fixed = TRUE)
+    expect_match(launch, "container_pattern", fixed = TRUE)
     expect_match(launch, "Rscript --vanilla", fixed = TRUE)
     expect_match(launch, 'requireNamespace("hprcc", quietly = TRUE)', fixed = TRUE)
+    expect_match(launch, 'getFromNamespace("r_libs_site", "hprcc")', fixed = TRUE)
     expect_match(
         launch,
         "targets::tar_make(use_crew = TRUE, callr_function = NULL)",

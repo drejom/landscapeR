@@ -2,8 +2,10 @@
 """Contract tests for the tracked cluster-neutral K=1 deployer."""
 
 import os
+import hashlib
 import pathlib
 import subprocess
+import tempfile
 import unittest
 
 
@@ -70,6 +72,88 @@ class DeploymentContractTest(unittest.TestCase):
             [str(SCRIPT), "--help"], cwd=ROOT, text=True, capture_output=True, check=True
         )
         self.assertIn("Without --submit", result.stdout)
+
+    def test_generated_handoff_enforces_session_and_launcher_boundary(self):
+        text = SCRIPT.read_text()
+        marker = 'cat > "$bundle_root/remote-preflight.R" <<\'REMOTE_R\'\n'
+        self.assertIn(marker, text, "the deployer must embed its reviewed preflight")
+        start = text.index(marker) + len(marker)
+        end = text.index("\nREMOTE_R\n", start)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            preflight = root / "remote-preflight.R"
+            preflight.write_text(text[start:end])
+            valid_args = [
+                "source.tar.gz",
+                str(root / "run"),
+                "a" * 40,
+                "b" * 40,
+                "c" * 40,
+                "3.22",
+                "d" * 64,
+                "e" * 64,
+                "false",
+            ]
+            environment = os.environ.copy()
+            environment.pop("SLURM_JOB_ID", None)
+            environment.pop("SINGULARITY_CONTAINER", None)
+            preflight_result = subprocess.run(
+                ["Rscript", "--vanilla", str(preflight), *valid_args],
+                text=True,
+                capture_output=True,
+                env=environment,
+                check=False,
+            )
+            self.assertNotEqual(preflight_result.returncode, 0)
+            self.assertIn(
+                "active rbiocverse Slurm session",
+                preflight_result.stderr + preflight_result.stdout,
+            )
+
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            invocation = root / "rscript-invocation.txt"
+            fake_rscript = fake_bin / "Rscript"
+            fake_rscript.write_text(
+                "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$FAKE_RSCRIPT_LOG\"\n"
+            )
+            fake_rscript.chmod(0o755)
+            payload = root / "payload.sh"
+            payload.write_text("#!/bin/sh\nexit 0\n")
+            payload.chmod(0o755)
+            sif = root / "rbiocverse_3.22.sif"
+            sif.touch()
+            launcher = ROOT / "inst" / "extdata" / "k1-revised-acceptance-launch.sh"
+            launcher_environment = os.environ.copy()
+            launcher_environment.update(
+                {
+                    "PATH": f"{fake_bin}{os.pathsep}{launcher_environment['PATH']}",
+                    "FAKE_RSCRIPT_LOG": str(invocation),
+                    "SLURM_JOB_ID": "12345",
+                    "SINGULARITY_CONTAINER": str(sif),
+                    "BIOCONDUCTOR_VERSION": "3.22",
+                    "LANDSCAPER_K1_PROTOCOL_MERGE": "b" * 40,
+                    "LANDSCAPER_K1_RUNNER_MERGE": "c" * 40,
+                    "LANDSCAPER_PAYLOAD_SHA256": "a" * 64,
+                    "LANDSCAPER_PAYLOAD_VERIFIER": str(payload),
+                    "LANDSCAPER_PAYLOAD_VERIFIER_SHA256": hashlib.sha256(
+                        payload.read_bytes()
+                    ).hexdigest(),
+                    "LANDSCAPER_RUN_ROOT": str(root),
+                }
+            )
+            launcher_result = subprocess.run(
+                ["bash", str(launcher)],
+                text=True,
+                capture_output=True,
+                env=launcher_environment,
+                check=False,
+            )
+            self.assertEqual(launcher_result.returncode, 0, launcher_result.stderr)
+            invocation_text = invocation.read_text()
+            self.assertIn("--vanilla", invocation_text)
+            self.assertIn("targets::tar_make", invocation_text)
+            self.assertIn('getFromNamespace("r_libs_site", "hprcc")', invocation_text)
 
     def test_public_proof_redacts_cluster_identifiers(self):
         proof = (ROOT / ".github" / "landing-proof" / "issue-249" / "deployment-dry-run.txt").read_text()

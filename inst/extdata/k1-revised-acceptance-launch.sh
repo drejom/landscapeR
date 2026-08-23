@@ -8,6 +8,7 @@ set -euo pipefail
 
 : "${SLURM_JOB_ID:?run the tracked launcher from an active Slurm session}"
 : "${SINGULARITY_CONTAINER:?run the tracked launcher from a standard rbiocverse session}"
+: "${BIOCONDUCTOR_VERSION:?set the reviewed Bioconductor version in the active session}"
 : "${LANDSCAPER_K1_PROTOCOL_MERGE:?set the reviewed protocol revision}"
 : "${LANDSCAPER_K1_RUNNER_MERGE:?set the reviewed runner revision}"
 : "${LANDSCAPER_PAYLOAD_SHA256:?set the preflight payload identity}"
@@ -23,6 +24,16 @@ command -v Rscript >/dev/null 2>&1 || {
 }
 [[ -f "$SINGULARITY_CONTAINER" ]] || {
     printf 'the active rbiocverse container is unavailable\n' >&2
+    exit 2
+}
+[[ "$BIOCONDUCTOR_VERSION" =~ ^[0-9]+\.[0-9]+$ ]] || {
+    printf 'the active Bioconductor version is invalid\n' >&2
+    exit 2
+}
+container_name=$(basename -- "$SINGULARITY_CONTAINER")
+container_pattern="^(rbiocverse|vscode-rbioc)_${BIOCONDUCTOR_VERSION//./\\.}\.sif$"
+[[ "$container_name" =~ $container_pattern ]] || {
+    printf 'the active rbiocverse container does not match the reviewed Bioconductor version\n' >&2
     exit 2
 }
 
@@ -58,6 +69,12 @@ Rscript --vanilla -e '
 if (!requireNamespace("hprcc", quietly = TRUE)) {
     stop("active rbiocverse session does not provide hprcc")
 }
+library_path <- getFromNamespace("r_libs_site", "hprcc")()
+if (!is.character(library_path) || length(library_path) != 1L ||
+    !nzchar(library_path) || !dir.exists(library_path)) {
+    stop("hprcc-selected shared R library is unavailable")
+}
+.libPaths(unique(c(library_path, .libPaths())))
 expected <- Sys.getenv("LANDSCAPER_PAYLOAD_SHA256")
 verifier <- Sys.getenv("LANDSCAPER_PAYLOAD_VERIFIER")
 package_root <- system.file(package = "landscapeR")
