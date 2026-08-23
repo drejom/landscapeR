@@ -2,9 +2,9 @@
 
 # Transfer and prepare the reviewed revised K=1 acceptance run on a supported
 # cluster. The same entrypoint is used for both supported clusters: the caller
-# supplies an SSH host alias and the cluster's rbiocverse configuration, while
-# rbiocverse and hprcc resolve paths, images, libraries, partitions, and
-# controllers on the remote system.
+# supplies an SSH host alias and a cluster-visible run root. The staged
+# preflight runs from an active hprcc/rbiocverse Slurm session, where
+# hprcc/rbiocverse resolve paths, images, libraries, partitions, and controllers.
 
 set -euo pipefail
 
@@ -13,12 +13,14 @@ usage() {
 Usage:
   scripts/deploy-k1-revised-acceptance.sh \
     --remote-host HOST \
-    --remote-config /path/to/rbiocverse/cluster-config.sh \
     --remote-run-root /shared/run/root \
     [--source-revision SHA] [--protocol-merge SHA] [--runner-merge SHA] \
     [--bioconductor-version VERSION] [--submit] [--dry-run]
 
-Without --submit the remote preflight installs and verifies the package and
+The deployer stages the reviewed bundle over SCP/SSH. Run the printed
+preflight command from an active hprcc/rbiocverse Slurm session; hprcc then
+resolves the cluster, library, container, bind, partition, and controller
+details. Without --submit the preflight installs and verifies the package and
 stages the tracked run files, but does not submit acceptance rows. --dry-run
 builds the local bundle and prints the SCP/SSH contract without contacting the
 remote host.
@@ -41,7 +43,6 @@ sha256_file() {
 }
 
 remote_host=${LANDSCAPER_REMOTE_HOST:-}
-remote_config=${RBIOCVERSE_CONFIG_REMOTE:-}
 remote_run_root=${LANDSCAPER_RUN_ROOT:-}
 source_revision=${LANDSCAPER_SOURCE_REVISION:-}
 protocol_merge=${LANDSCAPER_K1_PROTOCOL_MERGE:-}
@@ -53,7 +54,6 @@ dry_run=false
 while (($#)); do
     case "$1" in
         --remote-host) remote_host=${2:?missing value for --remote-host}; shift 2 ;;
-        --remote-config) remote_config=${2:?missing value for --remote-config}; shift 2 ;;
         --remote-run-root) remote_run_root=${2:?missing value for --remote-run-root}; shift 2 ;;
         --source-revision) source_revision=${2:?missing value for --source-revision}; shift 2 ;;
         --protocol-merge) protocol_merge=${2:?missing value for --protocol-merge}; shift 2 ;;
@@ -67,11 +67,8 @@ while (($#)); do
 done
 
 [[ -n "$remote_host" ]] || die "--remote-host is required"
-[[ -n "$remote_config" ]] || die "--remote-config is required"
 [[ -n "$remote_run_root" ]] || die "--remote-run-root is required"
 [[ "$remote_host" =~ ^[A-Za-z0-9._@:-]+$ ]] || die "--remote-host contains unsafe shell characters"
-[[ "$remote_config" = /* && "$remote_config" =~ ^/[A-Za-z0-9._/-]+$ ]] || \
-    die "--remote-config must be an absolute path with safe characters"
 [[ "$remote_run_root" = /* ]] || die "--remote-run-root must be an absolute remote path"
 [[ "$remote_run_root" =~ ^/[A-Za-z0-9._/-]+$ ]] || \
     die "--remote-run-root contains unsafe shell characters"
@@ -155,7 +152,7 @@ deployment_abort <- function(message, cause = NULL) {
         class = c("landscapeR_deployment_error", "error", "condition")
     ))
 }
-if (length(args) != 10L) deployment_abort("remote preflight received the wrong arguments")
+if (length(args) != 9L) deployment_abort("remote preflight received the wrong arguments")
 
 tryCatch({
 
@@ -164,16 +161,52 @@ run_root <- args[[2L]]
 source_revision <- args[[3L]]
 protocol_merge <- args[[4L]]
 runner_merge <- args[[5L]]
-library_path <- args[[6L]]
-bioconductor_version <- args[[7L]]
-source_archive_sha256 <- args[[8L]]
-payload_verifier_sha256 <- args[[9L]]
-submit <- identical(args[[10L]], "true")
+bioconductor_version <- args[[6L]]
+source_archive_sha256 <- args[[7L]]
+payload_verifier_sha256 <- args[[8L]]
+submit <- identical(args[[9L]], "true")
 if (!grepl("^[0-9a-f]{64}$", source_archive_sha256)) {
     deployment_abort("remote preflight received an invalid source archive digest")
 }
 if (!grepl("^[0-9a-f]{64}$", payload_verifier_sha256)) {
     deployment_abort("remote preflight received an invalid payload verifier digest")
+}
+if (!nzchar(Sys.getenv("SLURM_JOB_ID")) || !nzchar(Sys.getenv("SINGULARITY_CONTAINER"))) {
+    deployment_abort("remote preflight must run inside an active rbiocverse Slurm session")
+}
+
+if (!requireNamespace("hprcc", quietly = TRUE)) {
+    deployment_abort("active Slurm session does not provide hprcc")
+}
+cluster <- tryCatch(
+    hprcc::get_cluster(),
+    error = function(condition) {
+        deployment_abort("hprcc could not identify the active cluster", condition)
+    }
+)
+if (!identical(cluster, "apollo") && !identical(cluster, "gemini")) {
+    deployment_abort("hprcc identified an unsupported active cluster")
+}
+Sys.setenv(BIOCONDUCTOR_VERSION = bioconductor_version)
+container_path <- tryCatch(
+    getFromNamespace("singularity_container", "hprcc")(),
+    error = function(condition) {
+        deployment_abort("hprcc could not resolve the active rbiocverse container", condition)
+    }
+)
+if (!is.character(container_path) || length(container_path) != 1L ||
+    !nzchar(container_path) || !file.exists(container_path)) {
+    deployment_abort("hprcc-selected rbiocverse container is unavailable")
+}
+library_path <- tryCatch(
+    getFromNamespace("r_libs_site", "hprcc")(),
+    error = function(condition) {
+        deployment_abort("hprcc could not resolve the shared R library", condition)
+    }
+)
+if (!is.character(library_path) || length(library_path) != 1L ||
+    !nzchar(library_path) || !dir.exists(library_path)) {
+    deployment_abort("hprcc-selected shared R library is unavailable")
 }
 
 if (!dir.exists(run_root) &&
@@ -238,7 +271,7 @@ if (file.exists(preflight_path)) {
         )
     }
 }
-if (!dir.exists(library_path)) deployment_abort("configured shared R library is unavailable")
+if (!dir.exists(library_path)) deployment_abort("hprcc-selected shared R library is unavailable")
 source_parent <- file.path(run_root, "landscapeR-source")
 if (dir.exists(source_parent)) unlink(source_parent, recursive = TRUE, force = TRUE)
 if (!dir.create(source_parent, recursive = TRUE, showWarnings = FALSE)) {
@@ -265,14 +298,14 @@ if (!requireNamespace("pak", quietly = TRUE)) {
         ),
         error = function(condition) {
             deployment_abort(
-                paste0("could not bootstrap pak in the configured shared library: ",
+                    paste0("could not bootstrap pak in the hprcc-selected shared library: ",
                        conditionMessage(condition)), condition
             )
         }
     )
 }
 if (!requireNamespace("pak", quietly = TRUE)) {
-    deployment_abort("pak is unavailable after bootstrap in the configured shared library")
+    deployment_abort("pak is unavailable after bootstrap in the hprcc-selected shared library")
 }
 pak::pkg_install(
     c("targets@1.12.0", "crew@1.3.2", "crew.cluster@0.4.0",
@@ -510,7 +543,7 @@ printf '  submission:       %s\n' "$submit"
 if "$dry_run"; then
     printf 'DRY RUN: would create %s/.landscapeR-incoming\n' "$remote_run_root"
     printf 'DRY RUN: scp archive, manifest, and preflight to %s:%s/.landscapeR-incoming/\n' "$remote_host" "$remote_run_root"
-    printf 'DRY RUN: ssh %s to run rbiocverse preflight and the tracked Slurm launcher\n' "$remote_host"
+    printf 'DRY RUN: run the printed preflight command from an active hprcc/rbiocverse Slurm session\n'
     exit 0
 fi
 
@@ -526,30 +559,19 @@ scp -q "$bundle_root/landscapeR-source.tar.gz" \
     "$remote_host:$remote_run_root/.landscapeR-incoming/"
 
 ssh "$remote_host" bash -s -- \
-    "$remote_run_root" "$remote_config" "$source_revision" "$protocol_merge" \
-    "$runner_merge" "$bioconductor_version" "$source_sha256" \
-    "$payload_verifier_sha256" "$preflight_sha256" "$submit" <<'REMOTE_RUN'
+    "$remote_run_root" "$source_revision" "$protocol_merge" "$runner_merge" \
+    "$bioconductor_version" "$source_sha256" "$payload_verifier_sha256" \
+    "$preflight_sha256" "$submit" <<'REMOTE_RUN'
 set -euo pipefail
 run_root=$1
-cluster_config=$2
-source_revision=$3
-protocol_merge=$4
-runner_merge=$5
-bioconductor_version=$6
-trusted_source_sha=$7
-trusted_payload_verifier_sha=$8
-trusted_preflight_sha=$9
-submit=${10}
-
-source "$cluster_config"
-cluster=$(validate_cluster)
-library_path=$(get_library_path "$cluster" "$bioconductor_version")
-container_path=$(get_container_path "$cluster" "$bioconductor_version")
-[[ -d "$library_path" ]] || { echo "configured shared library is unavailable" >&2; exit 1; }
-[[ -f "$container_path" ]] || { echo "configured rbiocverse container is unavailable" >&2; exit 1; }
-load_singularity "$cluster"
-export RBIOCVERSE_CONFIG="$cluster_config"
-export R_LIBS_USER="$library_path"
+source_revision=$2
+protocol_merge=$3
+runner_merge=$4
+bioconductor_version=$5
+trusted_source_sha=$6
+trusted_payload_verifier_sha=$7
+trusted_preflight_sha=$8
+submit=$9
 
 incoming="$run_root/.landscapeR-incoming"
 manifest="$incoming/deployment-manifest.tsv"
@@ -614,17 +636,10 @@ for pair in \
         exit 1
     }
 done
-preflight=$(printf '%q' "$incoming/remote-preflight.R")
-archive=$(printf '%q' "$incoming/landscapeR-source.tar.gz")
-run_root_q=$(printf '%q' "$run_root")
-source_q=$(printf '%q' "$source_revision")
-protocol_q=$(printf '%q' "$protocol_merge")
-runner_q=$(printf '%q' "$runner_merge")
-library_q=$(printf '%q' "$library_path")
-bioc_q=$(printf '%q' "$bioconductor_version")
-archive_sha_q=$(printf '%q' "$trusted_source_sha")
-payload_verifier_sha_q=$(printf '%q' "$trusted_payload_verifier_sha")
-submit_q=$(printf '%q' "$submit")
-run_in_container "$bioconductor_version" \
-    "Rscript --vanilla $preflight $archive $run_root_q $source_q $protocol_q $runner_q $library_q $bioc_q $archive_sha_q $payload_verifier_sha_q $submit_q"
+printf 'REMOTE PREFLIGHT: run from an active hprcc/rbiocverse Slurm session:\n'
+printf '  cd %q && Rscript --vanilla %q %q %q %q %q %q %q %q %q %q\n' \
+    "$run_root" "$incoming/remote-preflight.R" \
+    "$incoming/landscapeR-source.tar.gz" "$run_root" "$source_revision" \
+    "$protocol_merge" "$runner_merge" "$bioconductor_version" \
+    "$trusted_source_sha" "$trusted_payload_verifier_sha" "$submit"
 REMOTE_RUN

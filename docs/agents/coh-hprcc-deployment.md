@@ -73,10 +73,11 @@ forwards the worker limit.
 
 Use the repository's tracked deployer when the package has to cross from a
 local checkout to a supported cluster. It packages the reviewed source
-revision, transfers the bundle with `scp`, and runs a quoted remote preflight
-through `ssh`. The same command works with either SSH alias; the supplied
-rbiocverse configuration and hprcc installation own all cluster-specific paths
-and resource choices.
+revision, transfers the bundle with `scp`, and verifies the transfer through
+`ssh`. The same command works with either SSH alias. It does not accept or
+source a cluster configuration file: the staged preflight is run from an
+active standard hprcc/rbiocverse Slurm session, and hprcc owns all
+cluster-specific paths and resource choices.
 
 The default is prepare-only: it installs and independently verifies the
 revision and stages the run files without submitting acceptance rows. Add
@@ -84,7 +85,7 @@ revision and stages the run files without submitting acceptance rows. Add
 also fails closed unless the supplied source/protocol revisions are already
 ancestors of the local `origin/main`, and a run root that records a prior
 submission cannot be submitted again by accident.
-The preflight bootstraps `pak` only when the configured shared library does not
+The preflight bootstraps `pak` only when the hprcc-selected shared library does not
 already provide it, then uses `pak` for the declared targets/crew/hprcc stack
 and the local landscapeR archive.
 It also compares the installed package payload with a fresh installation from
@@ -98,36 +99,33 @@ checks on every worker.
 ```bash
 scripts/deploy-k1-revised-acceptance.sh \
   --remote-host <cluster-ssh-alias> \
-  --remote-config /path/to/rbiocverse/container/scripts/cluster-config.sh \
   --remote-run-root /path/to/shared/landscapeR/k1-revised-acceptance \
   --source-revision <reviewed-source-sha> \
   --protocol-merge <reviewed-protocol-merge-sha> \
   --runner-merge <reviewed-runner-merge-sha>
 ```
 
-Run the same command with `--dry-run` to inspect the transfer and launch
-contract without contacting the cluster. The deployer never records host
-details or credentials in the package, and it never runs the target graph on a
-login node. It hands the staged files to the tracked Slurm launcher, which
-enters the standard rbiocverse container before calling `targets::tar_make()`.
+Run the same command with `--dry-run` to inspect the transfer and handoff
+contract without contacting the cluster. After a real staging run, execute the
+printed `Rscript --vanilla remote-preflight.R ...` command from the active
+standard session. With `--submit`, that preflight invokes the tracked launcher
+in that session; without it, the preflight only installs, verifies, and stages
+the run files. The deployer never records host details or credentials in the
+package, and it never runs the target graph on a login node.
 
 
 ## Launch revised acceptance
 
 Only after the protocol and runner revisions are reviewed, merged, and
-installed, copy the installed cluster-neutral profile into a dedicated shared
-run directory as `_targets.R`, and copy
-`k1-revised-acceptance-launch.sh` beside it. Supply the reviewed upstream
-rbiocverse `container/scripts/cluster-config.sh`, both reviewed revisions, and
-the run directory through the declared environment variables. The preflight
-must have left the verifier and the two digest records beside the launcher.
-Those records are audit output; the launcher accepts the reviewed values from
-the preflight environment rather than treating mutable run-root sidecars as
-authority. Invoke the tracked launcher rather than reconstructing the
-controller command ad hoc:
+installed, run the staged preflight from a standard hprcc/rbiocverse Slurm
+session. The preflight copies the installed cluster-neutral profile into the
+dedicated shared run directory as `_targets.R` and places
+`k1-revised-acceptance-launch.sh` beside it. The launcher accepts the reviewed
+values from the preflight environment rather than treating mutable run-root
+sidecars as authority. Invoke the tracked launcher rather than reconstructing
+the controller command ad hoc:
 
 ```bash
-RBIOCVERSE_CONFIG=/path/to/rbiocverse/container/scripts/cluster-config.sh \
 LANDSCAPER_K1_PROTOCOL_MERGE=<reviewed-protocol-merge-SHA-1> \
 LANDSCAPER_K1_RUNNER_MERGE=<reviewed-runner-merge-SHA-1> \
 LANDSCAPER_PAYLOAD_SHA256=<preflight-payload-SHA-256> \
@@ -137,10 +135,10 @@ LANDSCAPER_RUN_ROOT=/path/to/shared/run \
 bash /path/to/k1-revised-acceptance-launch.sh
 ```
 
-The launcher submits `tar_make()` as a Slurm job and enters the rbiocverse
-container there; it never runs the controller on a login node. The active
-profile declares only the measured workload size and bounded concurrency. The
-installed `hprcc` configuration owns worker infrastructure and submission.
+The launcher requires the active Slurm job and rbiocverse session markers,
+then calls `Rscript --vanilla` directly. hprcc owns worker infrastructure and
+submission through the active targets resources; the launcher does not create
+a partition, container, bind, or controller configuration of its own.
 
 ## Monitor and verify
 

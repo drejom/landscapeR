@@ -54,6 +54,8 @@ test_that("revised K=1 launch delegates deployment to rbiocverse", {
 
     forbidden <- c(
         "/opt/", "/packages/", "/labs/", "/scratch/",
+        "cluster-config.sh", "RBIOCVERSE_CONFIG", "get_slurm_partition",
+        "load_singularity", "run_in_container", "sbatch",
         "rbiocverse_3.22.sif", "bioc-3.22", "partition=all",
         "partition=compute"
     )
@@ -64,11 +66,10 @@ test_that("revised K=1 launch delegates deployment to rbiocverse", {
         )
     }
 
-    expect_match(launch, 'source "$RBIOCVERSE_CONFIG"', fixed = TRUE)
-    expect_match(launch, "cluster=$(validate_cluster)", fixed = TRUE)
-    expect_match(launch, 'get_slurm_partition "$cluster"', fixed = TRUE)
-    expect_match(launch, 'load_singularity "$cluster"', fixed = TRUE)
-    expect_match(launch, "run_in_container", fixed = TRUE)
+    expect_match(launch, "SLURM_JOB_ID", fixed = TRUE)
+    expect_match(launch, "SINGULARITY_CONTAINER", fixed = TRUE)
+    expect_match(launch, "Rscript --vanilla", fixed = TRUE)
+    expect_match(launch, 'requireNamespace("hprcc", quietly = TRUE)', fixed = TRUE)
     expect_match(
         launch,
         "targets::tar_make(use_crew = TRUE, callr_function = NULL)",

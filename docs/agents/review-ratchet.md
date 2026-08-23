@@ -81,6 +81,9 @@ inner-sequential path under an ambient backend, and test private worker entry
 points from an installed package. Track the complete HPC launcher and measure
 worker reuse; nominal pool size can hide scheduler churn or ad hoc deployment.
 **Incident:** issue #135 found hidden nested futures; issue #212 lost a private fitter on multisession; issue #193 recycled every worker after eight tasks.
+Cluster-neutral launchers must use active hprcc/rbiocverse defaults from their
+Slurm session, not a second shell path/configuration map. **Incident:** issue
+#251 found the deployer requiring an invented `cluster-config.sh` contract.
 ### RR-011 — Keep backend-dependent measurements out of scientific decisions
 Runtime and resource measurements may be retained for operational diagnostics,
 but they must not affect candidate selection or the scientific evidence digest
@@ -138,13 +141,10 @@ A reviewer is not an oracle. Treat every finding as a claim to investigate; a wr
 fix is worse than a declined comment. If a finding is wrong, say so with evidence.
 Tests, bots, documentation, and this Ratchet are evidence, not oracles; when they
 disagree with observable repository state, investigate.
-
 ## Maintenance duties
-Every agent that reads or benefits from this document owes these duties in the same triggering change:
+Every agent that reads or benefits from this document owes these duties in the triggering change:
 - **Add:** record a new defect class only with a durable incident; reject speculation.
 - **Correct:** fix or remove obsolete or misleading entries and record the correction in the commit.
 - **Deduplicate:** search first; consolidate overlapping formulations.
 - **Graduate:** move mechanical rules into deterministic enforcement and recurring decisions into ADRs; delete detailed prose once no judgement remains.
-- **Report:** select one PR disposition and give a substantive rationale. At a
-  stopping point after closure or merge, report the completed issue/PR number and
-  summary, the next roadmap issue number/title, and the work that follows.
+- **Report:** select one PR disposition and give a substantive rationale. At a stopping point, report the completed issue/PR and summary, next roadmap issue/title, and following work.

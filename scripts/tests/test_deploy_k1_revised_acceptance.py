@@ -14,10 +14,10 @@ SCRIPT = ROOT / "scripts" / "deploy-k1-revised-acceptance.sh"
 class DeploymentContractTest(unittest.TestCase):
     def test_script_uses_cluster_owned_runtime_contract(self):
         text = SCRIPT.read_text()
-        for required in ("scp", "ssh", "validate_cluster", "get_library_path", "get_container_path", "run_in_container", "pak::pkg_install", "pak::local_install", "BIOCONDUCTOR_VERSION", "merge-base", "k1-revised-acceptance-payload-digest.sh", "payload_verifier_sha256", "preflight_sha256", "trusted_source_sha", "trusted_payload_verifier_sha", "trusted_preflight_sha", "preflight_lock", "write_record", '"-l", reference_library'):
+        for required in ("scp", "ssh", "hprcc::get_cluster", 'getFromNamespace("singularity_container", "hprcc")', 'getFromNamespace("r_libs_site", "hprcc")', "pak::pkg_install", "pak::local_install", "BIOCONDUCTOR_VERSION", "merge-base", "k1-revised-acceptance-payload-digest.sh", "payload_verifier_sha256", "preflight_sha256", "trusted_source_sha", "trusted_payload_verifier_sha", "trusted_preflight_sha", "preflight_lock", "write_record", '"-l", reference_library', "REMOTE PREFLIGHT"):
             self.assertIn(required, text)
-        for forbidden in ("/packages/", "/opt/singularity", "controller_constructor"):
-            self.assertNotIn(forbidden, text.lower())
+        for forbidden in ("/packages/", "/opt/singularity", "cluster-config.sh", "rbiocverse_config", "remote-config", "validate_cluster", "get_library_path", "get_container_path", "run_in_container", "controller_constructor"):
+            self.assertNotIn(forbidden.lower(), text.lower())
 
     def test_dry_run_is_reproducible_and_does_not_contact_remote(self):
         if subprocess.check_output(
@@ -33,7 +33,6 @@ class DeploymentContractTest(unittest.TestCase):
                 [
                     str(SCRIPT),
                     "--remote-host", host,
-                    "--remote-config", "/path/to/rbiocverse/cluster-config.sh",
                     "--remote-run-root", "/shared/landscapeR/k1-revised-acceptance",
                     "--source-revision", source,
                     "--protocol-merge", protocol,
@@ -47,7 +46,7 @@ class DeploymentContractTest(unittest.TestCase):
                 env={**os.environ, "LANDSCAPER_DEPLOY_SCRATCH": str(ROOT / ".scratch")},
             )
             self.assertIn("DRY RUN: scp archive", result.stdout)
-            self.assertIn(f"DRY RUN: ssh {host}", result.stdout)
+            self.assertIn("active hprcc/rbiocverse Slurm session", result.stdout)
             self.assertNotIn("landscapeR-source.tar.gz", result.stderr)
             archive_hashes.append(
                 next(
