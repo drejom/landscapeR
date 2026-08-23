@@ -1,0 +1,13 @@
+field	value
+source_revision	0c72a7986402eb902f651b18489e5e407f2044f4
+protocol_merge	f668e1e0f49f66b8bd8c244ca6fb667a9b39d896
+runner_merge	0c72a7986402eb902f651b18489e5e407f2044f4
+bioconductor_version	3.22
+source_archive_sha256	dffe786c086eac73e398243f53528b0df9b3f5a10ca41089f25bfbee4c16ec75
+payload_verifier_sha256	41e2f983404e0c16fd6165d01bc0ad568d4fc303280fed8314093c06c45ded24
+preflight_sha256	609590212686df5b52570aa00af5d623530f8d26880b952058fe0514fe667c31
+workflow	tracked local package -> scp -> ssh verification -> active hprcc/rbiocverse preflight -> tracked launcher
+cluster_contract	one deployer; hprcc/rbiocverse own runtime defaults
+session_boundary	preflight and launcher require active Slurm and rbiocverse markers
+submission_boundary	prepare-only by default; --submit is explicit
+scientific_claim	implementation proof only; no acceptance result is claimed

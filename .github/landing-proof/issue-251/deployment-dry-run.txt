@@ -1,0 +1,17 @@
+Prepared reviewed deployment bundle
+  source revision: 0c72a7986402eb902f651b18489e5e407f2044f4
+  protocol merge:  f668e1e0f49f66b8bd8c244ca6fb667a9b39d896
+  runner merge:    0c72a7986402eb902f651b18489e5e407f2044f4
+  archive SHA-256:  dffe786c086eac73e398243f53528b0df9b3f5a10ca41089f25bfbee4c16ec75
+  preflight SHA-256: 609590212686df5b52570aa00af5d623530f8d26880b952058fe0514fe667c31
+  remote host:      <cluster-ssh-alias>
+  remote run root:  <shared-run-root>
+  submission:       false
+DRY RUN: would create <shared-run-root>/.landscapeR-incoming
+DRY RUN: scp archive, manifest, and preflight to <cluster-ssh-alias>:<shared-run-root>/.landscapeR-incoming/
+DRY RUN: run the printed preflight command from an active hprcc/rbiocverse Slurm session
+
+The same archive and preflight hashes were obtained for a second caller-supplied
+cluster alias. Hostnames, shared paths, and credentials are intentionally absent
+from this public proof. The preflight is not run on a login node: the printed
+command is evaluated only from an active hprcc/rbiocverse Slurm session.

@@ -161,6 +161,18 @@ class DeploymentContractTest(unittest.TestCase):
         self.assertNotIn("gemini", proof.lower())
         self.assertNotIn("/shared/", proof)
 
+    def test_issue_251_proof_records_the_hprcc_handoff(self):
+        proof_root = ROOT / ".github" / "landing-proof" / "issue-251"
+        proof = (proof_root / "deployment-dry-run.txt").read_text()
+        manifest = (proof_root / "deployment-manifest.tsv").read_text()
+        self.assertIn("active hprcc/rbiocverse Slurm session", proof)
+        self.assertIn("hprcc/rbiocverse own runtime defaults", manifest)
+        self.assertIn("session_boundary", manifest)
+        self.assertNotIn("cluster-a", proof)
+        self.assertNotIn("cluster-b", proof)
+        self.assertNotIn("cluster-config.sh", proof + manifest)
+        self.assertNotIn("/shared/", proof)
+
 
 if __name__ == "__main__":
     unittest.main()
