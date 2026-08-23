@@ -21,7 +21,7 @@ test_that("revised K=1 execution delegates cluster infrastructure to hprcc", {
     expect_match(profile, 'Sys.getenv\\("SINGULARITY_CONTAINER"')
     expect_match(
         profile,
-        '"^rbiocverse_[0-9]+\\\\.[0-9]+\\\\.sif$"',
+        '"^(rbiocverse|vscode-rbioc)_[0-9]+\\\\.[0-9]+\\\\.sif$"',
         fixed = TRUE
     )
     expect_match(profile, "hprcc.singularity_container = active_container")

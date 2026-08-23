@@ -57,7 +57,7 @@ Sys.setenv(
 active_container <- Sys.getenv("SINGULARITY_CONTAINER")
 if (!nzchar(active_container) ||
         !grepl(
-            "^rbiocverse_[0-9]+\\.[0-9]+\\.sif$",
+            "^(rbiocverse|vscode-rbioc)_[0-9]+\\.[0-9]+\\.sif$",
             basename(active_container)
         ) ||
         !file.exists(active_container)) {
