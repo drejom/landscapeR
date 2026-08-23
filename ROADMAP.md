@@ -747,7 +747,6 @@ bodies may state dependencies but do not change this ordering.
 | [#245](https://github.com/drejom/landscapeR/issues/245) | Interpretation visual standards — semantic palette contract | complete on merge; human decision settled; visual-governance gate before #193 |
 | [#249](https://github.com/drejom/landscapeR/issues/249) | Maintenance — cluster-neutral revised K=1 acceptance deployment | complete on merge; enables #193 without changing its scientific next-task status |
 | [#251](https://github.com/drejom/landscapeR/issues/251) | Maintenance — use hprcc defaults directly in revised K=1 deployment | complete on merge; corrects #249's configuration boundary and remains operational only; #193 is still next |
-| [#253](https://github.com/drejom/landscapeR/issues/253) | Maintenance — prepend active hprcc libraries before preflight | active; discovered before #193 execution; merge before resuming the reviewed run |
 | [#239](https://github.com/drejom/landscapeR/issues/239) | Maintenance — reduce PR CI latency without weakening merge gates | queued; standalone maintenance lane |
 | [#242](https://github.com/drejom/landscapeR/issues/242) | Maintenance — retry transient setup-r resolver failures | complete on merge; standalone CI reliability fix; does not reorder #232 |
 <!-- issue-map:end -->
