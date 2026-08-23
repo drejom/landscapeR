@@ -4,6 +4,7 @@
 import os
 import hashlib
 import pathlib
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -74,6 +75,8 @@ class DeploymentContractTest(unittest.TestCase):
         self.assertIn("Without --submit", result.stdout)
 
     def test_generated_handoff_enforces_session_and_launcher_boundary(self):
+        if shutil.which("Rscript") is None:
+            self.skipTest("Rscript is required for the embedded preflight test")
         text = SCRIPT.read_text()
         marker = 'cat > "$bundle_root/remote-preflight.R" <<\'REMOTE_R\'\n'
         self.assertIn(marker, text, "the deployer must embed its reviewed preflight")
@@ -156,6 +159,10 @@ class DeploymentContractTest(unittest.TestCase):
             self.assertIn('getFromNamespace("r_libs_site", "hprcc")', invocation_text)
 
     def test_hprcc_resolver_accepts_each_supported_cluster(self):
+        r_executable = shutil.which("R")
+        rscript_executable = shutil.which("Rscript")
+        if r_executable is None or rscript_executable is None:
+            self.skipTest("R and Rscript are required for the hprcc resolver test")
         text = SCRIPT.read_text()
         start_marker = 'if (!requireNamespace("hprcc", quietly = TRUE)) {'
         end_marker = "\nif (!dir.exists(run_root)"
@@ -187,9 +194,7 @@ class DeploymentContractTest(unittest.TestCase):
             package_library.mkdir()
             install = subprocess.run(
                 [
-                    os.path.join(os.environ.get("R_HOME", ""), "bin", "R")
-                    if os.environ.get("R_HOME")
-                    else "R",
+                    r_executable,
                     "CMD",
                     "INSTALL",
                     "-l",
@@ -226,7 +231,7 @@ class DeploymentContractTest(unittest.TestCase):
                     }
                 )
                 result = subprocess.run(
-                    ["Rscript", "--vanilla", str(resolver_script)],
+                    [rscript_executable, "--vanilla", str(resolver_script)],
                     text=True,
                     capture_output=True,
                     env=environment,
