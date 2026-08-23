@@ -155,6 +155,89 @@ class DeploymentContractTest(unittest.TestCase):
             self.assertIn("targets::tar_make", invocation_text)
             self.assertIn('getFromNamespace("r_libs_site", "hprcc")', invocation_text)
 
+    def test_hprcc_resolver_accepts_each_supported_cluster(self):
+        text = SCRIPT.read_text()
+        start_marker = 'if (!requireNamespace("hprcc", quietly = TRUE)) {'
+        end_marker = "\nif (!dir.exists(run_root)"
+        start = text.index(start_marker)
+        end = text.index(end_marker, start)
+        resolver = text[start:end]
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            package_source = root / "hprcc"
+            (package_source / "R").mkdir(parents=True)
+            (package_source / "DESCRIPTION").write_text(
+                "Package: hprcc\n"
+                "Type: Package\n"
+                "Title: Deployment resolver test double\n"
+                "Version: 0.0.1\n"
+                "Authors@R: person('Test', 'Harness', email = 'test@example.org', role = c('aut', 'cre'))\n"
+                "Description: Test-only hprcc runtime resolver.\n"
+                "License: MIT\n"
+                "Encoding: UTF-8\n"
+            )
+            (package_source / "NAMESPACE").write_text("export(get_cluster)\n")
+            (package_source / "R" / "runtime.R").write_text(
+                "get_cluster <- function() Sys.getenv('TEST_HPRCC_CLUSTER')\n"
+                "singularity_container <- function() Sys.getenv('TEST_HPRCC_CONTAINER')\n"
+                "r_libs_site <- function() Sys.getenv('TEST_HPRCC_LIBRARY')\n"
+            )
+            package_library = root / "package-library"
+            package_library.mkdir()
+            install = subprocess.run(
+                [
+                    os.path.join(os.environ.get("R_HOME", ""), "bin", "R")
+                    if os.environ.get("R_HOME")
+                    else "R",
+                    "CMD",
+                    "INSTALL",
+                    "-l",
+                    str(package_library),
+                    str(package_source),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stdout + install.stderr)
+
+            resolver_script = root / "resolve-runtime.R"
+            resolver_script.write_text(
+                "deployment_abort <- function(message, cause = NULL) stop(message)\n"
+                "bioconductor_version <- '3.22'\n"
+                + resolver
+                + "\ncat('resolved\\t', cluster, '\\t', basename(container_path), '\\t', library_path, '\\n', sep = '')\n"
+            )
+            for cluster in ("apollo", "gemini"):
+                runtime_library = root / ("runtime-" + cluster)
+                runtime_library.mkdir()
+                container = runtime_library / "rbiocverse_3.22.sif"
+                container.touch()
+                environment = os.environ.copy()
+                environment.update(
+                    {
+                        "R_LIBS_USER": str(package_library),
+                        "TEST_HPRCC_CLUSTER": cluster,
+                        "TEST_HPRCC_CONTAINER": str(container),
+                        "TEST_HPRCC_LIBRARY": str(runtime_library),
+                        "SLURM_JOB_ID": "12345",
+                        "SINGULARITY_CONTAINER": str(container),
+                    }
+                )
+                result = subprocess.run(
+                    ["Rscript", "--vanilla", str(resolver_script)],
+                    text=True,
+                    capture_output=True,
+                    env=environment,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(
+                    f"resolved\t{cluster}\trbiocverse_3.22.sif\t{runtime_library}",
+                    result.stdout,
+                )
+
     def test_public_proof_redacts_cluster_identifiers(self):
         proof = (ROOT / ".github" / "landing-proof" / "issue-249" / "deployment-dry-run.txt").read_text()
         self.assertNotIn("apollo", proof.lower())
