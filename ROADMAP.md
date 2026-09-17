@@ -749,6 +749,8 @@ bodies may state dependencies but do not change this ordering.
 | [#251](https://github.com/drejom/landscapeR/issues/251) | Maintenance — use hprcc defaults directly in revised K=1 deployment | complete on merge; corrects #249's configuration boundary and remains operational only; #193 is still next |
 | [#239](https://github.com/drejom/landscapeR/issues/239) | Maintenance — reduce PR CI latency without weakening merge gates | queued; standalone maintenance lane |
 | [#242](https://github.com/drejom/landscapeR/issues/242) | Maintenance — retry transient setup-r resolver failures | complete on merge; standalone CI reliability fix; does not reorder #232 |
+| [#254](https://github.com/drejom/landscapeR/issues/254) | Maintenance — rbiocverse Slurm acceptance preflight on cluster | queued; standalone deployment lane; does not reorder #193 |
+| [#256](https://github.com/drejom/landscapeR/issues/256) | Maintenance — pre-push test run writes empty commits onto the pushed branch | queued; standalone CI hygiene fix; does not reorder #232 or #239 |
 <!-- issue-map:end -->
 
 ---
