@@ -1,0 +1,33 @@
+{
+  "version": 5,
+  "project": {
+    "id": "COH26OMEA-landscape-r",
+    "collaborator": {
+      "surname": "OMEA",
+      "code": "OMEA"
+    },
+    "repositories": [
+      {
+        "provider": "github",
+        "host": "github.com",
+        "owner": "drejom",
+        "name": "landscaper"
+      }
+    ]
+  },
+  "execution": {
+    "targets": [
+      "local"
+    ],
+    "profile": "local"
+  },
+  "llm": {
+    "enabled": true,
+    "authorities": [
+      "azure-gateway",
+      "local"
+    ]
+  },
+  "agent_policy": null,
+  "webcodex": false
+}
